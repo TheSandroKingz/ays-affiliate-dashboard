@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, QrCode } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -13,16 +12,6 @@ import {
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 
-const chartData = [
-  { day: "Jul 01", commission: 0 },
-  { day: "Jul 02", commission: 0 },
-  { day: "Jul 03", commission: 0 },
-  { day: "Jul 04", commission: 0 },
-  { day: "Jul 05", commission: 0 },
-  { day: "Jul 06", commission: 0 },
-  { day: "Jul 07", commission: 0 },
-];
-
 type Stats = {
   balance: number;
   commission: number;
@@ -31,12 +20,42 @@ type Stats = {
   ftd: number;
 };
 
-export default function DashboardPage() {
-  const [copied, setCopied] = useState(false);
+type DailyPoint = {
+  date: string;
+  commission: number;
+  clicks: number;
+  registrations: number;
+  ftd: number;
+};
+
+const metricConfig = [
+  { key: "commission", label: "Commission", color: "#2563eb" },
+  { key: "clicks", label: "Clicks", color: "#9333ea" },
+  { key: "registrations", label: "Registrations", color: "#f59e0b" },
+  { key: "ftd", label: "FTD", color: "#1e293b" },
+] as const;
+
+function last7Days(): DailyPoint[] {
+  const days: DailyPoint[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push({
+      date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
+      commission: 0,
+      clicks: 0,
+      registrations: 0,
+      ftd: 0,
+    });
+  }
+  return days;
+}export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
+  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
-  const referralLink = "https://tusitio.com/visit/?bta=44878";
-useEffect(() => {
+
+  useEffect(() => {
     async function loadStats() {
       const {
         data: { user },
@@ -45,7 +64,9 @@ useEffect(() => {
       if (!user) {
         setLoading(false);
         return;
-      }const { data, error } = await supabase
+      }
+
+      const { data, error } = await supabase
         .from("affiliate_stats")
         .select("balance, commission, clicks, registrations, ftd")
         .eq("user_id", user.id)
@@ -54,14 +75,39 @@ useEffect(() => {
       if (!error && data) {
         setStats(data);
       }
+
+      const { data: daily } = await supabase
+        .from("affiliate_daily_stats")
+        .select("date, commission, clicks, registrations, ftd")
+        .eq("user_id", user.id)
+        .order("date", { ascending: true });
+
+      if (daily && daily.length > 0) {
+        setDailyData(
+          daily.map((d) => ({
+            date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
+            commission: d.commission,
+            clicks: d.clicks,
+            registrations: d.registrations,
+            ftd: d.ftd,
+          }))
+        );
+      }
+
       setLoading(false);
     }
 
     loadStats();
-  }, []);const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  }, []);const toggleMetric = (key: string) => {
+    setActiveMetrics((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
   if (loading) {
@@ -72,52 +118,70 @@ useEffect(() => {
   const conversionRate = s.registrations > 0 ? ((s.ftd / s.registrations) * 100).toFixed(2) : "0.00";
 
   const statCards = [
-    { label: "Commission", value: `€${s.commission}` },
-    { label: "Clicks", value: s.clicks },
-    { label: "Registrations", value: s.registrations },
-    { label: "FTD", value: s.ftd },
-    { label: "Conversion Rate", value: `${conversionRate}%` },
-  ];
-return (
+    { key: "commission", label: "Commission", value: `€${s.commission}`, color: "#2563eb" },
+    { key: "clicks", label: "Clicks", value: s.clicks, color: "#9333ea" },
+    { key: "registrations", label: "Registrations", value: s.registrations, color: "#f59e0b" },
+    { key: "ftd", label: "FTD", value: s.ftd, color: "#1e293b" },
+    { key: "conversion", label: "Conversion Rate", value: `${conversionRate}%`, color: "#92400e" },
+  ];return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         <button className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
           Contact Affiliate Manager
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-500">My balance</span>
-            <button className="border border-gray-300 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-gray-50">
-              Request payment
-            </button>
-          </div>
-          <p className="text-3xl font-bold text-gray-900 mb-2">€{s.balance}</p>
-          <p className="text-sm text-gray-500">
-            Total amount earned from all referrals so far, excluding commissions already paid out
-          </p>
+      <div className="bg-white border border-gray-200 rounded-xl p-6 max-w-md">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-medium text-gray-500">My balance</span>
+          <button className="border border-gray-300 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-gray-50">
+            Request payment
+          </button>
         </div>
-
-      </div><div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {statCards.map((s) => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-sm text-gray-500 mb-1">{s.label}</p>
-            <p className="text-xl font-bold text-gray-900">{s.value}</p>
-          </div>
-        ))}
+        <p className="text-3xl font-bold text-gray-900 mb-2">€{s.balance}</p>
+        <p className="text-sm text-gray-500">
+          Total amount earned from all referrals so far, excluding commissions already paid out
+        </p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {statCards.map((card) => {
+          const isToggleable = card.key !== "conversion";
+          const isActive = activeMetrics.has(card.key);
+          return (
+            <button
+              key={card.key}
+              onClick={() => isToggleable && toggleMetric(card.key)}
+              className={`text-left bg-white border rounded-xl p-4 border-t-4 transition-opacity ${
+                isToggleable ? "cursor-pointer" : "cursor-default"
+              } ${isToggleable && !isActive ? "opacity-50" : "opacity-100"}`}
+              style={{ borderTopColor: card.color }}
+            >
+              <p className="text-sm text-gray-500 mb-1">{card.label}</p>
+              <p className="text-xl font-bold text-gray-900">{card.value}</p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
+          <LineChart data={dailyData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="day" fontSize={12} />
+            <XAxis dataKey="date" fontSize={12} />
             <YAxis fontSize={12} />
             <Tooltip />
-            <Line type="monotone" dataKey="commission" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
+            {metricConfig.map((m) => (
+              <Line
+                key={m.key}
+                type="monotone"
+                dataKey={m.key}
+                stroke={m.color}
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                hide={!activeMetrics.has(m.key)}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
