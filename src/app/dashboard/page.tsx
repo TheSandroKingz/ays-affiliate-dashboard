@@ -137,10 +137,10 @@ const totals = dailyData.reduce(
   const balance = totals.commission - totalPaid;
 
   const statCards = [
-    { key: "commission", label: "Commission", value: `€${totals.commission}`, color: "#2563eb" },
-    { key: "clicks", label: "Clicks", value: totals.clicks, color: "#9333ea" },
-    { key: "registrations", label: "Registrations", value: totals.registrations, color: "#f59e0b" },
-    { key: "ftd", label: "FTD", value: totals.ftd, color: "#1e293b" },
+    { key: "commission", label: "Commission", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#2563eb" },
+    { key: "clicks", label: "Clicks", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
+    { key: "registrations", label: "Registrations", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
+    { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#1e293b" },
     { key: "conversion", label: "Conversion Rate", value: `${conversionRate}%`, color: "#92400e" },
   ];
 
@@ -160,7 +160,7 @@ const totals = dailyData.reduce(
             Request payment
           </button>
         </div>
-        <p className="text-3xl font-bold text-gray-900 mb-2">€{balance}</p>
+        <p className="text-3xl font-bold text-gray-900 mb-2">€{balance.toLocaleString("de-DE")}</p>
         <p className="text-sm text-gray-500">
           Total amount earned from all referrals so far, excluding commissions already paid out
         </p>
