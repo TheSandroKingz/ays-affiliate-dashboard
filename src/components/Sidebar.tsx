@@ -49,18 +49,18 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const linkClass = (href: string) =>
     `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
       pathname === href
-        ? "bg-blue-50 text-blue-600"
-        : "text-gray-600 hover:bg-gray-100"
+        ? "bg-white/10 text-white"
+        : "text-slate-300 hover:bg-white/10"
         }`;
     return (
     <aside
-      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 border-r border-gray-200 bg-white py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
+      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 border-r border-white/10 bg-slate-900/95 backdrop-blur py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       <button
         onClick={onClose}
-        className="md:hidden flex items-center gap-2 text-gray-500 mb-4 px-4"
+        className="md:hidden flex items-center gap-2 text-slate-300 mb-4 px-4"
       >
         <X size={20} />
         Cerrar
@@ -75,7 +75,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         <button
           onClick={() => setReportsOpen(!reportsOpen)}
           className="flex items-center justify-between gap-3 px-4 py-2 rounded-lg text-sm font-medium
-          text-gray-600 hover:bg-gray-100"
+          text-slate-300 hover:bg-white/10"
         >
           <span className="flex items-center gap-3">
             <ClipboardList size={18} />
@@ -109,12 +109,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           Commission Plan
         </Link>
       </nav>
-      <div className="mt-auto relative border-t border-gray-200 pt-3 px-1">
+      <div className="mt-auto relative border-t border-white/10 pt-3 px-1">
         {profileOpen && (
-          <div className="absolute bottom-full left-1 mb-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+          <div className="absolute bottom-full left-1 mb-2 w-56 bg-slate-800 border border-white/10 rounded-lg shadow-lg py-1">
             <Link
               href="/dashboard/account"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-slate-200 hover:bg-white/10"
               onClick={() => {
                 setProfileOpen(false);
                 onClose();
@@ -125,7 +125,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </Link>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/10"
             >
               <LogOut size={16} />
               Cerrar sesión
@@ -135,13 +135,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         <button
           onClick={() => setProfileOpen(!profileOpen)}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10"
         >
           <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex
           items-center justify-center text-sm font-semibold shrink-0">
             {userEmail ? userEmail[0].toUpperCase() : "?"}
           </div>
-          <span className="text-sm text-gray-700 truncate">{userEmail ?? "Cargando..."}</span>
+          <span className="text-sm text-slate-200 truncate">{userEmail ?? "Cargando..."}</span>
         </button>
       </div>
     </aside>
