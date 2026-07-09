@@ -165,7 +165,7 @@ const totals = dailyData.reduce(
           Total amount earned from all referrals so far, excluding commissions already paid out
         </p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 bg-white border border-gray-200 rounded-xl overflow-hidden divide-x divide-gray-200">
         {statCards.map((card) => {
           const isToggleable = card.key !== "conversion";
           const isActive = activeMetrics.has(card.key);
@@ -173,7 +173,7 @@ const totals = dailyData.reduce(
             <button
               key={card.key}
               onClick={() => isToggleable && toggleMetric(card.key)}
-              className={`text-left bg-white border rounded-xl p-4 border-t-4 transition-opacity ${
+              className={`text-left p-4 border-t-4 transition-opacity${
                 isToggleable ? "cursor-pointer" : "cursor-default"
               } ${isToggleable && !isActive ? "opacity-50" : "opacity-100"}`}
               style={{ borderTopColor: card.color }}
