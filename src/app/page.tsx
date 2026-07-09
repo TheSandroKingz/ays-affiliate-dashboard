@@ -1,62 +1,20 @@
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
-
-export const dynamic = 'force-dynamic'
-
-export default async function DashboardPage() {
-  const { data: stats, error } = await supabaseAdmin
-    .from('affiliate_stats')
-    .select(`
-      id,
-      affiliate_id,
-      stat_date,
-      clicks_total,
-      leads_total,
-      deposits_total,
-      commission_total,
-      affiliates ( display_name )
-    `)
-    .order('stat_date', { ascending: false })
-
-  if (error) {
-    return (
-      <main style={{ padding: 32 }}>
-        <h1>Dashboard de Afiliados</h1>
-        <p style={{ color: 'red' }}>Error: {error.message}</p>
-      </main>
-    )
-  }
-
+export default function Home() {
   return (
-    <main style={{ padding: 32 }}>
-      <h1>Dashboard de Afiliados</h1>
-      {(!stats || stats.length === 0) ? (
-        <p>Todavía no hay estadísticas cargadas.</p>
-      ) : (
-        <table border={1} cellPadding={8}>
-          <thead>
-            <tr>
-              <th>Afiliado</th>
-              <th>Fecha</th>
-              <th>Clicks</th>
-              <th>Leads</th>
-              <th>Depósitos</th>
-              <th>Comisión</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.map((row: any) => (
-              <tr key={row.id}>
-                <td>{row.affiliates?.display_name ?? '—'}</td>
-                <td>{row.stat_date}</td>
-                <td>{row.clicks_total}</td>
-                <td>{row.leads_total}</td>
-                <td>{row.deposits_total}</td>
-                <td>{row.commission_total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-700 px-4">
+      <div className="max-w-md w-full text-center text-white">
+        <h1 className="text-4xl font-bold mb-3">AYS Afiliados</h1>
+        <p className="text-slate-300 mb-8">
+          Bienvenido al panel de afiliados. Gestiona tus estadísticas y comisiones en un solo lugar.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <a href="/login" className="px-6 py-3 rounded-lg bg-white text-slate-900 font-medium hover:bg-slate-100 transition">
+            Iniciar sesión
+          </a>
+          <a href="/registro" className="px-6 py-3 rounded-lg border border-white/30 text-white font-medium hover:bg-white/10 transition">
+            Crear cuenta
+          </a>
+        </div>
+      </div>
     </main>
   )
 }
