@@ -54,6 +54,7 @@ function last7Days(): DailyPoint[] {
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
+  const [totalPaid, setTotalPaid] = useState(0);
 
   useEffect(() => {
     async function loadStats() {
@@ -83,6 +84,7 @@ function last7Days(): DailyPoint[] {
         .order("date", { ascending: true });
 
       if (daily && daily.length > 0) {
+        
         setDailyData(
           daily.map((d) => ({
             date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
@@ -93,7 +95,15 @@ function last7Days(): DailyPoint[] {
           }))
         );
       }
+const { data: payments } = await supabase
+  .from("payments")
+  .select("amount")
+  .eq("user_id", user.id);
 
+if (payments) {
+  const paidSum = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  setTotalPaid(paidSum);
+}
       setLoading(false);
     }
 
@@ -124,7 +134,7 @@ const totals = dailyData.reduce(
   );
 
   const conversionRate = totals.registrations > 0 ? ((totals.ftd / totals.registrations) * 100).toFixed(2) : "0.00";
-  const balance = stats?.balance ?? 0;
+  const balance = totals.commission - totalPaid;
 
   const statCards = [
     { key: "commission", label: "Commission", value: `€${totals.commission}`, color: "#2563eb" },
