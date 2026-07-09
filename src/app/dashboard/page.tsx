@@ -121,7 +121,7 @@ if (payments) {
   };
 
   if (loading) {
-    return <p className="text-gray-500">Cargando...</p>;
+    return <p className="text-slate-300">Cargando...</p>;
   }
 const totals = dailyData.reduce(
     (acc, d) => ({
@@ -156,25 +156,25 @@ const totals = dailyData.reduce(
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <button className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+        <button className="flex items-center gap-2 border border-white/20 rounded-lg px-4 py-2 text-sm font-medium text-white hover:bg-white/10">
           Contact Affiliate Manager
         </button>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-6 max-w-md">
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-medium text-gray-500">My balance</span>
-          <button className="border border-gray-300 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-gray-50">
+          <span className="text-sm font-medium text-slate-300">My balance</span>
+          <button className="border border-white/20 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-white/10">
             Request payment
           </button>
         </div>
-        <p className="text-3xl font-bold text-gray-900 mb-2">€{balance.toLocaleString("de-DE")}</p>
-        <p className="text-sm text-gray-500">
+        <p className="text-3xl font-bold text-white mb-2">€{balance.toLocaleString("de-DE")}</p>
+        <p className="text-sm text-slate-300">
           Total amount earned from all referrals so far, excluding commissions already paid out
         </p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 bg-white border border-gray-200 rounded-xl overflow-hidden divide-x divide-gray-200">
+      <div className="grid grid-cols-2 md:grid-cols-5 bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden divide-x divide-gray-200">
         {statCards.map((card) => {
           const isToggleable = card.key !== "conversion";
           const isActive = activeMetrics.has(card.key);
@@ -187,18 +187,18 @@ const totals = dailyData.reduce(
               } ${isToggleable && !isActive ? "opacity-50" : "opacity-100"}`}
               style={{ borderTopColor: card.color }}
             >
-              <p className="text-sm text-gray-500 mb-1">{card.label}</p>
-              <p className="text-xl font-bold text-gray-900">{card.value}</p>
+              <p className="text-sm text-slate-300 mb-1">{card.label}</p>
+              <p className="text-xl font-bold text-white">{card.value}</p>
             </button>
           );
         })}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="date" fontSize={12} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+            <XAxis dataKey="date" fontSize={12} stroke="#94a3b8" />
             <YAxis domain={[0, 100]} hide />
            <Tooltip
   formatter={(value: any, name: any, props: any) => {
