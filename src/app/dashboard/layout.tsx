@@ -8,16 +8,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 flex items-center px-4 py-3">
-        <button onClick={() => setSidebarOpen(true)}>
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-900 to-slate-700">
+<div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-slate-900/80 backdrop-blur border-b border-white/10 flex items-center px-4 py-3">        <button onClick={() => setSidebarOpen(true)} className="text-white">
           <Menu size={24} />
         </button>
       </div>
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/30 z-40 md:hidden"
+         className="fixed inset-0 bg-black/30 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
