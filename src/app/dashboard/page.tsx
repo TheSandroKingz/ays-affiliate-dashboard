@@ -135,6 +135,15 @@ const totals = dailyData.reduce(
 
   const conversionRate = totals.registrations > 0 ? ((totals.ftd / totals.registrations) * 100).toFixed(2) : "0.00";
   const balance = totals.commission - totalPaid;
+  const chartData = dailyData.map((d) => {
+  const point: Record<string, number | string> = { date: d.date };
+  metricConfig.forEach((m) => {
+    const max = Math.max(...dailyData.map((p) => p[m.key]), 1);
+    point[m.key] = d[m.key];
+    point[`${m.key}Pct`] = (d[m.key] / max) * 100;
+  });
+  return point;
+});
 
   const statCards = [
     { key: "commission", label: "Commission", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#2563eb" },
@@ -187,16 +196,23 @@ const totals = dailyData.reduce(
 
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={dailyData}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="date" fontSize={12} />
-            <YAxis fontSize={12} />
-            <Tooltip />
+            <YAxis domain={[0, 100]} hide />
+           <Tooltip
+  formatter={(value: any, name: any, props: any) => {
+    const key = name.replace("Pct", "");
+    const metric = metricConfig.find((m) => m.key === key);
+    const raw = props?.payload?.[key];
+    return [raw, metric ? metric.label : name];
+  }}
+/>
             {metricConfig.map((m) => (
               <Line
                 key={m.key}
                 type="monotone"
-                dataKey={m.key}
+                dataKey={`${m.key}Pct`}
                 stroke={m.color}
                 strokeWidth={2}
                 dot={{ r: 3 }}
