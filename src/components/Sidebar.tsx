@@ -5,13 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
-  Megaphone,
   ClipboardList,
   CreditCard,
-  Share2,
   Users,
   BookOpen,
   ChevronDown,
+  X,
 } from "lucide-react";
 
 const reportLinks = [
@@ -21,7 +20,12 @@ const reportLinks = [
   { name: "Earnings Report", href: "/dashboard/reports/earnings" },
 ];
 
-export default function Sidebar() {
+type SidebarProps = {
+  open: boolean;
+  onClose: () => void;
+};
+
+export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith("/dashboard/reports"));
 
@@ -30,16 +34,25 @@ export default function Sidebar() {
       pathname === href
         ? "bg-blue-50 text-blue-600"
         : "text-gray-600 hover:bg-gray-100"
-    }`;
+    }`;return (
+    <aside
+      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 border-r border-gray-200 bg-white py-6 px-3 z-50 transform transition-transform duration-200 md:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
+      <button
+        onClick={onClose}
+        className="md:hidden flex items-center gap-2 text-gray-500 mb-4 px-4"
+      >
+        <X size={20} />
+        Cerrar
+      </button>
 
-  return (
-    <aside className="w-64 shrink-0 border-r border-gray-200 bg-white min-h-screen py-6 px-3">
       <nav className="flex flex-col gap-1">
-        <Link href="/dashboard" className={linkClass("/dashboard")}>
+        <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
           <LayoutDashboard size={18} />
           Dashboard
         </Link>
-
 
         <button
           onClick={() => setReportsOpen(!reportsOpen)}
@@ -57,25 +70,22 @@ export default function Sidebar() {
         {reportsOpen && (
           <div className="ml-8 flex flex-col gap-1">
             {reportLinks.map((r) => (
-              <Link key={r.href} href={r.href} className={linkClass(r.href)}>
+              <Link key={r.href} href={r.href} className={linkClass(r.href)} onClick={onClose}>
                 {r.name}
               </Link>
             ))}
           </div>
-        )}
-
-        <Link href="/dashboard/payments" className={linkClass("/dashboard/payments")}>
+        )}<Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
           <CreditCard size={18} />
           Payments
         </Link>
 
-
-        <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")}>
+        <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
           <Users size={18} />
           Sub Affiliates
         </Link>
 
-        <Link href="/dashboard/commission-plan" className={linkClass("/dashboard/commission-plan")}>
+        <Link href="/dashboard/commission-plan" className={linkClass("/dashboard/commission-plan")} onClick={onClose}>
           <BookOpen size={18} />
           Commission Plan
         </Link>
