@@ -113,17 +113,28 @@ function last7Days(): DailyPoint[] {
   if (loading) {
     return <p className="text-gray-500">Cargando...</p>;
   }
+const totals = dailyData.reduce(
+    (acc, d) => ({
+      commission: acc.commission + d.commission,
+      clicks: acc.clicks + d.clicks,
+      registrations: acc.registrations + d.registrations,
+      ftd: acc.ftd + d.ftd,
+    }),
+    { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
+  );
 
-  const s = stats ?? { balance: 0, commission: 0, clicks: 0, registrations: 0, ftd: 0 };
-  const conversionRate = s.registrations > 0 ? ((s.ftd / s.registrations) * 100).toFixed(2) : "0.00";
+  const conversionRate = totals.registrations > 0 ? ((totals.ftd / totals.registrations) * 100).toFixed(2) : "0.00";
+  const balance = stats?.balance ?? 0;
 
   const statCards = [
-    { key: "commission", label: "Commission", value: `€${s.commission}`, color: "#2563eb" },
-    { key: "clicks", label: "Clicks", value: s.clicks, color: "#9333ea" },
-    { key: "registrations", label: "Registrations", value: s.registrations, color: "#f59e0b" },
-    { key: "ftd", label: "FTD", value: s.ftd, color: "#1e293b" },
+    { key: "commission", label: "Commission", value: `€${totals.commission}`, color: "#2563eb" },
+    { key: "clicks", label: "Clicks", value: totals.clicks, color: "#9333ea" },
+    { key: "registrations", label: "Registrations", value: totals.registrations, color: "#f59e0b" },
+    { key: "ftd", label: "FTD", value: totals.ftd, color: "#1e293b" },
     { key: "conversion", label: "Conversion Rate", value: `${conversionRate}%`, color: "#92400e" },
-  ];return (
+  ];
+
+  return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
@@ -139,7 +150,7 @@ function last7Days(): DailyPoint[] {
             Request payment
           </button>
         </div>
-        <p className="text-3xl font-bold text-gray-900 mb-2">€{s.balance}</p>
+        <p className="text-3xl font-bold text-gray-900 mb-2">€{balance}</p>
         <p className="text-sm text-gray-500">
           Total amount earned from all referrals so far, excluding commissions already paid out
         </p>
