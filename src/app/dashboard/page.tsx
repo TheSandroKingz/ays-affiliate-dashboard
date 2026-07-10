@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 import ContactManagerButton from "@/components/ContactManagerButton";
+import { Info } from "lucide-react";
 
 type Stats = {
   balance: number;
@@ -163,7 +164,26 @@ const totals = dailyData.reduce(
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">
         <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-slate-300">Mi balance</span>
+          <div className="group relative">
+            <Info size={15} className="text-slate-400 cursor-help" />
+            <div className="pointer-events-none absolute left-0 top-6 z-10 w-60 rounded-lg border border-white/20 bg-slate-800 p-3 opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+              <div className="flex items-center justify-between py-1 text-sm">
+                <span className="text-slate-300">Fondos accesibles</span>
+                <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-sm">
+                <span className="text-slate-300">Ganado</span>
+                <span className="font-medium text-white">€{totals.commission.toLocaleString("de-DE")}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-sm">
+                <span className="text-slate-300">Pagado</span>
+                <span className="font-medium text-white">€{totalPaid.toLocaleString("de-DE")}</span>
+              </div>
+            </div>
+          </div>
+        </div>
           <button className="border border-white/20 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-white/10">
             Solicitar pago
           </button>
