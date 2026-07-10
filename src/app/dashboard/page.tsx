@@ -31,10 +31,10 @@ type DailyPoint = {
 };
 
 const metricConfig = [
-  { key: "commission", label: "Comisión", color: "#2563eb" },
+  { key: "commission", label: "Comisión", color: "#10b981" },
 { key: "clicks", label: "Clics", color: "#9333ea" },
 { key: "registrations", label: "Registros", color: "#f59e0b" },
-  { key: "ftd", label: "FTD", color: "#1e293b" },
+  { key: "ftd", label: "FTD", color: "#94a3b8" },
 ] as const;
 
 function last7Days(): DailyPoint[] {
@@ -165,10 +165,10 @@ const totals = dailyData.reduce(
   const primaryMetricKey = (activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission") as any;
   const primaryMax = Math.max(...dailyData.map((p: any) => Number(p[primaryMetricKey]) || 0), 1);
   const statCards = [
-    { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#2563eb" },
+    { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#10b981" },
     { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
     { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-    { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#1e293b" },
+    { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#94a3b8" },
     { key: "conversion", label: "Tasa de Conversión", value: `${conversionRate}%`, color: "#92400e" },
   ];
 
@@ -176,7 +176,7 @@ const totals = dailyData.reduce(
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-            <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-white bg-clip-text text-transparent">{displayName}</span></>}</h1>
+            <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
               <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
           <ContactManagerButton />
