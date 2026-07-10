@@ -51,16 +51,16 @@ export default function MediaReportPage() {
     { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
   );return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-white">Media Report</h1>
+      <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-slate-300 text-left">
-              <th className="px-4 py-3 font-medium">Day</th>
-              <th className="px-4 py-3 font-medium">Commission</th>
-              <th className="px-4 py-3 font-medium">Clicks</th>
-              <th className="px-4 py-3 font-medium">Registrations</th>
+              <th className="px-4 py-3 font-medium">Día</th>
+              <th className="px-4 py-3 font-medium">Comisión</th>
+              <th className="px-4 py-3 font-medium">Clics</th>
+              <th className="px-4 py-3 font-medium">Registros</th>
               <th className="px-4 py-3 font-medium">FTD</th>
             </tr>
           </thead>
