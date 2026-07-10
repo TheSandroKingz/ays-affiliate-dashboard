@@ -64,19 +64,19 @@ export default function ActivityReportPage() {
 
   const totalNetDeposit = totals.deposits - totals.withdrawals;return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-white">Activity Report</h1>
+      <h1 className="text-2xl font-semibold text-white">Informe de Actividad</h1>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-slate-300 text-left">
-              <th className="px-4 py-3 font-medium">User ID</th>
-              <th className="px-4 py-3 font-medium">Commission Count</th>
-              <th className="px-4 py-3 font-medium">Commission Amount</th>
-              <th className="px-4 py-3 font-medium">Deposits</th>
-              <th className="px-4 py-3 font-medium">Deposit Count</th>
-              <th className="px-4 py-3 font-medium">Withdrawals</th>
-              <th className="px-4 py-3 font-medium">Net Deposit</th>
+              <th className="px-4 py-3 font-medium">ID de Usuario</th>
+              <th className="px-4 py-3 font-medium">Cantidad de Comisiones</th>
+              <th className="px-4 py-3 font-medium">Monto de Comisión</th>
+              <th className="px-4 py-3 font-medium">Depósitos</th>
+              <th className="px-4 py-3 font-medium">Cantidad de Depósitos</th>
+              <th className="px-4 py-3 font-medium">Retiros</th>
+              <th className="px-4 py-3 font-medium">Depósito Neto</th>
               <th className="px-4 py-3 font-medium">NGR</th>
             </tr>
           </thead>
