@@ -32,10 +32,21 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith("/dashboard/reports"));
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email ?? null);
+      if (data.user) {
+        supabase
+          .from("affiliates")
+          .select("avatar_url")
+          .eq("user_id", data.user.id)
+          .single()
+          .then(({ data: aff }) => {
+            setAvatarUrl(aff?.avatar_url ?? null);
+          });
+      }
     });
   }, []);
 
@@ -141,8 +152,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10"
         >
           <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex
-          items-center justify-center text-sm font-semibold shrink-0">
-            {userEmail ? userEmail[0].toUpperCase() : "?"}
+          items-center justify-center text-sm font-semibold shrink-0 overflow-hidden">
+            {avatarUrl ? (
+                <img src={avatarUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
+              ) : userEmail ? (
+                userEmail[0].toUpperCase()
+              ) : (
+                "?"
+              )}
           </div>
           <span className="text-sm text-slate-200 truncate">{userEmail ?? "Cargando..."}</span>
         </button>
