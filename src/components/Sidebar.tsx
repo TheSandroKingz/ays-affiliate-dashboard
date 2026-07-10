@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 
 const reportLinks = [
-  { name: "Media Report", href: "/dashboard/reports/media" },
-  { name: "Activity Report", href: "/dashboard/reports/activity" },
+  { name: "Informe de Medios", href: "/dashboard/reports/media" },
+  { name: "Informe de Actividad", href: "/dashboard/reports/activity" },
 ];
 
 type SidebarProps = {
@@ -67,7 +67,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       <nav className="flex flex-col gap-1">
         <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
           <LayoutDashboard size={18} />
-          Dashboard
+          Panel
         </Link>
 
         <button
@@ -77,7 +77,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         >
           <span className="flex items-center gap-3">
             <ClipboardList size={18} />
-            Reports
+            Informes
           </span>
           <ChevronDown
             size={16}
@@ -94,17 +94,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </div>
         )}<Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
           <CreditCard size={18} />
-          Payments
+          Pagos
         </Link>
 
         <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
           <Users size={18} />
-          Sub Affiliates
+          Sub Afiliados
         </Link>
 
         <Link href="/dashboard/commission-plan" className={linkClass("/dashboard/commission-plan")} onClick={onClose}>
           <BookOpen size={18} />
-          Commission Plan
+          Plan de Comisión
         </Link>
       </nav>
       <div className="mt-auto relative border-t border-white/10 pt-3 px-1">
@@ -119,7 +119,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               }}
             >
               <Settings size={16} />
-              Account Settings
+              Configuración de Cuenta
             </Link>
             <button
               onClick={handleLogout}
