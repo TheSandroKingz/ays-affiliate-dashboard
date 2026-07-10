@@ -206,9 +206,6 @@ const totals = dailyData.reduce(
             </div>
           </div>
         </div>
-          <button className="border border-white/20 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-white/10">
-            Solicitar pago
-          </button>
         </div>
         <p className="text-3xl font-bold text-white mb-2">€{balance.toLocaleString("de-DE")}</p>
         <p className="text-sm text-slate-300">
