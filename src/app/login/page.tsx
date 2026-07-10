@@ -31,10 +31,10 @@ export default function LoginPage() {
     router.push('/dashboard')
   }
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-700 px-4">
+    <main className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-sky-300 to-white bg-clip-text text-transparent">
+          <span className="text-2xl font-extrabold tracking-tight text-emerald-400">
             A & S Afiliados
           </span>
         </div>
@@ -53,7 +53,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="tu@email.com"
                 />
               </div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="••••••••"
                 />
               </div>
@@ -79,7 +79,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-700 hover:opacity-90 disabled:opacity-50 text-white font-semibold py-2.5 transition-opacity"
+              className="mt-2 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 disabled:opacity-50 text-white font-semibold py-2.5 transition-opacity"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
@@ -87,7 +87,7 @@ export default function LoginPage() {
 
           <p className="text-center text-slate-300 text-sm mt-6">
             ¿No tienes cuenta?{' '}
-            <a href="/registro" className="text-blue-400 hover:text-blue-300 font-medium">
+            <a href="/registro" className="text-emerald-400 hover:text-emerald-300 font-medium">
               Regístrate
             </a>
           </p>
