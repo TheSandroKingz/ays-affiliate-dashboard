@@ -39,13 +39,11 @@ export default function MediaReportPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-slate-300"
-    >Cargando...</p>;
+    return <p className="text-slate-300">Cargando...</p>;
   }
 
   const totals = rows.reduce(
-    (acc, r) => ({
-      commission: acc.commission + Number(r.commission),
+    (acc, r) => ({commission: acc.commission + Number(r.commission),
       clicks: acc.clicks + r.clicks,
       registrations: acc.registrations + r.registrations,
       ftd: acc.ftd + r.ftd,
@@ -58,22 +56,22 @@ export default function MediaReportPage() {
       <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-white/10 text-slate-400 text-left">
-              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide">
+            <tr className="bg-white/10 text-slate-300 text-left">
+              <th className="border border-white/10 px-4 py-3 font-semibold text-xs uppercase tracking-wide">
                 Día
               </th>
-              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+              <th className="border border-white/10 px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
                 Comisión
               </th>
-              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+              <th className="border border-white/10 px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
                 Clics
               </th>
-              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+              <th className="border border-white/10 px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
                 Registros
               </th>
-              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+              <th className="border border-white/10 px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
                 FTD
               </th>
             </tr>
@@ -82,30 +80,30 @@ export default function MediaReportPage() {
             {rows.map((r, i) => (
               <tr
                 key={r.date}
-                className={`border-b border-white/10 text-white ${
+                className={`text-white ${
                   i % 2 === 1 ? "bg-white/[0.03]" : ""
                 } hover:bg-white/10 transition-colors`}
               >
-                <td className="px-4 py-3">
+                <td className="border border-white/10 px-4 py-3">
                   {new Date(r.date).toLocaleDateString("es-ES")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   €{Number(r.commission).toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   {r.clicks.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   {r.registrations.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   {r.ftd.toLocaleString("de-DE")}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={5} className="border border-white/10 px-4 py-6 text-center text-slate-400">
                   No hay datos todavía
                 </td>
               </tr>
@@ -114,17 +112,17 @@ export default function MediaReportPage() {
           {rows.length > 0 && (
             <tfoot>
               <tr className="bg-white/10 text-white font-semibold">
-                <td className="px-4 py-3">Total</td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3">Total</td>
+                <td className="border border-white/10 px-4 py-3 text-right">
                   €{totals.commission.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   {totals.clicks.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   {totals.registrations.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right">
                   {totals.ftd.toLocaleString("de-DE")}
                 </td>
               </tr>
