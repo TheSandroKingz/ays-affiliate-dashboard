@@ -32,7 +32,7 @@ export default function ContactManagerButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
+          <div className="w-full max-w-lg rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
               <div>
                 
                 <h2 className="hidden">
@@ -55,14 +55,14 @@ export default function ContactManagerButton() {
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 p-3">
                 <div className="flex items-center gap-2 text-slate-200 min-w-0">
                   <Mail size={18} />
                   <span className="truncate">{CONTACT.email}</span>
                 </div>
                 <button
                   onClick={() => (window.location.href = `mailto:${CONTACT.email}`)}
-                  className="self-end shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
+                  className="shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
                   Escribir
                 </button>
