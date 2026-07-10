@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AccountPage() {
@@ -10,6 +10,9 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -32,7 +35,7 @@ export default function AccountPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications")
+        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications, avatar_url")
         .eq("user_id", user.id)
         .single();
 
@@ -43,11 +46,44 @@ export default function AccountPage() {
         setPaymentMethod(data.payment_method ?? "");
         setPaymentDetails(data.payment_details ?? "");
         setEmailNotifications(data.email_notifications ?? true);
+      setAvatarUrl(data.avatar_url ?? null);
       }
       setLoading(false);
     }
     loadData();
-  }, []);async function savePersonal() {
+  }, []);async function uploadAvatar(file: File) {
+    setUploading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setUploading(false);
+      return;
+    }
+
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      setMessage("Error al subir la foto");
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    await supabase.from("affiliates").update({ avatar_url: publicUrl }).eq("user_id", user.id);
+
+    setAvatarUrl(publicUrl);
+    setUploading(false);
+  }
+
+  async function savePersonal() {
     setSaving(true);
     setMessage(null);
     const {
@@ -164,6 +200,32 @@ export default function AccountPage() {
         <p className="text-sm text-blue-300">{message}</p>
       )}{activeTab === "personal" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-semibold overflow-hidden shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
+              ) : (
+                firstName ? firstName[0].toUpperCase() : "?"
+              )}
+            </div>
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={(e) => e.target.files && uploadAvatar(e.target.files[0])}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="text-sm font-medium text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+              >
+                {uploading ? "Subiendo..." : "Cambiar foto"}
+              </button>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-200 mb-1">Nombre</label>
             <input
