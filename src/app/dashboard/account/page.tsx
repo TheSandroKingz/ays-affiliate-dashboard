@@ -103,6 +103,9 @@ export default function AccountPage() {
 
     setSaving(false);
     setMessage(error ? "Error al guardar" : "Guardado correctamente");
+    if (!error) {
+      setTimeout(() => window.location.reload(), 800);
+    }
   }
 
   async function savePago() {
