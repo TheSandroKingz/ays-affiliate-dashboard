@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AccountPage() {
@@ -204,9 +205,9 @@ export default function AccountPage() {
       )}{activeTab === "personal" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-semibold overflow-hidden shrink-0">
+            <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-semibold overflow-hidden shrink-0 relative">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
+                <Image src={avatarUrl} alt="Foto de perfil" fill className="object-cover" />
               ) : (
                 firstName ? firstName[0].toUpperCase() : "?"
               )}

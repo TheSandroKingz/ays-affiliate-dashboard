@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -154,9 +155,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10"
         >
           <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex
-          items-center justify-center text-sm font-semibold shrink-0 overflow-hidden">
+          items-center justify-center text-sm font-semibold shrink-0 overflow-hidden relative">
             {avatarUrl ? (
-                <img src={avatarUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
+                <Image src={avatarUrl} alt="Foto de perfil" fill className="object-cover" />
               ) : userEmail ? (
                 userEmail[0].toUpperCase()
               ) : (
