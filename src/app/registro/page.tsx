@@ -67,7 +67,7 @@ export default function RegistroPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Email</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">Correo electrónico</label>
             <input
               type="email"
               value={email}
