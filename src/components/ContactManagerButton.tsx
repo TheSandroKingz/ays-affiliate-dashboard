@@ -32,7 +32,7 @@ export default function ContactManagerButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
+          <div className="w-full max-w-md rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
               <div>
                 
                 <h2 className="hidden">
@@ -51,7 +51,7 @@ export default function ContactManagerButton() {
               <div className="w-28 h-28 rounded-full overflow-hidden relative shrink-0 bg-emerald-600">
               <Image src={CONTACT.photoUrl} alt={CONTACT.name} fill className="object-cover" />
             </div>
-              <span className="text-lg font-semibold">{CONTACT.name}</span>
+              <span className="text-lg font-semibold text-emerald-400">{CONTACT.name}</span>
             </div>
 
             <div className="mt-4 space-y-3">
