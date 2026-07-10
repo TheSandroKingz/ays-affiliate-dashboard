@@ -69,7 +69,7 @@ export default function ActivityReportPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-white">Informe de Actividad</h1>
 
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden overflow-x-auto">
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden overflow-x-auto min-w-0">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-white/10 text-slate-300 text-left">
