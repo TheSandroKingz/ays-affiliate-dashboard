@@ -8,11 +8,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-900 to-slate-700">
-<div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden fixed top-0 left-0 right-0 z-30 bg-slate-900/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>        <button onClick={() => setSidebarOpen(true)} className="text-white">
+    <div className="flex min-h-screen bg-black">
+<div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden fixed top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>        <button onClick={() => setSidebarOpen(true)} className="text-white">
           <Menu size={24} />
         </button>
-        <span className="flex-1 text-center text-lg font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-sky-300 to-white bg-clip-text text-transparent pr-6">
+        <span className="flex-1 text-center text-lg font-extrabold tracking-tight text-emerald-400 pr-6">
           A & S Afiliados
         </span>
       </div>

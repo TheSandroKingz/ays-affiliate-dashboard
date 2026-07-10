@@ -52,12 +52,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         }`;
     return (
     <aside
-      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 border-r border-white/10 bg-slate-900/95 backdrop-blur py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
+      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 border-r border-white/10 bg-black/95 backdrop-blur py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       <div className="px-4 mb-6">
-          <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-sky-300 to-white bg-clip-text text-transparent">
+          <span className="text-xl font-extrabold tracking-tight text-emerald-400">
             A & S Afiliados
           </span>
         </div>
@@ -140,7 +140,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           onClick={() => setProfileOpen(!profileOpen)}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10"
         >
-          <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex
+          <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex
           items-center justify-center text-sm font-semibold shrink-0">
             {userEmail ? userEmail[0].toUpperCase() : "?"}
           </div>
