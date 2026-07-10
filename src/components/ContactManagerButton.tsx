@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Send, User, X } from "lucide-react";
+import { Mail, Send, X } from "lucide-react";
+import Image from "next/image";
 
 const CONTACT = {
   name: "Adri",
   email: "contratacionesadriperez@gmail.com",
   telegram: "@ADRIFTD",
+  photoUrl: "/manager.jpg",
 };
 
 export default function ContactManagerButton() {
@@ -30,7 +32,7 @@ export default function ContactManagerButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-white/20 bg-slate-800 p-6"><div className="flex items-start justify-between">
+          <div className="w-full max-w-md rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-slate-400">Información de contacto</p>
                 <h2 className="mt-1 text-xl font-semibold text-white">
@@ -46,8 +48,10 @@ export default function ContactManagerButton() {
             </div>
 
             <div className="mt-4 flex items-center gap-2 text-white">
-              <User size={18} />
-              <span>{CONTACT.name}</span>
+              <div className="w-12 h-12 rounded-full overflow-hidden relative shrink-0 bg-emerald-600">
+              <Image src={CONTACT.photoUrl} alt={CONTACT.name} fill className="object-cover" />
+            </div>
+              <span className="font-medium">{CONTACT.name}</span>
             </div>
 
             <div className="mt-4 space-y-3">
@@ -57,10 +61,10 @@ export default function ContactManagerButton() {
                   <span className="break-all">{CONTACT.email}</span>
                 </div>
                 <button
-                  onClick={() => copy(CONTACT.email, "email")}
+                  onClick={() => (window.location.href = `mailto:${CONTACT.email}`)}
                   className="shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
-                  {copied === "email" ? "Copiado" : "Copiar"}
+                  Escribir
                 </button>
               </div>
 
@@ -70,10 +74,10 @@ export default function ContactManagerButton() {
                   <span>{CONTACT.telegram}</span>
                 </div>
                 <button
-                  onClick={() => copy(CONTACT.telegram, "telegram")}
+                  onClick={() => window.open(`https://t.me/${CONTACT.telegram.replace("@", "")}`, "_blank")}
                   className="shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
-                  {copied === "telegram" ? "Copiado" : "Copiar"}
+                  Abrir chat
                 </button>
               </div>
             </div>
