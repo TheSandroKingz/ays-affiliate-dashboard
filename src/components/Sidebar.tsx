@@ -32,6 +32,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith("/dashboard/reports"));
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,11 +41,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       if (data.user) {
         supabase
           .from("affiliates")
-          .select("avatar_url")
+          .select("avatar_url, display_name")
           .eq("user_id", data.user.id)
           .single()
           .then(({ data: aff }) => {
             setAvatarUrl(aff?.avatar_url ?? null);
+            setDisplayName(aff?.display_name ?? null);
           });
       }
     });
@@ -161,7 +163,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 "?"
               )}
           </div>
-          <span className="text-sm text-slate-200 truncate">{userEmail ?? "Cargando..."}</span>
+          <span className="text-sm text-slate-200 truncate">{displayName ?? userEmail ?? "Cargando..."}</span>
         </button>
       </div>
     </aside>
