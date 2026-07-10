@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
+import ContactManagerButton from "@/components/ContactManagerButton";
 
 type Stats = {
   balance: number;
@@ -157,9 +158,7 @@ const totals = dailyData.reduce(
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Panel</h1>
-        <button className="flex items-center gap-2 border border-white/20 rounded-lg px-4 py-2 text-sm font-medium text-white hover:bg-white/10">
-          Contactar Con Gestor de Afiliados
-        </button>
+          <ContactManagerButton />
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">
