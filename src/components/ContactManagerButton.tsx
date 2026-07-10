@@ -32,7 +32,7 @@ export default function ContactManagerButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
+          <div className="w-full max-w-md rounded-xl border border-white/20 bg-black/95 p-5"><div className="flex items-start justify-between">
               <div>
                 
                 <h2 className="hidden">
@@ -51,13 +51,13 @@ export default function ContactManagerButton() {
               <div className="w-28 h-28 rounded-full overflow-hidden relative shrink-0 bg-emerald-600">
               <Image src={CONTACT.photoUrl} alt={CONTACT.name} fill className="object-cover" />
             </div>
-              <span className="text-lg font-semibold text-emerald-400">{CONTACT.name}</span>
+              <span className="text-xl font-semibold text-emerald-400">{CONTACT.name}</span>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-3 space-y-2">
               <button
               onClick={() => (window.location.href = `mailto:${CONTACT.email}`)}
-              className="flex w-full items-center gap-2 rounded-lg border border-white/10 p-3 text-left text-slate-200 hover:border-emerald-400/40 hover:text-emerald-300 transition"
+              className="flex w-full items-center gap-2 rounded-lg border border-white/10 p-2.5 text-left text-slate-200 hover:border-emerald-400/40 hover:text-emerald-300 transition"
             >
               <Mail size={18} />
               <span className="truncate">{CONTACT.email}</span>
@@ -65,7 +65,7 @@ export default function ContactManagerButton() {
 
               <button
               onClick={() => window.open(`https://t.me/${CONTACT.telegram.replace("@", "")}`, "_blank")}
-              className="flex w-full items-center gap-2 rounded-lg border border-white/10 p-3 text-left text-slate-200 hover:border-emerald-400/40 hover:text-emerald-300 transition"
+              className="flex w-full items-center gap-2 rounded-lg border border-white/10 p-2.5 text-left text-slate-200 hover:border-emerald-400/40 hover:text-emerald-300 transition"
             >
               <Send size={18} />
               <span>{CONTACT.telegram}</span>
