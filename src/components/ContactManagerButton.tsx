@@ -55,14 +55,14 @@ export default function ContactManagerButton() {
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 rounded-lg border border-white/10 p-3">
                 <div className="flex items-center gap-2 text-slate-200 min-w-0">
                   <Mail size={18} />
                   <span className="truncate">{CONTACT.email}</span>
                 </div>
                 <button
                   onClick={() => (window.location.href = `mailto:${CONTACT.email}`)}
-                  className="shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
+                  className="self-end sm:self-auto shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
                   Escribir
                 </button>
