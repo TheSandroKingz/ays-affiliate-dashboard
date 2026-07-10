@@ -32,7 +32,7 @@ export default function ContactManagerButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-white/20 bg-black/95 p-5 sm:p-4"><div className="flex items-start justify-between">
+          <div className="w-full max-w-md sm:max-w-sm rounded-xl border border-white/20 bg-black/95 p-5 sm:p-4"><div className="flex items-start justify-between">
               <div>
                 
                 <h2 className="hidden">
