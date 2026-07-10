@@ -245,26 +245,26 @@ const totals = dailyData.reduce(
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
             <XAxis dataKey="date" fontSize={12} stroke="#94a3b8" />
-            <YAxis domain={[0, 100]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => { const real = (v / 100) * primaryMax; return primaryMetricKey === "commission" ? `€${Math.round(real).toLocaleString("de-DE")}` : Math.round(real).toLocaleString("de-DE"); }} width={70} />
-           <Tooltip
-  formatter={(value: any, name: any, props: any) => {
-    const key = name.replace("Pct", "");
-    const metric = metricConfig.find((m) => m.key === key);
-    const raw = props?.payload?.[key];
-    return [raw, metric ? metric.label : name];
-  }}
-/>
+            <YAxis yAxisId="left" domain={[0, "dataMax"]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => (primaryMetricKey === "commission" ? `€${Math.round(v).toLocaleString("de-DE")}` : Math.round(v).toLocaleString("de-DE"))} width={70} />
+          <YAxis yAxisId="right" orientation="right" domain={[0, "dataMax"]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")} width={60} />
+          <Tooltip
+            formatter={(value: any, name: any) => {
+              const metric = metricConfig.find((m) => m.key === name);
+              return [value, metric ? metric.label : name];
+            }}
+          />
             {metricConfig.map((m) => (
-              <Line
-                key={m.key}
-                type="monotone"
-                dataKey={`${m.key}Pct`}
-                stroke={m.color}
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                hide={!activeMetrics.has(m.key)}
-              />
-            ))}
+            <Line
+              key={m.key}
+              type="monotone"
+              dataKey={m.key}
+              yAxisId={m.key === primaryMetricKey ? "left" : "right"}
+              stroke={m.color}
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              hide={!activeMetrics.has(m.key)}
+            />
+          ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
