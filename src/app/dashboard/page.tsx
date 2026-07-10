@@ -161,6 +161,9 @@ const totals = dailyData.reduce(
   return point;
 });
 
+
+  const primaryMetricKey = (activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission") as any;
+  const primaryMax = Math.max(...dailyData.map((p: any) => Number(p[primaryMetricKey]) || 0), 1);
   const statCards = [
     { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#2563eb" },
     { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
@@ -242,7 +245,7 @@ const totals = dailyData.reduce(
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
             <XAxis dataKey="date" fontSize={12} stroke="#94a3b8" />
-            <YAxis domain={[0, 100]} hide />
+            <YAxis domain={[0, 100]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => { const real = (v / 100) * primaryMax; return primaryMetricKey === "commission" ? `€${Math.round(real).toLocaleString("de-DE")}` : Math.round(real).toLocaleString("de-DE"); }} width={70} />
            <Tooltip
   formatter={(value: any, name: any, props: any) => {
     const key = name.replace("Pct", "");
