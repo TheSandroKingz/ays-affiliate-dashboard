@@ -47,11 +47,11 @@ export default function ContactManagerButton() {
               </button>
             </div>
 
-            <div className="mt-4 flex items-center gap-2 text-white">
-              <div className="w-12 h-12 rounded-full overflow-hidden relative shrink-0 bg-emerald-600">
+            <div className="mt-4 flex flex-col items-center gap-2 text-white text-center">
+              <div className="w-20 h-20 rounded-full overflow-hidden relative shrink-0 bg-emerald-600">
               <Image src={CONTACT.photoUrl} alt={CONTACT.name} fill className="object-cover" />
             </div>
-              <span className="font-medium">{CONTACT.name}</span>
+              <span className="text-lg font-semibold">{CONTACT.name}</span>
             </div>
 
             <div className="mt-4 space-y-3">
