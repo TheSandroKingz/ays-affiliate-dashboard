@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -11,6 +11,22 @@ export default function RegistroPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [ref, setRef] = useState<string | null>(null)
+  const [referrerName, setReferrerName] = useState<string | null>(null)
+
+  useEffect(() => {
+    const refParam = new URLSearchParams(window.location.search).get('ref')
+    if (refParam) {
+      setRef(refParam)
+      fetch('/api/referrer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: refParam }),
+      })
+        .then((res) => res.json())
+        .then((body) => setReferrerName(body.displayName ?? null))
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,8 +43,6 @@ export default function RegistroPage() {
       setLoading(false)
       return
     }
-
-    const ref = new URLSearchParams(window.location.search).get('ref')
 
     const res = await fetch('/api/registro', {
       method: 'POST',
@@ -55,6 +69,13 @@ export default function RegistroPage() {
       <div className="w-full max-w-md bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
         <h1 className="text-3xl font-bold text-white text-center mb-1">Crea tu cuenta</h1>
         <p className="text-slate-300 text-center mb-8">Únete al programa de afiliados</p>
+
+        {referrerName && (
+          <div className="mb-4 rounded-lg bg-white/10 border border-white/20 px-4 py-3">
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Invitado por</p>
+            <p className="text-white font-medium">{referrerName}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
