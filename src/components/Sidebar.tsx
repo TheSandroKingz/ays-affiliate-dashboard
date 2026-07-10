@@ -56,6 +56,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
+      <div className="px-4 mb-6">
+          <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-sky-300 to-white bg-clip-text text-transparent">
+            A & S Afiliados
+          </span>
+        </div>
       <button
         onClick={onClose}
         className="md:hidden flex items-center gap-2 text-slate-300 mb-4 px-4"
