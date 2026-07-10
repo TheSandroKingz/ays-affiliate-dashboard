@@ -220,7 +220,7 @@ const totals = dailyData.reduce(
           Monto total ganado de todos los referidos hasta ahora, sin incluir comisiones ya pagadas
         </p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden divide-x divide-gray-200">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {statCards.map((card) => {
           const isToggleable = card.key !== "conversion";
           const isActive = activeMetrics.has(card.key);
@@ -228,9 +228,9 @@ const totals = dailyData.reduce(
             <button
               key={card.key}
               onClick={() => isToggleable && toggleMetric(card.key)}
-              className={`text-left p-4 border-t-4 transition-opacity${
-                isToggleable ? "cursor-pointer" : "cursor-default"
-              } ${isToggleable && !isActive ? "opacity-50" : "opacity-100"}`}
+              className={`text-left p-4 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 border-t-4 transition-opacity${
+              isToggleable ? " cursor-pointer" : " cursor-default"
+            } ${isToggleable && !isActive ? " opacity-50" : " opacity-100"}`}
               style={{ borderTopColor: card.color }}
             >
               <p className="text-sm text-slate-300 mb-1">{card.label}</p>
