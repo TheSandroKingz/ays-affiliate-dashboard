@@ -70,7 +70,7 @@ export default function PaymentsPage() {
             onClick={() => setActiveTab(t.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
               activeTab === t.key
-                ? "border-blue-500 text-white"
+                ? "border-emerald-500 text-white"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
