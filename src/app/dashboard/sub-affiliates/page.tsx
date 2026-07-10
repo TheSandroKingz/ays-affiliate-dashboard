@@ -53,7 +53,7 @@ export default function SubAffiliatesPage() {
   }
 
   return (
-    <main className="flex flex-colgap-6">
+    <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-white">Informe de Subafiliados</h1>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
