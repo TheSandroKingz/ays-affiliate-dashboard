@@ -23,7 +23,8 @@ export default function MediaReportPage() {
       if (!user) {
         setLoading(false);
         return;
-      }const { data } = await supabase
+      }
+      const { data } = await supabase
         .from("affiliate_daily_stats")
         .select("date, commission, clicks, registrations, ftd")
         .eq("user_id", user.id)
@@ -38,7 +39,8 @@ export default function MediaReportPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-slate-300">Cargando...</p>;
+    return <p className="text-slate-300"
+    >Cargando...</p>;
   }
 
   const totals = rows.reduce(
@@ -49,37 +51,54 @@ export default function MediaReportPage() {
       ftd: acc.ftd + r.ftd,
     }),
     { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
-  );return (
+  );
+
+  return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-slate-300 text-left">
-              <th className="px-4 py-3 font-medium">Día</th>
-              <th className="px-4 py-3 font-medium">Comisión</th>
-              <th className="px-4 py-3 font-medium">Clics</th>
-              <th className="px-4 py-3 font-medium">Registros</th>
-              <th className="px-4 py-3 font-medium">FTD</th>
+            <tr className="border-b border-white/10 text-slate-400 text-left">
+              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide">
+                Día
+              </th>
+              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+                Comisión
+              </th>
+              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+                Clics
+              </th>
+              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+                Registros
+              </th>
+              <th className="px-4 py-3 font-semibold text-xs uppercase tracking-wide text-right">
+                FTD
+              </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.date} className="border-b border-white/5 text-white">
+            {rows.map((r, i) => (
+              <tr
+                key={r.date}
+                className={`border-b border-white/10 text-white ${
+                  i % 2 === 1 ? "bg-white/[0.03]" : ""
+                } hover:bg-white/10 transition-colors`}
+              >
                 <td className="px-4 py-3">
-                  {new Date(r.date).toLocaleDateString("en-US")}
+                  {new Date(r.date).toLocaleDateString("es-ES")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   €{Number(r.commission).toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   {r.clicks.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   {r.registrations.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   {r.ftd.toLocaleString("de-DE")}
                 </td>
               </tr>
@@ -87,25 +106,25 @@ export default function MediaReportPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
-                  No hay datos todavia
+                  No hay datos todavía
                 </td>
               </tr>
             )}
           </tbody>
           {rows.length > 0 && (
             <tfoot>
-              <tr className="bg-white/5 text-white font-semibold">
+              <tr className="bg-white/10 text-white font-semibold">
                 <td className="px-4 py-3">Total</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   €{totals.commission.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   {totals.clicks.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   {totals.registrations.toLocaleString("de-DE")}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   {totals.ftd.toLocaleString("de-DE")}
                 </td>
               </tr>
