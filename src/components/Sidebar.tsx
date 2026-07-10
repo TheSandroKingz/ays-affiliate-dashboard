@@ -164,7 +164,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 "?"
               )}
           </div>
-          <span className="text-sm text-slate-200 truncate">{displayName ?? userEmail ?? "Cargando..."}</span>
+          <span className="text-sm text-emerald-400 truncate">{displayName ?? userEmail ?? "Cargando..."}</span>
         </button>
       </div>
     </aside>
