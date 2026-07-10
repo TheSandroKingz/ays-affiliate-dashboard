@@ -52,6 +52,7 @@ function last7Days(): DailyPoint[] {
   }
   return days;
 }export default function DashboardPage() {
+  const [showBalanceInfo, setShowBalanceInfo] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
@@ -167,8 +168,18 @@ const totals = dailyData.reduce(
           <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-slate-300">Mi balance</span>
           <div className="group relative">
-            <Info size={15} className="text-slate-400 cursor-help" />
-            <div className="pointer-events-none absolute left-0 top-6 z-10 w-60 rounded-lg border border-white/20 bg-slate-800 p-3 opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => setShowBalanceInfo((v) => !v)}
+              className="flex items-center text-slate-400 hover:text-slate-300"
+            >
+              <Info size={15} className="cursor-help" />
+            </button>
+            <div
+              className={`pointer-events-none absolute left-0 top-6 z-10 w-60 rounded-lg border border-white/20 bg-slate-800 p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
+                showBalanceInfo ? "opacity-100" : "opacity-0"
+              }`}
+            >
               <div className="flex items-center justify-between py-1 text-sm">
                 <span className="text-slate-300">Fondos accesibles</span>
                 <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
