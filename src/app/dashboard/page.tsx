@@ -60,6 +60,7 @@ function last7Days(): DailyPoint[] {
   const [totalPaid, setTotalPaid] = useState(0);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadStats() {
@@ -73,12 +74,13 @@ function last7Days(): DailyPoint[] {
       }
       const { data: affiliateRow } = await supabase
       .from("affiliates")
-      .select("id")
+      .select("id, display_name")
       .eq("user_id", user.id)
       .single();
 
     if (affiliateRow) {
       setAffiliateId(affiliateRow.id);
+        setDisplayName(affiliateRow.display_name ?? null);
     }
 
       const { data, error } = await supabase
@@ -170,7 +172,10 @@ const totals = dailyData.reduce(
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-white">Panel</h1>
+            <div>
+              <h1 className="text-2xl font-semibold text-white">Hola{displayName ? `, ${displayName}` : ""}</h1>
+              <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+            </div>
           <ContactManagerButton />
       </div>
 
