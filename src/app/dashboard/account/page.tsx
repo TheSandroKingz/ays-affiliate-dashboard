@@ -141,7 +141,7 @@ export default function AccountPage() {
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-2xl font-semibold text-white">Configuración de Cuenta</h1>
 
-      <div className="flex gap-2 border-b border-white/10">
+      <div className="flex gap-2 border-b border-white/10 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.key}
