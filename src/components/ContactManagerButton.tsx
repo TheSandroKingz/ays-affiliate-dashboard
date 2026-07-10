@@ -58,7 +58,7 @@ export default function ContactManagerButton() {
                 </div>
                 <button
                   onClick={() => copy(CONTACT.email, "email")}
-                  className="shrink-0 text-sm font-medium text-blue-400 hover:text-blue-300"
+                  className="shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
                   {copied === "email" ? "Copiado" : "Copiar"}
                 </button>
@@ -71,7 +71,7 @@ export default function ContactManagerButton() {
                 </div>
                 <button
                   onClick={() => copy(CONTACT.telegram, "telegram")}
-                  className="shrink-0 text-sm font-medium text-blue-400 hover:text-blue-300"
+                  className="shrink-0 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
                   {copied === "telegram" ? "Copiado" : "Copiar"}
                 </button>
