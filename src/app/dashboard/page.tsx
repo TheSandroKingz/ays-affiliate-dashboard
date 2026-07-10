@@ -173,7 +173,7 @@ const totals = dailyData.reduce(
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-white">Hola{displayName ? `, ${displayName}` : ""}</h1>
+            <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-white bg-clip-text text-transparent">{displayName}</span></>}</h1>
               <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
           <ContactManagerButton />
