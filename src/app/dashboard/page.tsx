@@ -29,9 +29,9 @@ type DailyPoint = {
 };
 
 const metricConfig = [
-  { key: "commission", label: "Commission", color: "#2563eb" },
-  { key: "clicks", label: "Clicks", color: "#9333ea" },
-  { key: "registrations", label: "Registrations", color: "#f59e0b" },
+  { key: "commission", label: "Comisión", color: "#2563eb" },
+{ key: "clicks", label: "Clics", color: "#9333ea" },
+{ key: "registrations", label: "Registros", color: "#f59e0b" },
   { key: "ftd", label: "FTD", color: "#1e293b" },
 ] as const;
 
@@ -146,32 +146,32 @@ const totals = dailyData.reduce(
 });
 
   const statCards = [
-    { key: "commission", label: "Commission", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#2563eb" },
-    { key: "clicks", label: "Clicks", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
-    { key: "registrations", label: "Registrations", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
+    { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#2563eb" },
+    { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
+    { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
     { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#1e293b" },
-    { key: "conversion", label: "Conversion Rate", value: `${conversionRate}%`, color: "#92400e" },
+    { key: "conversion", label: "Tasa de Conversión", value: `${conversionRate}%`, color: "#92400e" },
   ];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-white">Panel</h1>
         <button className="flex items-center gap-2 border border-white/20 rounded-lg px-4 py-2 text-sm font-medium text-white hover:bg-white/10">
-          Contact Affiliate Manager
+          Contactar Con Gestor de Afiliados
         </button>
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-medium text-slate-300">My balance</span>
+          <span className="text-sm font-medium text-slate-300">Mi balance</span>
           <button className="border border-white/20 rounded-lg px-4 py-1.5 text-sm font-medium hover:bg-white/10">
-            Request payment
+            Solicitar pago
           </button>
         </div>
         <p className="text-3xl font-bold text-white mb-2">€{balance.toLocaleString("de-DE")}</p>
         <p className="text-sm text-slate-300">
-          Total amount earned from all referrals so far, excluding commissions already paid out
+          Monto total ganado de todos los referidos hasta ahora, sin incluir comisiones ya pagadas
         </p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-hidden divide-x divide-gray-200">
