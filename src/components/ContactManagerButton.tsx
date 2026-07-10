@@ -34,8 +34,8 @@ export default function ContactManagerButton() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl border border-white/20 bg-black/95 p-6"><div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-slate-400">Información de contacto</p>
-                <h2 className="mt-1 text-xl font-semibold text-white">
+                
+                <h2 className="hidden">
                   Póngase en contacto con el gestor de afiliados
                 </h2>
               </div>
@@ -56,9 +56,9 @@ export default function ContactManagerButton() {
 
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between rounded-lg border border-white/10 p-3">
-                <div className="flex items-center gap-2 text-slate-200">
+                <div className="flex items-center gap-2 text-slate-200 min-w-0">
                   <Mail size={18} />
-                  <span className="break-all">{CONTACT.email}</span>
+                  <span className="truncate">{CONTACT.email}</span>
                 </div>
                 <button
                   onClick={() => (window.location.href = `mailto:${CONTACT.email}`)}
