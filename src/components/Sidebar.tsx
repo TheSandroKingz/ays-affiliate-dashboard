@@ -69,11 +69,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      <div className="px-4 mb-6 cursor-pointer" onClick={onClose}>
+      <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
         <span className="text-xl font-extrabold tracking-tight text-emerald-400">
           A & S Afiliados
         </span>
-      </div>
+      </Link>
 
       <nav className="flex flex-col gap-1">
         <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
