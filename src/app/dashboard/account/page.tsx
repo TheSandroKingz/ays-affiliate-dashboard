@@ -19,6 +19,8 @@ export default function AccountPage() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDetails, setPaymentDetails] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export default function AccountPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications, avatar_url")
+        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications, avatar_url, accepted_terms, accepted_privacy")
         .eq("user_id", user.id)
         .single();
 
@@ -47,6 +49,8 @@ export default function AccountPage() {
         setPaymentMethod(data.payment_method ?? "");
         setPaymentDetails(data.payment_details ?? "");
         setEmailNotifications(data.email_notifications ?? true);
+      setAcceptedTerms(data.accepted_terms ?? false);
+      setAcceptedPrivacy(data.accepted_privacy ?? false);
       setAvatarUrl(data.avatar_url ?? null);
       }
       setLoading(false);
@@ -169,7 +173,7 @@ export default function AccountPage() {
 
     const { error } = await supabase
       .from("affiliates")
-      .update({ email_notifications: emailNotifications })
+      .update({ email_notifications: emailNotifications, accepted_terms: acceptedTerms, accepted_privacy: acceptedPrivacy })
       .eq("user_id", user.id);
 
     setSaving(false);
@@ -346,8 +350,23 @@ export default function AccountPage() {
       )}
 
       {activeTab === "privacidad" && (
-        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+<div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
+<div className="border-b border-white/10 pb-4">
+<p className="text-sm text-slate-400 mb-3">
+Tu consentimiento a los siguientes Términos y Condiciones y Política de Privacidad es obligatorio para poder usar la plataforma. Puedes retirarlo en cualquier momento, aunque esto cerrará tu sesión.
+</p>
+<label className="flex items-center gap-2 text-sm text-white mb-2">
+<input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
+He aceptado los{" "}
+<a href="/terminos" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Términos y Condiciones</a>
+</label>
+<label className="flex items-center gap-2 text-sm text-white">
+<input type="checkbox" checked={acceptedPrivacy} onChange={(e) => setAcceptedPrivacy(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
+He aceptado la{" "}
+<a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Política de Privacidad</a>
+</label>
+</div>
+<div className="flex items-center justify-between">
             <div>
               <p className="text-white font-medium">Notificaciones por correo</p>
               <p className="text-sm text-slate-400">Recibe novedades y avisos importantes por email</p>
