@@ -51,7 +51,32 @@ function last7Days(): DailyPoint[] {
     });
   }
   return days;
-}export default function DashboardPage() {
+}
+
+function fillMissingDays(
+  daily: { date: string; commission: number; clicks: number; registrations: number; ftd: number }[]
+): DailyPoint[] {
+  const map = new Map(daily.map((d) => [String(d.date).slice(0, 10), d]));
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const [ty, tm, td] = todayStr.split("-").map(Number);
+  const start = new Date(Date.UTC(ty, tm - 1, 1));
+  const end = new Date(Date.UTC(ty, tm - 1, td));
+  const points: DailyPoint[] = [];
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = d.toISOString().slice(0, 10);
+    const row = map.get(key);
+    points.push({
+      date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" }),
+      commission: row ? Number(row.commission) : 0,
+      clicks: row ? row.clicks : 0,
+      registrations: row ? row.registrations : 0,
+      ftd: row ? row.ftd : 0,
+    });
+  }
+  return points;
+}
+
+export default function DashboardPage() {
   const [showBalanceInfo, setShowBalanceInfo] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
@@ -99,18 +124,7 @@ function last7Days(): DailyPoint[] {
         .eq("user_id", user.id)
         .order("date", { ascending: true });
 
-      if (daily && daily.length > 0) {
-        
-        setDailyData(
-          daily.map((d) => ({
-            date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
-            commission: d.commission,
-            clicks: d.clicks,
-            registrations: d.registrations,
-            ftd: d.ftd,
-          }))
-        );
-      }
+      setDailyData(fillMissingDays(daily ?? []));
 const { data: payments } = await supabase
   .from("payments")
   .select("amount")
@@ -179,7 +193,15 @@ const totals = dailyData.reduce(
             <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
               <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
+          <div className="flex items-center gap-3">
           <ContactManagerButton />
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            Actualizar
+          </button>
+        </div>
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">

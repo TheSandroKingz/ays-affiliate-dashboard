@@ -11,6 +11,23 @@ type DailyRow = {
   ftd: number;
 };
 
+function fillMissingDays(rows: DailyRow[]): DailyRow[] {
+  const map = new Map(rows.map((r) => [String(r.date).slice(0, 10), r]));
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const [ty, tm, td] = todayStr.split("-").map(Number);
+  const start = new Date(Date.UTC(ty, tm - 1, 1));
+  const end = new Date(Date.UTC(ty, tm - 1, td));
+  const points: DailyRow[] = [];
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = d.toISOString().slice(0, 10);
+    const row = map.get(key);
+    points.push(
+      row ?? { date: key, commission: 0, clicks: 0, registrations: 0, ftd: 0 }
+    );
+  }
+  return points.reverse();
+}
+
 export default function MediaReportPage() {
   const [rows, setRows] = useState<DailyRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +47,7 @@ export default function MediaReportPage() {
         .eq("user_id", user.id)
         .order("date", { ascending: false });
 
-      if (data) {
-        setRows(data as DailyRow[]);
-      }
+      setRows(fillMissingDays((data as DailyRow[]) ?? []));
       setLoading(false);
     }
     loadData();
@@ -53,7 +68,15 @@ export default function MediaReportPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          Actualizar
+        </button>
+      </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
         <table className="w-full text-sm border-collapse">
