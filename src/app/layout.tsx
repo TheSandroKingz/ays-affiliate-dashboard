@@ -4,7 +4,7 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Poppins({
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });

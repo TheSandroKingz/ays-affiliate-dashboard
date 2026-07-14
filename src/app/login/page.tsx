@@ -51,7 +51,7 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
     <main className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <span className="text-2xl font-extrabold tracking-tight text-emerald-400">
+          <span className="text-2xl font-extrabold text-emerald-400">
             A & S Afiliados
           </span>
         </div>
