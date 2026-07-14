@@ -91,7 +91,13 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
               </div>
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+          <p className="text-right text-sm -mt-2">
+            <a href="/recuperar" className="text-emerald-400 hover:text-emerald-300 font-medium">
+              ¿Olvidaste tu contraseña?
+            </a>
+          </p>
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
             <button
               type="submit"
