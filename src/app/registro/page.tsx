@@ -65,7 +65,7 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-700 px-4">
+    <main className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
         <h1 className="text-3xl font-bold text-white text-center mb-1">Crea tu cuenta</h1>
         <p className="text-slate-300 text-center mb-8">Únete al programa de afiliados</p>
@@ -85,7 +85,7 @@ export default function RegistroPage() {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               required
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Tu nombre"
             />
           </div>
@@ -97,7 +97,7 @@ export default function RegistroPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="tu@email.com"
             />
           </div>
@@ -110,7 +110,7 @@ export default function RegistroPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Mínimo 6 caracteres"
             />
           </div>
@@ -120,7 +120,7 @@ export default function RegistroPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2.5 transition-colors"
+            className="mt-2 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 disabled:opacity-50 text-white font-semibold py-2.5 transition-opacity"
           >
             {loading ? 'Creando...' : 'Crear cuenta'}
           </button>
@@ -128,7 +128,7 @@ export default function RegistroPage() {
 
         <p className="text-center text-slate-300 text-sm mt-6">
           ¿Ya tienes cuenta?{' '}
-          <a href="/login" className="text-blue-400 hover:text-blue-300 font-medium">
+          <a href="/login" className="text-emerald-400 hover:text-emerald-300 font-medium">
             Inicia sesión
           </a>
         </p>
