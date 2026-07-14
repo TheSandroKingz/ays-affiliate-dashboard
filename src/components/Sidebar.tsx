@@ -119,7 +119,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       </nav>
       <div className="mt-auto relative border-t border-white/10 pt-3 px-1">
         {profileOpen && (
-          <div className="absolute bottom-full left-1 mb-2 w-56 bg-slate-800 border border-white/10 rounded-lg shadow-lg py-1">
+          <div className="absolute bottom-full left-1 mb-2 w-56 bg-black border border-white/10 rounded-lg shadow-lg py-1">
             <Link
               href="/dashboard/account"
               className="flex items-center gap-2 px-4 py-2 text-sm text-slate-200 hover:bg-white/10"
