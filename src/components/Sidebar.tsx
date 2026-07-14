@@ -18,7 +18,6 @@ import {
 
 const reportLinks = [
   { name: "Informe de Medios", href: "/dashboard/reports/media" },
-  { name: "Informe de Actividad", href: "/dashboard/reports/activity" },
 ];
 
 type SidebarProps = {
