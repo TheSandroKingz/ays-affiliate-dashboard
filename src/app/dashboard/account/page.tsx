@@ -96,6 +96,16 @@ export default function AccountPage() {
       })
       .eq("user_id", user.id);
 
+    let emailError = false;
+    if (!error && email && email !== user.email) {
+      const res = await fetch("/api/account/update-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, newEmail: email }),
+      });
+      if (!res.ok) emailError = true;
+    }
+
     setSaving(false);
     if (error) {
       setMessage(
@@ -103,10 +113,12 @@ export default function AccountPage() {
           ? "Ese nombre de usuario ya esta en uso, elige otro."
           : "Error al guardar"
       );
+    } else if (emailError) {
+      setMessage("Error al actualizar el correo");
     } else {
       setMessage("Guardado correctamente");
     }
-    if (!error) {
+    if (!error && !emailError) {
       setTimeout(() => window.location.reload(), 800);
     }
   }
@@ -208,14 +220,14 @@ export default function AccountPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Correo electrónico</label>
-            <input
-              type="email"
-              value={email}
-              disabled
-              className="w-full rounded-lg bg-white/5 border border-white/10 text-slate-400 px-4 py-2.5"
-            />
-          </div>
+          <label className="block text-sm font-medium text-slate-200 mb-1">Correo electrónico</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
+          />
+        </div>
           
           <button
             onClick={savePersonal}
