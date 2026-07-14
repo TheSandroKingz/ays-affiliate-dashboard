@@ -15,7 +15,6 @@ export default function AccountPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [emailNotifications, setEmailNotifications] = useState(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -35,13 +34,12 @@ export default function AccountPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("first_name, last_name, phone, email_notifications, avatar_url, accepted_terms, accepted_privacy, display_name")
+        .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name")
         .eq("user_id", user.id)
         .single();
 
       if (data) {
         setFirstName(data.display_name ?? "");
-        setEmailNotifications(data.email_notifications ?? true);
       setAcceptedTerms(data.accepted_terms ?? false);
       setAcceptedPrivacy(data.accepted_privacy ?? false);
       setAvatarUrl(data.avatar_url ?? null);
@@ -145,7 +143,7 @@ export default function AccountPage() {
 
     const { error } = await supabase
       .from("affiliates")
-      .update({ email_notifications: emailNotifications, accepted_terms: acceptedTerms, accepted_privacy: acceptedPrivacy })
+      .update({ accepted_terms: acceptedTerms, accepted_privacy: acceptedPrivacy })
       .eq("user_id", user.id);
 
     setSaving(false);
@@ -290,26 +288,8 @@ He aceptado la{" "}
 <a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Política de Privacidad</a>
 </label>
 </div>
-<div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium">Notificaciones por correo</p>
-              <p className="text-sm text-slate-400">Recibe novedades y avisos importantes por email</p>
-            </div>
-            <button
-              onClick={() => setEmailNotifications(!emailNotifications)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                emailNotifications ? "bg-emerald-600" : "bg-white/20"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                  emailNotifications ? "translate-x-6" : ""
-                }`}
-              />
-            </button>
-          </div>
-          <button
-            onClick={savePrivacidad}
+        <button
+          onClick={savePrivacidad}
             disabled={saving}
             className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
