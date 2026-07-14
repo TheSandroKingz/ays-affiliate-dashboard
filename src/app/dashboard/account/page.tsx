@@ -15,8 +15,6 @@ export default function AccountPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentDetails, setPaymentDetails] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
@@ -37,14 +35,12 @@ export default function AccountPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications, avatar_url, accepted_terms, accepted_privacy, display_name")
+        .select("first_name, last_name, phone, email_notifications, avatar_url, accepted_terms, accepted_privacy, display_name")
         .eq("user_id", user.id)
         .single();
 
       if (data) {
         setFirstName(data.display_name ?? "");
-        setPaymentMethod(data.payment_method ?? "");
-        setPaymentDetails(data.payment_details ?? "");
         setEmailNotifications(data.email_notifications ?? true);
       setAcceptedTerms(data.accepted_terms ?? false);
       setAcceptedPrivacy(data.accepted_privacy ?? false);
@@ -117,26 +113,6 @@ export default function AccountPage() {
     }
   }
 
-  async function savePago() {
-    setSaving(true);
-    setMessage(null);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from("affiliates")
-      .update({
-        payment_method: paymentMethod,
-        payment_details: paymentDetails,
-      })
-      .eq("user_id", user.id);
-
-    setSaving(false);
-    setMessage(error ? "Error al guardar" : "Guardado correctamente");
-  }
-
   async function savePassword() {
     setMessage(null);
     if (newPassword.length < 6) {
@@ -180,7 +156,6 @@ export default function AccountPage() {
 
   const tabs = [
     { key: "personal", label: "Información Personal" },
-    { key: "pago", label: "Detalles de Pago" },
     { key: "seguridad", label: "Seguridad" },
     { key: "privacidad", label: "Ajustes de Privacidad" },
   ] as const;
@@ -260,37 +235,6 @@ export default function AccountPage() {
           
           <button
             onClick={savePersonal}
-            disabled={saving}
-            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
-          >
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
-        </div>
-      )}
-
-      {activeTab === "pago" && (
-        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Método de pago</label>
-            <input
-              type="text"
-              value={paymentMethod}onChange={(e) => setPaymentMethod(e.target.value)}
-              placeholder="Ej: Transferencia bancaria, PayPal..."
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Detalles de pago</label>
-            <textarea
-              value={paymentDetails}
-              onChange={(e) => setPaymentDetails(e.target.value)}
-              placeholder="Ej: IBAN, email de PayPal, etc."
-              rows={4}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
-            />
-          </div>
-          <button
-            onClick={savePago}
             disabled={saving}
             className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
