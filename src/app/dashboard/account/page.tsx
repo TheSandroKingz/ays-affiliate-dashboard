@@ -14,8 +14,7 @@ export default function AccountPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDetails, setPaymentDetails] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -38,14 +37,12 @@ export default function AccountPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications, avatar_url, accepted_terms, accepted_privacy")
+        .select("first_name, last_name, phone, payment_method, payment_details, email_notifications, avatar_url, accepted_terms, accepted_privacy, display_name")
         .eq("user_id", user.id)
         .single();
 
       if (data) {
-        setFirstName(data.first_name ?? "");
-        setLastName(data.last_name ?? "");
-        setPhone(data.phone ?? "");
+        setFirstName(data.display_name ?? "");
         setPaymentMethod(data.payment_method ?? "");
         setPaymentDetails(data.payment_details ?? "");
         setEmailNotifications(data.email_notifications ?? true);
@@ -100,8 +97,7 @@ export default function AccountPage() {
       .from("affiliates")
       .update({
         first_name: firstName,
-        last_name: lastName,
-        phone,
+        
         display_name: firstName,
       })
       .eq("user_id", user.id);
@@ -243,7 +239,7 @@ export default function AccountPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Nombre</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">Nombre de usuario</label>
             <input
               type="text"
               value={firstName}
@@ -251,15 +247,7 @@ export default function AccountPage() {
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Apellido</label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
-            />
-          </div>
+          
           <div>
             <label className="block text-sm font-medium text-slate-200 mb-1">Correo electrónico</label>
             <input
@@ -269,15 +257,7 @@ export default function AccountPage() {
               className="w-full rounded-lg bg-white/5 border border-white/10 text-slate-400 px-4 py-2.5"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Teléfono</label>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
-            />
-          </div>
+          
           <button
             onClick={savePersonal}
             disabled={saving}
