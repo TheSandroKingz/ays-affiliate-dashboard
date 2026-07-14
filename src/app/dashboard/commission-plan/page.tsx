@@ -43,6 +43,18 @@ export default function CommissionPlanPage() {
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-2xl font-semibold text-white">Plan de Comisión</h1>
 
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Campaña Activa</h2>
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+          <p className="text-slate-200">Marca</p>
+          <p className="text-white font-semibold">FreshBet</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-slate-200">Depósito mínimo</p>
+          <p className="text-white font-semibold">20 €</p>
+        </div>
+      </div>
+
       
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
