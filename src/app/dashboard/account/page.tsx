@@ -133,22 +133,8 @@ export default function AccountPage() {
     }
   }
 
-  async function savePrivacidad() {
-    setSaving(true);
-    setMessage(null);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const { error } = await supabase
-      .from("affiliates")
-      .update({ accepted_terms: acceptedTerms, accepted_privacy: acceptedPrivacy })
-      .eq("user_id", user.id);
-
-    setSaving(false);
-    setMessage(error ? "Error al guardar" : "Guardado correctamente");
-  }if (loading) {
+  if (loading) {
     return <p className="text-slate-300">Cargando...</p>;
   }
 
@@ -272,29 +258,22 @@ export default function AccountPage() {
       )}
 
       {activeTab === "privacidad" && (
-<div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
-<div className="border-b border-white/10 pb-4">
-<p className="text-sm text-slate-400 mb-3">
-Tu consentimiento a los siguientes Términos y Condiciones y Política de Privacidad es obligatorio para poder usar la plataforma. Puedes retirarlo en cualquier momento, aunque esto cerrará tu sesión.
-</p>
-<label className="flex items-center gap-2 text-sm text-white mb-2">
-<input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
-He aceptado los{" "}
-<a href="/terminos" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Términos y Condiciones</a>
-</label>
-<label className="flex items-center gap-2 text-sm text-white">
-<input type="checkbox" checked={acceptedPrivacy} onChange={(e) => setAcceptedPrivacy(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
-He aceptado la{" "}
-<a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Política de Privacidad</a>
-</label>
-</div>
-        <button
-          onClick={savePrivacidad}
-            disabled={saving}
-            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
-          >
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
+        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
+          <div>
+            <p className="text-sm text-slate-400 mb-3">
+              Tu consentimiento a los siguientes Términos y Condiciones y Política de Privacidad es obligatorio para poder usar la plataforma.
+            </p>
+            <label className="flex items-center gap-2 text-sm text-white mb-2">
+              <input type="checkbox" checked={acceptedTerms} disabled className="w-4 h-4 accent-emerald-500" />
+              He aceptado los{" "}
+              <a href="/terminos" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Términos y Condiciones</a>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-white">
+              <input type="checkbox" checked={acceptedPrivacy} disabled className="w-4 h-4 accent-emerald-500" />
+              He aceptado la{" "}
+              <a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Política de Privacidad</a>
+            </label>
+          </div>
         </div>
       )}
     </div>
