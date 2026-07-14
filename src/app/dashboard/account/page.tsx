@@ -199,7 +199,7 @@ export default function AccountPage() {
             }}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
               activeTab === t.key
-                ? "border-blue-500 text-white"
+                ? "border-emerald-500 text-white"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
@@ -209,7 +209,7 @@ export default function AccountPage() {
       </div>
 
       {message && (
-        <p className="text-sm text-blue-300">{message}</p>
+        <p className="text-sm text-emerald-300">{message}</p>
       )}{activeTab === "personal" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
           <div className="flex items-center gap-4">
@@ -277,7 +277,7 @@ export default function AccountPage() {
           <button
             onClick={savePersonal}
             disabled={saving}
-            className="mt-2 w-fit rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
+            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
@@ -308,7 +308,7 @@ export default function AccountPage() {
           <button
             onClick={savePago}
             disabled={saving}
-            className="mt-2 w-fit rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
+            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
@@ -338,7 +338,7 @@ export default function AccountPage() {
           <button
             onClick={savePassword}
             disabled={saving}
-            className="mt-2 w-fit rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
+            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
             {saving ? "Guardando..." : "Cambiar contraseña"}
           </button>
@@ -355,7 +355,7 @@ export default function AccountPage() {
             <button
               onClick={() => setEmailNotifications(!emailNotifications)}
               className={`w-12 h-6 rounded-full transition-colors relative ${
-                emailNotifications ? "bg-blue-600" : "bg-white/20"
+                emailNotifications ? "bg-emerald-600" : "bg-white/20"
               }`}
             >
               <span
@@ -368,7 +368,7 @@ export default function AccountPage() {
           <button
             onClick={savePrivacidad}
             disabled={saving}
-            className="mt-2 w-fit rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
+            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
