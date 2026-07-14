@@ -12,7 +12,6 @@ import {
   Users,
   BookOpen,
   ChevronDown,
-  X,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -70,18 +69,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      <div className="px-4 mb-6">
-          <span className="text-xl font-extrabold tracking-tight text-emerald-400">
-            A & S Afiliados
-          </span>
-        </div>
-      <button
-        onClick={onClose}
-        className="md:hidden flex items-center gap-2 text-slate-300 mb-4 px-4"
-      >
-        <X size={20} />
-        Cerrar
-      </button>
+      <div className="px-4 mb-6 cursor-pointer" onClick={onClose}>
+        <span className="text-xl font-extrabold tracking-tight text-emerald-400">
+          A & S Afiliados
+        </span>
+      </div>
 
       <nav className="flex flex-col gap-1">
         <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
