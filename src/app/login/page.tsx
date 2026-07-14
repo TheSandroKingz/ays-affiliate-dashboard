@@ -17,10 +17,27 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    let loginEmail = email
+
+if (!email.includes('@')) {
+  const res = await fetch('/api/login-lookup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: email }),
+  })
+  const body = await res.json()
+  if (!res.ok || !body.email) {
+    setError(body.error || 'Usuario no encontrado')
+    setLoading(false)
+    return
+  }
+  loginEmail = body.email
+}
+
+const { error: signInError } = await supabase.auth.signInWithPassword({
+  email: loginEmail,
+  password,
+})
 
     if (signInError) {
       setError(signInError.message)
@@ -45,16 +62,16 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">Correo electrónico</label>
+              <label className="block text-sm font-medium text-slate-200 mb-1">Usuario o correo electrónico</label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="tu@email.com"
+                  placeholder="usuario o tu@email.com"
                 />
               </div>
             </div>

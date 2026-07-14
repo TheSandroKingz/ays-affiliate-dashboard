@@ -103,7 +103,15 @@ export default function AccountPage() {
       .eq("user_id", user.id);
 
     setSaving(false);
-    setMessage(error ? "Error al guardar" : "Guardado correctamente");
+    if (error) {
+      setMessage(
+        error.code === "23505"
+          ? "Ese nombre de usuario ya esta en uso, elige otro."
+          : "Error al guardar"
+      );
+    } else {
+      setMessage("Guardado correctamente");
+    }
     if (!error) {
       setTimeout(() => window.location.reload(), 800);
     }
