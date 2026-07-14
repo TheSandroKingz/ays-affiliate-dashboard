@@ -163,7 +163,6 @@ const totals = dailyData.reduce(
     { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
   );
 
-  const conversionRate = totals.registrations > 0 ? ((totals.ftd / totals.registrations) * 100).toFixed(2) : "0.00";
   const balance = totals.commission - totalPaid;
   const chartData = dailyData.map((d) => {
   const point: Record<string, number | string> = { date: d.date };
@@ -183,7 +182,6 @@ const totals = dailyData.reduce(
     { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
     { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
     { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#94a3b8" },
-    { key: "conversion", label: "Tasa de Conversión", value: `${conversionRate}%`, color: "#92400e" },
   ];
 
   return (
