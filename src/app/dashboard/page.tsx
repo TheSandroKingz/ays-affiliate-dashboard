@@ -217,7 +217,7 @@ const totals = dailyData.reduce(
               <Info size={15} className="cursor-help" />
             </button>
             <div
-              className={`pointer-events-none absolute left-0 top-6 z-10 w-60 rounded-lg border border-white/20 bg-slate-800 p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
+              className={`pointer-events-none absolute left-0 top-6 z-10 w-60 rounded-lg border border-white/20 bg-black/90 backdrop-blur p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
                 showBalanceInfo ? "opacity-100" : "opacity-0"
               }`}
             >
