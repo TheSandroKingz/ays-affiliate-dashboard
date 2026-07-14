@@ -8,6 +8,8 @@ export default function CommissionPlanPage() {
   const [cpaSpain, setCpaSpain] = useState(85);
   const [cpaOther, setCpaOther] = useState(85);
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(9);
+  const [promoLink, setPromoLink] = useState<string | null>(null);
+  const [promoLinkCopied, setPromoLinkCopied] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -21,7 +23,7 @@ export default function CommissionPlanPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("cpa_spain, cpa_other, subaffiliate_percent")
+        .select("cpa_spain, cpa_other, subaffiliate_percent, promo_link")
         .eq("user_id", user.id)
         .single();
 
@@ -29,6 +31,7 @@ export default function CommissionPlanPage() {
         setCpaSpain(data.cpa_spain ?? 85);
         setCpaOther(data.cpa_other ?? 85);
         setSubaffiliatePercent(data.subaffiliate_percent ?? 9);
+        setPromoLink(data.promo_link ?? null);
       }
       setLoading(false);
     }
@@ -75,6 +78,28 @@ export default function CommissionPlanPage() {
           <p className="text-slate-200">Marca</p>
           <p className="text-white font-semibold">FreshBet</p>
         </div>
+        {promoLink && (
+          <div className="border-b border-white/10 pb-3 mb-3">
+            <p className="text-slate-200 mb-2">Tu enlace de FreshBet</p>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={promoLink}
+                className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2 truncate"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(promoLink);
+                  setPromoLinkCopied(true);
+                  setTimeout(() => setPromoLinkCopied(false), 1500);
+                }}
+                className="shrink-0 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+              >
+                {promoLinkCopied ? "Copiado" : "Copiar enlace"}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <p className="text-slate-200">Depósito mínimo</p>
           <p className="text-white font-semibold">20 €</p>
