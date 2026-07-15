@@ -58,7 +58,7 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
-          <h1 className="text-2xl font-semibold text-white text-center mb-1">Iniciar sesión</h1>
+          <h1 className="text-2xl font-semibold text-white text-center mb-6">Iniciar sesión</h1>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
