@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="flex-1 min-w-0 p-8 pt-20 md:pt-8">{children}</main>
+      <main className="flex-1 min-w-0 p-8 pt-24 md:pt-8">{children}</main>
     </div>
   );
 }
