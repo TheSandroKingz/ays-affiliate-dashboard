@@ -79,38 +79,53 @@ export default function DashboardPage() {
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [subCommission, setSubCommission] = useState(0);
 
   useEffect(() => {
     async function loadStats() {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
 
-      if (!user) {
+      if (!user || !session) {
         setLoading(false);
         return;
       }
 
-      // Las cuatro consultas son independientes entre sí: las lanzamos en
-      // paralelo en lugar de una detrás de otra para que el panel cargue antes.
-      const [affiliateRes, statsRes, dailyRes, paymentsRes] = await Promise.all([
-        supabase
-          .from("affiliates")
-          .select("id, display_name")
-          .eq("user_id", user.id)
-          .single(),
-        supabase
-          .from("affiliate_stats")
-          .select("balance, commission, clicks, registrations, ftd")
-          .eq("user_id", user.id)
-          .single(),
-        supabase
-          .from("affiliate_daily_stats")
-          .select("date, commission, clicks, registrations, ftd")
-          .eq("user_id", user.id)
-          .order("date", { ascending: true }),
-        supabase.from("payments").select("amount").eq("user_id", user.id),
-      ]);
+      // Las consultas son independientes entre sí: las lanzamos en paralelo
+      // en lugar de una detrás de otra para que el panel cargue antes.
+      // La última obtiene la comisión que este afiliado gana por sus
+      // subafiliados (calculada en el servidor con permisos elevados).
+      const [affiliateRes, statsRes, dailyRes, paymentsRes, subRes] =
+        await Promise.all([
+          supabase
+            .from("affiliates")
+            .select("id, display_name")
+            .eq("user_id", user.id)
+            .single(),
+          supabase
+            .from("affiliate_stats")
+            .select("balance, commission, clicks, registrations, ftd")
+            .eq("user_id", user.id)
+            .single(),
+          supabase
+            .from("affiliate_daily_stats")
+            .select("date, commission, clicks, registrations, ftd")
+            .eq("user_id", user.id)
+            .order("date", { ascending: true }),
+          supabase.from("payments").select("amount").eq("user_id", user.id),
+          fetch("/api/subaffiliates", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + session.access_token,
+            },
+            body: JSON.stringify({ userId: user.id }),
+          })
+            .then((r) => (r.ok ? r.json() : { rows: [] }))
+            .catch(() => ({ rows: [] })),
+        ]);
 
       const affiliateRow = affiliateRes.data;
       if (affiliateRow) {
@@ -131,6 +146,13 @@ export default function DashboardPage() {
         );
         setTotalPaid(paidSum);
       }
+
+      const subRows: { commission: number }[] = subRes?.rows ?? [];
+      const subTotal = subRows.reduce(
+        (sum, r) => sum + Number(r.commission ?? 0),
+        0
+      );
+      setSubCommission(subTotal);
 
       setLoading(false);
     }
@@ -161,7 +183,9 @@ const totals = dailyData.reduce(
     { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
   );
 
-  const balance = totals.commission - totalPaid;
+  // Ganancias totales = comisión propia + lo que gana por sus subafiliados.
+  const totalEarned = totals.commission + subCommission;
+  const balance = totalEarned - totalPaid;
   const chartData = dailyData.map((d) => {
   const point: Record<string, number | string> = { date: d.date };
   metricConfig.forEach((m) => {
@@ -222,8 +246,18 @@ const totals = dailyData.reduce(
                 <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
               </div>
               <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">Ganado</span>
+                <span className="text-slate-300">Comisión propia</span>
                 <span className="font-medium text-white">€{totals.commission.toLocaleString("de-DE")}</span>
+              </div>
+              {subCommission > 0 && (
+                <div className="flex items-center justify-between py-1 text-sm">
+                  <span className="text-slate-300">Por subafiliados</span>
+                  <span className="font-medium text-white">€{subCommission.toLocaleString("de-DE")}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between py-1 text-sm">
+                <span className="text-slate-300">Ganado total</span>
+                <span className="font-medium text-white">€{totalEarned.toLocaleString("de-DE")}</span>
               </div>
               <div className="flex items-center justify-between py-1 text-sm">
                 <span className="text-slate-300">Pagado</span>

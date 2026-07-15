@@ -7,7 +7,7 @@ export default function CommissionPlanPage() {
   const [loading, setLoading] = useState(true);
   const [cpaSpain, setCpaSpain] = useState(85);
   const [cpaOther, setCpaOther] = useState(85);
-  const [subaffiliatePercent, setSubaffiliatePercent] = useState(9);
+  const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
   const [promoLink, setPromoLink] = useState<string | null>(null);
   const [promoLinkCopied, setPromoLinkCopied] = useState(false);
 
@@ -30,7 +30,7 @@ export default function CommissionPlanPage() {
       if (data) {
         setCpaSpain(data.cpa_spain ?? 85);
         setCpaOther(data.cpa_other ?? 85);
-        setSubaffiliatePercent(data.subaffiliate_percent ?? 9);
+        setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
         setPromoLink(
           data.freshaffs_tracking_code
             ? `${window.location.origin}/go/${data.freshaffs_tracking_code}`

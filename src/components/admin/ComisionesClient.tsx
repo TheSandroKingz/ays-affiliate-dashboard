@@ -23,7 +23,7 @@ export default function ComisionesClient({
       display_name: a.display_name ?? "Sin nombre",
       cpaSpain: a.cpa_spain ?? 85,
       cpaOther: a.cpa_other ?? 85,
-      subaffiliatePercent: a.subaffiliate_percent ?? 9,
+      subaffiliatePercent: a.subaffiliate_percent ?? 5,
     }))
   );
   const [savingId, setSavingId] = useState<string | null>(null);

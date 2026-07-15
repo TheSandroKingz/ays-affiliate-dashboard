@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     display_name: displayName,
     referred_by: referredBy || null,
     promo_link: DEFAULT_PROMO_LINK,
+    subaffiliate_percent: 5,
   })
 
   if (error) {
