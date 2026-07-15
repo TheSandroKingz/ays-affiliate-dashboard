@@ -35,13 +35,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
-      if (data.user) {
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      setUserEmail(user?.email ?? null);
+      if (user) {
         supabase
           .from("affiliates")
           .select("avatar_url, display_name")
-          .eq("user_id", data.user.id)
+          .eq("user_id", user.id)
           .single()
           .then(({ data: aff }) => {
             setAvatarUrl(aff?.avatar_url ?? null);

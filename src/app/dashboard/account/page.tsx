@@ -98,9 +98,16 @@ export default function AccountPage() {
 
     let emailError = false;
     if (!error && email && email !== user.email) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       const res = await fetch("/api/account/update-email", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (session?.access_token ?? ""),
+        },
         body: JSON.stringify({ userId: user.id, newEmail: email }),
       });
       if (!res.ok) emailError = true;
