@@ -41,12 +41,31 @@ export async function POST(request: NextRequest) {
   let stats: { user_id: string; commission: number }[] = [];
 
   if (userIds.length > 0) {
-    const { data: statsData } = await supabaseAdmin
-      .from("affiliate_stats")
-      .select("user_id, commission")
-      .in("user_id", userIds);
+    // Comisión del MES ACTUAL de cada subafiliado. El modelo se reinicia el
+    // día 1, así que sumamos solo desde el primer día del mes en curso
+    // (zona horaria de Madrid) en affiliate_daily_stats.
+    const monthStart =
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
+        .format(new Date())
+        .slice(0, 7) + "-01";
 
-    stats = statsData ?? [];
+    const { data: dailyData } = await supabaseAdmin
+      .from("affiliate_daily_stats")
+      .select("user_id, commission")
+      .in("user_id", userIds)
+      .gte("date", monthStart);
+
+    const sumByUser = new Map<string, number>();
+    for (const d of dailyData ?? []) {
+      sumByUser.set(
+        d.user_id,
+        (sumByUser.get(d.user_id) ?? 0) + Number(d.commission)
+      );
+    }
+    stats = userIds.map((id) => ({
+      user_id: id,
+      commission: sumByUser.get(id) ?? 0,
+    }));
   }
 
   const percent = (ownAffiliate.subaffiliate_percent ?? 0) / 100;

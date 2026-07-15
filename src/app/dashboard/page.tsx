@@ -76,7 +76,6 @@ export default function DashboardPage() {
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
-  const [totalPaid, setTotalPaid] = useState(0);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -98,7 +97,7 @@ export default function DashboardPage() {
       // en lugar de una detrás de otra para que el panel cargue antes.
       // La última obtiene la comisión que este afiliado gana por sus
       // subafiliados (calculada en el servidor con permisos elevados).
-      const [affiliateRes, statsRes, dailyRes, paymentsRes, subRes] =
+      const [affiliateRes, statsRes, dailyRes, subRes] =
         await Promise.all([
           supabase
             .from("affiliates")
@@ -115,7 +114,6 @@ export default function DashboardPage() {
             .select("date, commission, clicks, registrations, ftd")
             .eq("user_id", user.id)
             .order("date", { ascending: true }),
-          supabase.from("payments").select("amount").eq("user_id", user.id),
           fetch("/api/subaffiliates", {
             method: "POST",
             headers: {
@@ -139,14 +137,6 @@ export default function DashboardPage() {
       }
 
       setDailyData(fillMissingDays(dailyRes.data ?? []));
-
-      if (paymentsRes.data) {
-        const paidSum = paymentsRes.data.reduce(
-          (sum, p) => sum + Number(p.amount),
-          0
-        );
-        setTotalPaid(paidSum);
-      }
 
       const subRows: { commission: number }[] = subRes?.rows ?? [];
       const subTotal = subRows.reduce(
@@ -184,9 +174,10 @@ const totals = dailyData.reduce(
     { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
   );
 
-  // Ganancias totales = comisión propia + lo que gana por sus subafiliados.
-  const totalEarned = totals.commission + subCommission;
-  const balance = totalEarned - totalPaid;
+  // Total ganado este mes = comisión propia del mes + comisión por sus
+  // subafiliados del mes. Se reinicia solo el día 1 (los pagos van aparte,
+  // al historial de pagos).
+  const balance = totals.commission + subCommission;
   const chartData = dailyData.map((d) => {
   const point: Record<string, number | string> = { date: d.date };
   metricConfig.forEach((m) => {
@@ -243,10 +234,6 @@ const totals = dailyData.reduce(
               }`}
             >
               <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">Fondos accesibles</span>
-                <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
-              </div>
-              <div className="flex items-center justify-between py-1 text-sm">
                 <span className="text-slate-300">Comisión propia</span>
                 <span className="font-medium text-white">€{totals.commission.toLocaleString("de-DE")}</span>
               </div>
@@ -256,13 +243,9 @@ const totals = dailyData.reduce(
                   <span className="font-medium text-white">€{subCommission.toLocaleString("de-DE")}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">Ganado total</span>
-                <span className="font-medium text-white">€{totalEarned.toLocaleString("de-DE")}</span>
-              </div>
-              <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">Pagado</span>
-                <span className="font-medium text-white">€{totalPaid.toLocaleString("de-DE")}</span>
+              <div className="flex items-center justify-between py-1 text-sm border-t border-white/10 mt-1 pt-2">
+                <span className="text-slate-300">Total del mes</span>
+                <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
               </div>
             </div>
           </div>
@@ -270,7 +253,7 @@ const totals = dailyData.reduce(
         </div>
         <p className="text-3xl font-bold text-white mb-2">€{balance.toLocaleString("de-DE")}</p>
         <p className="text-sm text-slate-300">
-          Monto total ganado de todos los referidos hasta ahora, sin incluir comisiones ya pagadas
+          Total ganado este mes (comisiones propias y de subafiliados). Se reinicia automáticamente el día 1.
         </p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
