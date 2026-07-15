@@ -24,8 +24,9 @@ export default function AccountPage() {
   useEffect(() => {
     async function loadData() {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         setLoading(false);
         return;
@@ -50,8 +51,9 @@ export default function AccountPage() {
   }, []);async function uploadAvatar(file: File) {
     setUploading(true);
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) {
       setUploading(false);
       return;
@@ -83,8 +85,9 @@ export default function AccountPage() {
     setSaving(true);
     setMessage(null);
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return;
 
     const { error } = await supabase
