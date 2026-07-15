@@ -21,7 +21,8 @@ export default function ComisionesClient({
     affiliates.map((a) => ({
       id: a.id,
       display_name: a.display_name ?? "Sin nombre",
-      cpaSpain: a.cpa_spain ?? 85,cpaOther: a.cpa_other ?? 85,
+      cpaSpain: a.cpa_spain ?? 85,
+      cpaOther: a.cpa_other ?? 85,
       subaffiliatePercent: a.subaffiliate_percent ?? 9,
     }))
   );
@@ -52,7 +53,8 @@ export default function ComisionesClient({
         cpaSpain: row.cpaSpain,
         cpaOther: row.cpaOther,
         subaffiliatePercent: row.subaffiliatePercent,
-      }),});
+      }),
+    });
 
     setSavingId(null);
     setMessageId(id);
@@ -61,33 +63,34 @@ export default function ComisionesClient({
     }
   }
 
+  const inputClass =
+    "mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {rows.map((row) => (
         <div
           key={row.id}
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 8,
-            padding: 16,
-            maxWidth: 600,
-          }}
+          className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4"
         >
-          <h3 style={{ marginBottom: 12 }}>{row.display_name}</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {row.display_name}
+          </h3>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label>
+          <div className="flex flex-col gap-3">
+            <label className="text-sm text-slate-200">
               CPA España (€)
               <input
                 type="number"
-                value={row.cpaSpain}onChange={(e) =>
+                value={row.cpaSpain}
+                onChange={(e) =>
                   updateRow(row.id, "cpaSpain", Number(e.target.value))
                 }
-                style={{ display: "block", width: "100%", padding: 8 }}
+                className={inputClass}
               />
             </label>
 
-            <label>
+            <label className="text-sm text-slate-200">
               CPA Otros Países (€)
               <input
                 type="number"
@@ -95,11 +98,11 @@ export default function ComisionesClient({
                 onChange={(e) =>
                   updateRow(row.id, "cpaOther", Number(e.target.value))
                 }
-                style={{ display: "block", width: "100%", padding: 8 }}
+                className={inputClass}
               />
             </label>
 
-            <label>
+            <label className="text-sm text-slate-200">
               % Subafiliado
               <input
                 type="number"
@@ -111,29 +114,23 @@ export default function ComisionesClient({
                     Number(e.target.value)
                   )
                 }
-                style={{ display: "block", width: "100%", padding: 8 }}
+                className={inputClass}
               />
             </label>
           </div>
 
-          <button
-            onClick={() => saveRow(row.id)}
-            disabled={savingId === row.id}
-            style={{
-              marginTop: 12,
-              padding: "8px 16px",
-              background: "#2563eb",
-              color: "white",
-              border: "none",borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            {savingId === row.id ? "Guardando..." : "Guardar"}
-          </button>
-
-          {messageId === row.id && savingId !== row.id && (
-            <p style={{ color: "green", marginTop: 8 }}>Guardado ✓</p>
-          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => saveRow(row.id)}
+              disabled={savingId === row.id}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              {savingId === row.id ? "Guardando..." : "Guardar"}
+            </button>
+            {messageId === row.id && savingId !== row.id && (
+              <span className="text-emerald-400 text-sm">Guardado ✓</span>
+            )}
+          </div>
         </div>
       ))}
     </div>

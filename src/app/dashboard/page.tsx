@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ComposedChart,
-  Area,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import ContactManagerButton from "@/components/ContactManagerButton";
+import { metricConfig } from "@/lib/metrics";
 import { Info } from "lucide-react";
+
+// El gráfico (Recharts) es pesado; lo cargamos en diferido para que el resto
+// del panel aparezca antes. Reserva la altura para evitar saltos de layout.
+const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
+  ssr: false,
+  loading: () => <div className="h-[320px]" />,
+});
 
 type Stats = {
   balance: number;
@@ -30,13 +29,6 @@ type DailyPoint = {
   registrations: number;
   ftd: number;
 };
-
-const metricConfig = [
-  { key: "commission", label: "Comisión", color: "#10b981" },
-{ key: "clicks", label: "Clics", color: "#9333ea" },
-{ key: "registrations", label: "Registros", color: "#f59e0b" },
-  { key: "ftd", label: "FTD", color: "#38bdf8" },
-] as const;
 
 function last7Days(): DailyPoint[] {
   const days: DailyPoint[] = [];
@@ -98,43 +90,48 @@ export default function DashboardPage() {
         setLoading(false);
         return;
       }
-      const { data: affiliateRow } = await supabase
-      .from("affiliates")
-      .select("id, display_name")
-      .eq("user_id", user.id)
-      .single();
 
-    if (affiliateRow) {
-      setAffiliateId(affiliateRow.id);
+      // Las cuatro consultas son independientes entre sí: las lanzamos en
+      // paralelo en lugar de una detrás de otra para que el panel cargue antes.
+      const [affiliateRes, statsRes, dailyRes, paymentsRes] = await Promise.all([
+        supabase
+          .from("affiliates")
+          .select("id, display_name")
+          .eq("user_id", user.id)
+          .single(),
+        supabase
+          .from("affiliate_stats")
+          .select("balance, commission, clicks, registrations, ftd")
+          .eq("user_id", user.id)
+          .single(),
+        supabase
+          .from("affiliate_daily_stats")
+          .select("date, commission, clicks, registrations, ftd")
+          .eq("user_id", user.id)
+          .order("date", { ascending: true }),
+        supabase.from("payments").select("amount").eq("user_id", user.id),
+      ]);
+
+      const affiliateRow = affiliateRes.data;
+      if (affiliateRow) {
+        setAffiliateId(affiliateRow.id);
         setDisplayName(affiliateRow.display_name ?? null);
-    }
-
-      const { data, error } = await supabase
-        .from("affiliate_stats")
-        .select("balance, commission, clicks, registrations, ftd")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!error && data) {
-        setStats(data);
       }
 
-      const { data: daily } = await supabase
-        .from("affiliate_daily_stats")
-        .select("date, commission, clicks, registrations, ftd")
-        .eq("user_id", user.id)
-        .order("date", { ascending: true });
+      if (!statsRes.error && statsRes.data) {
+        setStats(statsRes.data);
+      }
 
-      setDailyData(fillMissingDays(daily ?? []));
-const { data: payments } = await supabase
-  .from("payments")
-  .select("amount")
-  .eq("user_id", user.id);
+      setDailyData(fillMissingDays(dailyRes.data ?? []));
 
-if (payments) {
-  const paidSum = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-  setTotalPaid(paidSum);
-}
+      if (paymentsRes.data) {
+        const paidSum = paymentsRes.data.reduce(
+          (sum, p) => sum + Number(p.amount),
+          0
+        );
+        setTotalPaid(paidSum);
+      }
+
       setLoading(false);
     }
 
@@ -176,13 +173,13 @@ const totals = dailyData.reduce(
 });
 
 
-  const primaryMetricKey = (activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission") as any;
-  const primaryMax = Math.max(...dailyData.map((p: any) => Number(p[primaryMetricKey]) || 0), 1);
+  const primaryMetricKey =
+    activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
   const statCards = [
     { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#10b981" },
     { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
     { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-    { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#94a3b8" },
+    { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
   ];
 
   return (
@@ -243,15 +240,14 @@ const totals = dailyData.reduce(
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {statCards.map((card) => {
-          const isToggleable = card.key !== "conversion";
           const isActive = activeMetrics.has(card.key);
           return (
             <button
               key={card.key}
-              onClick={() => isToggleable && toggleMetric(card.key)}
-              className={`text-left p-4 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 border-t-4 transition-opacity${
-              isToggleable ? " cursor-pointer" : " cursor-default"
-            } ${isToggleable && !isActive ? " opacity-50" : " opacity-100"}`}
+              onClick={() => toggleMetric(card.key)}
+              className={`text-left p-4 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 border-t-4 transition-opacity cursor-pointer ${
+              !isActive ? "opacity-50" : "opacity-100"
+            }`}
               style={{ borderTopColor: card.color }}
             >
               <p className="text-sm text-slate-300 mb-1">{card.label}</p>
@@ -262,91 +258,11 @@ const totals = dailyData.reduce(
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
-        <ResponsiveContainer width="100%" height={320}>
-          <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-            <defs>
-              {metricConfig.map((m) => (
-                <linearGradient key={m.key} id={`chartGradient-${m.key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={m.color} stopOpacity={0.35} />
-                  <stop offset="95%" stopColor={m.color} stopOpacity={0} />
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
-            <XAxis dataKey="date" fontSize={13} stroke="#94a3b8" angle={-45} textAnchor="end" height={50} />
-            <YAxis
-              yAxisId="left"
-              domain={[0, (max: number) => (max <= 0 ? 10 : max)]}
-              fontSize={13}
-              stroke="#94a3b8"
-              tickFormatter={(v: number) => (primaryMetricKey === "commission" ? `€${Math.round(v).toLocaleString("de-DE")}` : Math.round(v).toLocaleString("de-DE"))}
-              width={70}
-              label={{
-                value: metricConfig.find((m) => m.key === primaryMetricKey)?.label ?? "",
-                angle: -90,
-                position: "insideLeft",
-                fill: "#94a3b8",
-                fontSize: 12,
-              }}
-            />
-          <YAxis
-              yAxisId="right"
-              orientation="right"
-              domain={[0, (max: number) => (max <= 0 ? 10 : max)]}
-              fontSize={13}
-              stroke="#94a3b8"
-              tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")}
-              width={Array.from(activeMetrics).some((k) => k !== primaryMetricKey) ? 60 : 0}
-              hide={!Array.from(activeMetrics).some((k) => k !== primaryMetricKey)}
-            />
-          <Tooltip
-
-            contentStyle={{
-
-              backgroundColor: "#0a0a0a",
-
-              border: "1px solid rgba(255,255,255,0.2)",
-
-              borderRadius: 8,
-
-            }}
-
-            labelStyle={{ color: "#94a3b8" }}
-
-            itemStyle={{ color: "#34d399" }}
-
-            formatter={(value: any, name: any) => {
-
-              const metric = metricConfig.find((m) => m.key === name);
-
-              return [value, metric ? metric.label : name];
-
-            }}
-
-          />
-            {(() => {
-              const showArea = activeMetrics.size <= 2;
-              return metricConfig.map((m) => {
-                const isPrimary = m.key === primaryMetricKey;
-                const commonProps = {
-                  key: m.key,
-                  type: "monotone" as const,
-                  dataKey: m.key,
-                  yAxisId: isPrimary ? "left" : "right",
-                  stroke: m.color,
-                  strokeWidth: 2,
-                  dot: { r: 3, strokeWidth: 2, fill: "#0a0a0a" },
-                  hide: !activeMetrics.has(m.key),
-                };
-                return showArea ? (
-                  <Area {...commonProps} fill={`url(#chartGradient-${m.key})`} />
-                ) : (
-                  <Line {...commonProps} />
-                );
-              });
-            })()}
-            </ComposedChart>
-        </ResponsiveContainer>
+        <BalanceChart
+          data={chartData}
+          activeMetrics={activeMetrics}
+          primaryMetricKey={primaryMetricKey}
+        />
       </div>
     </div>
   );

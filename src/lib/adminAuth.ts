@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "./supabaseAdmin";
+import { ADMIN_USER_ID } from "./adminId";
 
-export const ADMIN_USER_ID = "a38a91c3-1f25-42df-ad5b-fbef6c09fee0";
+export { ADMIN_USER_ID };
 
 export async function getAdminUser(request: Request) {
   const authHeader = request.headers.get("authorization");

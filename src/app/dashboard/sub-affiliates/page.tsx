@@ -14,8 +14,11 @@ export default function SubAffiliatesPage() {
   const [loading, setLoading] = useState(true);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
 
   useEffect(() => {
+    setOrigin(window.location.origin);
+
     async function load() {
       const {
         data: { session },
@@ -80,13 +83,13 @@ export default function SubAffiliatesPage() {
           <div className="flex items-center gap-2">
             <input
               readOnly
-              value={`https://ays-affiliate-dashboard.vercel.app/registro?ref=${affiliateId}`}
+              value={`${origin}/registro?ref=${affiliateId}`}
               className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2 truncate"
             />
             <button
               onClick={() => {
                 navigator.clipboard.writeText(
-                  `https://ays-affiliate-dashboard.vercel.app/registro?ref=${affiliateId}`
+                  `${origin}/registro?ref=${affiliateId}`
                 );
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 1500);

@@ -10,14 +10,32 @@ export async function GET(request: Request) {
 
   const { data: stats, error } = await supabaseAdmin
     .from("affiliate_stats")
-    .select(
-      "id, affiliate_id, stat_date, clicks_total, leads_total, deposits_total, commission_total, affiliates ( display_name )"
-    )
-    .order("stat_date", { ascending: false });
+    .select("user_id, balance, commission, clicks, registrations, ftd");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ stats });
+  // El nombre vive en `affiliates` (relacionado por user_id); lo resolvemos aparte.
+  const { data: affiliates } = await supabaseAdmin
+    .from("affiliates")
+    .select("user_id, display_name");
+
+  const nameByUser = new Map(
+    (affiliates ?? []).map((a) => [a.user_id, a.display_name])
+  );
+
+  const rows = (stats ?? [])
+    .map((s) => ({
+      user_id: s.user_id,
+      display_name: nameByUser.get(s.user_id) ?? null,
+      balance: Number(s.balance ?? 0),
+      commission: Number(s.commission ?? 0),
+      clicks: Number(s.clicks ?? 0),
+      registrations: Number(s.registrations ?? 0),
+      ftd: Number(s.ftd ?? 0),
+    }))
+    .sort((a, b) => b.commission - a.commission);
+
+  return NextResponse.json({ stats: rows });
 }

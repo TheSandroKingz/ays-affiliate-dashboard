@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# A & S Afiliados — Panel de Afiliados
 
-## Getting Started
+Panel de control para el programa de afiliados de **A & S Afiliados** (iGaming, mercado español). Los afiliados consultan sus estadísticas, obtienen sus enlaces de promoción, reclutan subafiliados y gestionan su cuenta. Incluye un panel de administración para ver estadísticas globales y ajustar comisiones.
 
-First, run the development server:
+## Tecnologías
+
+- **Next.js 16** (App Router) + **React 19**
+- **TypeScript** y **Tailwind CSS v4**
+- **Supabase** — autenticación, base de datos (Postgres) y almacenamiento
+- **Recharts** — gráficos del panel
+- Desplegado en **Vercel**
+
+## Puesta en marcha
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # arranca en http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Scripts disponibles:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script          | Descripción                          |
+| --------------- | ------------------------------------ |
+| `npm run dev`   | Servidor de desarrollo               |
+| `npm run build` | Compilación de producción            |
+| `npm run start` | Sirve la compilación de producción   |
+| `npm run lint`  | Linter (ESLint)                      |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variables de entorno
 
-## Learn More
+Crea un archivo `.env.local` con:
 
-To learn more about Next.js, take a look at the following resources:
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+POSTBACK_SECRET=...
+CRON_SECRET=...
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> `SUPABASE_SERVICE_ROLE_KEY`, `POSTBACK_SECRET` y `CRON_SECRET` son secretos de servidor: no los expongas nunca en el cliente.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura
 
-## Deploy on Vercel
+- `src/app/login`, `registro`, `recuperar`, `reset-password` — autenticación
+- `src/app/dashboard` — panel del afiliado (estadísticas, informes, pagos, subafiliados, plan de comisión, cuenta)
+- `src/app/admin` — panel de administración (estadísticas globales, comisiones por afiliado)
+- `src/app/api` — API interna: login, registro, pagos, subafiliados, postbacks (S2S), cron y panel de admin
+- `src/app/go/[code]` — redirección con seguimiento de clics hacia el enlace de promoción del afiliado
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Cómo funciona el seguimiento
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Cada afiliado tiene un enlace de promoción (`promo_link`). El enlace público `/go/{código}` cuenta el clic y redirige a ese destino. La red de afiliación envía **postbacks** (servidor a servidor) a `/api/postback/*` para registrar altas, primeros depósitos (FTD) y comisiones, protegidos con `POSTBACK_SECRET`.
+
+## Notas
+
+Este proyecto usa una versión de Next.js con cambios respecto a lo habitual. Consulta la documentación incluida en `node_modules/next/dist/docs/` antes de tocar convenciones del framework (ver `AGENTS.md`).

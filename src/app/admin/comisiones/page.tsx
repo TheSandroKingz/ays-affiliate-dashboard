@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import ComisionesClient from "@/components/admin/ComisionesClient";
-
-const ADMIN_USER_ID = "a38a91c3-1f25-42df-ad5b-fbef6c09fee0";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 
 type Affiliate = {
   id: string;
@@ -51,25 +50,31 @@ export default function ComisionesPage() {
 
   if (error) {
     return (
-      <main style={{ padding: 32 }}>
-        <h1>Plan de Comisión por Afiliado</h1>
-        <p style={{ color: "red" }}>Error: {error}</p>
+      <main className="flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold text-white">
+          Plan de Comisión por Afiliado
+        </h1>
+        <p className="text-red-400">Error: {error}</p>
       </main>
     );
   }
 
   if (!affiliates || !accessToken) {
     return (
-      <main style={{ padding: 32 }}>
-        <h1>Plan de Comisión por Afiliado</h1>
-        <p>Cargando...</p>
+      <main className="flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold text-white">
+          Plan de Comisión por Afiliado
+        </h1>
+        <p className="text-slate-300">Cargando...</p>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 32 }}>
-      <h1 style={{ marginBottom: 24 }}>Plan de Comisión por Afiliado</h1>
+    <main className="flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold text-white">
+        Plan de Comisión por Afiliado
+      </h1>
       <ComisionesClient affiliates={affiliates} accessToken={accessToken} />
     </main>
   );
