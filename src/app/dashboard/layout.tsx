@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden fixed top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>        <button onClick={() => setSidebarOpen(true)} className="text-white">
           <Menu size={24} />
         </button>
-        <span className="flex-1 text-center text-lg font-extrabold text-emerald-400 pr-6">
+        <span className="flex-1 text-center text-xl font-extrabold text-emerald-400 pr-6">
           A & S Afiliados
         </span>
       </div>
