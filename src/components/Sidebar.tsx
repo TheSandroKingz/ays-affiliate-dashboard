@@ -69,11 +69,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
-        <span className="text-2xl font-extrabold text-emerald-400">
-          A & S Afiliados
-        </span>
-      </Link>
+        <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
+          <Image src="/logo.png" alt="A&S Afiliados" width={150} height={74} priority />
+        </Link>
 
       <nav className="flex flex-col gap-1">
         <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
