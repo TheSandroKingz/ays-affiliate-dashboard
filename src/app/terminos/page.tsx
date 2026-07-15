@@ -10,94 +10,263 @@ export default function TerminosPage() {
             <h2 className="text-white text-lg font-semibold mb-2">1. Aceptación de los términos</h2>
             <p>
               Al registrarte y utilizar el programa de afiliados de A & S Afiliados
-              ("nosotros", "la plataforma"), aceptas quedar vinculado por estos
-              Términos y Condiciones. Si no estás de acuerdo, no debes utilizar
-              la plataforma.
+              (&quot;nosotros&quot;, &quot;la Plataforma&quot;), declaras ser mayor de edad, tener
+              plena capacidad legal para contratar y aceptas quedar vinculado por
+              estos Términos y Condiciones, así como por nuestra Política de
+              Privacidad. Si no estás de acuerdo con alguna parte, no debes
+              registrarte ni utilizar la Plataforma.
             </p>
           </section>
+
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">2. Descripción del servicio</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">2. Definiciones</h2>
+            <p>
+              &quot;Plataforma&quot; se refiere a A & S Afiliados y a este panel de afiliación.
+              &quot;Afiliado&quot; eres tú, la persona o entidad registrada. &quot;Operador&quot; es
+              cualquier casino, casa de apuestas o plataforma de juego de terceros
+              cuya oferta se promociona. &quot;Comisión&quot; es la retribución que puedas
+              devengar conforme a estos términos. &quot;Red&quot; es la red de afiliación de
+              terceros a través de la cual se realiza el seguimiento y la liquidación.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">3. Naturaleza del servicio</h2>
             <p>
               A & S Afiliados es un programa de marketing de afiliación mediante el
-              cual promocionas casinos y plataformas de apuestas de terceros a
-              cambio de una comisión sobre la actividad generada por los usuarios
-              que refieras. No somos un operador de juego ni procesamos apuestas.
+              cual el Afiliado promociona la oferta de Operadores de terceros a
+              cambio de una Comisión sobre la actividad válida generada. La
+              Plataforma <strong>no es un operador de juego</strong>, no organiza,
+              gestiona ni procesa apuestas, no custodia fondos de jugadores y no es
+              responsable del contenido, la disponibilidad, los pagos, las
+              promociones ni las prácticas de los Operadores. La relación del
+              Afiliado con cualquier Operador o Red se rige por los términos propios
+              de éstos, ajenos a la Plataforma.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">3. Elegibilidad y edad mínima</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">4. Relación independiente entre las partes</h2>
             <p>
-              Debes ser mayor de 18 años (o la edad legal de mayoría en tu país,
-              si es superior) para registrarte como afiliado. Eres responsable de
-              asegurarte de que el tráfico que generas cumple con la edad mínima
-              legal exigida en la jurisdicción de cada usuario referido.
-            </p>
-          </section>
-          <section>
-            <h2 className="text-white text-lg font-semibold mb-2">4. Comisiones y pagos</h2>
-            <p>
-              Las comisiones se calculan según el plan de comisión asignado a tu
-              cuenta y se muestran en tu panel de afiliado. Los pagos se procesan
-              conforme a los términos indicados en la sección de Pagos. Nos
-              reservamos el derecho de retener o anular comisiones generadas por
-              tráfico fraudulento, inválido o que incumpla estos términos.
+              El Afiliado actúa como <strong>contratista independiente</strong>. Nada
+              en estos términos crea una relación laboral, de sociedad, de agencia,
+              de franquicia ni de empresa conjunta entre el Afiliado y la Plataforma.
+              El Afiliado no está autorizado a contraer obligaciones ni a realizar
+              declaraciones en nombre de la Plataforma.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">5. Conducta prohibida</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">5. Elegibilidad y edad mínima</h2>
             <p>
-              Queda prohibido el uso de tráfico incentivado no autorizado, bots,
-              spam, publicidad engañosa, o dirigir tráfico desde jurisdicciones
-              donde el juego online esté prohibido. El incumplimiento puede
-              conllevar la suspensión inmediata de la cuenta y la anulación de
-              comisiones pendientes.
+              Debes ser mayor de 18 años (o la edad legal de mayoría en tu país, si
+              es superior) para registrarte. Eres responsable de asegurarte de que
+              todo el tráfico que generes cumple la edad mínima legal exigida en la
+              jurisdicción de cada usuario referido y de que dicho tráfico procede de
+              territorios donde el juego online es legal.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">6. Juego responsable</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">6. Obligaciones y declaraciones del Afiliado</h2>
             <p>
-              Como afiliado, te comprometes a promocionar el juego de forma
-              responsable, incluyendo mensajes de juego responsable cuando el
-              operador lo exija, y a no dirigir campañas hacia menores de edad
-              o personas que hayan solicitado autoexclusión.
-            </p>
-          </section>
-          <section>
-            <h2 className="text-white text-lg font-semibold mb-2">7. Terminación de cuenta</h2>
-            <p>
-              Podemos suspender o cancelar tu cuenta en cualquier momento si
-              incumples estos términos, sin perjuicio de las comisiones legítimas
-              ya devengadas antes de la infracción.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-semibold mb-2">8. Limitación de responsabilidad</h2>
-            <p>
-              La plataforma se ofrece "tal cual". No garantizamos ingresos mínimos
-              ni la disponibilidad continua del servicio. No somos responsables
-              de las acciones de los operadores de casino con los que trabajas
-              como afiliado.
+              El Afiliado declara y garantiza que, por su cuenta y riesgo, cumplirá
+              en todo momento con: (a) la normativa aplicable en materia de
+              <strong> comunicaciones comerciales y publicidad del juego</strong>,
+              incluida, cuando resulte aplicable, la normativa española y de la
+              autoridad reguladora competente; (b) sus obligaciones
+              <strong> fiscales</strong> derivadas de las Comisiones percibidas;
+              (c) la normativa de <strong>protección de datos</strong> respecto de
+              cualquier dato que trate en sus campañas; y (d) cualquier otra
+              obligación legal aplicable a su actividad. El Afiliado es el único
+              responsable de sus métodos promocionales y de obtener las licencias,
+              permisos o registros que su actividad requiera.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">9. Modificaciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">7. Conducta prohibida</h2>
             <p>
-              Podemos actualizar estos términos en cualquier momento. Te
-              notificaremos de cambios relevantes y el uso continuado de la
-              plataforma implica la aceptación de la versión actualizada.
+              Queda expresamente prohibido: el tráfico incentivado no autorizado; el
+              uso de bots, spam, o correo no solicitado; la publicidad engañosa o que
+              atribuya afirmaciones falsas a la Plataforma o a los Operadores; el uso
+              de marcas de terceros de forma no autorizada (incluida la puja por
+              marcas en buscadores cuando esté prohibida); dirigir tráfico desde
+              jurisdicciones donde el juego online esté prohibido o restringido;
+              captar a menores de edad o a personas autoexcluidas; y cualquier
+              práctica fraudulenta, ilícita o contraria a la buena fe. El
+              incumplimiento faculta a la Plataforma para suspender la cuenta de
+              inmediato y anular las Comisiones afectadas.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">10. Contacto</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">8. Juego responsable y protección de menores</h2>
             <p>
-              Para cualquier duda sobre estos términos, contacta con tu gestor
-              de afiliados desde el panel.
+              El Afiliado se compromete a promocionar el juego de forma responsable,
+              a incluir los mensajes de juego responsable y las advertencias que la
+              normativa o el Operador exijan, a no dirigir campañas a menores de edad
+              ni a personas en situación de vulnerabilidad o autoexclusión, y a
+              retirar de inmediato cualquier material que la Plataforma o el Operador
+              le indiquen.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">9. Comisiones, pagos y ajustes</h2>
+            <p>
+              Las Comisiones se calculan según el plan asignado a tu cuenta y se
+              muestran en tu panel a título informativo. La Plataforma podrá
+              retener, ajustar, compensar o anular Comisiones cuando: procedan de
+              tráfico fraudulento, inválido o duplicado; el Operador o la Red las
+              revierta, rechace o no las liquide (&quot;chargeback&quot;); se detecte
+              incumplimiento de estos términos; o exista error de cálculo. Los pagos
+              quedan supeditados a la efectiva liquidación por parte del Operador o
+              la Red. La Plataforma no garantiza importes mínimos ni volúmenes de
+              conversión.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">10. Propiedad intelectual</h2>
+            <p>
+              La Plataforma y, en su caso, los Operadores conservan la titularidad de
+              sus marcas, logotipos, enlaces y materiales promocionales. Se concede
+              al Afiliado una licencia limitada, revocable y no exclusiva para
+              usarlos únicamente con el fin de promocionar la oferta conforme a estos
+              términos. Cualquier otro uso queda prohibido y la licencia se extingue
+              al cesar la relación.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">11. Confidencialidad</h2>
+            <p>
+              El Afiliado mantendrá la confidencialidad de la información no pública a
+              la que acceda (tarifas, condiciones comerciales, datos de la Plataforma
+              o de la Red) y no la divulgará ni la usará para fines distintos de los
+              previstos en estos términos.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">12. Indemnización</h2>
+            <p>
+              El Afiliado se compromete a <strong>mantener indemne y a defender</strong> a
+              la Plataforma, sus titulares, socios y colaboradores frente a cualquier
+              reclamación, demanda, sanción, pérdida, daño, coste o gasto (incluidos
+              honorarios de abogados) que derive de: (a) el incumplimiento de estos
+              términos por el Afiliado; (b) sus métodos promocionales o el contenido
+              que publique; (c) la infracción de cualquier ley aplicable, incluida la
+              normativa de publicidad del juego, fiscal o de protección de datos; o
+              (d) la infracción de derechos de terceros. Esta obligación subsiste tras
+              la terminación de la relación.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">13. Limitación y exclusión de responsabilidad</h2>
+            <p>
+              En la máxima medida permitida por la ley, la Plataforma se ofrece
+              &quot;tal cual&quot; y &quot;según disponibilidad&quot;, sin garantías de ningún tipo. La
+              Plataforma no será responsable de daños indirectos, incidentales,
+              especiales o lucro cesante, ni de las acciones u omisiones de los
+              Operadores o de la Red. En todo caso, y salvo dolo o culpa grave, la
+              responsabilidad total acumulada de la Plataforma frente al Afiliado se
+              limitará al importe de las Comisiones efectivamente abonadas al Afiliado
+              en los tres (3) meses anteriores al hecho que motive la reclamación.
+              Ninguna disposición excluye responsabilidades que legalmente no puedan
+              excluirse.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">14. Suspensión y terminación</h2>
+            <p>
+              Cualquiera de las partes puede resolver la relación en cualquier
+              momento. La Plataforma podrá suspender o cancelar la cuenta de forma
+              inmediata en caso de incumplimiento, fraude o riesgo legal o
+              reputacional, sin perjuicio de las Comisiones legítimas ya devengadas y
+              efectivamente liquidadas antes de la infracción. Las cláusulas que por
+              su naturaleza deban subsistir (indemnización, confidencialidad,
+              limitación de responsabilidad, ley aplicable) seguirán vigentes tras la
+              terminación.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">15. Protección de datos</h2>
+            <p>
+              El tratamiento de los datos personales del Afiliado se rige por la
+              Política de Privacidad. El Afiliado, cuando trate datos de terceros en
+              sus campañas, actúa como responsable independiente y asume el
+              cumplimiento de la normativa de protección de datos aplicable.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">16. Fuerza mayor</h2>
+            <p>
+              La Plataforma no será responsable por incumplimientos o retrasos
+              debidos a causas ajenas a su control razonable, incluyendo fallos de
+              terceros, de los Operadores o de la Red, cortes de servicio, ataques
+              informáticos, o cambios normativos.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">17. Cesión</h2>
+            <p>
+              El Afiliado no podrá ceder ni transferir su cuenta ni sus derechos u
+              obligaciones sin consentimiento previo y por escrito de la Plataforma.
+              La Plataforma podrá ceder estos términos en el marco de una
+              reestructuración o transmisión de su actividad.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">18. Nulidad parcial y renuncia</h2>
+            <p>
+              Si alguna cláusula fuera declarada nula o inaplicable, el resto de los
+              términos seguirá siendo plenamente válido. La no exigencia por la
+              Plataforma de cualquier derecho no supondrá renuncia al mismo.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">19. Acuerdo completo</h2>
+            <p>
+              Estos términos, junto con la Política de Privacidad y el plan de
+              comisión aplicable, constituyen el acuerdo íntegro entre las partes y
+              sustituyen a cualquier acuerdo o comunicación anterior sobre su objeto.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">20. Modificaciones</h2>
+            <p>
+              La Plataforma podrá actualizar estos términos en cualquier momento. Se
+              notificarán los cambios relevantes y el uso continuado de la Plataforma
+              tras su publicación implicará la aceptación de la versión actualizada.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">21. Ley aplicable y jurisdicción</h2>
+            <p>
+              Estos términos se rigen por la <strong>legislación española</strong>.
+              Para la resolución de cualquier controversia, las partes se someten a
+              los Juzgados y Tribunales competentes conforme a la legislación
+              aplicable, con renuncia a cualquier otro fuero que pudiera
+              corresponderles cuando la ley lo permita.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">22. Contacto</h2>
+            <p>
+              Para cualquier duda sobre estos términos, contacta con tu gestor de
+              afiliados desde el panel.
             </p>
           </section>
         </div>
