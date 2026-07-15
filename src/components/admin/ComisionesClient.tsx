@@ -12,8 +12,10 @@ type Affiliate = {
 
 export default function ComisionesClient({
   affiliates,
+  accessToken,
 }: {
   affiliates: Affiliate[];
+  accessToken: string;
 }) {
   const [rows, setRows] = useState(
     affiliates.map((a) => ({
@@ -41,7 +43,10 @@ export default function ComisionesClient({
 
     const res = await fetch("/api/admin/comisiones", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + accessToken,
+      },
       body: JSON.stringify({
         affiliateId: row.id,
         cpaSpain: row.cpaSpain,
