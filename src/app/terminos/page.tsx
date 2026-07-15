@@ -85,10 +85,34 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">7. Conducta prohibida</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">7. Veracidad de la información</h2>
+            <p>
+              El Afiliado garantiza que toda la información que facilita es veraz,
+              exacta, completa y actualizada, y se compromete a mantenerla al día. La
+              Plataforma podrá suspender la cuenta y retener o anular Comisiones si
+              detecta información falsa o incompleta, suplantación de identidad o
+              cuentas duplicadas.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">8. Cumplimiento, prevención del blanqueo y sanciones</h2>
+            <p>
+              El Afiliado declara que no figura en listas de sanciones
+              internacionales, que no opera desde ni dirige tráfico hacia territorios
+              sujetos a embargo o donde el juego esté prohibido, y que cumplirá la
+              normativa de prevención del blanqueo de capitales y de la financiación
+              del terrorismo que le resulte aplicable. La Plataforma podrá exigir
+              verificación de identidad y rechazar, retener o revertir pagos ante
+              cualquier sospecha razonable.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">9. Conducta prohibida</h2>
             <p>
               Queda expresamente prohibido: el tráfico incentivado no autorizado; el
-              uso de bots, spam, o correo no solicitado; la publicidad engañosa o que
+              uso de bots, spam o correo no solicitado; la publicidad engañosa o que
               atribuya afirmaciones falsas a la Plataforma o a los Operadores; el uso
               de marcas de terceros de forma no autorizada (incluida la puja por
               marcas en buscadores cuando esté prohibida); dirigir tráfico desde
@@ -101,7 +125,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">8. Juego responsable y protección de menores</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">10. Juego responsable y protección de menores</h2>
             <p>
               El Afiliado se compromete a promocionar el juego de forma responsable,
               a incluir los mensajes de juego responsable y las advertencias que la
@@ -113,7 +137,18 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">9. Comisiones, pagos y ajustes</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">11. Reconocimiento y asunción de riesgo</h2>
+            <p>
+              El Afiliado reconoce que la promoción de juego es una actividad
+              regulada y de riesgo, que los ingresos son variables y no garantizados,
+              y que participa por su cuenta y riesgo. La Plataforma no asegura
+              resultados, ganancias, volúmenes de conversión ni la continuidad de las
+              campañas o de los Operadores.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">12. Comisiones, pagos y ajustes</h2>
             <p>
               Las Comisiones se calculan según el plan asignado a tu cuenta y se
               muestran en tu panel a título informativo. La Plataforma podrá
@@ -122,13 +157,35 @@ export default function TerminosPage() {
               revierta, rechace o no las liquide (&quot;chargeback&quot;); se detecte
               incumplimiento de estos términos; o exista error de cálculo. Los pagos
               quedan supeditados a la efectiva liquidación por parte del Operador o
-              la Red. La Plataforma no garantiza importes mínimos ni volúmenes de
-              conversión.
+              la Red. La Plataforma no garantiza importes mínimos.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">10. Propiedad intelectual</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">13. Exactitud del seguimiento</h2>
+            <p>
+              El seguimiento de clics, registros, depósitos y Comisiones depende de
+              sistemas propios y de terceros (Operadores y Red). La Plataforma no
+              garantiza la exactitud ni la disponibilidad ininterrumpida del
+              seguimiento y no será responsable de conversiones no registradas por
+              fallos ajenos a su control. Los datos del panel son informativos; la
+              liquidación definitiva es la confirmada por el Operador o la Red.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">14. No elusión</h2>
+            <p>
+              El Afiliado se compromete a no eludir a la Plataforma tratando
+              directamente con la Red o con los Operadores presentados por ésta con
+              el fin de evitar el pago de comisiones o la aplicación de estos
+              términos, durante la relación y en los doce (12) meses siguientes a su
+              terminación.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">15. Propiedad intelectual</h2>
             <p>
               La Plataforma y, en su caso, los Operadores conservan la titularidad de
               sus marcas, logotipos, enlaces y materiales promocionales. Se concede
@@ -140,7 +197,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">11. Confidencialidad</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">16. Confidencialidad</h2>
             <p>
               El Afiliado mantendrá la confidencialidad de la información no pública a
               la que acceda (tarifas, condiciones comerciales, datos de la Plataforma
@@ -150,7 +207,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">12. Indemnización</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">17. Indemnización</h2>
             <p>
               El Afiliado se compromete a <strong>mantener indemne y a defender</strong> a
               la Plataforma, sus titulares, socios y colaboradores frente a cualquier
@@ -165,23 +222,42 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">13. Limitación y exclusión de responsabilidad</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">18. Renuncia de garantías</h2>
             <p>
               En la máxima medida permitida por la ley, la Plataforma se ofrece
-              &quot;tal cual&quot; y &quot;según disponibilidad&quot;, sin garantías de ningún tipo. La
-              Plataforma no será responsable de daños indirectos, incidentales,
-              especiales o lucro cesante, ni de las acciones u omisiones de los
-              Operadores o de la Red. En todo caso, y salvo dolo o culpa grave, la
-              responsabilidad total acumulada de la Plataforma frente al Afiliado se
-              limitará al importe de las Comisiones efectivamente abonadas al Afiliado
-              en los tres (3) meses anteriores al hecho que motive la reclamación.
-              Ninguna disposición excluye responsabilidades que legalmente no puedan
-              excluirse.
+              &quot;tal cual&quot; y &quot;según disponibilidad&quot;, y rechaza toda garantía, expresa
+              o implícita, incluidas las de comerciabilidad, idoneidad para un fin
+              concreto, disponibilidad ininterrumpida, ausencia de errores o de
+              seguridad absoluta.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">14. Suspensión y terminación</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">19. Limitación y exclusión de responsabilidad</h2>
+            <p>
+              En la máxima medida permitida por la ley, la Plataforma no será
+              responsable de daños indirectos, incidentales, especiales o lucro
+              cesante, ni de las acciones u omisiones de los Operadores o de la Red.
+              En todo caso, y salvo dolo o culpa grave, la responsabilidad total
+              acumulada de la Plataforma frente al Afiliado se limitará al importe de
+              las Comisiones efectivamente abonadas al Afiliado en los tres (3) meses
+              anteriores al hecho que motive la reclamación. Ninguna disposición
+              excluye responsabilidades que legalmente no puedan excluirse.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">20. Plazo para reclamaciones</h2>
+            <p>
+              Cualquier reclamación del Afiliado relacionada con estos términos o con
+              las Comisiones deberá presentarse por escrito en un plazo máximo de seis
+              (6) meses desde el hecho que la motive; transcurrido dicho plazo se
+              entenderá renunciada, en la medida permitida por la ley.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">21. Suspensión y terminación</h2>
             <p>
               Cualquiera de las partes puede resolver la relación en cualquier
               momento. La Plataforma podrá suspender o cancelar la cuenta de forma
@@ -189,13 +265,13 @@ export default function TerminosPage() {
               reputacional, sin perjuicio de las Comisiones legítimas ya devengadas y
               efectivamente liquidadas antes de la infracción. Las cláusulas que por
               su naturaleza deban subsistir (indemnización, confidencialidad,
-              limitación de responsabilidad, ley aplicable) seguirán vigentes tras la
-              terminación.
+              limitación de responsabilidad, no elusión, ley aplicable) seguirán
+              vigentes tras la terminación.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">15. Protección de datos</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">22. Protección de datos</h2>
             <p>
               El tratamiento de los datos personales del Afiliado se rige por la
               Política de Privacidad. El Afiliado, cuando trate datos de terceros en
@@ -205,17 +281,17 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">16. Fuerza mayor</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">23. Fuerza mayor</h2>
             <p>
               La Plataforma no será responsable por incumplimientos o retrasos
               debidos a causas ajenas a su control razonable, incluyendo fallos de
               terceros, de los Operadores o de la Red, cortes de servicio, ataques
-              informáticos, o cambios normativos.
+              informáticos o cambios normativos.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">17. Cesión</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">24. Cesión</h2>
             <p>
               El Afiliado no podrá ceder ni transferir su cuenta ni sus derechos u
               obligaciones sin consentimiento previo y por escrito de la Plataforma.
@@ -225,7 +301,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">18. Nulidad parcial y renuncia</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">25. Nulidad parcial y renuncia</h2>
             <p>
               Si alguna cláusula fuera declarada nula o inaplicable, el resto de los
               términos seguirá siendo plenamente válido. La no exigencia por la
@@ -234,7 +310,25 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">19. Acuerdo completo</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">26. Notificaciones</h2>
+            <p>
+              Las comunicaciones entre las partes se realizarán a través del panel o
+              del correo electrónico asociado a la cuenta del Afiliado, que se
+              consideran medios válidos y suficientes. Es responsabilidad del
+              Afiliado mantener sus datos de contacto actualizados.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">27. Idioma</h2>
+            <p>
+              La versión en español de estos términos es la que prevalece. Cualquier
+              traducción se ofrece únicamente a título informativo.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">28. Acuerdo completo</h2>
             <p>
               Estos términos, junto con la Política de Privacidad y el plan de
               comisión aplicable, constituyen el acuerdo íntegro entre las partes y
@@ -243,7 +337,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">20. Modificaciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">29. Modificaciones</h2>
             <p>
               La Plataforma podrá actualizar estos términos en cualquier momento. Se
               notificarán los cambios relevantes y el uso continuado de la Plataforma
@@ -252,7 +346,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">21. Ley aplicable y jurisdicción</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">30. Ley aplicable y jurisdicción</h2>
             <p>
               Estos términos se rigen por la <strong>legislación española</strong>.
               Para la resolución de cualquier controversia, las partes se someten a
@@ -263,7 +357,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">22. Contacto</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">31. Contacto</h2>
             <p>
               Para cualquier duda sobre estos términos, contacta con tu gestor de
               afiliados desde el panel.
