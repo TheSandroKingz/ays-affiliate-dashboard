@@ -38,12 +38,15 @@ export async function POST(request: NextRequest) {
 
   const userIds = (subAffiliates ?? []).map((s) => s.user_id);
 
-  let stats: { user_id: string; commission: number }[] = [];
+  const percent = (ownAffiliate.subaffiliate_percent ?? 0) / 100;
+  let rows: { id: string; displayName: string | null; commission: number }[] = [];
+  // Total histórico que este afiliado ha generado por sus subafiliados
+  // (todo lo acumulado, aunque ya se haya cobrado).
+  let totalHistorico = 0;
 
   if (userIds.length > 0) {
-    // Comisión del MES ACTUAL de cada subafiliado. El modelo se reinicia el
-    // día 1, así que sumamos solo desde el primer día del mes en curso
-    // (zona horaria de Madrid) en affiliate_daily_stats.
+    // El día 1 el balance se reinicia, así que la comisión del panel es la
+    // del mes en curso; pero también sumamos el histórico completo aparte.
     const monthStart =
       new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
         .format(new Date())
@@ -51,34 +54,28 @@ export async function POST(request: NextRequest) {
 
     const { data: dailyData } = await supabaseAdmin
       .from("affiliate_daily_stats")
-      .select("user_id, commission")
-      .in("user_id", userIds)
-      .gte("date", monthStart);
+      .select("user_id, commission, date")
+      .in("user_id", userIds);
 
-    const sumByUser = new Map<string, number>();
+    const sumMes = new Map<string, number>();
+    const sumHist = new Map<string, number>();
     for (const d of dailyData ?? []) {
-      sumByUser.set(
-        d.user_id,
-        (sumByUser.get(d.user_id) ?? 0) + Number(d.commission)
-      );
+      const c = Number(d.commission);
+      sumHist.set(d.user_id, (sumHist.get(d.user_id) ?? 0) + c);
+      if (String(d.date) >= monthStart)
+        sumMes.set(d.user_id, (sumMes.get(d.user_id) ?? 0) + c);
     }
-    stats = userIds.map((id) => ({
-      user_id: id,
-      commission: sumByUser.get(id) ?? 0,
-    }));
-  }
 
-  const percent = (ownAffiliate.subaffiliate_percent ?? 0) / 100;
-
-  const rows = (subAffiliates ?? []).map((s) => {
-    const stat = stats.find((st) => st.user_id === s.user_id);
-    const subCommission = stat ? Number(stat.commission) : 0;
-    return {
+    rows = (subAffiliates ?? []).map((s) => ({
       id: s.id,
       displayName: s.display_name,
-      commission: subCommission * percent,
-    };
-  });
+      commission: (sumMes.get(s.user_id) ?? 0) * percent,
+    }));
+    totalHistorico = (subAffiliates ?? []).reduce(
+      (sum, s) => sum + (sumHist.get(s.user_id) ?? 0) * percent,
+      0
+    );
+  }
 
-  return NextResponse.json({ rows });
+  return NextResponse.json({ rows, totalHistorico });
 }

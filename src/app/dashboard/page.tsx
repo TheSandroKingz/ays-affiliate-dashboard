@@ -80,6 +80,7 @@ export default function DashboardPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [subCommission, setSubCommission] = useState(0);
+  const [totalGenerado, setTotalGenerado] = useState(0);
 
   const loadStats = useCallback(async () => {
       setLoading(true);
@@ -145,6 +146,14 @@ export default function DashboardPage() {
       );
       setSubCommission(subTotal);
 
+      // Total histórico generado (comisión propia + subafiliados de todo el
+      // tiempo, aunque ya se haya cobrado).
+      const propiaHist = (dailyRes.data ?? []).reduce(
+        (sum, d) => sum + Number(d.commission ?? 0),
+        0
+      );
+      setTotalGenerado(propiaHist + Number(subRes?.totalHistorico ?? 0));
+
       setLoading(false);
   }, []);
 
@@ -200,7 +209,7 @@ const totals = dailyData.reduce(
   ];
 
   return (
-    <div className="flex flex-col gap-6 pt-4 md:pt-0">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
             <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
@@ -230,7 +239,7 @@ const totals = dailyData.reduce(
               <Info size={15} className="cursor-help" />
             </button>
             <div
-              className={`pointer-events-none absolute left-0 top-6 z-10 w-60 rounded-lg border border-white/20 bg-black/90 backdrop-blur p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
+              className={`pointer-events-none absolute left-0 top-6 z-10 w-64 rounded-lg border border-white/20 bg-black/95 backdrop-blur p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
                 showBalanceInfo ? "opacity-100" : "opacity-0"
               }`}
             >
@@ -248,14 +257,18 @@ const totals = dailyData.reduce(
                 <span className="text-slate-300">Total del mes</span>
                 <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
               </div>
+              <div className="flex items-center justify-between py-1 text-sm">
+                <span className="text-slate-300">Total generado</span>
+                <span className="font-semibold text-emerald-400">€{totalGenerado.toLocaleString("de-DE")}</span>
+              </div>
+              <p className="mt-2 text-[11px] leading-snug text-slate-500">
+                Total generado = todo lo que has ganado desde el inicio, aunque ya lo hayas cobrado.
+              </p>
             </div>
           </div>
         </div>
         </div>
-        <p className="text-3xl font-bold text-white mb-2">€{balance.toLocaleString("de-DE")}</p>
-        <p className="text-sm text-slate-300">
-          Total ganado este mes (comisiones propias y de subafiliados). Se reinicia automáticamente el día 1.
-        </p>
+        <p className="text-3xl font-bold text-white">€{balance.toLocaleString("de-DE")}</p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {statCards.map((card) => {
