@@ -11,6 +11,15 @@ type PaymentRow = {
   status: string;
 };
 
+const ESTADOS: Record<string, string> = {
+  paid: "Pagado",
+  pending: "Pendiente",
+  cancelled: "Cancelado",
+  canceled: "Cancelado",
+  processing: "Procesando",
+  rejected: "Rechazado",
+};
+
 export default function PaymentsPage() {
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,12 +95,12 @@ export default function PaymentsPage() {
                 </tr>
               ) : (
                 rows.map((r, i) => (
-                  <tr key={r.id} className={i % 2 === 1 ? "bg-white/[0.03]" : ""}>
-                    <td className="border border-white/10 px-4 py-3">{r.date}</td>
+                  <tr key={r.id} className={`${i % 2 === 1 ? "bg-white/[0.03]" : ""} hover:bg-white/10 transition-colors`}>
+                    <td className="border border-white/10 px-4 py-3">{new Date(r.date).toLocaleDateString("es-ES")}</td>
                     <td className="border border-white/10 px-4 py-3 text-right">
                       €{Number(r.amount).toLocaleString("de-DE")}
                     </td>
-                    <td className="border border-white/10 px-4 py-3 capitalize">{r.status}</td>
+                    <td className="border border-white/10 px-4 py-3">{ESTADOS[(r.status ?? "").toLowerCase()] ?? r.status}</td>
                   </tr>
                 ))
               )}

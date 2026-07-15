@@ -26,11 +26,13 @@ export async function POST(request: NextRequest) {
     referred_by: referredBy || null,
     promo_link: DEFAULT_PROMO_LINK,
     subaffiliate_percent: 5,
+    accepted_terms: true,
+    accepted_privacy: true,
   })
 
   if (error) {
     const message = error.code === "23505"
-      ? "Ese nombre de usuario ya esta en uso, elige otro."
+      ? "Ese nombre de usuario ya está en uso, elige otro."
       : error.message
     return NextResponse.json({ error: message }, { status: 400 })
   }

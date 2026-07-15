@@ -122,7 +122,7 @@ export default function SubAffiliatesPage() {
               </tr>
             ) : (
               rows.map((r, i) => (
-                <tr key={r.id} className={i % 2 === 1 ? "bg-white/[0.03]" : ""}>
+                <tr key={r.id} className={`${i % 2 === 1 ? "bg-white/[0.03]" : ""} hover:bg-white/10 transition-colors`}>
                   <td className="border border-white/10 px-4 py-3 text-white">{r.id.slice(0, 8)}</td>
                   <td className="border border-white/10 px-4 py-3 text-white">{r.displayName ?? "—"}</td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white font-medium">

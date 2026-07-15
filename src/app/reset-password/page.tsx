@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock } from 'lucide-react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
+import { traducirError } from '@/lib/authErrors'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -44,7 +46,7 @@ export default function ResetPasswordPage() {
     setLoading(false)
 
     if (updateError) {
-      setError(updateError.message)
+      setError(traducirError(updateError.message))
       return
     }
 
@@ -53,12 +55,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-black px-4">
+    <main className="min-h-screen flex items-start md:items-center justify-center bg-black px-4 pt-16 md:pt-0">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <span className="text-4xl font-extrabold text-emerald-400">
-            A & S Afiliados
-          </span>
+        <div className="text-center mb-8 flex justify-center">
+          <Image src="/logo.png" alt="A&S Afiliados" width={240} height={118} className="rounded-xl max-w-full h-auto" priority />
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">

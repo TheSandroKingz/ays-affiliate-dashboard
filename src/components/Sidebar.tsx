@@ -108,7 +108,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
           <Users size={18} />
-          Sub Afiliados
+          Subafiliados
         </Link>
 
         <Link href="/dashboard/commission-plan" className={linkClass("/dashboard/commission-plan")} onClick={onClose}>

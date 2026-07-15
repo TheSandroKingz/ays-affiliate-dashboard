@@ -35,30 +35,32 @@ export default function BalanceChart({
           ))}
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
-        <XAxis dataKey="date" fontSize={13} stroke="#94a3b8" angle={-45} textAnchor="end" height={50} />
+        <XAxis
+          dataKey="date"
+          fontSize={11}
+          stroke="#94a3b8"
+          angle={-45}
+          textAnchor="end"
+          height={50}
+          minTickGap={16}
+          interval="preserveStartEnd"
+        />
         <YAxis
           yAxisId="left"
           domain={[0, (max: number) => (max <= 0 ? 10 : max)]}
-          fontSize={13}
+          fontSize={11}
           stroke="#94a3b8"
           tickFormatter={(v: number) => (primaryMetricKey === "commission" ? `€${Math.round(v).toLocaleString("de-DE")}` : Math.round(v).toLocaleString("de-DE"))}
-          width={70}
-          label={{
-            value: metricConfig.find((m) => m.key === primaryMetricKey)?.label ?? "",
-            angle: -90,
-            position: "insideLeft",
-            fill: "#94a3b8",
-            fontSize: 12,
-          }}
+          width={52}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
           domain={[0, (max: number) => (max <= 0 ? 10 : max)]}
-          fontSize={13}
+          fontSize={11}
           stroke="#94a3b8"
           tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")}
-          width={Array.from(activeMetrics).some((k) => k !== primaryMetricKey) ? 60 : 0}
+          width={Array.from(activeMetrics).some((k) => k !== primaryMetricKey) ? 46 : 0}
           hide={!Array.from(activeMetrics).some((k) => k !== primaryMetricKey)}
         />
         <Tooltip

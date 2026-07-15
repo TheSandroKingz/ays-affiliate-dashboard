@@ -57,7 +57,7 @@ export default function CommissionPlanPage() {
       
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
-<h2 className="text-lg font-semibold text-white mb-4">Sub Afiliados</h2>
+<h2 className="text-lg font-semibold text-white mb-4">Subafiliados</h2>
 <div className="flex items-center justify-between">
 <p className="text-slate-200">Comisión por cada sub afiliado</p>
 <p className="text-white font-semibold">{subaffiliatePercent}%</p>

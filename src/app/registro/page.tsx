@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Eye, EyeOff } from 'lucide-react'
+import Image from 'next/image'
+import { traducirError } from '@/lib/authErrors'
 
 export default function RegistroPage() {
   const router = useRouter()
@@ -41,7 +43,7 @@ export default function RegistroPage() {
     })
 
     if (authError || !authData.user) {
-      setError(authError?.message ?? 'Error al crear la cuenta')
+      setError(traducirError(authError?.message))
       setLoading(false)
       return
     }
@@ -69,9 +71,13 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
-        <h1 className="text-3xl font-bold text-white text-center mb-1">Crea tu cuenta</h1>
+    <main className="min-h-screen flex items-start md:items-center justify-center bg-black px-4 pt-16 md:pt-0">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8 flex justify-center">
+          <Image src="/logo.png" alt="A&S Afiliados" width={240} height={118} className="rounded-xl max-w-full h-auto" priority />
+        </div>
+        <div className="bg-white/10 backdrop-blur-lg border border-emerald-400/50 rounded-2xl p-8 shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
+        <h1 className="text-2xl font-semibold text-white text-center mb-1">Crea tu cuenta</h1>
         <p className="text-slate-300 text-center mb-8">Únete al programa de afiliados</p>
 
         {referrerName && (
@@ -130,10 +136,17 @@ export default function RegistroPage() {
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
+          <p className="text-xs text-slate-400 text-center">
+            Al crear tu cuenta, aceptas los{' '}
+            <a href="/terminos" target="_blank" className="text-emerald-400 hover:text-emerald-300">Términos</a>
+            {' '}y la{' '}
+            <a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300">Política de Privacidad</a>.
+          </p>
+
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 disabled:opacity-50 text-white font-semibold py-2.5 transition-opacity"
+            className="mt-1 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 disabled:opacity-50 text-white font-semibold py-2.5 transition-opacity"
           >
             {loading ? 'Creando...' : 'Crear cuenta'}
           </button>
@@ -145,6 +158,7 @@ export default function RegistroPage() {
             Inicia sesión
           </a>
         </p>
+        </div>
       </div>
     </main>
   )

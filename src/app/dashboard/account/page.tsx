@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 import { CardsSkeleton } from "@/components/Skeletons";
+import { traducirError } from "@/lib/authErrors";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
@@ -121,7 +122,7 @@ export default function AccountPage() {
     if (error) {
       setMessage(
         error.code === "23505"
-          ? "Ese nombre de usuario ya esta en uso, elige otro."
+          ? "Ese nombre de usuario ya está en uso, elige otro."
           : "Error al guardar"
       );
     } else if (emailError) {
@@ -148,7 +149,7 @@ export default function AccountPage() {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setSaving(false);
     if (error) {
-      setMessage(error.message);
+      setMessage(traducirError(error.message));
     } else {
       setMessage("Contraseña actualizada");
       setNewPassword("");
@@ -226,7 +227,7 @@ export default function AccountPage() {
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           
@@ -236,7 +237,7 @@ export default function AccountPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
+            className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
           
@@ -258,7 +259,7 @@ export default function AccountPage() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div>
@@ -267,7 +268,7 @@ export default function AccountPage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <button

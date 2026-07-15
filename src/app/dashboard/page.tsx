@@ -37,7 +37,7 @@ function last7Days(): DailyPoint[] {
     const d = new Date();
     d.setDate(d.getDate() - i);
     days.push({
-      date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
+      date: d.toLocaleDateString("es-ES", { month: "short", day: "2-digit" }),
       commission: 0,
       clicks: 0,
       registrations: 0,
@@ -60,7 +60,7 @@ function fillMissingDays(
     const key = d.toISOString().slice(0, 10);
     const row = map.get(key);
     points.push({
-      date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" }),
+      date: d.toLocaleDateString("es-ES", { month: "short", day: "2-digit", timeZone: "UTC" }),
       commission: row ? Number(row.commission) : 0,
       clicks: row ? row.clicks : 0,
       registrations: row ? row.registrations : 0,
@@ -206,7 +206,7 @@ const totals = dailyData.reduce(
             <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
               <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
           <ContactManagerButton />
           <button
             onClick={() => loadStats()}
@@ -217,7 +217,7 @@ const totals = dailyData.reduce(
         </div>
       </div>
 
-      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-6 max-w-md mb-3 shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
+      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-6 max-w-md shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-slate-300">Mi balance</span>
@@ -276,7 +276,7 @@ const totals = dailyData.reduce(
         })}
       </div>
 
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6">
         <BalanceChart
           data={chartData}
           activeMetrics={activeMetrics}

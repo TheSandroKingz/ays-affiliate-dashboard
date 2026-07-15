@@ -119,7 +119,7 @@ export default function AdminStatsPage() {
               stats.map((row, i) => (
                 <tr
                   key={row.user_id}
-                  className={i % 2 === 1 ? "bg-white/[0.03]" : ""}
+                  className={`${i % 2 === 1 ? "bg-white/[0.03]" : ""} hover:bg-white/10 transition-colors`}
                 >
                   <td className="border border-white/10 px-4 py-3 text-white">
                     {row.display_name ?? "—"}

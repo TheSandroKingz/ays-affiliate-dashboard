@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex flex-col flex-1 min-w-0">
         <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden sticky top-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>
-          <button onClick={() => setSidebarOpen(true)} className="text-white">
+          <button onClick={() => setSidebarOpen(true)} className="text-white p-2 -ml-2">
             <Menu size={24} />
           </button>
           <span className="flex-1 flex justify-center pr-6">
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </span>
         </div>
 
-        <main className="flex-1 min-w-0 p-8 md:pt-8">{children}</main>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{children}</main>
       </div>
     </div>
   );

@@ -10,8 +10,13 @@ const geistSans = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard de Afiliados",
+  title: "A&S Afiliados",
   description: "Panel de estadísticas para afiliados",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
