@@ -50,8 +50,8 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
     router.push('/dashboard')
   }
   return (
-    <main className="min-h-screen flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md -mt-10">
+    <main className="min-h-screen flex items-start md:items-center justify-center bg-black px-4 pt-10 md:pt-0">
+      <div className="w-full max-w-md">
         <div className="text-center mb-12 flex justify-center">
           <Image src="/logo.png" alt="A&S Afiliados" width={310} height={152} className="rounded-xl" priority />
         </div>
