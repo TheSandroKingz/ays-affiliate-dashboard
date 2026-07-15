@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <span className="text-3xl font-extrabold text-emerald-400">
+          <span className="text-4xl font-extrabold text-emerald-400">
             A & S Afiliados
           </span>
         </div>
