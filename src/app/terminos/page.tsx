@@ -19,7 +19,19 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">2. Definiciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">2. Aceptación electrónica y valor probatorio</h2>
+            <p>
+              La aceptación de estos términos por medios electrónicos al registrarte
+              tiene plena validez y equivale a tu firma. Los registros y archivos
+              generados por los sistemas de la Plataforma (incluidas las marcas de
+              tiempo de aceptación y la actividad de la cuenta) constituyen prueba
+              válida de dicha aceptación y de la actividad del Afiliado, salvo prueba
+              en contrario.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">3. Definiciones</h2>
             <p>
               &quot;Plataforma&quot; se refiere a A & S Afiliados y a este panel de afiliación.
               &quot;Afiliado&quot; eres tú, la persona o entidad registrada. &quot;Operador&quot; es
@@ -31,7 +43,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">3. Naturaleza del servicio</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">4. Naturaleza del servicio</h2>
             <p>
               A & S Afiliados es un programa de marketing de afiliación mediante el
               cual el Afiliado promociona la oferta de Operadores de terceros a
@@ -46,7 +58,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">4. Relación independiente entre las partes</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">5. Relación independiente entre las partes</h2>
             <p>
               El Afiliado actúa como <strong>contratista independiente</strong>. Nada
               en estos términos crea una relación laboral, de sociedad, de agencia,
@@ -57,7 +69,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">5. Elegibilidad y edad mínima</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">6. Elegibilidad y edad mínima</h2>
             <p>
               Debes ser mayor de 18 años (o la edad legal de mayoría en tu país, si
               es superior) para registrarte. Eres responsable de asegurarte de que
@@ -68,7 +80,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">6. Obligaciones y declaraciones del Afiliado</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">7. Obligaciones y declaraciones del Afiliado</h2>
             <p>
               El Afiliado declara y garantiza que, por su cuenta y riesgo, cumplirá
               en todo momento con: (a) la normativa aplicable en materia de
@@ -85,7 +97,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">7. Veracidad de la información</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">8. Veracidad de la información</h2>
             <p>
               El Afiliado garantiza que toda la información que facilita es veraz,
               exacta, completa y actualizada, y se compromete a mantenerla al día. La
@@ -96,7 +108,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">8. Cumplimiento, prevención del blanqueo y sanciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">9. Cumplimiento, prevención del blanqueo y sanciones</h2>
             <p>
               El Afiliado declara que no figura en listas de sanciones
               internacionales, que no opera desde ni dirige tráfico hacia territorios
@@ -109,7 +121,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">9. Conducta prohibida</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">10. Conducta prohibida</h2>
             <p>
               Queda expresamente prohibido: el tráfico incentivado no autorizado; el
               uso de bots, spam o correo no solicitado; la publicidad engañosa o que
@@ -125,7 +137,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">10. Juego responsable y protección de menores</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">11. Juego responsable y protección de menores</h2>
             <p>
               El Afiliado se compromete a promocionar el juego de forma responsable,
               a incluir los mensajes de juego responsable y las advertencias que la
@@ -137,7 +149,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">11. Reconocimiento y asunción de riesgo</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">12. Reconocimiento y asunción de riesgo</h2>
             <p>
               El Afiliado reconoce que la promoción de juego es una actividad
               regulada y de riesgo, que los ingresos son variables y no garantizados,
@@ -148,7 +160,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">12. Comisiones, pagos y ajustes</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">13. Comisiones, pagos y ajustes</h2>
             <p>
               Las Comisiones se calculan según el plan asignado a tu cuenta y se
               muestran en tu panel a título informativo. La Plataforma podrá
@@ -162,7 +174,17 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">13. Exactitud del seguimiento</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">14. Compensación de deudas</h2>
+            <p>
+              La Plataforma podrá compensar cualquier importe que el Afiliado le
+              adeude —incluidas comisiones pagadas en exceso, revertidas por el
+              Operador o la Red, o generadas por fraude o incumplimiento— con las
+              Comisiones pendientes de pago, sin necesidad de requerimiento previo.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">15. Exactitud del seguimiento</h2>
             <p>
               El seguimiento de clics, registros, depósitos y Comisiones depende de
               sistemas propios y de terceros (Operadores y Red). La Plataforma no
@@ -174,7 +196,18 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">14. No elusión</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">16. Derecho de verificación y auditoría</h2>
+            <p>
+              Ante indicios de fraude, incumplimiento o tráfico inválido, la
+              Plataforma podrá solicitar al Afiliado información y documentación
+              adicional, verificar su identidad y revisar su actividad. La falta de
+              colaboración en un plazo razonable facultará a la Plataforma para
+              retener pagos y suspender la cuenta.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">17. No elusión</h2>
             <p>
               El Afiliado se compromete a no eludir a la Plataforma tratando
               directamente con la Red o con los Operadores presentados por ésta con
@@ -185,7 +218,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">15. Propiedad intelectual</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">18. Propiedad intelectual</h2>
             <p>
               La Plataforma y, en su caso, los Operadores conservan la titularidad de
               sus marcas, logotipos, enlaces y materiales promocionales. Se concede
@@ -197,7 +230,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">16. Confidencialidad</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">19. Confidencialidad</h2>
             <p>
               El Afiliado mantendrá la confidencialidad de la información no pública a
               la que acceda (tarifas, condiciones comerciales, datos de la Plataforma
@@ -207,7 +240,17 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">17. Indemnización</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">20. Comunicaciones del servicio</h2>
+            <p>
+              El Afiliado consiente recibir las comunicaciones operativas y
+              administrativas relativas a su cuenta y al servicio a través del panel o
+              del correo electrónico asociado. Estas comunicaciones forman parte del
+              servicio y no constituyen comunicaciones comerciales no solicitadas.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">21. Indemnización</h2>
             <p>
               El Afiliado se compromete a <strong>mantener indemne y a defender</strong> a
               la Plataforma, sus titulares, socios y colaboradores frente a cualquier
@@ -222,7 +265,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">18. Renuncia de garantías</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">22. Renuncia de garantías</h2>
             <p>
               En la máxima medida permitida por la ley, la Plataforma se ofrece
               &quot;tal cual&quot; y &quot;según disponibilidad&quot;, y rechaza toda garantía, expresa
@@ -233,7 +276,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">19. Limitación y exclusión de responsabilidad</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">23. Limitación y exclusión de responsabilidad</h2>
             <p>
               En la máxima medida permitida por la ley, la Plataforma no será
               responsable de daños indirectos, incidentales, especiales o lucro
@@ -247,7 +290,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">20. Plazo para reclamaciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">24. Plazo para reclamaciones</h2>
             <p>
               Cualquier reclamación del Afiliado relacionada con estos términos o con
               las Comisiones deberá presentarse por escrito en un plazo máximo de seis
@@ -257,7 +300,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">21. Suspensión y terminación</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">25. Suspensión y terminación</h2>
             <p>
               Cualquiera de las partes puede resolver la relación en cualquier
               momento. La Plataforma podrá suspender o cancelar la cuenta de forma
@@ -271,7 +314,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">22. Protección de datos</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">26. Protección de datos</h2>
             <p>
               El tratamiento de los datos personales del Afiliado se rige por la
               Política de Privacidad. El Afiliado, cuando trate datos de terceros en
@@ -281,7 +324,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">23. Fuerza mayor</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">27. Fuerza mayor</h2>
             <p>
               La Plataforma no será responsable por incumplimientos o retrasos
               debidos a causas ajenas a su control razonable, incluyendo fallos de
@@ -291,7 +334,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">24. Cesión</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">28. Cesión</h2>
             <p>
               El Afiliado no podrá ceder ni transferir su cuenta ni sus derechos u
               obligaciones sin consentimiento previo y por escrito de la Plataforma.
@@ -301,16 +344,17 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">25. Nulidad parcial y renuncia</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">29. Nulidad parcial y renuncia</h2>
             <p>
               Si alguna cláusula fuera declarada nula o inaplicable, el resto de los
-              términos seguirá siendo plenamente válido. La no exigencia por la
+              términos seguirá siendo plenamente válido y dicha cláusula se sustituirá
+              por otra válida que mejor refleje su finalidad. La no exigencia por la
               Plataforma de cualquier derecho no supondrá renuncia al mismo.
             </p>
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">26. Notificaciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">30. Notificaciones</h2>
             <p>
               Las comunicaciones entre las partes se realizarán a través del panel o
               del correo electrónico asociado a la cuenta del Afiliado, que se
@@ -320,7 +364,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">27. Idioma</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">31. Idioma</h2>
             <p>
               La versión en español de estos términos es la que prevalece. Cualquier
               traducción se ofrece únicamente a título informativo.
@@ -328,7 +372,16 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">28. Acuerdo completo</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">32. Encabezados e interpretación</h2>
+            <p>
+              Los títulos de las secciones son meramente orientativos y no afectan a
+              la interpretación de estos términos, que se entenderán conforme a su
+              finalidad y a la buena fe, dando plena eficacia a las cláusulas válidas.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-semibold mb-2">33. Acuerdo completo</h2>
             <p>
               Estos términos, junto con la Política de Privacidad y el plan de
               comisión aplicable, constituyen el acuerdo íntegro entre las partes y
@@ -337,7 +390,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">29. Modificaciones</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">34. Modificaciones</h2>
             <p>
               La Plataforma podrá actualizar estos términos en cualquier momento. Se
               notificarán los cambios relevantes y el uso continuado de la Plataforma
@@ -346,7 +399,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">30. Ley aplicable y jurisdicción</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">35. Ley aplicable y jurisdicción</h2>
             <p>
               Estos términos se rigen por la <strong>legislación española</strong>.
               Para la resolución de cualquier controversia, las partes se someten a
@@ -357,7 +410,7 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-white text-lg font-semibold mb-2">31. Contacto</h2>
+            <h2 className="text-white text-lg font-semibold mb-2">36. Contacto</h2>
             <p>
               Para cualquier duda sobre estos términos, contacta con tu gestor de
               afiliados desde el panel.
