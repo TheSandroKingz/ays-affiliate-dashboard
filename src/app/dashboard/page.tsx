@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import ContactManagerButton from "@/components/ContactManagerButton";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { metricConfig } from "@/lib/metrics";
 import { Info } from "lucide-react";
 
@@ -171,7 +172,7 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return <p className="text-slate-300">Cargando...</p>;
+    return <DashboardSkeleton />;
   }
 const totals = dailyData.reduce(
     (acc, d) => ({
