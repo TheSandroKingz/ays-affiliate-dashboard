@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import ContactManagerButton from "@/components/ContactManagerButton";
@@ -81,8 +81,8 @@ export default function DashboardPage() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [subCommission, setSubCommission] = useState(0);
 
-  useEffect(() => {
-    async function loadStats() {
+  const loadStats = useCallback(async () => {
+      setLoading(true);
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -146,10 +146,13 @@ export default function DashboardPage() {
       setSubCommission(subTotal);
 
       setLoading(false);
-    }
+  }, []);
 
+  useEffect(() => {
     loadStats();
-  }, []);const toggleMetric = (key: string) => {
+  }, [loadStats]);
+
+  const toggleMetric = (key: string) => {
     setActiveMetrics((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -179,14 +182,12 @@ const totals = dailyData.reduce(
   // al historial de pagos).
   const balance = totals.commission + subCommission;
   const chartData = dailyData.map((d) => {
-  const point: Record<string, number | string> = { date: d.date };
-  metricConfig.forEach((m) => {
-    const max = Math.max(...dailyData.map((p) => p[m.key]), 1);
-    point[m.key] = d[m.key];
-    point[`${m.key}Pct`] = (d[m.key] / max) * 100;
+    const point: Record<string, number | string> = { date: d.date };
+    metricConfig.forEach((m) => {
+      point[m.key] = d[m.key];
+    });
+    return point;
   });
-  return point;
-});
 
 
   const primaryMetricKey =
@@ -208,7 +209,7 @@ const totals = dailyData.reduce(
           <div className="flex items-center gap-3">
           <ContactManagerButton />
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => loadStats()}
             className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
           >
             Actualizar

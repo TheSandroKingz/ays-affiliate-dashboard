@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
 
@@ -33,27 +33,29 @@ export default function MediaReportPage() {
   const [rows, setRows] = useState<DailyRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadData() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      const { data } = await supabase
-        .from("affiliate_daily_stats")
-        .select("date, commission, clicks, registrations, ftd")
-        .eq("user_id", user.id)
-        .order("date", { ascending: false });
-
-      setRows(fillMissingDays((data as DailyRow[]) ?? []));
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) {
       setLoading(false);
+      return;
     }
-    loadData();
+    const { data } = await supabase
+      .from("affiliate_daily_stats")
+      .select("date, commission, clicks, registrations, ftd")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false });
+
+    setRows(fillMissingDays((data as DailyRow[]) ?? []));
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return <TableSkeleton title="Informe de Medios" cols={5} />;
@@ -73,7 +75,7 @@ export default function MediaReportPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => loadData()}
           className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
         >
           Actualizar

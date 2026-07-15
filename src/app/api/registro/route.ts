@@ -6,10 +6,22 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 const DEFAULT_PROMO_LINK = 'https://go.affision.com/visit/?bta=44878&nci=5520'
 
 export async function POST(request: NextRequest) {
-  const { userId, displayName, referredBy } = await request.json()
+  // Exigir la sesión del usuario recién creado y tomar su id del token,
+  // en vez de confiar en un userId enviado por el cliente.
+  const token = request.headers.get('authorization')?.replace('Bearer ', '')
+  if (!token) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+  const { data: authData, error: authError } =
+    await supabaseAdmin.auth.getUser(token)
+  if (authError || !authData.user) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const { displayName, referredBy } = await request.json()
 
   const { error } = await supabaseAdmin.from('affiliates').insert({
-    user_id: userId,
+    user_id: authData.user.id,
     display_name: displayName,
     referred_by: referredBy || null,
     promo_link: DEFAULT_PROMO_LINK,

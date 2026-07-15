@@ -48,9 +48,11 @@ export default function RegistroPage() {
 
     const res = await fetch('/api/registro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + (authData.session?.access_token ?? ''),
+      },
       body: JSON.stringify({
-        userId: authData.user.id,
         displayName: nombre,
         referredBy: ref,
       }),

@@ -27,7 +27,7 @@ export default function ComisionesClient({
     }))
   );
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [messageId, setMessageId] = useState<string | null>(null);
+  const [result, setResult] = useState<{ id: string; ok: boolean } | null>(null);
 
   function updateRow(id: string, field: string, value: number) {
     setRows((prev) =>
@@ -40,7 +40,7 @@ export default function ComisionesClient({
     if (!row) return;
 
     setSavingId(id);
-    setMessageId(null);
+    setResult(null);
 
     const res = await fetch("/api/admin/comisiones", {
       method: "POST",
@@ -57,7 +57,7 @@ export default function ComisionesClient({
     });
 
     setSavingId(null);
-    setMessageId(id);
+    setResult({ id, ok: res.ok });
     if (!res.ok) {
       console.error(await res.json());
     }
@@ -127,9 +127,13 @@ export default function ComisionesClient({
             >
               {savingId === row.id ? "Guardando..." : "Guardar"}
             </button>
-            {messageId === row.id && savingId !== row.id && (
-              <span className="text-emerald-400 text-sm">Guardado ✓</span>
-            )}
+            {result?.id === row.id &&
+              savingId !== row.id &&
+              (result.ok ? (
+                <span className="text-emerald-400 text-sm">Guardado ✓</span>
+              ) : (
+                <span className="text-red-400 text-sm">Error al guardar</span>
+              ))}
           </div>
         </div>
       ))}
