@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const { data: affiliate, error: findError } = await supabaseAdmin
     .from('affiliates')
     .select('user_id')
-    .ilike('display_name', identifier)
+    .ilike('display_name', identifier.replace(/[%_]/g, '\\$&'))
     .maybeSingle()
 
   if (findError || !affiliate) {

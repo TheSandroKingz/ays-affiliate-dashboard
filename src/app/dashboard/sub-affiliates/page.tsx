@@ -18,10 +18,10 @@ export default function SubAffiliatesPage() {
   useEffect(() => {
     async function load() {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (!user) {
+      if (!session?.user) {
         setLoading(false);
         return;
       }
@@ -29,7 +29,7 @@ export default function SubAffiliatesPage() {
       const { data: affiliateRow } = await supabase
         .from("affiliates")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .single();
 
       if (affiliateRow) {
@@ -38,8 +38,11 @@ export default function SubAffiliatesPage() {
 
       const res = await fetch("/api/subaffiliates", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({ userId: session.user.id }),
       });
 
       if (res.ok) {
