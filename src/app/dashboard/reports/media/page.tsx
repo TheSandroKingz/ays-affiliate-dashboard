@@ -131,7 +131,7 @@ export default function MediaReportPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="border border-white/10 px-4 py-6 text-center text-slate-400">
-                  No hay datos todavía
+                  Aún no hay datos.
                 </td>
               </tr>
             )}

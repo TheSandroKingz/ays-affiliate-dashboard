@@ -1,7 +1,12 @@
+import Link from "next/link";
+
 export default function PrivacidadPage() {
   return (
     <main className="min-h-screen bg-black px-4 py-12">
       <div className="max-w-3xl mx-auto">
+        <Link href="/login" className="inline-block text-sm text-emerald-400 hover:text-emerald-300 mb-6">
+          ← Volver
+        </Link>
         <h1 className="text-3xl font-bold text-emerald-400 mb-2">Política de Privacidad</h1>
         <p className="text-slate-400 text-sm mb-8">Última actualización: julio de 2026</p>
 

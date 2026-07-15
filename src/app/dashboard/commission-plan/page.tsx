@@ -59,7 +59,7 @@ export default function CommissionPlanPage() {
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
 <h2 className="text-lg font-semibold text-white mb-4">Subafiliados</h2>
 <div className="flex items-center justify-between">
-<p className="text-slate-200">Comisión por cada sub afiliado</p>
+<p className="text-slate-200">Comisión por cada subafiliado</p>
 <p className="text-white font-semibold">{subaffiliatePercent}%</p>
 </div>
 </div>
@@ -69,13 +69,13 @@ export default function CommissionPlanPage() {
         <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
           <p className="text-slate-200">🇪🇸 España (ES)</p>
           <p className="text-white font-semibold">
-            {cpaSpain.toLocaleString("de-DE")} €
+            €{cpaSpain.toLocaleString("de-DE")}
           </p>
         </div>
         <div className="flex items-center justify-between">
           <p className="text-slate-200">Otros Países</p>
           <p className="text-white font-semibold">
-            {cpaOther.toLocaleString("de-DE")} €
+            €{cpaOther.toLocaleString("de-DE")}
           </p>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function CommissionPlanPage() {
         )}
         <div className="flex items-center justify-between">
           <p className="text-slate-200">Depósito mínimo</p>
-          <p className="text-white font-semibold">20 €</p>
+          <p className="text-white font-semibold">€20</p>
         </div>
       </div>
     </div>

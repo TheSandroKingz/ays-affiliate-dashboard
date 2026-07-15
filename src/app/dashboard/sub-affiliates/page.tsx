@@ -16,6 +16,7 @@ export default function SubAffiliatesPage() {
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [percent, setPercent] = useState(5);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -32,12 +33,13 @@ export default function SubAffiliatesPage() {
 
       const { data: affiliateRow } = await supabase
         .from("affiliates")
-        .select("id")
+        .select("id, subaffiliate_percent")
         .eq("user_id", session.user.id)
         .single();
 
       if (affiliateRow) {
         setAffiliateId(affiliateRow.id);
+        setPercent(affiliateRow.subaffiliate_percent ?? 5);
       }
 
       const res = await fetch("/api/subaffiliates", {
@@ -63,18 +65,18 @@ export default function SubAffiliatesPage() {
   const totalCommission = rows.reduce((sum, r) => sum + r.commission, 0);
 
   if (loading) {
-    return <TableSkeleton title="Informe de Subafiliados" cols={3} />;
+    return <TableSkeleton title="Subafiliados" cols={3} />;
   }
 
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-white">Informe de Subafiliados</h1>
+      <h1 className="text-2xl font-semibold text-white">Subafiliados</h1>
 
       {affiliateId && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">
           <p className="text-sm font-medium text-slate-300 mb-3">Promocionar</p>
           <p className="text-sm text-slate-300 mb-3">
-            Comparte tu enlace único para invitar a otros afiliados y gana un 5% de sus comisiones.
+            Comparte tu enlace único para invitar a otros afiliados y gana un {percent}% de sus comisiones.
           </p>
           <div className="flex items-center gap-2">
             <input

@@ -8,7 +8,7 @@ import { traducirError } from "@/lib/authErrors";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
-    "personal" | "pago" | "seguridad" | "privacidad"
+    "personal" | "seguridad" | "privacidad"
   >("personal");
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");

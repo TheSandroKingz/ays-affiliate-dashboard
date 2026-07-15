@@ -23,7 +23,7 @@ export default function DashboardSkeleton() {
       </div>
 
       {/* Tarjetas de métricas */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}

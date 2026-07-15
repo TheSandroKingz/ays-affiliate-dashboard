@@ -267,7 +267,7 @@ const totals = dailyData.reduce(
         </div>
         <p className="text-4xl font-bold text-white">€{balance.toLocaleString("de-DE")}</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);
           return (
