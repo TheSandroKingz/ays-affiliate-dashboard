@@ -262,7 +262,7 @@ const totals = dailyData.reduce(
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={320}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <defs>
               {metricConfig.map((m) => (
@@ -273,9 +273,23 @@ const totals = dailyData.reduce(
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
-            <XAxis dataKey="date" fontSize={12} stroke="#94a3b8" angle={-45} textAnchor="end" height={50} />
-            <YAxis yAxisId="left" domain={[0, "dataMax"]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => (primaryMetricKey === "commission" ? `€${Math.round(v).toLocaleString("de-DE")}` : Math.round(v).toLocaleString("de-DE"))} width={70} />
-          <YAxis yAxisId="right" orientation="right" domain={[0, "dataMax"]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")} width={60} />
+            <XAxis dataKey="date" fontSize={13} stroke="#94a3b8" angle={-45} textAnchor="end" height={50} />
+            <YAxis
+              yAxisId="left"
+              domain={[0, (max: number) => (max <= 0 ? 10 : max)]}
+              fontSize={13}
+              stroke="#94a3b8"
+              tickFormatter={(v: number) => (primaryMetricKey === "commission" ? `€${Math.round(v).toLocaleString("de-DE")}` : Math.round(v).toLocaleString("de-DE"))}
+              width={70}
+              label={{
+                value: metricConfig.find((m) => m.key === primaryMetricKey)?.label ?? "",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#94a3b8",
+                fontSize: 12,
+              }}
+            />
+          <YAxis yAxisId="right" orientation="right" domain={[0, (max: number) => (max <= 0 ? 10 : max)]} fontSize={13} stroke="#94a3b8" tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")} width={60} />
           <Tooltip
             formatter={(value: any, name: any) => {
               const metric = metricConfig.find((m) => m.key === name);
@@ -302,7 +316,7 @@ const totals = dailyData.reduce(
 
                   fill={`url(#chartGradient-${m.key})`}
 
-                  dot={{ r: 3 }}
+                  dot={{ r: 4, strokeWidth: 2, fill: "#0a0a0a" }}
 
                   hide={!activeMetrics.has(m.key)}
 
@@ -324,7 +338,7 @@ const totals = dailyData.reduce(
 
                   strokeWidth={2}
 
-                  dot={{ r: 3 }}
+                  dot={{ r: 4, strokeWidth: 2, fill: "#0a0a0a" }}
 
                   hide={!activeMetrics.has(m.key)}
 
