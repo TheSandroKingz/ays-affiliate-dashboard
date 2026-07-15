@@ -56,7 +56,9 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
             <span className="text-6xl font-black text-white tracking-tight">A</span>
             <span className="relative inline-block">
               <span className="text-6xl font-black text-white tracking-tight">&</span>
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]">♠</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.7)] rotate-[-8deg]">
+                <path d="M12,2C12,2,4,10,4,15c0,3.31,2.69,6,6,6c1,0,1.94-0.25,2.76-0.69C12.32,22.34,10.5,24,8,24h8c-2.5,0-4.32-1.66-4.76-3.69C12.06,20.75,13,21,14,21c3.31,0,6-2.69,6-6C20,10,12,2,12,2z" />
+              </svg>
             </span>
             <span className="text-6xl font-black text-white tracking-tight">S</span>
           </div>
