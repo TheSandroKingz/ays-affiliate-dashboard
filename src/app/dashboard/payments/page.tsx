@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { TableSkeleton } from "@/components/Skeletons";
 
 type PaymentRow = {
   id: string;
@@ -51,12 +52,7 @@ export default function PaymentsPage() {
   
 
   if (loading) {
-    return (
-      <main className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold text-white">Pagos</h1>
-        <p className="text-slate-300">Cargando...</p>
-      </main>
-    );
+    return <TableSkeleton title="Pagos" cols={3} />;
   }
 
   return (

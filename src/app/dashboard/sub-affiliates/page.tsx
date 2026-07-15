@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { TableSkeleton } from "@/components/Skeletons";
 
 type SubAffiliateRow = {
   id: string;
@@ -62,12 +63,7 @@ export default function SubAffiliatesPage() {
   const totalCommission = rows.reduce((sum, r) => sum + r.commission, 0);
 
   if (loading) {
-    return (
-      <main className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold text-white">Informe de Subafiliados</h1>
-        <p className="text-slate-300">Cargando...</p>
-      </main>
-    );
+    return <TableSkeleton title="Informe de Subafiliados" cols={3} />;
   }
 
   return (

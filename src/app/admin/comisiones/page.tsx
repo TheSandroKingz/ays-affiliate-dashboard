@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import ComisionesClient from "@/components/admin/ComisionesClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
+import { CardsSkeleton } from "@/components/Skeletons";
 
 type Affiliate = {
   id: string;
@@ -60,14 +61,7 @@ export default function ComisionesPage() {
   }
 
   if (!affiliates || !accessToken) {
-    return (
-      <main className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold text-white">
-          Plan de Comisión por Afiliado
-        </h1>
-        <p className="text-slate-300">Cargando...</p>
-      </main>
-    );
+    return <CardsSkeleton title="Plan de Comisión por Afiliado" cards={4} />;
   }
 
   return (

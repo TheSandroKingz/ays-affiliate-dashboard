@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
+import { TableSkeleton } from "@/components/Skeletons";
 
 type StatRow = {
   user_id: string;
@@ -60,14 +61,7 @@ export default function AdminStatsPage() {
   );
 
   if (!loaded) {
-    return (
-      <main className="flex flex-col gap-6">
-        <h1 className="text-2xl font-semibold text-white">
-          Estadísticas de Afiliados
-        </h1>
-        <p className="text-slate-300">Cargando...</p>
-      </main>
-    );
+    return <TableSkeleton title="Estadísticas de Afiliados" cols={6} />;
   }
 
   if (error) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { TableSkeleton } from "@/components/Skeletons";
 
 type DailyRow = {
   date: string;
@@ -55,7 +56,7 @@ export default function MediaReportPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-slate-300">Cargando...</p>;
+    return <TableSkeleton title="Informe de Medios" cols={5} />;
   }
 
   const totals = rows.reduce(

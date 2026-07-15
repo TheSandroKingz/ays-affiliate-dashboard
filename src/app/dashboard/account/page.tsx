@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
+import { CardsSkeleton } from "@/components/Skeletons";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
@@ -157,7 +158,7 @@ export default function AccountPage() {
 
 
   if (loading) {
-    return <p className="text-slate-300">Cargando...</p>;
+    return <CardsSkeleton title="Configuración de Cuenta" cards={2} />;
   }
 
   const tabs = [

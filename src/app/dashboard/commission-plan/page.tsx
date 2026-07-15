@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { CardsSkeleton } from "@/components/Skeletons";
 
 export default function CommissionPlanPage() {
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export default function CommissionPlanPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-slate-300">Cargando...</p>;
+    return <CardsSkeleton title="Plan de Comisión" cards={3} />;
   }
 
   return (
