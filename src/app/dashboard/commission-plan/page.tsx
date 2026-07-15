@@ -23,7 +23,7 @@ export default function CommissionPlanPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("cpa_spain, cpa_other, subaffiliate_percent, promo_link")
+        .select("cpa_spain, cpa_other, subaffiliate_percent, promo_link, freshaffs_tracking_code")
         .eq("user_id", user.id)
         .single();
 
@@ -31,7 +31,11 @@ export default function CommissionPlanPage() {
         setCpaSpain(data.cpa_spain ?? 85);
         setCpaOther(data.cpa_other ?? 85);
         setSubaffiliatePercent(data.subaffiliate_percent ?? 9);
-        setPromoLink(data.promo_link ?? null);
+        setPromoLink(
+          data.freshaffs_tracking_code
+            ? `${window.location.origin}/go/${data.freshaffs_tracking_code}`
+            : data.promo_link ?? null
+        );
       }
       setLoading(false);
     }
