@@ -215,7 +215,7 @@ const totals = dailyData.reduce(
             <h1 className="text-2xl font-semibold text-white">Hola{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
               <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 sm:gap-3">
           <ContactManagerButton />
           <button
             onClick={() => loadStats()}
@@ -226,7 +226,7 @@ const totals = dailyData.reduce(
         </div>
       </div>
 
-      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-6 max-w-md shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
+      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-slate-300">Mi balance</span>
@@ -261,14 +261,11 @@ const totals = dailyData.reduce(
                 <span className="text-slate-300">Total generado</span>
                 <span className="font-semibold text-emerald-400">€{totalGenerado.toLocaleString("de-DE")}</span>
               </div>
-              <p className="mt-2 text-[11px] leading-snug text-slate-500">
-                Total generado = todo lo que has ganado desde el inicio, aunque ya lo hayas cobrado.
-              </p>
             </div>
           </div>
         </div>
         </div>
-        <p className="text-3xl font-bold text-white">€{balance.toLocaleString("de-DE")}</p>
+        <p className="text-4xl font-bold text-white">€{balance.toLocaleString("de-DE")}</p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {statCards.map((card) => {
