@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(
@@ -17,12 +17,19 @@ export async function GET(
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-
-  await supabaseAdmin.rpc("increment_daily_stats", {
-    p_user_id: affiliate.user_id,
-    p_date: today,
-    p_clicks: 1,
+  // Contamos el clic en segundo plano (after) para NO retrasar la redirección
+  // del visitante hacia la casa de apuestas. La fecha usa la zona de Madrid,
+  // coherente con el resto de las estadísticas.
+  const userId = affiliate.user_id;
+  after(async () => {
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date());
+    await supabaseAdmin.rpc("increment_daily_stats", {
+      p_user_id: userId,
+      p_date: today,
+      p_clicks: 1,
+    });
   });
 
   return NextResponse.redirect(affiliate.promo_link);
