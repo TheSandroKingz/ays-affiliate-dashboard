@@ -14,7 +14,7 @@ export function traducirError(mensaje: string | undefined | null): string {
     return "La contraseña debe tener al menos 6 caracteres.";
   if (m.includes("unable to validate email") || m.includes("invalid format"))
     return "El correo no tiene un formato válido.";
-  if (m.includes("should be different") || m.includes("same"))
+  if (m.includes("should be different"))
     return "La nueva contraseña debe ser distinta a la anterior.";
   if (m.includes("rate limit") || m.includes("too many"))
     return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";

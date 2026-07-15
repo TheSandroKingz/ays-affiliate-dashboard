@@ -90,7 +90,10 @@ export default function AccountPage() {
       data: { session },
     } = await supabase.auth.getSession();
     const user = session?.user;
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("affiliates")
