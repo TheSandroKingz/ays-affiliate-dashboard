@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -51,13 +52,11 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
   return (
     <main className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <span className="text-4xl font-extrabold text-emerald-400">
-            A & S Afiliados
-          </span>
+        <div className="text-center mb-6 flex justify-center">
+          <Image src="/logo.jpeg" alt="A&S Afiliados" width={180} height={180} className="rounded-xl" priority />
         </div>
 
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-white/10 backdrop-blur-lg border border-emerald-400/50 rounded-2xl p-8 shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
           <h1 className="text-2xl font-semibold text-white text-center mb-6">Iniciar sesión</h1>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
