@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  LineChart,
+  ComposedChart,
+  Area,
   Line,
   XAxis,
   YAxis,
@@ -262,9 +263,17 @@ const totals = dailyData.reduce(
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-            <XAxis dataKey="date" fontSize={12} stroke="#94a3b8" />
+          <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <defs>
+              {metricConfig.map((m) => (
+                <linearGradient key={m.key} id={`chartGradient-${m.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={m.color} stopOpacity={0.35} />
+                  <stop offset="95%" stopColor={m.color} stopOpacity={0} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
+            <XAxis dataKey="date" fontSize={12} stroke="#94a3b8" angle={-45} textAnchor="end" height={50} />
             <YAxis yAxisId="left" domain={[0, "dataMax"]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => (primaryMetricKey === "commission" ? `€${Math.round(v).toLocaleString("de-DE")}` : Math.round(v).toLocaleString("de-DE"))} width={70} />
           <YAxis yAxisId="right" orientation="right" domain={[0, "dataMax"]} fontSize={12} stroke="#94a3b8" tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")} width={60} />
           <Tooltip
@@ -273,19 +282,58 @@ const totals = dailyData.reduce(
               return [value, metric ? metric.label : name];
             }}
           />
-            {metricConfig.map((m) => (
-            <Line
-              key={m.key}
-              type="monotone"
-              dataKey={m.key}
-              yAxisId={m.key === primaryMetricKey ? "left" : "right"}
-              stroke={m.color}
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              hide={!activeMetrics.has(m.key)}
-            />
-          ))}
-          </LineChart>
+            {metricConfig.map((m) =>
+
+              m.key === primaryMetricKey ? (
+
+                <Area
+
+                  key={m.key}
+
+                  type="monotone"
+
+                  dataKey={m.key}
+
+                  yAxisId="left"
+
+                  stroke={m.color}
+
+                  strokeWidth={2}
+
+                  fill={`url(#chartGradient-${m.key})`}
+
+                  dot={{ r: 3 }}
+
+                  hide={!activeMetrics.has(m.key)}
+
+                />
+
+              ) : (
+
+                <Line
+
+                  key={m.key}
+
+                  type="monotone"
+
+                  dataKey={m.key}
+
+                  yAxisId="right"
+
+                  stroke={m.color}
+
+                  strokeWidth={2}
+
+                  dot={{ r: 3 }}
+
+                  hide={!activeMetrics.has(m.key)}
+
+                />
+
+              )
+
+            )}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
