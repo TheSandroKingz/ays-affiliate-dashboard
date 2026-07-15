@@ -203,7 +203,7 @@ const totals = dailyData.reduce(
         </div>
       </div>
 
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 max-w-md">
+      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-6 max-w-md shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-slate-300">Mi balance</span>
