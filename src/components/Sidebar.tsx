@@ -69,7 +69,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       }`}
     >
       <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
-        <span className="text-3xl font-extrabold text-emerald-400">
+        <span className="text-2xl font-extrabold text-emerald-400">
           A & S Afiliados
         </span>
       </Link>
