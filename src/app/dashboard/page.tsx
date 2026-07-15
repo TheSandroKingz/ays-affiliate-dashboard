@@ -35,7 +35,7 @@ const metricConfig = [
   { key: "commission", label: "Comisión", color: "#10b981" },
 { key: "clicks", label: "Clics", color: "#9333ea" },
 { key: "registrations", label: "Registros", color: "#f59e0b" },
-  { key: "ftd", label: "FTD", color: "#94a3b8" },
+  { key: "ftd", label: "FTD", color: "#38bdf8" },
 ] as const;
 
 function last7Days(): DailyPoint[] {
@@ -324,58 +324,28 @@ const totals = dailyData.reduce(
             }}
 
           />
-            {metricConfig.map((m) =>
-
-              m.key === primaryMetricKey ? (
-
-                <Area
-
-                  key={m.key}
-
-                  type="monotone"
-
-                  dataKey={m.key}
-
-                  yAxisId="left"
-
-                  stroke={m.color}
-
-                  strokeWidth={2}
-
-                  fill={`url(#chartGradient-${m.key})`}
-
-                  dot={{ r: 4, strokeWidth: 2, fill: "#0a0a0a" }}
-
-                  hide={!activeMetrics.has(m.key)}
-
-                />
-
-              ) : (
-
-                <Line
-
-                  key={m.key}
-
-                  type="monotone"
-
-                  dataKey={m.key}
-
-                  yAxisId="right"
-
-                  stroke={m.color}
-
-                  strokeWidth={2}
-
-                  dot={{ r: 4, strokeWidth: 2, fill: "#0a0a0a" }}
-
-                  hide={!activeMetrics.has(m.key)}
-
-                />
-
-              )
-
-            )}
-          </ComposedChart>
+            {(() => {
+              const showArea = activeMetrics.size <= 2;
+              return metricConfig.map((m) => {
+                const isPrimary = m.key === primaryMetricKey;
+                const commonProps = {
+                  key: m.key,
+                  type: "monotone" as const,
+                  dataKey: m.key,
+                  yAxisId: isPrimary ? "left" : "right",
+                  stroke: m.color,
+                  strokeWidth: 2,
+                  dot: { r: 3, strokeWidth: 2, fill: "#0a0a0a" },
+                  hide: !activeMetrics.has(m.key),
+                };
+                return showArea ? (
+                  <Area {...commonProps} fill={`url(#chartGradient-${m.key})`} />
+                ) : (
+                  <Line {...commonProps} />
+                );
+              });
+            })()}
+            </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
