@@ -289,12 +289,40 @@ const totals = dailyData.reduce(
                 fontSize: 12,
               }}
             />
-          <YAxis yAxisId="right" orientation="right" domain={[0, (max: number) => (max <= 0 ? 10 : max)]} fontSize={13} stroke="#94a3b8" tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")} width={60} />
+          <YAxis
+              yAxisId="right"
+              orientation="right"
+              domain={[0, (max: number) => (max <= 0 ? 10 : max)]}
+              fontSize={13}
+              stroke="#94a3b8"
+              tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")}
+              width={Array.from(activeMetrics).some((k) => k !== primaryMetricKey) ? 60 : 0}
+              hide={!Array.from(activeMetrics).some((k) => k !== primaryMetricKey)}
+            />
           <Tooltip
-            formatter={(value: any, name: any) => {
-              const metric = metricConfig.find((m) => m.key === name);
-              return [value, metric ? metric.label : name];
+
+            contentStyle={{
+
+              backgroundColor: "#0a0a0a",
+
+              border: "1px solid rgba(255,255,255,0.2)",
+
+              borderRadius: 8,
+
             }}
+
+            labelStyle={{ color: "#94a3b8" }}
+
+            itemStyle={{ color: "#34d399" }}
+
+            formatter={(value: any, name: any) => {
+
+              const metric = metricConfig.find((m) => m.key === name);
+
+              return [value, metric ? metric.label : name];
+
+            }}
+
           />
             {metricConfig.map((m) =>
 
