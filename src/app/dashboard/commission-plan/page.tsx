@@ -34,7 +34,9 @@ export default function CommissionPlanPage() {
         setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
         setPromoLink(
           data.freshaffs_tracking_code
-            ? `${window.location.origin}/go/${data.freshaffs_tracking_code}`
+            ? `${window.location.origin}/go/${encodeURIComponent(
+                data.freshaffs_tracking_code
+              )}`
             : data.promo_link ?? null
         );
       }
