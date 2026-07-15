@@ -124,9 +124,9 @@ export default function SubAffiliatesPage() {
             ) : (
               rows.map((r, i) => (
                 <tr key={r.id} className={i % 2 === 1 ? "bg-white/[0.03]" : ""}>
-                  <td className="border border-white/10 px-4 py-3">{r.id.slice(0, 8)}</td>
-                  <td className="border border-white/10 px-4 py-3">{r.displayName ?? "—"}</td>
-                  <td className="border border-white/10 px-4 py-3 text-right">
+                  <td className="border border-white/10 px-4 py-3 text-white">{r.id.slice(0, 8)}</td>
+                  <td className="border border-white/10 px-4 py-3 text-white">{r.displayName ?? "—"}</td>
+                  <td className="border border-white/10 px-4 py-3 text-right text-white font-medium">
                     €{r.commission.toLocaleString("de-DE")}
                   </td>
                 </tr>
@@ -136,10 +136,10 @@ export default function SubAffiliatesPage() {
           {rows.length > 0 && (
             <tfoot>
               <tr className="bg-white/10 font-semibold">
-                <td className="border border-white/10 px-4 py-3" colSpan={2}>
+                <td className="border border-white/10 px-4 py-3 text-white" colSpan={2}>
                   Total
                 </td>
-                <td className="border border-white/10 px-4 py-3 text-right">
+                <td className="border border-white/10 px-4 py-3 text-right text-white">
                   €{totalCommission.toLocaleString("de-DE")}
                 </td>
               </tr>
