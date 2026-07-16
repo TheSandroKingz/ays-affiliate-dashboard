@@ -27,12 +27,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { displayName, referredBy } = await request.json()
+  const body = await request.json().catch(() => ({}))
+  const nombre = String(body.displayName ?? '').trim()
+
+  // El nombre de usuario es obligatorio y con un largo razonable.
+  if (nombre.length < 2 || nombre.length > 40) {
+    return NextResponse.json(
+      { error: 'El nombre de usuario debe tener entre 2 y 40 caracteres.' },
+      { status: 400 }
+    )
+  }
+
+  // Validamos que, si viene un "referido por", sea un afiliado real.
+  let referredById: string | null = null
+  if (body.referredBy) {
+    const { data: padre } = await supabaseAdmin
+      .from('affiliates')
+      .select('id')
+      .eq('id', body.referredBy)
+      .maybeSingle()
+    referredById = padre?.id ?? null
+  }
 
   const { error } = await supabaseAdmin.from('affiliates').insert({
     user_id: authData.user.id,
-    display_name: displayName,
-    referred_by: referredBy || null,
+    display_name: nombre,
+    referred_by: referredById,
     promo_link: DEFAULT_PROMO_LINK,
     subaffiliate_percent: 5,
     accepted_terms: true,

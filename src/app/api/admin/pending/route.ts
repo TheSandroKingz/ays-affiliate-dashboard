@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser } from "@/lib/adminAuth";
+import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 
 // Lista de cuentas pendientes de aprobación.
 export async function GET(request: Request) {
@@ -29,9 +29,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { userId, action } = await request.json();
+  const { userId, action } = await request.json().catch(() => ({}));
   if (!userId || (action !== "approve" && action !== "reject")) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+  }
+
+  // Blindaje: NUNCA se puede tocar (ni borrar) la propia cuenta de admin.
+  if (userId === ADMIN_USER_ID) {
+    return NextResponse.json(
+      { error: "No se puede modificar la cuenta de administrador." },
+      { status: 400 }
+    );
   }
 
   if (action === "approve") {
