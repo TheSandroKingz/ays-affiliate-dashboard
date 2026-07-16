@@ -20,13 +20,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.replace("/login");
         return;
       }
-      // ¿La cuenta está aprobada? (si la columna aún no existe, no bloquea)
-      const { data: aff } = await supabase
+      // ¿La cuenta está aprobada y tiene perfil? Si no (o está a medias) →
+      // pantalla de pendiente. En error transitorio no bloqueamos (RLS protege).
+      const { data: aff, error } = await supabase
         .from("affiliates")
         .select("approved")
         .eq("user_id", data.session.user.id)
         .maybeSingle();
-      if (aff && aff.approved === false) {
+      if (!error && (!aff || aff.approved === false)) {
         router.replace("/pendiente");
         return;
       }

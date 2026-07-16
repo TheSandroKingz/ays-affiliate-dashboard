@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import SolicitudesNavLink from "@/components/admin/SolicitudesNavLink";
 
 export default function AdminLayout({
   children,
@@ -29,12 +30,7 @@ export default function AdminLayout({
           >
             Comisiones
           </Link>
-          <Link
-            href="/admin/solicitudes"
-            className="text-slate-300 hover:text-white transition-colors"
-          >
-            Solicitudes
-          </Link>
+          <SolicitudesNavLink />
         </nav>
         <Link
           href="/dashboard"
