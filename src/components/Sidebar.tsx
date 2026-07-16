@@ -117,10 +117,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               </Link>
             ))}
           </div>
-        )}<Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
-          <CreditCard size={18} />
-          Pagos
-        </Link>
+        )}{!isAdmin && (
+          <Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
+            <CreditCard size={18} />
+            Pagos
+          </Link>
+        )}
 
         {!isAdmin && (
           <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
