@@ -33,10 +33,13 @@ const securityHeaders = [
   // Desactiva APIs del navegador que la web no usa.
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value:
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()",
   },
   // Aísla el contexto de navegación (mitiga ataques tipo Spectre/XS-Leaks).
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  // Impide que otros sitios embeban tus recursos.
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
 

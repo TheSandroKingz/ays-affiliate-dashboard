@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  if (!rateLimit(`login-lookup:${ip}`, 12, 5 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Espera unos minutos.' },
+      { status: 429 }
+    )
+  }
+
   const { identifier } = await request.json()
 
   if (!identifier) {

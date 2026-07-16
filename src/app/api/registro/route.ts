@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 // Enlace de promoción por defecto para nuevas cuentas.
 // Cuentas concretas (p. ej. Jeffer) se personalizan a mano en la BD.
 const DEFAULT_PROMO_LINK = 'https://go.affision.com/visit/?bta=44878&nci=5520'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  if (!rateLimit(`registro:${ip}`, 6, 10 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Espera unos minutos.' },
+      { status: 429 }
+    )
+  }
+
   // Exigir la sesión del usuario recién creado y tomar su id del token,
   // en vez de confiar en un userId enviado por el cliente.
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
