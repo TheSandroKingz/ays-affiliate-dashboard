@@ -9,19 +9,37 @@ import { getClientIp } from "@/lib/rateLimit";
 const BOT_UA =
   /bot\b|crawl|spider|preview|whatsapp|facebookexternalhit|telegrambot|twitterbot|discordbot|slackbot|linkedinbot|pinterest|embedly|scanner|curl|wget|headless|lighthouse|python-requests|bytespider|vkshare|redditbot|googlebot|bingbot|yandex|applebot|metainspector|whatsapp/i;
 
+// Caché en memoria del enlace por código (el promo_link casi nunca cambia).
+// Así el visitante redirige al instante sin esperar a la BD en cada clic.
+type CacheEntry = { user_id: string; promo_link: string } | null;
+const linkCache = new Map<string, { value: CacheEntry; exp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+async function getAffiliate(code: string): Promise<CacheEntry> {
+  const key = code.toLowerCase();
+  const now = Date.now();
+  const hit = linkCache.get(key);
+  if (hit && hit.exp > now) return hit.value;
+
+  const { data } = await supabaseAdmin
+    .from("affiliates")
+    .select("user_id, promo_link")
+    .ilike("freshaffs_tracking_code", code.replace(/[%_]/g, "\\$&"))
+    .limit(1);
+  const aff = data?.[0];
+  const value: CacheEntry =
+    aff && aff.promo_link ? { user_id: aff.user_id, promo_link: aff.promo_link } : null;
+  linkCache.set(key, { value, exp: now + CACHE_TTL });
+  return value;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
 
-  // Búsqueda insensible a mayúsculas (por si el enlace se comparte en otra caja).
-  const { data: affiliates } = await supabaseAdmin
-    .from("affiliates")
-    .select("user_id, promo_link")
-    .ilike("freshaffs_tracking_code", code.replace(/[%_]/g, "\\$&"))
-    .limit(1);
-  const affiliate = affiliates?.[0];
+  const affiliate = await getAffiliate(code);
 
   if (!affiliate || !affiliate.promo_link) {
     return NextResponse.redirect(new URL("/", request.url));
