@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -14,6 +15,7 @@ import {
   ChevronDown,
   Settings,
   LogOut,
+  Shield,
 } from "lucide-react";
 
 const reportLinks = [
@@ -33,11 +35,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const user = data.session?.user;
       setUserEmail(user?.email ?? null);
+      setIsAdmin(user?.id === ADMIN_USER_ID);
       if (user) {
         supabase
           .from("affiliates")
@@ -115,6 +119,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <BookOpen size={18} />
           Plan de Comisión
         </Link>
+
+        {isAdmin && (
+          <Link href="/admin" className={linkClass("/admin")} onClick={onClose}>
+            <Shield size={18} />
+            Admin
+          </Link>
+        )}
       </nav>
       <div className="mt-auto relative border-t border-white/10 pt-3 px-1">
         {profileOpen && (
