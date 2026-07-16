@@ -10,6 +10,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  // Limpieza: borramos las claves de deduplicación de clics ya viejas
+  // (la ventana anti-duplicado es de segundos, así que no hacen falta).
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  await supabaseAdmin
+    .from("click_dedup")
+    .delete()
+    .lt("created_at", cutoff)
+    .then(() => {}, () => {});
+
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
   }).format(new Date());

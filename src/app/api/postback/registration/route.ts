@@ -16,13 +16,15 @@ export async function GET(request: Request) {
   }).format(new Date());
 
   // Atribución al afiliado concreto (para sus estadísticas), si lo identificamos.
+  // Búsqueda por trackingcode INSENSIBLE a mayúsculas (freshbet podría mandar
+  // "fresh"/"FRESH"): usamos ilike escapando comodines.
   let targetUserId: string | null = null;
 
   if (trackingcode) {
     const { data } = await supabaseAdmin
       .from("affiliates")
       .select("user_id")
-      .eq("freshaffs_tracking_code", trackingcode)
+      .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
       .maybeSingle();
     targetUserId = data?.user_id ?? null;
   }

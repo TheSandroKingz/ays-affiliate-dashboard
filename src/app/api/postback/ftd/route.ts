@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const { data } = await supabaseAdmin
       .from("affiliates")
       .select("user_id, cpa_spain, cpa_other")
-      .eq("freshaffs_tracking_code", trackingcode)
+      .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
       .maybeSingle();
     if (data) {
       target = data;
