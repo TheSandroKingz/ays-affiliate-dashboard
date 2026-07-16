@@ -29,6 +29,12 @@ export default function AdminLayout({
           >
             Comisiones
           </Link>
+          <Link
+            href="/admin/solicitudes"
+            className="text-slate-300 hover:text-white transition-colors"
+          >
+            Solicitudes
+          </Link>
         </nav>
         <Link
           href="/dashboard"
