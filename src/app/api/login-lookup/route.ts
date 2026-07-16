@@ -4,7 +4,7 @@ import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  if (!rateLimit(`login-lookup:${ip}`, 12, 5 * 60 * 1000)) {
+  if (!rateLimit(`login-lookup:${ip}`, 40, 5 * 60 * 1000)) {
     return NextResponse.json(
       { error: 'Demasiados intentos. Espera unos minutos.' },
       { status: 429 }

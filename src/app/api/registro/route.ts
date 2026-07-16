@@ -8,7 +8,7 @@ const DEFAULT_PROMO_LINK = 'https://go.affision.com/visit/?bta=44878&nci=5520'
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  if (!rateLimit(`registro:${ip}`, 6, 10 * 60 * 1000)) {
+  if (!rateLimit(`registro:${ip}`, 25, 10 * 60 * 1000)) {
     return NextResponse.json(
       { error: 'Demasiados intentos. Espera unos minutos.' },
       { status: 429 }
