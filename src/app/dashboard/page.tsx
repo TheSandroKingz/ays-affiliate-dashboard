@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
+import AdminDashboard from "@/components/AdminDashboard";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
 import { Info } from "lucide-react";
@@ -98,36 +99,9 @@ export default function DashboardPage() {
         return;
       }
 
-      // Cuenta de admin: su panel muestra "lo que se queda" por su estructura,
-      // es decir, por cada FTD de un afiliado suyo: su CPA − el CPA del afiliado.
+      // Cuenta de admin: tiene su propio panel dedicado (AdminDashboard).
       if (user.id === ADMIN_USER_ID) {
         setIsAdmin(true);
-        const [affRes, stRes] = await Promise.all([
-          supabase.from("affiliates").select("display_name").eq("user_id", user.id).single(),
-          fetch("/api/admin/stats", {
-            headers: { Authorization: "Bearer " + session.access_token },
-          })
-            .then((r) => (r.ok ? r.json() : { daily: [], adminCpa: 0 }))
-            .catch(() => ({ daily: [], adminCpa: 0 })),
-        ]);
-        setDisplayName(affRes.data?.display_name ?? null);
-
-        const cpa = Number(stRes.adminCpa ?? 0);
-        const dserie: { date: string; commission: number; clicks: number; registrations: number; ftd: number }[] =
-          stRes.daily ?? [];
-        // Margen por día = (tu CPA × FTD) − comisión pagada a los afiliados.
-        const marginDaily = dserie.map((d) => ({
-          date: d.date,
-          commission: cpa * Number(d.ftd ?? 0) - Number(d.commission ?? 0),
-          clicks: Number(d.clicks ?? 0),
-          registrations: Number(d.registrations ?? 0),
-          ftd: Number(d.ftd ?? 0),
-        }));
-        // El gráfico y el "balance" son del mes en curso; el total es histórico.
-        setDailyData(fillMissingDays(marginDaily));
-        setSubCommission(0);
-        setTotalGenerado(marginDaily.reduce((s, d) => s + d.commission, 0));
-        setLastUpdated(new Date());
         setLoading(false);
         setRefreshing(false);
         return;
@@ -241,6 +215,11 @@ export default function DashboardPage() {
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  // La cuenta de admin tiene su propio panel dedicado.
+  if (isAdmin) {
+    return <AdminDashboard />;
   }
 
   // Total ganado este mes = comisión propia + subafiliados del mes.

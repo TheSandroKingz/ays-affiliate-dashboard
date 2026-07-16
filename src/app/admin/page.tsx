@@ -18,19 +18,19 @@ type StatRow = {
 };
 
 type Totals = {
-  commission: number;
+  structurePaid: number;
   clicks: number;
   registrations: number;
   ftd: number;
-  margin: number;
+  structureMargin: number;
 };
 
 const emptyTotals: Totals = {
-  commission: 0,
+  structurePaid: 0,
   clicks: 0,
   registrations: 0,
   ftd: 0,
-  margin: 0,
+  structureMargin: 0,
 };
 
 function fmt(n: number) {
@@ -102,14 +102,14 @@ export default function AdminStatsPage() {
         </p>
       </div>
 
-      {/* Lo que te quedas tú (margen total) */}
+      {/* Margen total de la estructura (el total limpio está en el inicio) */}
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
-        <p className="text-sm font-medium text-slate-300 mb-3">Lo que me quedo</p>
-        <p className="text-4xl font-bold text-white">{eur(totals.margin)}</p>
+        <p className="text-sm font-medium text-slate-300 mb-3">Mi margen de afiliados</p>
+        <p className="text-4xl font-bold text-white">{eur(totals.structureMargin)}</p>
       </div>
 
       {/* Tarjetas de actividad de la red */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {affCards.map((card) => (
           <div
             key={card.label}
@@ -165,7 +165,7 @@ export default function AdminStatsPage() {
                     i % 2 === 1 ? "bg-white/[0.03]" : ""
                   } hover:bg-white/10 transition-colors`}
                 >
-                  <td className="border border-white/10 px-4 py-3 text-white">
+                  <td className="border border-white/10 px-4 py-3 text-white whitespace-nowrap">
                     {row.display_name ?? "—"}
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white">
@@ -203,10 +203,10 @@ export default function AdminStatsPage() {
                   {fmt(totals.ftd)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
-                  {eur(totals.commission)}
+                  {eur(totals.structurePaid)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-emerald-400">
-                  {eur(totals.margin)}
+                  {eur(totals.structureMargin)}
                 </td>
               </tr>
             </tfoot>
