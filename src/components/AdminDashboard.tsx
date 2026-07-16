@@ -173,8 +173,26 @@ export default function AdminDashboard() {
         <p className="text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
       </div>
 
+      {/* Actividad de la red */}
+      <div className="animate-in grid grid-cols-3 gap-3" style={{ animationDelay: "0.12s" }}>
+        {[
+          { label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
+          { label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
+          { label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
+        ].map((c) => (
+          <div
+            key={c.label}
+            className="p-4 rounded-xl border border-white/15 border-t-4 bg-black/40"
+            style={{ borderTopColor: c.color }}
+          >
+            <p className="text-sm text-slate-300 mb-1">{c.label}</p>
+            <p className="text-xl font-bold text-white">{c.value}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Gráfico de lo que me llevo */}
-      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.12s" }}>
+      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.18s" }}>
         <BalanceChart
           data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
           activeMetrics={new Set(["commission"])}
