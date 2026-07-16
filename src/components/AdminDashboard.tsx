@@ -142,7 +142,7 @@ export default function AdminDashboard() {
         style={{ animationDelay: "0.05s" }}
       >
         <div className="flex items-center gap-1.5 mb-3">
-          <span className="text-sm font-medium text-slate-300">Lo que me llevo limpio</span>
+          <span className="text-sm font-medium text-slate-300">Mi balance</span>
           <div className="group relative">
             <button
               type="button"
@@ -166,7 +166,7 @@ export default function AdminDashboard() {
                 <span className="font-medium text-white">{eur(totals.structureMargin)}</span>
               </div>
               <div className="flex items-center justify-between py-1 text-sm border-t border-white/10 mt-1 pt-2">
-                <span className="text-slate-300">Total limpio</span>
+                <span className="text-slate-300">Mi balance</span>
                 <span className="font-semibold text-emerald-400">{eur(totals.totalClean)}</span>
               </div>
             </div>
