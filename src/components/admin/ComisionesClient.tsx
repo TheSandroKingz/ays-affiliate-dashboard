@@ -8,6 +8,8 @@ type Affiliate = {
   cpa_spain: number | null;
   cpa_other: number | null;
   subaffiliate_percent: number | null;
+  wallet_erc20: string | null;
+  wallet_trc20: string | null;
 };
 
 export default function ComisionesClient({
@@ -24,10 +26,21 @@ export default function ComisionesClient({
       cpaSpain: a.cpa_spain ?? 85,
       cpaOther: a.cpa_other ?? 85,
       subaffiliatePercent: a.subaffiliate_percent ?? 5,
+      walletErc20: a.wallet_erc20 ?? "",
+      walletTrc20: a.wallet_trc20 ?? "",
     }))
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [result, setResult] = useState<{ id: string; ok: boolean } | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function copiar(texto: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {}
+  }
 
   function updateRow(id: string, field: string, value: number) {
     setRows((prev) =>
@@ -135,6 +148,42 @@ export default function ComisionesClient({
                 <span className="text-red-400 text-sm">Error al guardar</span>
               ))}
           </div>
+
+          {(row.walletErc20 || row.walletTrc20) && (
+            <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
+              <p className="text-xs font-medium text-slate-400">
+                Datos de cobro (USDT)
+              </p>
+              {row.walletErc20 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 shrink-0 w-14">ERC-20</span>
+                  <span className="text-xs text-white break-all flex-1 min-w-0">
+                    {row.walletErc20}
+                  </span>
+                  <button
+                    onClick={() => copiar(row.walletErc20, row.id + "e")}
+                    className="shrink-0 text-xs text-emerald-400 hover:text-emerald-300"
+                  >
+                    {copied === row.id + "e" ? "Copiado" : "Copiar"}
+                  </button>
+                </div>
+              )}
+              {row.walletTrc20 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 shrink-0 w-14">TRC-20</span>
+                  <span className="text-xs text-white break-all flex-1 min-w-0">
+                    {row.walletTrc20}
+                  </span>
+                  <button
+                    onClick={() => copiar(row.walletTrc20, row.id + "t")}
+                    className="shrink-0 text-xs text-emerald-400 hover:text-emerald-300"
+                  >
+                    {copied === row.id + "t" ? "Copiado" : "Copiar"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

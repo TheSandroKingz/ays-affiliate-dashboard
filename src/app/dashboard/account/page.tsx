@@ -9,7 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
-    "personal" | "seguridad" | "privacidad"
+    "personal" | "cobro" | "seguridad" | "privacidad"
   >("personal");
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -23,6 +23,9 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
+  const [walletErc20, setWalletErc20] = useState("");
+  const [walletTrc20, setWalletTrc20] = useState("");
+  const [savingWallets, setSavingWallets] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -39,7 +42,7 @@ export default function AccountPage() {
 
       const { data } = await supabase
         .from("affiliates")
-        .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name")
+        .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
         .eq("user_id", user.id)
         .single();
 
@@ -48,6 +51,8 @@ export default function AccountPage() {
       setAcceptedTerms(data.accepted_terms ?? false);
       setAcceptedPrivacy(data.accepted_privacy ?? false);
       setAvatarUrl(data.avatar_url ?? null);
+      setWalletErc20(data.wallet_erc20 ?? "");
+      setWalletTrc20(data.wallet_trc20 ?? "");
       }
       setLoading(false);
     }
@@ -162,6 +167,38 @@ export default function AccountPage() {
     }
   }
 
+  async function saveWallets() {
+    setMessage(null);
+    const erc = walletErc20.trim();
+    const trc = walletTrc20.trim();
+    if (erc && !/^0x[a-fA-F0-9]{40}$/.test(erc)) {
+      setMessage("La billetera de Ethereum (ERC-20) no parece válida. Debe empezar por 0x.");
+      return;
+    }
+    if (trc && !/^T[a-zA-Z0-9]{33}$/.test(trc)) {
+      setMessage("La billetera de Tron (TRC-20) no parece válida. Debe empezar por T.");
+      return;
+    }
+    setSavingWallets(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      setSavingWallets(false);
+      return;
+    }
+    const res = await fetch("/api/account/wallets", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + session.access_token,
+      },
+      body: JSON.stringify({ walletErc20: erc, walletTrc20: trc }),
+    });
+    setSavingWallets(false);
+    setMessage(res.ok ? "Guardado correctamente" : "Error al guardar");
+  }
+
 
   if (loading) {
     return <CardsSkeleton title="Configuración de Cuenta" cards={2} />;
@@ -169,6 +206,7 @@ export default function AccountPage() {
 
   const tabs = [
     { key: "personal", label: "Información Personal" },
+    { key: "cobro", label: "Datos de cobro" },
     { key: "seguridad", label: "Seguridad" },
     { key: "privacidad", label: "Ajustes de Privacidad" },
   ] as const;
@@ -260,6 +298,47 @@ export default function AccountPage() {
             className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      )}
+
+      {activeTab === "cobro" && (
+        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
+          <p className="text-sm text-slate-300">Los pagos se realizan en USDT.</p>
+          <div>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Billetera USDT · Ethereum (ERC-20)
+            </label>
+            <input
+              type="text"
+              value={walletErc20}
+              onChange={(e) => setWalletErc20(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="0x..."
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Billetera USDT · Tron (TRC-20)
+            </label>
+            <input
+              type="text"
+              value={walletTrc20}
+              onChange={(e) => setWalletTrc20(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="T..."
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <button
+            onClick={saveWallets}
+            disabled={savingWallets}
+            className="mt-2 w-fit rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5"
+          >
+            {savingWallets ? "Guardando..." : "Guardar"}
           </button>
         </div>
       )}

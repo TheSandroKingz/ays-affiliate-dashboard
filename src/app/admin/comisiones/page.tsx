@@ -13,6 +13,8 @@ type Affiliate = {
   cpa_spain: number | null;
   cpa_other: number | null;
   subaffiliate_percent: number | null;
+  wallet_erc20: string | null;
+  wallet_trc20: string | null;
 };
 
 export default function ComisionesPage() {
