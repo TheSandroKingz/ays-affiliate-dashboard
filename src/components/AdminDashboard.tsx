@@ -43,6 +43,7 @@ function saludo(): string {
 export default function AdminDashboard() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [totals, setTotals] = useState<Totals>(emptyTotals);
+  const [own, setOwn] = useState({ commission: 0, clicks: 0, registrations: 0, ftd: 0 });
   const [daily, setDaily] = useState<{ date: string; earnings: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,6 +71,7 @@ export default function AdminDashboard() {
     ]);
     setDisplayName(affRes.data?.display_name ?? null);
     if (stRes?.totals) setTotals(stRes.totals);
+    if (stRes?.own) setOwn(stRes.own);
     setDaily(stRes?.daily ?? []);
     setLastUpdated(new Date());
     setLoading(false);
@@ -173,12 +175,13 @@ export default function AdminDashboard() {
         <p className="text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
       </div>
 
-      {/* Actividad de la red */}
-      <div className="animate-in grid grid-cols-3 gap-3" style={{ animationDelay: "0.12s" }}>
+      {/* Mi enlace propio: comisión + actividad */}
+      <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {[
-          { label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
-          { label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-          { label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
+          { label: "Comisión", value: eur(own.commission), color: "#10b981" },
+          { label: "Clics", value: own.clicks.toLocaleString("de-DE"), color: "#9333ea" },
+          { label: "Registros", value: own.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
+          { label: "FTD", value: own.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
         ].map((c) => (
           <div
             key={c.label}

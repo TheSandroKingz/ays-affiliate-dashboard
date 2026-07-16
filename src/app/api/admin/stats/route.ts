@@ -34,11 +34,12 @@ export async function GET(request: Request) {
 
   const adminCpa = Number(me?.cpa_spain ?? 0);
 
-  // Tu estructura: afiliados que te tienen como "referido_por".
+  // Tus afiliados: TODOS los perfiles creados menos tu propia cuenta (esa es
+  // "mi link propio"). Así ves cómo va cada uno, incluidos los nuevos.
   const { data: structure, error: sErr } = await supabaseAdmin
     .from("affiliates")
     .select("user_id, display_name")
-    .eq("referred_by", me?.id ?? "00000000-0000-0000-0000-000000000000");
+    .neq("user_id", user.id);
   if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
 
   const structIds = (structure ?? []).map((s) => s.user_id);
@@ -135,5 +136,5 @@ export async function GET(request: Request) {
     }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
-  return NextResponse.json({ adminCpa, stats, totals, daily: dailySeries });
+  return NextResponse.json({ adminCpa, stats, totals, own, daily: dailySeries });
 }
