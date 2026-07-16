@@ -88,10 +88,7 @@ export default function CommissionPlanPage() {
         </div>
         {promoLink && (
           <div className="border-b border-white/10 pb-3 mb-3">
-            <p className="text-slate-200 mb-1">Tu enlace de FreshBet</p>
-            <p className="text-xs text-slate-400 mb-2">
-              Compártelo con tus jugadores: cada registro y depósito se te atribuye automáticamente.
-            </p>
+            <p className="text-slate-200 mb-2">Tu enlace de FreshBet</p>
             <div className="flex items-center gap-2">
               <input
                 readOnly
