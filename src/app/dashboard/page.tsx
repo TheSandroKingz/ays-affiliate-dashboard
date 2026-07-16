@@ -277,7 +277,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
+      <div className="animate-in bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]" style={{ animationDelay: "0.05s" }}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-slate-300">{isAdmin ? "Lo que me quedo" : "Mi balance"}</span>
@@ -323,14 +323,14 @@ export default function DashboardPage() {
         </div>
         <p className="text-4xl font-bold text-white">{eur(balance)}</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);
           return (
             <button
               key={card.key}
               onClick={() => toggleMetric(card.key)}
-              className={`text-left p-4 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 border-t-4 transition-opacity cursor-pointer ${
+              className={`text-left p-4 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 border-t-4 transition duration-200 cursor-pointer ${
               !isActive ? "opacity-50" : "opacity-100"
             }`}
               style={{ borderTopColor: card.color }}
@@ -342,7 +342,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6">
+      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.2s" }}>
         <BalanceChart
           data={chartData}
           activeMetrics={activeMetrics}
