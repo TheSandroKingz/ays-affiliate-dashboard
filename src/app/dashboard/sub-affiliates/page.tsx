@@ -31,30 +31,32 @@ export default function SubAffiliatesPage() {
         return;
       }
 
-      const { data: affiliateRow } = await supabase
-        .from("affiliates")
-        .select("id, subaffiliate_percent")
-        .eq("user_id", session.user.id)
-        .single();
+      // Las dos peticiones solo dependen de la sesión, no entre sí:
+      // en paralelo para que la página cargue antes.
+      const [affiliateRes, subBody] = await Promise.all([
+        supabase
+          .from("affiliates")
+          .select("id, subaffiliate_percent")
+          .eq("user_id", session.user.id)
+          .single(),
+        fetch("/api/subaffiliates", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.access_token,
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        })
+          .then((r) => (r.ok ? r.json() : { rows: [] }))
+          .catch(() => ({ rows: [] })),
+      ]);
 
+      const affiliateRow = affiliateRes.data;
       if (affiliateRow) {
         setAffiliateId(affiliateRow.id);
         setPercent(affiliateRow.subaffiliate_percent ?? 5);
       }
-
-      const res = await fetch("/api/subaffiliates", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({ userId: session.user.id }),
-      });
-
-      if (res.ok) {
-        const body = await res.json();
-        setRows(body.rows ?? []);
-      }
+      setRows(subBody.rows ?? []);
 
       setLoading(false);
     }

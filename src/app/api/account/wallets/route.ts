@@ -13,12 +13,28 @@ export async function POST(request: Request) {
   }
 
   const { walletErc20, walletTrc20 } = await request.json();
+  const erc = (walletErc20 ?? "").trim();
+  const trc = (walletTrc20 ?? "").trim();
+
+  // Validación también en el servidor (no fiarse solo del cliente).
+  if (erc && !/^0x[a-fA-F0-9]{40}$/.test(erc)) {
+    return NextResponse.json(
+      { error: "La billetera de Ethereum (ERC-20) no es válida." },
+      { status: 400 }
+    );
+  }
+  if (trc && !/^T[a-zA-Z0-9]{33}$/.test(trc)) {
+    return NextResponse.json(
+      { error: "La billetera de Tron (TRC-20) no es válida." },
+      { status: 400 }
+    );
+  }
 
   const { error } = await supabaseAdmin
     .from("affiliates")
     .update({
-      wallet_erc20: (walletErc20 ?? "").trim() || null,
-      wallet_trc20: (walletTrc20 ?? "").trim() || null,
+      wallet_erc20: erc || null,
+      wallet_trc20: trc || null,
     })
     .eq("user_id", authData.user.id);
 
