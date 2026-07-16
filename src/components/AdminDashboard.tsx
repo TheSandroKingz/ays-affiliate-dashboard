@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
+import LoadError from "@/components/LoadError";
 import { Info } from "lucide-react";
 
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
@@ -48,32 +49,44 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
+    setLoadError(false);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      const [affRes, stRes] = await Promise.all([
+        supabase.from("affiliates").select("display_name").eq("user_id", session.user.id).single(),
+        fetch("/api/admin/stats", {
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+      ]);
+      // Si la carga de datos falló, mostramos error (no 0€ falsos).
+      if (!stRes || !stRes.totals) {
+        setLoadError(true);
+      } else {
+        setDisplayName(affRes.data?.display_name ?? null);
+        setTotals(stRes.totals);
+        setDaily(stRes.daily ?? []);
+        setLastUpdated(new Date());
+      }
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
       setRefreshing(false);
-      return;
     }
-    const [affRes, stRes] = await Promise.all([
-      supabase.from("affiliates").select("display_name").eq("user_id", session.user.id).single(),
-      fetch("/api/admin/stats", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null),
-    ]);
-    setDisplayName(affRes.data?.display_name ?? null);
-    if (stRes?.totals) setTotals(stRes.totals);
-    setDaily(stRes?.daily ?? []);
-    setLastUpdated(new Date());
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -81,6 +94,7 @@ export default function AdminDashboard() {
   }, [load]);
 
   if (loading) return <DashboardSkeleton />;
+  if (loadError) return <LoadError onRetry={() => load()} />;
 
   const chartData = daily.map((d) => ({
     date: new Date(d.date + "T00:00:00Z").toLocaleDateString("es-ES", {

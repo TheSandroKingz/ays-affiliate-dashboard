@@ -11,19 +11,23 @@ export default function PendientePage() {
   // Si ya está aprobado (o cierra sesión), lo mandamos donde toque.
   useEffect(() => {
     async function check() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        router.replace("/login");
-        return;
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          router.replace("/login");
+          return;
+        }
+        const { data: aff } = await supabase
+          .from("affiliates")
+          .select("approved")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if (aff && aff.approved === true) router.replace("/dashboard");
+      } catch {
+        // Fallo transitorio: se queda en esta pantalla, sin romperse.
       }
-      const { data: aff } = await supabase
-        .from("affiliates")
-        .select("approved")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      if (aff && aff.approved === true) router.replace("/dashboard");
     }
     check();
   }, [router]);

@@ -5,6 +5,7 @@ import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
 import { eur } from "@/lib/format";
+import LoadError from "@/components/LoadError";
 
 type DailyRow = {
   date: string;
@@ -38,6 +39,7 @@ export default function MediaReportPage() {
   const [rows, setRows] = useState<DailyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [desde, setDesde] = useState(inicioMes(hoyMadrid()));
   const [hasta, setHasta] = useState(hoyMadrid());
   const [agrupar, setAgrupar] = useState<"dia" | "mes">("dia");
@@ -46,25 +48,32 @@ export default function MediaReportPage() {
   async function fetchData(from: string, to: string, isRefresh = false) {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) {
+    setLoadError(false);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("affiliate_daily_stats")
+        .select("date, commission, clicks, registrations, ftd")
+        .eq("user_id", user.id)
+        .gte("date", from)
+        .lte("date", to)
+        .order("date", { ascending: false });
+      if (error) setLoadError(true);
+      else setRows((data as DailyRow[]) ?? []);
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
       setRefreshing(false);
-      return;
     }
-    const { data } = await supabase
-      .from("affiliate_daily_stats")
-      .select("date, commission, clicks, registrations, ftd")
-      .eq("user_id", user.id)
-      .gte("date", from)
-      .lte("date", to)
-      .order("date", { ascending: false });
-    setRows((data as DailyRow[]) ?? []);
-    setLoading(false);
-    setRefreshing(false);
   }
 
   useEffect(() => {
@@ -150,6 +159,12 @@ export default function MediaReportPage() {
 
   if (loading) {
     return <TableSkeleton title="Informe de Medios" cols={5} />;
+  }
+
+  if (loadError) {
+    return (
+      <LoadError onRetry={() => fetchData(desde, hasta)} />
+    );
   }
 
   return (

@@ -7,6 +7,7 @@ import { ADMIN_USER_ID } from "@/lib/adminId";
 import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
+import LoadError from "@/components/LoadError";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
 import { Info } from "lucide-react";
@@ -84,10 +85,12 @@ export default function DashboardPage() {
   const [totalGenerado, setTotalGenerado] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
+      setLoadError(false);
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -134,6 +137,14 @@ export default function DashboardPage() {
             .then((r) => (r.ok ? r.json() : { rows: [] }))
             .catch(() => ({ rows: [] })),
         ]);
+
+      // Si falló la carga de datos, mostramos error (no 0€ falsos).
+      if (affiliateRes.error || dailyRes.error) {
+        setLoadError(true);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
       setDisplayName(affiliateRes.data?.display_name ?? null);
 
@@ -220,6 +231,10 @@ export default function DashboardPage() {
   // La cuenta de admin tiene su propio panel dedicado.
   if (isAdmin) {
     return <AdminDashboard />;
+  }
+
+  if (loadError) {
+    return <LoadError onRetry={() => loadStats()} />;
   }
 
   // Total ganado este mes = comisión propia + subafiliados del mes.

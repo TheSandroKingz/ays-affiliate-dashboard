@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
 import { eur } from "@/lib/format";
+import LoadError from "@/components/LoadError";
 
 type PaymentRow = {
   id: string;
@@ -24,10 +25,12 @@ const ESTADOS: Record<string, string> = {
 export default function PaymentsPage() {
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -46,23 +49,29 @@ export default function PaymentsPage() {
         body: JSON.stringify({ userId: session.user.id }),
       });
 
-      if (res.ok) {
+      if (!res.ok) {
+        setLoadError(true);
+      } else {
         const body = await res.json();
         setRows(body.rows ?? []);
       }
-
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
-
-    load();
   }, []);
 
-  
-
-  
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) {
     return <TableSkeleton title="Pagos" cols={3} />;
+  }
+
+  if (loadError) {
+    return <LoadError onRetry={() => load()} />;
   }
 
   return (
