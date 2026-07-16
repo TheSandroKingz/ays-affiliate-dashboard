@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getApprovedUser } from "@/lib/userAuth";
 
 export async function POST(request: Request) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-  const { data: authData, error: authError } =
-    await supabaseAdmin.auth.getUser(token);
-  if (authError || !authData.user) {
+  const user = await getApprovedUser(request);
+  if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { walletErc20, walletTrc20 } = await request.json();
-  const erc = (walletErc20 ?? "").trim();
-  const trc = (walletTrc20 ?? "").trim();
+  const body = await request.json().catch(() => ({}));
+  const erc = (body.walletErc20 ?? "").trim();
+  const trc = (body.walletTrc20 ?? "").trim();
 
   // Validación también en el servidor (no fiarse solo del cliente).
   if (erc && !/^0x[a-fA-F0-9]{40}$/.test(erc)) {
@@ -36,7 +32,7 @@ export async function POST(request: Request) {
       wallet_erc20: erc || null,
       wallet_trc20: trc || null,
     })
-    .eq("user_id", authData.user.id);
+    .eq("user_id", user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
