@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
+import { eur } from "@/lib/format";
 
 type SubAffiliateRow = {
   id: string;
@@ -132,7 +133,7 @@ export default function SubAffiliatesPage() {
                   <td className="border border-white/10 px-4 py-3 text-white">{r.id.slice(0, 8)}</td>
                   <td className="border border-white/10 px-4 py-3 text-white">{r.displayName ?? "—"}</td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white font-medium">
-                    €{r.commission.toLocaleString("de-DE")}
+                    {eur(r.commission)}
                   </td>
                 </tr>
               ))
@@ -145,7 +146,7 @@ export default function SubAffiliatesPage() {
                   Total
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-white">
-                  €{totalCommission.toLocaleString("de-DE")}
+                  {eur(totalCommission)}
                 </td>
               </tr>
             </tfoot>

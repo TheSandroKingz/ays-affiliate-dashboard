@@ -15,18 +15,30 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [ready, setReady] = useState(false)
+  const [linkError, setLinkError] = useState(false)
   const [show, setShow] = useState(false)
 
   useEffect(() => {
+    let settled = false
+    const markReady = () => {
+      settled = true
+      setReady(true)
+    }
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setReady(true)
-      }
+      if (event === 'PASSWORD_RECOVERY') markReady()
     })
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true)
+      if (data.session) markReady()
     })
-    return () => listener.subscription.unsubscribe()
+    // Si en unos segundos no hay sesión ni evento de recuperación, el enlace
+    // es inválido o caducó: mostramos error en vez de quedarnos colgados.
+    const timer = setTimeout(() => {
+      if (!settled) setLinkError(true)
+    }, 5000)
+    return () => {
+      listener.subscription.unsubscribe()
+      clearTimeout(timer)
+    }
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -69,6 +81,18 @@ export default function ResetPasswordPage() {
             <p className="text-slate-200 text-sm text-center mt-4">
               Contraseña actualizada. Redirigiendo al inicio de sesión...
             </p>
+          ) : linkError ? (
+            <div className="text-center mt-4">
+              <p className="text-red-400 text-sm">
+                Este enlace no es válido o ha caducado.
+              </p>
+              <a
+                href="/recuperar"
+                className="inline-block mt-3 text-emerald-400 hover:text-emerald-300 text-sm font-medium"
+              >
+                Pedir un enlace nuevo
+              </a>
+            </div>
           ) : !ready ? (
             <p className="text-slate-300 text-sm text-center mt-4">
               Verificando enlace...

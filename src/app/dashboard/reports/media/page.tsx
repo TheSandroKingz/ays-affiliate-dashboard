@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
+import { eur } from "@/lib/format";
 
 type DailyRow = {
   date: string;
@@ -68,7 +69,6 @@ export default function MediaReportPage() {
 
   useEffect(() => {
     fetchData(inicioMes(hoyMadrid()), hoyMadrid());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function atajo(from: string, to: string) {
@@ -282,7 +282,7 @@ export default function MediaReportPage() {
                   {etiqueta}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right">
-                  €{Number(row.commission).toLocaleString("de-DE")}
+                  {eur(Number(row.commission))}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right">
                   {row.clicks.toLocaleString("de-DE")}
@@ -311,7 +311,7 @@ export default function MediaReportPage() {
               <tr className="bg-white/10 text-white font-semibold">
                 <td className="border border-white/10 px-4 py-3">Total</td>
                 <td className="border border-white/10 px-4 py-3 text-right">
-                  €{totals.commission.toLocaleString("de-DE")}
+                  {eur(totals.commission)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right">
                   {totals.clicks.toLocaleString("de-DE")}

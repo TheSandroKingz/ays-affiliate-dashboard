@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
+import { eur } from "@/lib/format";
 
 type PaymentRow = {
   id: string;
@@ -98,7 +99,7 @@ export default function PaymentsPage() {
                   <tr key={r.id} className={`${i % 2 === 1 ? "bg-white/[0.03]" : ""} hover:bg-white/10 transition-colors`}>
                     <td className="border border-white/10 px-4 py-3">{new Date(r.date).toLocaleDateString("es-ES")}</td>
                     <td className="border border-white/10 px-4 py-3 text-right">
-                      €{Number(r.amount).toLocaleString("de-DE")}
+                      {eur(Number(r.amount))}
                     </td>
                     <td className="border border-white/10 px-4 py-3">{ESTADOS[(r.status ?? "").toLowerCase()] ?? r.status}</td>
                   </tr>

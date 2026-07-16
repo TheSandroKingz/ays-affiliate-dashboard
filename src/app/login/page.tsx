@@ -20,13 +20,14 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    let loginEmail = email
+    const cleanId = email.trim()
+    let loginEmail = cleanId
 
-if (!email.includes('@')) {
+if (!cleanId.includes('@')) {
   const res = await fetch('/api/login-lookup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier: email }),
+    body: JSON.stringify({ identifier: cleanId }),
   })
   const body = await res.json()
   if (!res.ok || !body.email) {

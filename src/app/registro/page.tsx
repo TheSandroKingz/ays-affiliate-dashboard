@@ -37,13 +37,31 @@ export default function RegistroPage() {
     setError(null)
     setLoading(true)
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+    const cleanEmail = email.trim()
+    let { data: authData, error: authError } = await supabase.auth.signUp({
+      email: cleanEmail,
       password,
     })
 
-    if (authError || !authData.user) {
-      setError(traducirError(authError?.message))
+    // Si el correo ya existía (p. ej. un intento anterior que no llegó a crear
+    // el perfil), intentamos iniciar sesión con esa contraseña para poder
+    // COMPLETAR el registro en vez de dejar la cuenta bloqueada.
+    if (authError && /regist|already|exist/i.test(authError.message)) {
+      const signin = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      })
+      authData = signin.data
+      authError = signin.error
+    }
+
+    // Sin sesión no podemos crear el perfil de forma segura: avisamos claro
+    // en vez de mandar un token vacío (que daría un 401 confuso).
+    if (authError || !authData.user || !authData.session) {
+      setError(
+        traducirError(authError?.message) ||
+          'No se pudo iniciar tu sesión. Revisa el correo y la contraseña.'
+      )
       setLoading(false)
       return
     }
@@ -52,10 +70,10 @@ export default function RegistroPage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + (authData.session?.access_token ?? ''),
+        Authorization: 'Bearer ' + authData.session.access_token,
       },
       body: JSON.stringify({
-        displayName: nombre,
+        displayName: nombre.trim(),
         referredBy: ref,
       }),
     })

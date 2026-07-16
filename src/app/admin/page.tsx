@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
+import { eur } from "@/lib/format";
 
 type StatRow = {
   user_id: string;
@@ -29,7 +30,7 @@ function fmt(n: number) {
 }
 
 function money(n: number) {
-  return "€" + n.toLocaleString("de-DE", { maximumFractionDigits: 0 });
+  return eur(n);
 }
 
 export default function AdminStatsPage() {

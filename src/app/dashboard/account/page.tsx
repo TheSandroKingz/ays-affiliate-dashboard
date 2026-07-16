@@ -102,28 +102,33 @@ export default function AccountPage() {
       return;
     }
 
+    const cleanEmail = email.trim();
+    const emailChanged = !!cleanEmail && cleanEmail !== user.email;
+
+    // Validación de formato de email en cliente (no hay <form> que la dispare).
+    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setMessage("El correo no tiene un formato válido.");
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from("affiliates")
       .update({
-        first_name: firstName,
-        
-        display_name: firstName,
+        first_name: firstName.trim(),
+        display_name: firstName.trim(),
       })
       .eq("user_id", user.id);
 
     let emailError = false;
-    if (!error && email && email !== user.email) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+    if (!error && emailChanged) {
       const res = await fetch("/api/account/update-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + (session?.access_token ?? ""),
+          Authorization: "Bearer " + session.access_token,
         },
-        body: JSON.stringify({ userId: user.id, newEmail: email }),
+        body: JSON.stringify({ userId: user.id, newEmail: cleanEmail }),
       });
       if (!res.ok) emailError = true;
     }
@@ -136,11 +141,12 @@ export default function AccountPage() {
           : "Error al guardar"
       );
     } else if (emailError) {
-      setMessage("Error al actualizar el correo");
+      // El nombre SÍ se guardó; solo falló el correo. No mentimos con "todo ok".
+      setMessage(
+        "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo."
+      );
     } else {
       setMessage("Guardado correctamente");
-    }
-    if (!error && !emailError) {
       setTimeout(() => window.location.reload(), 800);
     }
   }

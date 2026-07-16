@@ -7,6 +7,7 @@ import { ADMIN_USER_ID } from "@/lib/adminId";
 import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { metricConfig } from "@/lib/metrics";
+import { eur } from "@/lib/format";
 import { Info, Upload } from "lucide-react";
 
 // El gráfico (Recharts) es pesado; lo cargamos en diferido para que el resto
@@ -15,14 +16,6 @@ const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
   ssr: false,
   loading: () => <div className="h-[320px]" />,
 });
-
-type Stats = {
-  balance: number;
-  commission: number;
-  clicks: number;
-  registrations: number;
-  ftd: number;
-};
 
 type DailyPoint = {
   date: string;
@@ -73,13 +66,10 @@ function fillMissingDays(
 
 export default function DashboardPage() {
   const [showBalanceInfo, setShowBalanceInfo] = useState(false);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [affiliateId, setAffiliateId] = useState<string | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
@@ -142,16 +132,11 @@ export default function DashboardPage() {
       // en lugar de una detrás de otra para que el panel cargue antes.
       // La última obtiene la comisión que este afiliado gana por sus
       // subafiliados (calculada en el servidor con permisos elevados).
-      const [affiliateRes, statsRes, dailyRes, subRes] =
+      const [affiliateRes, dailyRes, subRes] =
         await Promise.all([
           supabase
             .from("affiliates")
-            .select("id, display_name")
-            .eq("user_id", user.id)
-            .single(),
-          supabase
-            .from("affiliate_stats")
-            .select("balance, commission, clicks, registrations, ftd")
+            .select("display_name")
             .eq("user_id", user.id)
             .single(),
           supabase
@@ -171,15 +156,7 @@ export default function DashboardPage() {
             .catch(() => ({ rows: [] })),
         ]);
 
-      const affiliateRow = affiliateRes.data;
-      if (affiliateRow) {
-        setAffiliateId(affiliateRow.id);
-        setDisplayName(affiliateRow.display_name ?? null);
-      }
-
-      if (!statsRes.error && statsRes.data) {
-        setStats(statsRes.data);
-      }
+      setDisplayName(affiliateRes.data?.display_name ?? null);
 
       setDailyData(fillMissingDays(dailyRes.data ?? []));
 
@@ -278,7 +255,7 @@ export default function DashboardPage() {
 
   const statCards = useMemo(
     () => [
-      { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#10b981" },
+      { key: "commission", label: "Comisión", value: eur(totals.commission), color: "#10b981" },
       { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
       { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
       { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
@@ -363,29 +340,31 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between py-1 text-sm">
                 <span className="text-slate-300">{isAdmin ? "Comisión en freshbet" : "Comisión propia"}</span>
-                <span className="font-medium text-white">€{totals.commission.toLocaleString("de-DE")}</span>
+                <span className="font-medium text-white">{eur(totals.commission)}</span>
               </div>
               {!isAdmin && subCommission > 0 && (
                 <div className="flex items-center justify-between py-1 text-sm">
                   <span className="text-slate-300">Por subafiliados</span>
-                  <span className="font-medium text-white">€{subCommission.toLocaleString("de-DE")}</span>
+                  <span className="font-medium text-white">{eur(subCommission)}</span>
                 </div>
               )}
               {!isAdmin && (
                 <div className="flex items-center justify-between py-1 text-sm border-t border-white/10 mt-1 pt-2">
                   <span className="text-slate-300">Total del mes</span>
-                  <span className="font-medium text-white">€{balance.toLocaleString("de-DE")}</span>
+                  <span className="font-medium text-white">{eur(balance)}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">Total generado</span>
-                <span className="font-semibold text-emerald-400">€{totalGenerado.toLocaleString("de-DE")}</span>
-              </div>
+              {!isAdmin && (
+                <div className="flex items-center justify-between py-1 text-sm">
+                  <span className="text-slate-300">Total generado</span>
+                  <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
         </div>
-        <p className="text-4xl font-bold text-white">€{balance.toLocaleString("de-DE")}</p>
+        <p className="text-4xl font-bold text-white">{eur(balance)}</p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map((card) => {
