@@ -63,16 +63,10 @@ export default function AdminStatsPage() {
     load();
   }, [router]);
 
-  const conversion =
-    totals.registrations > 0
-      ? ((totals.ftd / totals.registrations) * 100).toFixed(1)
-      : "0";
-
   const statCards = [
     { label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
     { label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
     { label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
-    { label: "Conversión", value: `${conversion}%`, color: "#10b981" },
   ];
 
   if (!loaded) {
@@ -103,7 +97,7 @@ export default function AdminStatsPage() {
       </div>
 
       {/* Tarjetas de totales */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {statCards.map((card) => (
           <div
             key={card.label}
