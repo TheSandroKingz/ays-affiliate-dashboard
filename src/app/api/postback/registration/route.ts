@@ -15,14 +15,7 @@ export async function GET(request: Request) {
     timeZone: "Europe/Madrid",
   }).format(new Date());
 
-  // Total de freshbet (tu red completa): contamos el evento pase lo que pase,
-  // haya o no un afiliado emparejado. Así tu total del inicio crece solo.
-  await supabaseAdmin.rpc("increment_freshbet_daily", {
-    p_date: today,
-    p_registrations: 1,
-  });
-
-  // Atribución al afiliado concreto (para pagarle), si lo identificamos.
+  // Atribución al afiliado concreto (para sus estadísticas), si lo identificamos.
   let targetUserId: string | null = null;
 
   if (trackingcode) {

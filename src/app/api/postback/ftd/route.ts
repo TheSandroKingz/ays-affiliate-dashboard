@@ -16,12 +16,6 @@ export async function GET(request: Request) {
     timeZone: "Europe/Madrid",
   }).format(new Date());
 
-  // Total de freshbet (tu red completa): contamos el FTD pase lo que pase.
-  await supabaseAdmin.rpc("increment_freshbet_daily", {
-    p_date: today,
-    p_ftd: 1,
-  });
-
   // Atribución al afiliado concreto (para pagarle su CPA), si lo identificamos.
   let target: { user_id: string; cpa_spain: number | null; cpa_other: number | null } | null = null;
   let isSubaffiliate = false;
