@@ -2,11 +2,12 @@ import { after, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getClientIp } from "@/lib/rateLimit";
 
-// Bots y previsualizadores que abren el enlace para generar la vista previa
-// (WhatsApp, Instagram, TikTok, Telegram, Facebook, etc.). Sus visitas NO son
-// clics reales, así que redirigimos pero no las contamos.
+// Bots/previsualizadores que abren el enlace para generar la vista previa
+// (viven en servidores de la plataforma, NO son clics reales). OJO: NO metemos
+// "instagram"/"tiktok" porque el navegador DENTRO de esas apps sí es un usuario
+// real; su doble carga la resuelve el anti-duplicado por IP.
 const BOT_UA =
-  /bot|crawl|spider|preview|whatsapp|facebookexternalhit|telegram|twitter|discord|slack|linkedin|pinterest|embed|scanner|fetch|curl|wget|headless|lighthouse|python-requests|bytespider|tiktok|musical_ly|instagram|snapchat|skype|line\/|vkshare|redditbot|googlebot|bingbot|yandex|applebot|metainspector|okhttp|dalvik/i;
+  /bot\b|crawl|spider|preview|whatsapp|facebookexternalhit|telegrambot|twitterbot|discordbot|slackbot|linkedinbot|pinterest|embedly|scanner|curl|wget|headless|lighthouse|python-requests|bytespider|vkshare|redditbot|googlebot|bingbot|yandex|applebot|metainspector|whatsapp/i;
 
 export async function GET(
   request: Request,
