@@ -222,7 +222,10 @@ export default function DashboardPage() {
       if (!res.ok) {
         setUploadMsg(body.error || "No se pudo subir el archivo.");
       } else {
-        setUploadMsg(`Actualizado (${body.imported} días).`);
+        setUploadMsg(
+          `Actualizado (${body.imported} días).` +
+            (body.aviso ? ` ⚠️ ${body.aviso}` : "")
+        );
         await loadStats(true);
       }
     } catch {

@@ -1,7 +1,7 @@
 -- ================================================================
 --  Opción B: sumar automáticamente los eventos de freshbet al total.
---  Cada postback (registro / FTD / comisión) llama a esta función y
---  va incrementando el día correspondiente en freshbet_daily.
+--  Versión null-safe (COALESCE): aunque llegue un valor nulo, nunca
+--  pone el total a null.
 --  Ejecuta TODO esto en Supabase -> SQL Editor -> Run.
 -- ================================================================
 
@@ -18,11 +18,17 @@ set search_path = public
 as $$
 begin
   insert into public.freshbet_daily (day, commission, clicks, registrations, ftd)
-  values (p_date, p_commission, p_clicks, p_registrations, p_ftd)
+  values (
+    p_date,
+    coalesce(p_commission, 0),
+    coalesce(p_clicks, 0),
+    coalesce(p_registrations, 0),
+    coalesce(p_ftd, 0)
+  )
   on conflict (day) do update set
-    commission    = public.freshbet_daily.commission    + excluded.commission,
-    clicks        = public.freshbet_daily.clicks        + excluded.clicks,
-    registrations = public.freshbet_daily.registrations + excluded.registrations,
-    ftd           = public.freshbet_daily.ftd           + excluded.ftd;
+    commission    = coalesce(public.freshbet_daily.commission, 0)    + coalesce(excluded.commission, 0),
+    clicks        = coalesce(public.freshbet_daily.clicks, 0)        + coalesce(excluded.clicks, 0),
+    registrations = coalesce(public.freshbet_daily.registrations, 0) + coalesce(excluded.registrations, 0),
+    ftd           = coalesce(public.freshbet_daily.ftd, 0)           + coalesce(excluded.ftd, 0);
 end;
 $$;

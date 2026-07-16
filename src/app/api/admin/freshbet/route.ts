@@ -64,8 +64,45 @@ export async function POST(request: Request) {
     );
   }
 
+  // Parseo de una línea CSV respetando comillas (por si algún valor lleva comas).
+  const parseLine = (line: string): string[] => {
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c === "," && !inQuotes) {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += c;
+      }
+    }
+    out.push(cur);
+    return out.map((s) => s.trim());
+  };
+
+  // Número tolerante: quita comillas/espacios/símbolos, entiende coma decimal
+  // europea y separador de miles, y si no es válido devuelve 0.
+  const num = (cols: string[], i: number): number => {
+    if (i === -1) return 0;
+    let s = (cols[i] ?? "").replace(/["'\s€$]/g, "");
+    if (!s) return 0;
+    if (s.includes(",") && s.includes(".")) s = s.replace(/,/g, ""); // 1,234.56 -> 1234.56
+    else if (s.includes(",")) s = s.replace(",", "."); // 233,64 -> 233.64
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // Localizamos las columnas por su nombre en la cabecera (por si cambia el orden).
-  const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const header = parseLine(lines[0]).map((h) => h.toLowerCase());
   const idx = (name: string) => header.indexOf(name);
   const iDay = idx("day");
   const iCommission = idx("commission");
@@ -80,13 +117,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const num = (cols: string[], i: number) =>
-    i === -1 ? 0 : Number((cols[i] ?? "0").trim()) || 0;
+  // Avisar si faltan columnas esperadas (para no importar métricas a 0 en silencio).
+  const faltan = [
+    iCommission === -1 && "Commission",
+    iVisitors === -1 && "Visitors",
+    iRegs === -1 && "Registrations",
+    iFtd === -1 && "FTD",
+  ].filter(Boolean) as string[];
 
   const rows: Row[] = [];
   for (const line of lines.slice(1)) {
-    const cols = line.split(",");
-    const rawDay = (cols[iDay] ?? "").trim();
+    const cols = parseLine(line);
+    const rawDay = (cols[iDay] ?? "").replace(/["']/g, "").trim();
     if (!rawDay) continue;
     // freshbet usa "2026/07/01"; lo pasamos a "2026-07-01".
     const day = rawDay.replace(/\//g, "-");
@@ -115,5 +157,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, imported: rows.length, totals: totalsOf(rows) });
+  return NextResponse.json({
+    ok: true,
+    imported: rows.length,
+    totals: totalsOf(rows),
+    aviso: faltan.length
+      ? `No encontré estas columnas (se importaron como 0): ${faltan.join(", ")}`
+      : undefined,
+  });
 }
