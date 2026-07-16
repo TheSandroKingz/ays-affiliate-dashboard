@@ -146,7 +146,7 @@ export default function MediaReportPage() {
   );
 
   const inputClass =
-    "rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500";
+    "rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   if (loading) {
     return <TableSkeleton title="Informe de Medios" cols={5} />;
