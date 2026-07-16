@@ -94,18 +94,6 @@ export default function AdminDashboard() {
   const sinActividad =
     totals.totalClean === 0 && totals.clicks === 0 && totals.ftd === 0;
 
-  const breakdown = [
-    { label: "Mi link propio", value: eur(totals.ownEarnings), color: "#10b981", hint: "CPA completo, sin pagar a nadie" },
-    { label: "Mi estructura", value: eur(totals.structureMargin), color: "#34d399", hint: "tu margen de los afiliados" },
-    { label: "Pago a afiliados", value: eur(totals.structurePaid), color: "#f59e0b", hint: "lo que les pagas (informativo)" },
-  ];
-
-  const activity = [
-    { label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
-    { label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-    { label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
-  ];
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -185,37 +173,8 @@ export default function AdminDashboard() {
         <p className="text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
       </div>
 
-      {/* Desglose: propio vs estructura vs pago */}
-      <div className="animate-in grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ animationDelay: "0.12s" }}>
-        {breakdown.map((c) => (
-          <div
-            key={c.label}
-            className="p-4 rounded-xl border border-white/15 border-t-4 bg-black/40"
-            style={{ borderTopColor: c.color }}
-          >
-            <p className="text-sm text-slate-300">{c.label}</p>
-            <p className="text-2xl font-bold text-white mt-1">{c.value}</p>
-            <p className="text-xs text-slate-500 mt-1">{c.hint}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Actividad de la red */}
-      <div className="animate-in grid grid-cols-3 gap-3" style={{ animationDelay: "0.18s" }}>
-        {activity.map((c) => (
-          <div
-            key={c.label}
-            className="p-4 rounded-xl border border-white/15 border-t-4 bg-black/40"
-            style={{ borderTopColor: c.color }}
-          >
-            <p className="text-sm text-slate-300 mb-1">{c.label}</p>
-            <p className="text-xl font-bold text-white">{c.value}</p>
-          </div>
-        ))}
-      </div>
-
       {/* Gráfico de lo que me llevo */}
-      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.24s" }}>
+      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.12s" }}>
         <BalanceChart
           data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
           activeMetrics={new Set(["commission"])}
@@ -229,14 +188,6 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
-
-      {totals.ownEarnings === 0 && (
-        <p className="text-xs text-slate-500">
-          💡 Tu «link propio» sale a 0 porque tu tráfico personal aún no tiene un
-          enlace de seguimiento propio. Pásame un enlace de freshbet dedicado
-          para ti y lo separo aquí.
-        </p>
-      )}
     </div>
   );
 }
