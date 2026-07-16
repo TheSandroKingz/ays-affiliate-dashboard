@@ -64,7 +64,7 @@ export default function ComisionesClient({
   }
 
   const inputClass =
-    "mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400";
+    "mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

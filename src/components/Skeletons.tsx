@@ -54,7 +54,7 @@ export function CardsSkeleton({
         {Array.from({ length: cards }).map((_, i) => (
           <div
             key={i}
-            className="bg-white/10 border border-white/20 rounded-xl p-6"
+            className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6"
           >
             <div className="h-5 w-40 rounded bg-white/10 mb-4" />
             <div className="flex items-center justify-between mb-3">

@@ -16,7 +16,7 @@ export default function DashboardSkeleton() {
       </div>
 
       {/* Tarjeta de balance */}
-      <div className="bg-white/10 border border-white/10 rounded-xl p-6 max-w-md">
+      <div className="bg-white/10 border border-white/20 rounded-xl p-6 max-w-md">
         <div className="h-4 w-24 rounded bg-white/10 mb-3" />
         <div className="h-9 w-40 rounded bg-white/10 mb-3" />
         <div className="h-3 w-full rounded bg-white/10" />
@@ -27,7 +27,7 @@ export default function DashboardSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="p-4 rounded-xl border border-white/10 border-t-4 border-t-white/10 bg-black/40"
+            className="p-4 rounded-xl border border-white/20 border-t-4 border-t-white/10 bg-black/40"
           >
             <div className="h-3 w-16 rounded bg-white/10 mb-3" />
             <div className="h-6 w-20 rounded bg-white/10" />
@@ -36,7 +36,7 @@ export default function DashboardSkeleton() {
       </div>
 
       {/* Gráfico */}
-      <div className="bg-white/10 border border-white/10 rounded-xl p-6">
+      <div className="bg-white/10 border border-white/20 rounded-xl p-6">
         <div className="h-[320px] w-full rounded-lg bg-white/5" />
       </div>
     </div>

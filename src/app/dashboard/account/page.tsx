@@ -197,7 +197,15 @@ export default function AccountPage() {
       </div>
 
       {message && (
-        <p className="text-sm text-emerald-300">{message}</p>
+        <p
+          className={`text-sm ${
+            /correctamente|actualizada/i.test(message)
+              ? "text-emerald-400"
+              : "text-red-400"
+          }`}
+        >
+          {message}
+        </p>
       )}{activeTab === "personal" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
           <div className="flex items-center gap-4">

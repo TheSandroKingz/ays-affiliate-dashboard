@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import ContactManagerButton from "@/components/ContactManagerButton";
@@ -177,40 +177,52 @@ export default function DashboardPage() {
     });
   };
 
+  // Cálculos memoizados: así no se rehacen (ni se re-renderiza el gráfico)
+  // al abrir el tooltip del balance o togglear métricas.
+  const totals = useMemo(
+    () =>
+      dailyData.reduce(
+        (acc, d) => ({
+          commission: acc.commission + d.commission,
+          clicks: acc.clicks + d.clicks,
+          registrations: acc.registrations + d.registrations,
+          ftd: acc.ftd + d.ftd,
+        }),
+        { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
+      ),
+    [dailyData]
+  );
+
+  const chartData = useMemo(
+    () =>
+      dailyData.map((d) => {
+        const point: Record<string, number | string> = { date: d.date };
+        metricConfig.forEach((m) => {
+          point[m.key] = d[m.key];
+        });
+        return point;
+      }),
+    [dailyData]
+  );
+
+  const statCards = useMemo(
+    () => [
+      { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#10b981" },
+      { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
+      { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
+      { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
+    ],
+    [totals]
+  );
+
   if (loading) {
     return <DashboardSkeleton />;
   }
-const totals = dailyData.reduce(
-    (acc, d) => ({
-      commission: acc.commission + d.commission,
-      clicks: acc.clicks + d.clicks,
-      registrations: acc.registrations + d.registrations,
-      ftd: acc.ftd + d.ftd,
-    }),
-    { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
-  );
 
-  // Total ganado este mes = comisión propia del mes + comisión por sus
-  // subafiliados del mes. Se reinicia solo el día 1 (los pagos van aparte,
-  // al historial de pagos).
+  // Total ganado este mes = comisión propia + subafiliados del mes.
   const balance = totals.commission + subCommission;
-  const chartData = dailyData.map((d) => {
-    const point: Record<string, number | string> = { date: d.date };
-    metricConfig.forEach((m) => {
-      point[m.key] = d[m.key];
-    });
-    return point;
-  });
-
-
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
-  const statCards = [
-    { key: "commission", label: "Comisión", value: `€${totals.commission.toLocaleString("de-DE")}`, color: "#10b981" },
-    { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
-    { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-    { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
-  ];
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -91,8 +91,9 @@ export default function MediaReportPage() {
     },
   ];
 
-  const filas: { etiqueta: string; row: DailyRow }[] =
-    agrupar === "mes"
+  const filas: { etiqueta: string; row: DailyRow }[] = useMemo(
+    () =>
+      agrupar === "mes"
       ? Array.from(
           rows
             .reduce((map, r) => {
@@ -126,20 +127,26 @@ export default function MediaReportPage() {
             timeZone: "UTC",
           }),
           row: r,
-        }));
+        })),
+    [rows, agrupar]
+  );
 
-  const totals = filas.reduce(
-    (acc, { row }) => ({
-      commission: acc.commission + Number(row.commission),
-      clicks: acc.clicks + row.clicks,
-      registrations: acc.registrations + row.registrations,
-      ftd: acc.ftd + row.ftd,
-    }),
-    { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
+  const totals = useMemo(
+    () =>
+      filas.reduce(
+        (acc, { row }) => ({
+          commission: acc.commission + Number(row.commission),
+          clicks: acc.clicks + row.clicks,
+          registrations: acc.registrations + row.registrations,
+          ftd: acc.ftd + row.ftd,
+        }),
+        { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
+      ),
+    [filas]
   );
 
   const inputClass =
-    "rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark]";
+    "rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   if (loading) {
     return <TableSkeleton title="Informe de Medios" cols={5} />;
@@ -152,7 +159,7 @@ export default function MediaReportPage() {
       {/* Botón para desplegar los filtros (solo en móvil) */}
       <button
         onClick={() => setMostrarFiltros((v) => !v)}
-        className="md:hidden flex items-center justify-between gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm text-white"
+        className="md:hidden flex items-center justify-between gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-sm text-white"
       >
         <span className="flex items-center gap-2">
           <Calendar size={16} className="text-slate-400" />
@@ -168,7 +175,7 @@ export default function MediaReportPage() {
       <div
         className={`${
           mostrarFiltros ? "flex" : "hidden"
-        } md:flex flex-col gap-4 bg-white/10 backdrop-blur border border-white/20 rounded-xl p-4`}
+        } md:flex flex-col gap-4 bg-white/10 backdrop-blur border border-white/20 rounded-xl p-4 sm:p-6`}
       >
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex flex-col gap-1">

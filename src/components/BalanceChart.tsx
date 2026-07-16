@@ -10,11 +10,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { memo } from "react";
 import { metricConfig } from "@/lib/metrics";
 
 type ChartPoint = Record<string, number | string>;
 
-export default function BalanceChart({
+function BalanceChart({
   data,
   activeMetrics,
   primaryMetricKey,
@@ -101,3 +102,5 @@ export default function BalanceChart({
     </ResponsiveContainer>
   );
 }
+
+export default memo(BalanceChart);
