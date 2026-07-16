@@ -9,13 +9,30 @@ import { supabase } from "@/lib/supabaseClient";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [ready, setReady] = useState(false);
   const router = useRouter();
 
-  // Si no hay sesión (o caduca), llevar a login en vez de mostrar datos vacíos.
+  // Guardián de acceso: sin sesión → login; cuenta NO aprobada → pendiente.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace("/login");
-    });
+    async function check() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        router.replace("/login");
+        return;
+      }
+      // ¿La cuenta está aprobada? (si la columna aún no existe, no bloquea)
+      const { data: aff } = await supabase
+        .from("affiliates")
+        .select("approved")
+        .eq("user_id", data.session.user.id)
+        .maybeSingle();
+      if (aff && aff.approved === false) {
+        router.replace("/pendiente");
+        return;
+      }
+      setReady(true);
+    }
+    check();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) router.replace("/login");
     });
@@ -43,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </span>
         </div>
 
-        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{children}</main>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{ready ? children : null}</main>
       </div>
     </div>
   );

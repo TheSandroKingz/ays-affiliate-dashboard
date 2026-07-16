@@ -37,12 +37,17 @@ function fmt(n: number) {
   return n.toLocaleString("de-DE");
 }
 
+type Pending = { user_id: string; display_name: string | null };
+
 export default function AdminStatsPage() {
   const router = useRouter();
   const [stats, setStats] = useState<StatRow[] | null>(null);
   const [totals, setTotals] = useState<Totals>(emptyTotals);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [pending, setPending] = useState<Pending[]>([]);
+  const [token, setToken] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -54,10 +59,18 @@ export default function AdminStatsPage() {
         router.replace("/dashboard");
         return;
       }
+      setToken(session.access_token);
 
-      const res = await fetch("/api/admin/stats", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
+      const [res, pendRes] = await Promise.all([
+        fetch("/api/admin/stats", {
+          headers: { Authorization: "Bearer " + session.access_token },
+        }),
+        fetch("/api/admin/pending", {
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : { pending: [] }))
+          .catch(() => ({ pending: [] })),
+      ]);
       const body = await res.json();
 
       if (!res.ok) {
@@ -68,10 +81,28 @@ export default function AdminStatsPage() {
 
       setStats(body.stats);
       setTotals(body.totals);
+      setPending(pendRes.pending ?? []);
       setLoaded(true);
     }
     load();
   }, [router]);
+
+  async function decidir(userId: string, action: "approve" | "reject") {
+    if (!token) return;
+    setBusyId(userId);
+    const res = await fetch("/api/admin/pending", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ userId, action }),
+    });
+    setBusyId(null);
+    if (res.ok) {
+      setPending((prev) => prev.filter((p) => p.user_id !== userId));
+    }
+  }
 
   const affCards = [
     { label: "Clics", value: fmt(totals.clicks), color: "#9333ea" },
@@ -101,6 +132,43 @@ export default function AdminStatsPage() {
           suyo. Aquí ves lo que le pagas a cada uno y lo que te queda a ti.
         </p>
       </div>
+
+      {/* Solicitudes pendientes de aprobación */}
+      {pending.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-400/40 rounded-xl p-5">
+          <p className="text-sm font-semibold text-amber-300 mb-3">
+            Solicitudes pendientes ({pending.length})
+          </p>
+          <div className="flex flex-col gap-2">
+            {pending.map((p) => (
+              <div
+                key={p.user_id}
+                className="flex items-center justify-between gap-3 bg-black/30 rounded-lg px-3 py-2"
+              >
+                <span className="text-white text-sm truncate">
+                  {p.display_name ?? "—"}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => decidir(p.user_id, "approve")}
+                    disabled={busyId === p.user_id}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    Aceptar
+                  </button>
+                  <button
+                    onClick={() => decidir(p.user_id, "reject")}
+                    disabled={busyId === p.user_id}
+                    className="border border-red-400/40 text-red-300 hover:bg-red-500/10 disabled:opacity-60 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Margen total de la estructura (el total limpio está en el inicio) */}
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
