@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
 
@@ -27,6 +28,10 @@ function addDays(iso: string, n: number): string {
   dt.setUTCDate(dt.getUTCDate() + n);
   return dt.toISOString().slice(0, 10);
 }
+function fmtCorto(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
 
 export default function MediaReportPage() {
   const [rows, setRows] = useState<DailyRow[]>([]);
@@ -35,6 +40,7 @@ export default function MediaReportPage() {
   const [desde, setDesde] = useState(inicioMes(hoyMadrid()));
   const [hasta, setHasta] = useState(hoyMadrid());
   const [agrupar, setAgrupar] = useState<"dia" | "mes">("dia");
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   async function fetchData(from: string, to: string, isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -85,13 +91,12 @@ export default function MediaReportPage() {
     },
   ];
 
-  // Agrupar por mes si procede
   const filas: { etiqueta: string; row: DailyRow }[] =
     agrupar === "mes"
       ? Array.from(
           rows
             .reduce((map, r) => {
-              const key = String(r.date).slice(0, 7); // YYYY-MM
+              const key = String(r.date).slice(0, 7);
               const acc = map.get(key) ?? {
                 date: key,
                 commission: 0,
@@ -131,21 +136,6 @@ export default function MediaReportPage() {
     { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
   );
 
-  function exportarCSV() {
-    const cabecera = ["Fecha", "Comision", "Clics", "Registros", "FTD"];
-    const lineas = filas.map(({ etiqueta, row }) =>
-      [etiqueta, row.commission, row.clicks, row.registrations, row.ftd].join(",")
-    );
-    const csv = [cabecera.join(","), ...lineas].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `informe-medios-${desde}_a_${hasta}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   const inputClass =
     "rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark]";
 
@@ -154,11 +144,30 @@ export default function MediaReportPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold text-white">Informe de Medios</h1>
 
-      {/* Controles de rango de fechas */}
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-4 flex flex-col gap-4">
+      {/* Botón para desplegar los filtros (solo en móvil) */}
+      <button
+        onClick={() => setMostrarFiltros((v) => !v)}
+        className="md:hidden flex items-center justify-between gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm text-white"
+      >
+        <span className="flex items-center gap-2">
+          <Calendar size={16} className="text-slate-400" />
+          {fmtCorto(desde)} – {fmtCorto(hasta)} · {agrupar === "mes" ? "Mes" : "Día"}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`transition-transform ${mostrarFiltros ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {/* Controles (plegados en móvil hasta desplegar; siempre visibles en escritorio) */}
+      <div
+        className={`${
+          mostrarFiltros ? "flex" : "hidden"
+        } md:flex flex-col gap-4 bg-white/10 backdrop-blur border border-white/20 rounded-xl p-4`}
+      >
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400">Desde</label>
@@ -182,7 +191,6 @@ export default function MediaReportPage() {
             />
           </div>
 
-          {/* Interruptor Día / Mes */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400">Ver por</label>
             <div className="inline-flex rounded-lg border border-white/20 overflow-hidden">
@@ -216,16 +224,8 @@ export default function MediaReportPage() {
           >
             {refreshing ? "Aplicando..." : "Aplicar"}
           </button>
-
-          <button
-            onClick={exportarCSV}
-            className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10 sm:ml-auto"
-          >
-            Exportar CSV
-          </button>
         </div>
 
-        {/* Atajos rápidos */}
         <div className="flex flex-wrap gap-2">
           {atajos.map((a) => (
             <button
