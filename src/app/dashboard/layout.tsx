@@ -15,23 +15,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Guardián de acceso: sin sesión → login; cuenta NO aprobada → pendiente.
   useEffect(() => {
     async function check() {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.replace("/login");
-        return;
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          router.replace("/login");
+          return;
+        }
+        // ¿La cuenta está aprobada y tiene perfil? Si no (o está a medias) →
+        // pantalla de pendiente. En error transitorio no bloqueamos (RLS protege).
+        const { data: aff, error } = await supabase
+          .from("affiliates")
+          .select("approved")
+          .eq("user_id", data.session.user.id)
+          .maybeSingle();
+        if (!error && (!aff || aff.approved === false)) {
+          router.replace("/pendiente");
+          return;
+        }
+        setReady(true);
+      } catch {
+        // Ante cualquier fallo (red, Supabase lento), NO dejamos la pantalla en
+        // blanco: mostramos el panel (los datos están protegidos por RLS igual).
+        setReady(true);
       }
-      // ¿La cuenta está aprobada y tiene perfil? Si no (o está a medias) →
-      // pantalla de pendiente. En error transitorio no bloqueamos (RLS protege).
-      const { data: aff, error } = await supabase
-        .from("affiliates")
-        .select("approved")
-        .eq("user_id", data.session.user.id)
-        .maybeSingle();
-      if (!error && (!aff || aff.approved === false)) {
-        router.replace("/pendiente");
-        return;
-      }
-      setReady(true);
     }
     check();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
