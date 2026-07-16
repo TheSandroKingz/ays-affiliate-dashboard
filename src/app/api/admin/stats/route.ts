@@ -38,9 +38,16 @@ export async function GET(request: Request) {
   // "mi link propio"). Así ves cómo va cada uno, incluidos los nuevos.
   const { data: structure, error: sErr } = await supabaseAdmin
     .from("affiliates")
-    .select("user_id, display_name")
+    .select("id, user_id, display_name, referred_by, subaffiliate_percent")
     .neq("user_id", user.id);
   if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
+
+  // % de override por afiliado (para descontar lo que un afiliado gana de sus
+  // subafiliados, que sale de tu bolsillo).
+  const percentById = new Map<string, number>();
+  for (const a of structure ?? []) {
+    percentById.set(a.id, Number(a.subaffiliate_percent ?? 0));
+  }
 
   const structIds = (structure ?? []).map((s) => s.user_id);
 
@@ -102,11 +109,23 @@ export async function GET(request: Request) {
     { commission: 0, clicks: 0, registrations: 0, ftd: 0, margin: 0 }
   );
 
+  // Override que pagas a los "padres": si un afiliado tiene como referido a
+  // OTRO afiliado (no a ti), tú pagas al padre su % sobre la comisión del hijo.
+  let overridesPaid = 0;
+  for (const a of structure ?? []) {
+    if (!a.referred_by || a.referred_by === me?.id) continue;
+    const parentPct = percentById.get(a.referred_by) ?? 0;
+    const childCommission = byUser.get(a.user_id)?.commission ?? 0;
+    overridesPaid += (parentPct / 100) * childCommission;
+  }
+
   const totals = {
     ownEarnings: own.commission, // mi link propio (CPA completo)
     structureMargin: structure_t.margin, // mi estructura (margen)
     structurePaid: structure_t.commission, // lo que pago a afiliados
-    totalClean: own.commission + structure_t.margin, // lo que me llevo limpio
+    overridesPaid, // lo que pago a los padres por sus subafiliados
+    // Lo que me llevo limpio = propio + margen − overrides a los padres.
+    totalClean: own.commission + structure_t.margin - overridesPaid,
     clicks: own.clicks + structure_t.clicks,
     registrations: own.registrations + structure_t.registrations,
     ftd: own.ftd + structure_t.ftd,
