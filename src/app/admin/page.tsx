@@ -133,12 +133,27 @@ export default function AdminStatsPage() {
         </p>
       </div>
 
-      {/* Solicitudes pendientes de aprobación */}
-      {pending.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-400/40 rounded-xl p-5">
-          <p className="text-sm font-semibold text-amber-300 mb-3">
-            Solicitudes pendientes ({pending.length})
+      {/* Solicitudes pendientes de aprobación (siempre visible) */}
+      <div
+        className={`rounded-xl p-5 border ${
+          pending.length > 0
+            ? "bg-amber-500/10 border-amber-400/40"
+            : "bg-white/5 border-white/10"
+        }`}
+      >
+        <p
+          className={`text-sm font-semibold mb-3 ${
+            pending.length > 0 ? "text-amber-300" : "text-slate-300"
+          }`}
+        >
+          Solicitudes pendientes ({pending.length})
+        </p>
+        {pending.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            No hay solicitudes pendientes ahora mismo. Cuando alguien se
+            registre, aparecerá aquí para que lo aceptes o rechaces.
           </p>
+        ) : (
           <div className="flex flex-col gap-2">
             {pending.map((p) => (
               <div
@@ -167,8 +182,8 @@ export default function AdminStatsPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Margen total de la estructura (el total limpio está en el inicio) */}
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
