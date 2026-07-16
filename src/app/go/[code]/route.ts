@@ -25,8 +25,14 @@ export async function GET(
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Europe/Madrid",
     }).format(new Date());
+    // El clic cuenta para el afiliado (para sus estadísticas)...
     await supabaseAdmin.rpc("increment_daily_stats", {
       p_user_id: userId,
+      p_date: today,
+      p_clicks: 1,
+    });
+    // ...y también para tu total de freshbet (tu red completa, en el inicio).
+    await supabaseAdmin.rpc("increment_freshbet_daily", {
       p_date: today,
       p_clicks: 1,
     });
