@@ -69,6 +69,10 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoFocus
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="usuario o tu@email.com"
                 />
@@ -84,12 +88,14 @@ const { error: signInError } = await supabase.auth.signInWithPassword({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 pl-10 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

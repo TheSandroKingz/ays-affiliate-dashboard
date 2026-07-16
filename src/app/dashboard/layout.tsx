@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Image from "next/image";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+
+  // Si no hay sesión (o caduca), llevar a login en vez de mostrar datos vacíos.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) router.replace("/login");
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.replace("/login");
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router]);
 
   return (
     <div className="flex min-h-screen bg-black">
@@ -21,7 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex flex-col flex-1 min-w-0">
         <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden sticky top-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>
-          <button onClick={() => setSidebarOpen(true)} className="text-white p-2 -ml-2">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" className="text-white p-2 -ml-2">
             <Menu size={24} />
           </button>
           <span className="flex-1 flex justify-center pr-6">

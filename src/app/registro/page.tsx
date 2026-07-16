@@ -89,14 +89,18 @@ export default function RegistroPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Nombre</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">Nombre de usuario</label>
             <input
               type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               required
+              autoFocus
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Tu nombre"
+              placeholder="Con el que iniciarás sesión"
             />
           </div>
 
@@ -107,6 +111,9 @@ export default function RegistroPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="tu@email.com"
             />
@@ -121,12 +128,14 @@ export default function RegistroPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="new-password"
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Mínimo 6 caracteres"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, Send, X } from "lucide-react";
 import Image from "next/image";
 
@@ -13,13 +13,15 @@ const CONTACT = {
 
 export default function ContactManagerButton() {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
 
-  function copy(value: string, key: string) {
-    navigator.clipboard.writeText(value);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 1500);
-  }
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <>
@@ -31,8 +33,17 @@ export default function ContactManagerButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md sm:max-w-sm rounded-xl border border-white/20 bg-black/95 p-5 sm:p-4"><div className="flex items-start justify-between">
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Contactar con tu gestor"
+            className="w-full max-w-md sm:max-w-sm rounded-xl border border-white/20 bg-black/95 p-5 sm:p-4"
+          ><div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-semibold text-white">
                   Contactar con tu gestor
@@ -40,6 +51,7 @@ export default function ContactManagerButton() {
               </div>
               <button
                 onClick={() => setOpen(false)}
+                aria-label="Cerrar"
                 className="text-slate-400 hover:text-white"
               >
                 <X size={20} />

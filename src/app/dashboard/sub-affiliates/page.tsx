@@ -85,12 +85,14 @@ export default function SubAffiliatesPage() {
               className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2 truncate"
             />
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(
-                  `${origin}/registro?ref=${affiliateId}`
-                );
-                setLinkCopied(true);
-                setTimeout(() => setLinkCopied(false), 1500);
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${origin}/registro?ref=${affiliateId}`
+                  );
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 1500);
+                } catch {}
               }}
               className="shrink-0 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
             >

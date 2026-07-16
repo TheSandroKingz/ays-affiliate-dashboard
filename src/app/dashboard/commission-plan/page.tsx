@@ -88,7 +88,10 @@ export default function CommissionPlanPage() {
         </div>
         {promoLink && (
           <div className="border-b border-white/10 pb-3 mb-3">
-            <p className="text-slate-200 mb-2">Tu enlace de FreshBet</p>
+            <p className="text-slate-200 mb-1">Tu enlace de FreshBet</p>
+            <p className="text-xs text-slate-400 mb-2">
+              Compártelo con tus jugadores: cada registro y depósito se te atribuye automáticamente.
+            </p>
             <div className="flex items-center gap-2">
               <input
                 readOnly
@@ -96,10 +99,12 @@ export default function CommissionPlanPage() {
                 className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2 truncate"
               />
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(promoLink);
-                  setPromoLinkCopied(true);
-                  setTimeout(() => setPromoLinkCopied(false), 1500);
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(promoLink);
+                    setPromoLinkCopied(true);
+                    setTimeout(() => setPromoLinkCopied(false), 1500);
+                  } catch {}
                 }}
                 className="shrink-0 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
               >

@@ -76,14 +76,16 @@ export default function DashboardPage() {
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
 
-  const loadStats = useCallback(async () => {
-      setLoading(true);
+  const loadStats = useCallback(async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -91,6 +93,7 @@ export default function DashboardPage() {
 
       if (!user || !session) {
         setLoading(false);
+        setRefreshing(false);
         return;
       }
 
@@ -155,6 +158,7 @@ export default function DashboardPage() {
       setTotalGenerado(propiaHist + Number(subRes?.totalHistorico ?? 0));
 
       setLoading(false);
+      setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -218,10 +222,11 @@ const totals = dailyData.reduce(
           <div className="flex items-center gap-2 sm:gap-3">
           <ContactManagerButton />
           <button
-            onClick={() => loadStats()}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            onClick={() => loadStats(true)}
+            disabled={refreshing}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
           >
-            Actualizar
+            {refreshing ? "Actualizando..." : "Actualizar"}
           </button>
         </div>
       </div>
@@ -234,6 +239,7 @@ const totals = dailyData.reduce(
             <button
               type="button"
               onClick={() => setShowBalanceInfo((v) => !v)}
+              aria-label="Ver desglose del balance"
               className="flex items-center text-slate-400 hover:text-slate-300"
             >
               <Info size={15} className="cursor-help" />
