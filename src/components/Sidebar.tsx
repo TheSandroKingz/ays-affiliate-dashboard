@@ -56,6 +56,18 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     });
   }, []);
 
+  // El perfil (nombre/foto) puede cambiar en Configuración de Cuenta: nos
+  // actualizamos al instante sin recargar toda la app.
+  useEffect(() => {
+    const onUpdate = (e: Event) => {
+      const d = (e as CustomEvent).detail ?? {};
+      if (d.display_name !== undefined) setDisplayName(d.display_name);
+      if (d.avatar_url !== undefined) setAvatarUrl(d.avatar_url);
+    };
+    window.addEventListener("profile-updated", onUpdate);
+    return () => window.removeEventListener("profile-updated", onUpdate);
+  }, []);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");

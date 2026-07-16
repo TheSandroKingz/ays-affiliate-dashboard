@@ -82,6 +82,7 @@ export default function DashboardPage() {
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -126,6 +127,7 @@ export default function DashboardPage() {
         setDailyData(fillMissingDays(marginDaily));
         setSubCommission(0);
         setTotalGenerado(marginDaily.reduce((s, d) => s + d.commission, 0));
+        setLastUpdated(new Date());
         setLoading(false);
         setRefreshing(false);
         return;
@@ -178,6 +180,7 @@ export default function DashboardPage() {
       );
       setTotalGenerado(propiaHist + Number(subRes?.totalHistorico ?? 0));
 
+      setLastUpdated(new Date());
       setLoading(false);
       setRefreshing(false);
   }, []);
@@ -244,13 +247,23 @@ export default function DashboardPage() {
   const balance = totals.commission + subCommission;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
+  const sinActividad =
+    totals.commission === 0 &&
+    totals.clicks === 0 &&
+    totals.registrations === 0 &&
+    totals.ftd === 0;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
             <h1 className="text-2xl font-semibold text-white">{saludo()}{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
-              <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+              <p className="text-sm text-slate-400">
+                {new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                {lastUpdated && (
+                  <span className="text-slate-500"> · Actualizado {lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>
+                )}
+              </p>
             </div>
           <div className="flex items-center gap-2 sm:gap-3">
           {!isAdmin && <ContactManagerButton />}
@@ -329,12 +342,19 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6">
+      <div className="relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6">
         <BalanceChart
           data={chartData}
           activeMetrics={activeMetrics}
           primaryMetricKey={primaryMetricKey}
         />
+        {sinActividad && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <p className="text-sm text-slate-400 bg-black/50 border border-white/10 px-3 py-1.5 rounded-lg">
+              Aún no hay actividad este mes
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

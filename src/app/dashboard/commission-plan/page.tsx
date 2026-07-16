@@ -93,6 +93,7 @@ export default function CommissionPlanPage() {
               <input
                 readOnly
                 value={promoLink}
+                onFocus={(e) => e.currentTarget.select()}
                 className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2 truncate"
               />
               <button

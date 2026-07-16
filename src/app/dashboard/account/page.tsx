@@ -87,6 +87,10 @@ export default function AccountPage() {
     await supabase.from("affiliates").update({ avatar_url: publicUrl }).eq("user_id", user.id);
 
     setAvatarUrl(publicUrl);
+    // El menú lateral refleja la nueva foto al instante, sin recargar.
+    window.dispatchEvent(
+      new CustomEvent("profile-updated", { detail: { avatar_url: publicUrl } })
+    );
     setUploading(false);
   }
 
@@ -147,7 +151,13 @@ export default function AccountPage() {
       );
     } else {
       setMessage("Guardado correctamente");
-      setTimeout(() => window.location.reload(), 800);
+      // Avisamos al menú lateral para que refleje el nuevo nombre al instante,
+      // sin recargar toda la app (antes se hacía window.location.reload()).
+      window.dispatchEvent(
+        new CustomEvent("profile-updated", {
+          detail: { display_name: firstName.trim() },
+        })
+      );
     }
   }
 

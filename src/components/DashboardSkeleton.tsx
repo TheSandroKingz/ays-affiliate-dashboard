@@ -2,7 +2,7 @@
 // los datos. Da sensación de rapidez frente a un simple "Cargando...".
 export default function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6 pt-4 md:pt-0 animate-pulse">
+    <div className="flex flex-col gap-6 animate-pulse">
       {/* Cabecera */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-col gap-2">
