@@ -32,8 +32,11 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   return true;
 }
 
-// Obtiene la IP del cliente a partir de las cabeceras del proxy (Vercel).
+// Obtiene la IP del cliente. Preferimos `x-real-ip` (Vercel la pone con la IP
+// verdadera, NO falsificable por el cliente); si no, caemos al x-forwarded-for.
 export function getClientIp(request: Request): string {
+  const real = request.headers.get("x-real-ip");
+  if (real && real.trim()) return real.trim();
   const xff = request.headers.get("x-forwarded-for");
   return xff?.split(",")[0].trim() || "unknown";
 }
