@@ -114,15 +114,17 @@ export default function MediaReportPage() {
             .values()
         )
           .sort((a, b) => (a.date < b.date ? 1 : -1))
-          .map((r) => ({
-            etiqueta: new Date(r.date + "-01").toLocaleDateString("es-ES", {
+          .map((r) => {
+            const s = new Date(r.date + "-01").toLocaleDateString("es-ES", {
               month: "long",
               year: "numeric",
-            }),
-            row: r,
-          }))
+            });
+            return { etiqueta: s.charAt(0).toUpperCase() + s.slice(1), row: r };
+          })
       : rows.map((r) => ({
-          etiqueta: new Date(r.date).toLocaleDateString("es-ES"),
+          etiqueta: new Date(r.date).toLocaleDateString("es-ES", {
+            timeZone: "UTC",
+          }),
           row: r,
         }));
 
@@ -269,7 +271,7 @@ export default function MediaReportPage() {
                   i % 2 === 1 ? "bg-white/[0.03]" : ""
                 } hover:bg-white/10 transition-colors`}
               >
-                <td className="border border-white/10 px-4 py-3 capitalize">
+                <td className="border border-white/10 px-4 py-3">
                   {etiqueta}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right">

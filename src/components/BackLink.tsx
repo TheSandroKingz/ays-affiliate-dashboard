@@ -8,7 +8,12 @@ export default function BackLink() {
   const router = useRouter();
   return (
     <button
-      onClick={() => router.back()}
+      onClick={() => {
+        // Si hay historial (misma pestaña), volver; si se abrió en pestaña
+        // nueva (sin historial), ir al panel en vez de dejar el botón inerte.
+        if (window.history.length > 1) router.back();
+        else router.push("/dashboard");
+      }}
       className="inline-block text-sm text-emerald-400 hover:text-emerald-300 mb-6"
     >
       ← Volver

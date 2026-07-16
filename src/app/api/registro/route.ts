@@ -32,9 +32,17 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     // El perfil no se creó (lo más común: nombre de usuario duplicado).
-    // Deshacemos el usuario de Auth recién creado para que no quede una
-    // cuenta "a medias" y pueda reintentar el registro con otro nombre.
-    await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+    // Si el usuario NO tenía ya un perfil, deshacemos el usuario de Auth
+    // recién creado para que no quede una cuenta "a medias" y pueda
+    // reintentar. (El check evita borrar una cuenta ya establecida.)
+    const { data: yaExiste } = await supabaseAdmin
+      .from('affiliates')
+      .select('user_id')
+      .eq('user_id', authData.user.id)
+      .maybeSingle()
+    if (!yaExiste) {
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+    }
     const message = error.code === "23505"
       ? "Ese nombre de usuario ya está en uso, elige otro."
       : error.message
