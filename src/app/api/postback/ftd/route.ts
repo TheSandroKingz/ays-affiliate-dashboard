@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getPlayerId, yaContado } from "@/lib/postback";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
   const afp = url.searchParams.get("afp") ?? "";
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
+  const playerid = getPlayerId(url);
 
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
@@ -41,7 +43,11 @@ export async function GET(request: Request) {
     target = data;
   }
 
-  if (target) {
+  // Idempotencia: un mismo jugador solo cuenta un FTD (evita pagar el CPA dos
+  // veces si freshbet reintenta). Sin playerid, se cuenta igual.
+  const duplicado = await yaContado(playerid ? `ftd:${playerid}` : null);
+
+  if (target && !duplicado) {
     const commission = isSubaffiliate
       ? Number((isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0)
       : 0;
@@ -55,5 +61,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, matched: !!target });
+  return NextResponse.json({ ok: true, matched: !!target, duplicado });
 }

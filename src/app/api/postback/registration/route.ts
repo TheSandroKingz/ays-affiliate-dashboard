@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getPlayerId, yaContado } from "@/lib/postback";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
 
   const afp = url.searchParams.get("afp") ?? "";
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
+  const playerid = getPlayerId(url);
 
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
@@ -38,7 +40,11 @@ export async function GET(request: Request) {
     targetUserId = data?.user_id ?? null;
   }
 
-  if (targetUserId) {
+  // Idempotencia: un mismo jugador solo cuenta un registro (evita duplicados
+  // si freshbet reintenta el postback). Si no llega playerid, se cuenta igual.
+  const duplicado = await yaContado(playerid ? `reg:${playerid}` : null);
+
+  if (targetUserId && !duplicado) {
     await supabaseAdmin.rpc("increment_daily_stats", {
       p_user_id: targetUserId,
       p_date: today,
@@ -48,5 +54,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, matched: !!targetUserId });
+  return NextResponse.json({ ok: true, matched: !!targetUserId, duplicado });
 }
