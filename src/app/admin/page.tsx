@@ -1,11 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
 import { eur } from "@/lib/format";
+
+function hoyMadrid(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+}
+function inicioMes(iso: string): string {
+  return iso.slice(0, 7) + "-01";
+}
+function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
 
 type StatRow = {
   user_id: string;
@@ -43,9 +56,12 @@ export default function AdminStatsPage() {
   const [totals, setTotals] = useState<Totals>(emptyTotals);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
 
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(
+    async (from: string, to: string) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -54,24 +70,51 @@ export default function AdminStatsPage() {
         router.replace("/dashboard");
         return;
       }
+      setRefreshing(true);
+      setError(null);
 
-      const res = await fetch("/api/admin/stats", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const body = await res.json();
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const qs = params.toString() ? "?" + params.toString() : "";
 
-      if (!res.ok) {
-        setError(body.error || "Error al cargar");
+      try {
+        const res = await fetch("/api/admin/stats" + qs, {
+          headers: { Authorization: "Bearer " + session.access_token },
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          setError(body.error || "Error al cargar");
+        } else {
+          setStats(body.stats);
+          setTotals(body.totals);
+        }
+      } catch {
+        setError("No se pudieron cargar los datos.");
+      } finally {
         setLoaded(true);
-        return;
+        setRefreshing(false);
       }
+    },
+    [router]
+  );
 
-      setStats(body.stats);
-      setTotals(body.totals);
-      setLoaded(true);
-    }
-    load();
-  }, [router]);
+  useEffect(() => {
+    load("", ""); // sin filtro = todo
+  }, [load]);
+
+  const hoy = hoyMadrid();
+  const atajos = [
+    { label: "Todo", from: "", to: "" },
+    { label: "Hoy", from: hoy, to: hoy },
+    { label: "Últimos 7 días", from: addDays(hoy, -6), to: hoy },
+    { label: "Este mes", from: inicioMes(hoy), to: hoy },
+    {
+      label: "Mes pasado",
+      from: inicioMes(addDays(inicioMes(hoy), -1)),
+      to: addDays(inicioMes(hoy), -1),
+    },
+  ];
 
   const affCards = [
     { label: "Clics", value: fmt(totals.clicks), color: "#9333ea" },
@@ -100,6 +143,55 @@ export default function AdminStatsPage() {
           Por cada FTD que traen, tú te quedas la diferencia entre tu CPA y el
           suyo. Aquí ves lo que le pagas a cada uno y lo que te queda a ti.
         </p>
+      </div>
+
+      {/* Filtro de fechas */}
+      <div className="flex flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400">Desde</label>
+            <input
+              type="date"
+              value={desde}
+              max={hasta || hoy}
+              onChange={(e) => setDesde(e.target.value)}
+              className="rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400">Hasta</label>
+            <input
+              type="date"
+              value={hasta}
+              min={desde}
+              max={hoy}
+              onChange={(e) => setHasta(e.target.value)}
+              className="rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <button
+            onClick={() => load(desde, hasta)}
+            disabled={refreshing}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            {refreshing ? "Aplicando..." : "Aplicar"}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {atajos.map((a) => (
+            <button
+              key={a.label}
+              onClick={() => {
+                setDesde(a.from);
+                setHasta(a.to);
+                load(a.from, a.to);
+              }}
+              className="rounded-full border border-white/20 px-3 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Margen total de la estructura (el total limpio está en el inicio) */}

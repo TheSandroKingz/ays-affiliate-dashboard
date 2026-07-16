@@ -53,10 +53,17 @@ export async function GET(request: Request) {
 
   // Actividad diaria: la tuya propia + la de tu estructura.
   const idsToLoad = [user.id, ...structIds];
-  const { data: dailyRaw, error: dErr } = await supabaseAdmin
+  // Filtro de fechas opcional (?from=YYYY-MM-DD&to=YYYY-MM-DD). Sin filtro = todo.
+  const url = new URL(request.url);
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
+  let q = supabaseAdmin
     .from("affiliate_daily_stats")
     .select("user_id, date, commission, clicks, registrations, ftd")
     .in("user_id", idsToLoad);
+  if (from) q = q.gte("date", from);
+  if (to) q = q.lte("date", to);
+  const { data: dailyRaw, error: dErr } = await q;
   if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
   const daily = (dailyRaw ?? []) as Daily[];
 
