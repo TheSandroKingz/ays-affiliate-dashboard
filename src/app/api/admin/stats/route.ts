@@ -54,9 +54,11 @@ export async function GET(request: Request) {
   // Actividad diaria: la tuya propia + la de tu estructura.
   const idsToLoad = [user.id, ...structIds];
   // Filtro de fechas opcional (?from=YYYY-MM-DD&to=YYYY-MM-DD). Sin filtro = todo.
+  // Validamos el formato para que una fecha rara no rompa la consulta.
   const url = new URL(request.url);
-  const from = url.searchParams.get("from");
-  const to = url.searchParams.get("to");
+  const fechaOk = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null);
+  const from = fechaOk(url.searchParams.get("from"));
+  const to = fechaOk(url.searchParams.get("to"));
   let q = supabaseAdmin
     .from("affiliate_daily_stats")
     .select("user_id, date, commission, clicks, registrations, ftd")

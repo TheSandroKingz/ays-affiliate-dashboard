@@ -46,6 +46,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Oculta la cabecera "X-Powered-By: Next.js" (menos información al atacante).
   poweredByHeader: false,
+  // Optimiza los imports de estas librerías (menos JS al cliente, más rápido).
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
   images: {
     remotePatterns: [
       {
