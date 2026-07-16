@@ -43,12 +43,7 @@ export default function ContactManagerButton() {
             aria-modal="true"
             aria-label="Contactar con tu gestor"
             className="w-full max-w-md sm:max-w-sm rounded-xl border border-white/20 bg-black/95 p-5 sm:p-4"
-          ><div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-white">
-                  Contactar con tu gestor
-                </h2>
-              </div>
+          ><div className="flex items-start justify-end">
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar"
