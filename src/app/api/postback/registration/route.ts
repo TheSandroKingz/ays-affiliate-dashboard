@@ -11,6 +11,18 @@ export async function GET(request: Request) {
   const afp = url.searchParams.get("afp") ?? "";
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
 
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+
+  // Total de freshbet (tu red completa): contamos el evento pase lo que pase,
+  // haya o no un afiliado emparejado. Así tu total del inicio crece solo.
+  await supabaseAdmin.rpc("increment_freshbet_daily", {
+    p_date: today,
+    p_registrations: 1,
+  });
+
+  // Atribución al afiliado concreto (para pagarle), si lo identificamos.
   let targetUserId: string | null = null;
 
   if (trackingcode) {
@@ -31,21 +43,15 @@ export async function GET(request: Request) {
     targetUserId = data?.user_id ?? null;
   }
 
-  if (!targetUserId) {
-    return NextResponse.json({ ok: false, reason: "no match" });
+  if (targetUserId) {
+    await supabaseAdmin.rpc("increment_daily_stats", {
+      p_user_id: targetUserId,
+      p_date: today,
+      p_registrations: 1,
+      p_ftd: 0,
+      p_commission: 0,
+    });
   }
 
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Madrid",
-  }).format(new Date());
-
-  await supabaseAdmin.rpc("increment_daily_stats", {
-    p_user_id: targetUserId,
-    p_date: today,
-    p_registrations: 1,
-    p_ftd: 0,
-    p_commission: 0,
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, matched: !!targetUserId });
 }

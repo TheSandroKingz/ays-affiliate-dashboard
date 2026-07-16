@@ -12,6 +12,17 @@ export async function GET(request: Request) {
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
 
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+
+  // Total de freshbet (tu red completa): contamos el FTD pase lo que pase.
+  await supabaseAdmin.rpc("increment_freshbet_daily", {
+    p_date: today,
+    p_ftd: 1,
+  });
+
+  // Atribución al afiliado concreto (para pagarle su CPA), si lo identificamos.
   let target: { user_id: string; cpa_spain: number | null; cpa_other: number | null } | null = null;
   let isSubaffiliate = false;
 
@@ -36,25 +47,19 @@ export async function GET(request: Request) {
     target = data;
   }
 
-  if (!target) {
-    return NextResponse.json({ ok: false, reason: "no match" });
+  if (target) {
+    const commission = isSubaffiliate
+      ? Number((isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0)
+      : 0;
+
+    await supabaseAdmin.rpc("increment_daily_stats", {
+      p_user_id: target.user_id,
+      p_date: today,
+      p_registrations: 0,
+      p_ftd: 1,
+      p_commission: commission,
+    });
   }
 
-  const commission = isSubaffiliate
-    ? Number((isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0)
-    : 0;
-
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Madrid",
-  }).format(new Date());
-
-  await supabaseAdmin.rpc("increment_daily_stats", {
-    p_user_id: target.user_id,
-    p_date: today,
-    p_registrations: 0,
-    p_ftd: 1,
-    p_commission: commission,
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, matched: !!target });
 }

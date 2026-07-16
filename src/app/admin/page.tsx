@@ -97,6 +97,14 @@ export default function AdminStatsPage() {
         </p>
       </div>
 
+      {/* Comisión total de todos los afiliados */}
+      <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
+        <p className="text-sm font-medium text-slate-300 mb-3">
+          Comisión total de mis afiliados
+        </p>
+        <p className="text-4xl font-bold text-white">{money(totals.commission)}</p>
+      </div>
+
       {/* Tarjetas de totales de afiliados */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {affCards.map((card) => (

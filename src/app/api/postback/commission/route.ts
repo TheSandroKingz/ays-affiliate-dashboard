@@ -12,8 +12,18 @@ export async function GET(request: Request) {
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const amount = Number(url.searchParams.get("commissionamount") ?? "0");
 
-  // Igual que en registro/ftd: primero identificamos al afiliado por su
-  // trackingcode (p. ej. "patron" / "A&S") y, si no, por el afp.
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+
+  // Total de freshbet (tu red completa): la comisión de este evento se suma
+  // a tu total del inicio, haya afiliado emparejado o no.
+  await supabaseAdmin.rpc("increment_freshbet_daily", {
+    p_date: today,
+    p_commission: amount,
+  });
+
+  // Atribución al afiliado concreto (por trackingcode y, si no, por afp).
   let target: { user_id: string } | null = null;
   if (trackingcode) {
     const { data } = await supabaseAdmin
@@ -32,21 +42,15 @@ export async function GET(request: Request) {
     target = data;
   }
 
-  if (!target) {
-    return NextResponse.json({ ok: false, reason: "no match" });
+  if (target) {
+    await supabaseAdmin.rpc("increment_daily_stats", {
+      p_user_id: target.user_id,
+      p_date: today,
+      p_registrations: 0,
+      p_ftd: 0,
+      p_commission: amount,
+    });
   }
 
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Madrid",
-  }).format(new Date());
-
-  await supabaseAdmin.rpc("increment_daily_stats", {
-    p_user_id: target.user_id,
-    p_date: today,
-    p_registrations: 0,
-    p_ftd: 0,
-    p_commission: amount,
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, matched: !!target });
 }
