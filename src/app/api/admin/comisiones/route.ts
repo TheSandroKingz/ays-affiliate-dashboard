@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("affiliates")
-    .select("id, display_name, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20")
+    .select("id, user_id, display_name, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20")
     .order("display_name", { ascending: true });
 
   if (error) {

@@ -9,6 +9,7 @@ import { CardsSkeleton } from "@/components/Skeletons";
 
 type Affiliate = {
   id: string;
+  user_id: string;
   display_name: string | null;
   cpa_spain: number | null;
   cpa_other: number | null;

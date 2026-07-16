@@ -4,6 +4,7 @@ import { useState } from "react";
 
 type Affiliate = {
   id: string;
+  user_id: string;
   display_name: string | null;
   cpa_spain: number | null;
   cpa_other: number | null;
@@ -22,6 +23,7 @@ export default function ComisionesClient({
   const [rows, setRows] = useState(
     affiliates.map((a) => ({
       id: a.id,
+      userId: a.user_id,
       display_name: a.display_name ?? "Sin nombre",
       cpaSpain: a.cpa_spain ?? 85,
       cpaOther: a.cpa_other ?? 85,
@@ -33,6 +35,36 @@ export default function ComisionesClient({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [result, setResult] = useState<{ id: string; ok: boolean } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  // Registrar pago: importe por afiliado y estado de guardado.
+  const [pagoImporte, setPagoImporte] = useState<Record<string, string>>({});
+  const [pagandoId, setPagandoId] = useState<string | null>(null);
+  const [pagoMsg, setPagoMsg] = useState<{ id: string; texto: string; ok: boolean } | null>(null);
+
+  async function registrarPago(id: string, userId: string) {
+    const importe = Number((pagoImporte[id] ?? "").replace(",", "."));
+    if (!Number.isFinite(importe) || importe <= 0) {
+      setPagoMsg({ id, texto: "Pon un importe válido.", ok: false });
+      return;
+    }
+    setPagandoId(id);
+    setPagoMsg(null);
+    const res = await fetch("/api/admin/payments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + accessToken,
+      },
+      body: JSON.stringify({ userId, amount: importe }),
+    });
+    setPagandoId(null);
+    if (res.ok) {
+      setPagoMsg({ id, texto: `Pago de €${importe} registrado ✓`, ok: true });
+      setPagoImporte((p) => ({ ...p, [id]: "" }));
+    } else {
+      const b = await res.json().catch(() => ({}));
+      setPagoMsg({ id, texto: b.error || "Error al registrar", ok: false });
+    }
+  }
 
   async function copiar(texto: string, key: string) {
     try {
@@ -147,6 +179,39 @@ export default function ComisionesClient({
               ) : (
                 <span className="text-red-400 text-sm">Error al guardar</span>
               ))}
+          </div>
+
+          {/* Registrar pago al afiliado (aparece en su historial de Pagos) */}
+          <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
+            <p className="text-xs font-medium text-slate-400">Registrar pago</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder="Importe €"
+                value={pagoImporte[row.id] ?? ""}
+                onChange={(e) =>
+                  setPagoImporte((p) => ({ ...p, [row.id]: e.target.value }))
+                }
+                className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                onClick={() => registrarPago(row.id, row.userId)}
+                disabled={pagandoId === row.id}
+                className="shrink-0 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+              >
+                {pagandoId === row.id ? "..." : "Registrar"}
+              </button>
+            </div>
+            {pagoMsg?.id === row.id && (
+              <span
+                className={`text-xs ${
+                  pagoMsg.ok ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {pagoMsg.texto}
+              </span>
+            )}
           </div>
 
           {(row.walletErc20 || row.walletTrc20) && (
