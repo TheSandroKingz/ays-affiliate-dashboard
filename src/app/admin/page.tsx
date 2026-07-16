@@ -10,10 +10,11 @@ import { eur } from "@/lib/format";
 type StatRow = {
   user_id: string;
   display_name: string | null;
-  commission: number;
+  commission: number; // lo que le pagas
   clicks: number;
   registrations: number;
   ftd: number;
+  margin: number; // lo que te quedas tú
 };
 
 type Totals = {
@@ -21,16 +22,19 @@ type Totals = {
   clicks: number;
   registrations: number;
   ftd: number;
+  margin: number;
 };
 
-const emptyTotals: Totals = { commission: 0, clicks: 0, registrations: 0, ftd: 0 };
+const emptyTotals: Totals = {
+  commission: 0,
+  clicks: 0,
+  registrations: 0,
+  ftd: 0,
+  margin: 0,
+};
 
 function fmt(n: number) {
   return n.toLocaleString("de-DE");
-}
-
-function money(n: number) {
-  return eur(n);
 }
 
 export default function AdminStatsPage() {
@@ -76,7 +80,7 @@ export default function AdminStatsPage() {
   ];
 
   if (!loaded) {
-    return <TableSkeleton title="Mis Afiliados" cols={5} />;
+    return <TableSkeleton title="Mis Afiliados" cols={6} />;
   }
 
   if (error) {
@@ -93,20 +97,18 @@ export default function AdminStatsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Mis Afiliados</h1>
         <p className="text-sm text-slate-400 mt-1">
-          Lo que genera cada afiliado (para pagarle). Tu histórico de freshbet
-          está en el Panel de inicio, aparte — no se suman.
+          Por cada FTD que traen, tú te quedas la diferencia entre tu CPA y el
+          suyo. Aquí ves lo que le pagas a cada uno y lo que te queda a ti.
         </p>
       </div>
 
-      {/* Comisión total de todos los afiliados */}
+      {/* Lo que te quedas tú (margen total) */}
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
-        <p className="text-sm font-medium text-slate-300 mb-3">
-          Comisión total de mis afiliados
-        </p>
-        <p className="text-4xl font-bold text-white">{money(totals.commission)}</p>
+        <p className="text-sm font-medium text-slate-300 mb-3">Lo que me quedo</p>
+        <p className="text-4xl font-bold text-white">{eur(totals.margin)}</p>
       </div>
 
-      {/* Tarjetas de totales de afiliados */}
+      {/* Tarjetas de actividad de la red */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {affCards.map((card) => (
           <div
@@ -138,7 +140,10 @@ export default function AdminStatsPage() {
                 FTD
               </th>
               <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                Comisión
+                Le pago
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
+                Mi margen
               </th>
             </tr>
           </thead>
@@ -146,7 +151,7 @@ export default function AdminStatsPage() {
             {!stats || stats.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="border border-white/10 px-4 py-6 text-center text-slate-400"
                 >
                   Todavía no hay estadísticas.
@@ -172,8 +177,11 @@ export default function AdminStatsPage() {
                   <td className="border border-white/10 px-4 py-3 text-right text-white">
                     {fmt(row.ftd)}
                   </td>
-                  <td className="border border-white/10 px-4 py-3 text-right text-white font-medium">
-                    {money(row.commission)}
+                  <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
+                    {eur(row.commission)}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right text-emerald-400 font-semibold">
+                    {eur(row.margin)}
                   </td>
                 </tr>
               ))
@@ -194,8 +202,11 @@ export default function AdminStatsPage() {
                 <td className="border border-white/10 px-4 py-3 text-right text-white">
                   {fmt(totals.ftd)}
                 </td>
-                <td className="border border-white/10 px-4 py-3 text-right text-white">
-                  {money(totals.commission)}
+                <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
+                  {eur(totals.commission)}
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right text-emerald-400">
+                  {eur(totals.margin)}
                 </td>
               </tr>
             </tfoot>

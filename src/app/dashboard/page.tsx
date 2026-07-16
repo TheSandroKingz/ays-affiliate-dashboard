@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
@@ -8,7 +8,7 @@ import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
-import { Info, Upload } from "lucide-react";
+import { Info } from "lucide-react";
 
 // El gráfico (Recharts) es pesado; lo cargamos en diferido para que el resto
 // del panel aparezca antes. Reserva la altura para evitar saltos de layout.
@@ -74,10 +74,6 @@ export default function DashboardPage() {
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -93,36 +89,35 @@ export default function DashboardPage() {
         return;
       }
 
-      // Cuenta de admin: su panel muestra el histórico de freshbet (sus
-      // ingresos reales), no datos de afiliado. El resto lo omitimos.
+      // Cuenta de admin: su panel muestra "lo que se queda" por su estructura,
+      // es decir, por cada FTD de un afiliado suyo: su CPA − el CPA del afiliado.
       if (user.id === ADMIN_USER_ID) {
         setIsAdmin(true);
-        setToken(session.access_token);
-        const [affRes, fbRes] = await Promise.all([
+        const [affRes, stRes] = await Promise.all([
           supabase.from("affiliates").select("display_name").eq("user_id", user.id).single(),
-          fetch("/api/admin/freshbet", {
+          fetch("/api/admin/stats", {
             headers: { Authorization: "Bearer " + session.access_token },
           })
-            .then((r) => (r.ok ? r.json() : { rows: [] }))
-            .catch(() => ({ rows: [] })),
+            .then((r) => (r.ok ? r.json() : { daily: [], adminCpa: 0 }))
+            .catch(() => ({ daily: [], adminCpa: 0 })),
         ]);
         setDisplayName(affRes.data?.display_name ?? null);
-        const rows: { day: string; commission: number; clicks: number; registrations: number; ftd: number }[] =
-          fbRes?.rows ?? [];
-        const points: DailyPoint[] = rows.map((r) => ({
-          date: new Date(r.day + "T00:00:00Z").toLocaleDateString("es-ES", {
-            month: "short",
-            day: "2-digit",
-            timeZone: "UTC",
-          }),
-          commission: Number(r.commission),
-          clicks: Number(r.clicks),
-          registrations: Number(r.registrations),
-          ftd: Number(r.ftd),
+
+        const cpa = Number(stRes.adminCpa ?? 0);
+        const dserie: { date: string; commission: number; clicks: number; registrations: number; ftd: number }[] =
+          stRes.daily ?? [];
+        // Margen por día = (tu CPA × FTD) − comisión pagada a los afiliados.
+        const marginDaily = dserie.map((d) => ({
+          date: d.date,
+          commission: cpa * Number(d.ftd ?? 0) - Number(d.commission ?? 0),
+          clicks: Number(d.clicks ?? 0),
+          registrations: Number(d.registrations ?? 0),
+          ftd: Number(d.ftd ?? 0),
         }));
-        setDailyData(points.length ? points : last7Days());
+        // El gráfico y el "balance" son del mes en curso; el total es histórico.
+        setDailyData(fillMissingDays(marginDaily));
         setSubCommission(0);
-        setTotalGenerado(rows.reduce((s, r) => s + Number(r.commission ?? 0), 0));
+        setTotalGenerado(marginDaily.reduce((s, d) => s + d.commission, 0));
         setLoading(false);
         setRefreshing(false);
         return;
@@ -183,36 +178,6 @@ export default function DashboardPage() {
     loadStats();
   }, [loadStats]);
 
-  async function handleFreshbetFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !token) return;
-    setUploading(true);
-    setUploadMsg(null);
-    try {
-      const text = await file.text();
-      const res = await fetch("/api/admin/freshbet", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token, "Content-Type": "text/csv" },
-        body: text,
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        setUploadMsg(body.error || "No se pudo subir el archivo.");
-      } else {
-        setUploadMsg(
-          `Actualizado (${body.imported} días).` +
-            (body.aviso ? ` ⚠️ ${body.aviso}` : "")
-        );
-        await loadStats(true);
-      }
-    } catch {
-      setUploadMsg("No se pudo leer el archivo.");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
-
   const toggleMetric = (key: string) => {
     setActiveMetrics((prev) => {
       const next = new Set(prev);
@@ -255,12 +220,12 @@ export default function DashboardPage() {
 
   const statCards = useMemo(
     () => [
-      { key: "commission", label: "Comisión", value: eur(totals.commission), color: "#10b981" },
+      { key: "commission", label: isAdmin ? "Mi margen" : "Comisión", value: eur(totals.commission), color: "#10b981" },
       { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
       { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
       { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
     ],
-    [totals]
+    [totals, isAdmin]
   );
 
   if (loading) {
@@ -280,27 +245,7 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-400">{new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
           <div className="flex items-center gap-2 sm:gap-3">
-          {isAdmin ? (
-            <>
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-              >
-                <Upload size={16} />
-                {uploading ? "Subiendo..." : "Actualizar CSV"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleFreshbetFile}
-                className="hidden"
-              />
-            </>
-          ) : (
-            <ContactManagerButton />
-          )}
+          {!isAdmin && <ContactManagerButton />}
           <button
             onClick={() => loadStats(true)}
             disabled={refreshing}
@@ -310,20 +255,11 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-      {isAdmin && uploadMsg && (
-        <p
-          className={`text-xs -mt-2 ${
-            /Actualizado/.test(uploadMsg) ? "text-emerald-400" : "text-red-400"
-          }`}
-        >
-          {uploadMsg}
-        </p>
-      )}
 
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium text-slate-300">Mi balance</span>
+          <span className="text-sm font-medium text-slate-300">{isAdmin ? "Lo que me quedo" : "Mi balance"}</span>
           <div className="group relative">
             <button
               type="button"
@@ -339,7 +275,7 @@ export default function DashboardPage() {
               }`}
             >
               <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">{isAdmin ? "Comisión en freshbet" : "Comisión propia"}</span>
+                <span className="text-slate-300">{isAdmin ? "Mi margen (este mes)" : "Comisión propia"}</span>
                 <span className="font-medium text-white">{eur(totals.commission)}</span>
               </div>
               {!isAdmin && subCommission > 0 && (
