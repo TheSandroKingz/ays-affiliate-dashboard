@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getPlayerId, yaContado } from "@/lib/postback";
+import { getPlayerId, reclamarEvento, liberarEvento } from "@/lib/postback";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -27,9 +27,9 @@ export async function GET(request: Request) {
       .from("affiliates")
       .select("user_id, cpa_spain, cpa_other")
       .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
-      .maybeSingle();
-    if (data) {
-      target = data;
+      .limit(1);
+    if (data?.[0]) {
+      target = data[0];
       isSubaffiliate = true;
     }
   }
@@ -39,26 +39,31 @@ export async function GET(request: Request) {
       .from("affiliates")
       .select("user_id, cpa_spain, cpa_other")
       .eq("freshaffs_affiliate_id", afp)
-      .maybeSingle();
-    target = data;
+      .limit(1);
+    target = data?.[0] ?? null;
   }
 
-  // Idempotencia: un mismo jugador solo cuenta un FTD (evita pagar el CPA dos
-  // veces si freshbet reintenta). Sin playerid, se cuenta igual.
-  const duplicado = await yaContado(playerid ? `ftd:${playerid}` : null);
+  // Idempotencia: solo dentro de la rama con afiliado emparejado. Reclamamos,
+  // pagamos el CPA, y si el conteo falla, liberamos para que un reintento cuente.
+  let duplicado = false;
+  if (target) {
+    const eventKey = playerid ? `ftd:${playerid}` : null;
+    const contar = await reclamarEvento(eventKey);
+    duplicado = !contar;
+    if (contar) {
+      const commission = isSubaffiliate
+        ? Number((isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0)
+        : 0;
 
-  if (target && !duplicado) {
-    const commission = isSubaffiliate
-      ? Number((isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0)
-      : 0;
-
-    await supabaseAdmin.rpc("increment_daily_stats", {
-      p_user_id: target.user_id,
-      p_date: today,
-      p_registrations: 0,
-      p_ftd: 1,
-      p_commission: commission,
-    });
+      const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+        p_user_id: target.user_id,
+        p_date: today,
+        p_registrations: 0,
+        p_ftd: 1,
+        p_commission: commission,
+      });
+      if (error) await liberarEvento(eventKey);
+    }
   }
 
   return NextResponse.json({ ok: true, matched: !!target, duplicado });

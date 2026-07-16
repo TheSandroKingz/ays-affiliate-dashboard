@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getPlayerId, yaContado } from "@/lib/postback";
+import { getPlayerId, reclamarEvento, liberarEvento } from "@/lib/postback";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -27,8 +27,8 @@ export async function GET(request: Request) {
       .from("affiliates")
       .select("user_id")
       .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
-      .maybeSingle();
-    targetUserId = data?.user_id ?? null;
+      .limit(1);
+    targetUserId = data?.[0]?.user_id ?? null;
   }
 
   if (!targetUserId && afp) {
@@ -36,22 +36,28 @@ export async function GET(request: Request) {
       .from("affiliates")
       .select("user_id")
       .eq("freshaffs_affiliate_id", afp)
-      .maybeSingle();
-    targetUserId = data?.user_id ?? null;
+      .limit(1);
+    targetUserId = data?.[0]?.user_id ?? null;
   }
 
-  // Idempotencia: un mismo jugador solo cuenta un registro (evita duplicados
-  // si freshbet reintenta el postback). Si no llega playerid, se cuenta igual.
-  const duplicado = await yaContado(playerid ? `reg:${playerid}` : null);
-
-  if (targetUserId && !duplicado) {
-    await supabaseAdmin.rpc("increment_daily_stats", {
-      p_user_id: targetUserId,
-      p_date: today,
-      p_registrations: 1,
-      p_ftd: 0,
-      p_commission: 0,
-    });
+  // Idempotencia: solo dentro de la rama con afiliado emparejado (para no quemar
+  // el token en una entrega no atribuida). Reclamamos, contamos, y si el conteo
+  // falla, liberamos para que un reintento de freshbet lo cuente.
+  let duplicado = false;
+  if (targetUserId) {
+    const eventKey = playerid ? `reg:${playerid}` : null;
+    const contar = await reclamarEvento(eventKey);
+    duplicado = !contar;
+    if (contar) {
+      const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+        p_user_id: targetUserId,
+        p_date: today,
+        p_registrations: 1,
+        p_ftd: 0,
+        p_commission: 0,
+      });
+      if (error) await liberarEvento(eventKey);
+    }
   }
 
   return NextResponse.json({ ok: true, matched: !!targetUserId, duplicado });

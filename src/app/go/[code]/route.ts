@@ -16,11 +16,12 @@ export async function GET(
   const { code } = await params;
 
   // Búsqueda insensible a mayúsculas (por si el enlace se comparte en otra caja).
-  const { data: affiliate } = await supabaseAdmin
+  const { data: affiliates } = await supabaseAdmin
     .from("affiliates")
     .select("user_id, promo_link")
     .ilike("freshaffs_tracking_code", code.replace(/[%_]/g, "\\$&"))
-    .maybeSingle();
+    .limit(1);
+  const affiliate = affiliates?.[0];
 
   if (!affiliate || !affiliate.promo_link) {
     return NextResponse.redirect(new URL("/", request.url));
