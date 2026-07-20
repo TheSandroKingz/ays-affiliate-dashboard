@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser } from "@/lib/adminAuth";
+import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 
 // Actividad de postbacks (solo admin): los últimos eventos que manda freshbet
 // (registro/FTD/comisión) desde la "caja negra" postback_events, con el nombre
@@ -62,8 +62,15 @@ export async function GET(request: Request) {
     .filter(([, n]) => n > 1)
     .map(([player_id, veces]) => ({ player_id, veces }));
 
+  // En la tabla mostramos SOLO la actividad de tus afiliados: fuera lo tuyo
+  // (afp del admin) y lo "Default"/sin emparejar (pings de freshbet). Las
+  // anomalías (resumen) sí se cuentan sobre todo.
+  const eventosAfiliados = rows.filter(
+    (r) => r.matched_user_id && r.matched_user_id !== ADMIN_USER_ID
+  );
+
   return NextResponse.json({
-    events: rows,
+    events: eventosAfiliados,
     sinPlayerId,
     resumen: { sinPlayerId, duplicados, noMatch, repetidos },
   });
