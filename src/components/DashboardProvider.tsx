@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, MAX_SESSION_MS } from "@/lib/supabaseClient";
 
 // Almacén compartido del panel: carga el perfil (nombre/avatar) UNA sola vez y
 // hace de guardián de acceso (sin sesión → login; no aprobado → pendiente).
@@ -42,6 +42,17 @@ export default function DashboardProvider({
           router.replace("/login");
           return;
         }
+        // Límite duro de sesión: a los 3 días se pide la contraseña de nuevo.
+        const started = Number(localStorage.getItem("authStartAt") || 0);
+        const now = Date.now();
+        if (!started) {
+          localStorage.setItem("authStartAt", String(now));
+        } else if (now - started > MAX_SESSION_MS) {
+          localStorage.removeItem("authStartAt");
+          await supabase.auth.signOut();
+          router.replace("/login");
+          return;
+        }
         const { data: aff, error } = await supabase
           .from("affiliates")
           .select("approved, display_name, avatar_url")
@@ -63,8 +74,15 @@ export default function DashboardProvider({
       }
     }
     check();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace("/login");
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Al iniciar sesión (login real) reiniciamos el contador de 3 días.
+      if (event === "SIGNED_IN") {
+        localStorage.setItem("authStartAt", String(Date.now()));
+      }
+      if (!session) {
+        localStorage.removeItem("authStartAt");
+        router.replace("/login");
+      }
     });
     return () => {
       active = false;
