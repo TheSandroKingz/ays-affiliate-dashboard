@@ -75,6 +75,7 @@ export default function AdminDashboard() {
     structurePaid: number;
     totalClean: number;
   } | null>(null);
+  const [mesPasado, setMesPasado] = useState<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -95,7 +96,13 @@ export default function AdminDashboard() {
         timeZone: "Europe/Madrid",
       }).format(new Date());
       const inicioMesIso = hoyIso.slice(0, 7) + "-01";
-      const [stRes, pendRes, histRes] = await Promise.all([
+      // Rango del mes pasado (para la comparativa).
+      const [y, m] = hoyIso.split("-").map(Number);
+      const finMesPasado = new Date(Date.UTC(y, m - 1, 1));
+      finMesPasado.setUTCDate(0); // último día del mes anterior
+      const finMesPasadoIso = finMesPasado.toISOString().slice(0, 10);
+      const iniMesPasadoIso = finMesPasadoIso.slice(0, 7) + "-01";
+      const [stRes, pendRes, histRes, prevRes] = await Promise.all([
         fetch(`/api/admin/stats?from=${inicioMesIso}&to=${hoyIso}`, {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
@@ -115,7 +122,17 @@ export default function AdminDashboard() {
         })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
+        // Mes pasado (para la comparativa).
+        fetch(`/api/admin/stats?from=${iniMesPasadoIso}&to=${finMesPasadoIso}`, {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
       ]);
+      setMesPasado(
+        prevRes?.totals ? Number(prevRes.totals.totalClean ?? 0) : null
+      );
       setPendientes(Array.isArray(pendRes?.pending) ? pendRes.pending.length : 0);
       setHistorico(
         histRes?.totals
@@ -194,6 +211,12 @@ export default function AdminDashboard() {
   const hoyE = daily.find((d) => d.date === hoyIso)?.earnings ?? 0;
   const ayerE = daily.find((d) => d.date === ayerIso)?.earnings ?? 0;
   const delta = hoyE - ayerE;
+
+  // Comparativa del balance del mes vs el mes pasado (%).
+  const pctMes =
+    mesPasado && mesPasado !== 0
+      ? ((totals.totalClean - mesPasado) / mesPasado) * 100
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -316,6 +339,19 @@ export default function AdminDashboard() {
             </span>
           )}
         </div>
+        {pctMes !== null && (
+          <div className="mt-1 text-xs">
+            <span
+              className={`inline-flex items-center gap-0.5 font-semibold ${
+                pctMes >= 0 ? "text-emerald-400" : "text-red-400"
+              }`}
+            >
+              {pctMes >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+              {Math.abs(pctMes).toLocaleString("de-DE", { maximumFractionDigits: 0 })}%
+            </span>{" "}
+            <span className="text-slate-500">que el mes pasado</span>
+          </div>
+        )}
       </div>
 
       {/* Lo que hacen mis afiliados — tarjetas clicables que controlan el gráfico */}
