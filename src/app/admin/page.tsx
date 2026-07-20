@@ -78,6 +78,11 @@ export default function AdminStatsPage() {
   // histórico sigue a un clic con el atajo "Todo".
   const [desde, setDesde] = useState(() => inicioMes(hoyMadrid()));
   const [hasta, setHasta] = useState(() => hoyMadrid());
+  const [busqueda, setBusqueda] = useState("");
+  const [orden, setOrden] = useState<{ campo: keyof StatRow; dir: "asc" | "desc" }>({
+    campo: "margin",
+    dir: "desc",
+  });
 
   const load = useCallback(
     async (from: string, to: string) => {
@@ -161,6 +166,31 @@ export default function AdminStatsPage() {
     !desde && !hasta
       ? "Todo el histórico"
       : `${desde ? fmtCorto(desde) : "inicio"} – ${hasta ? fmtCorto(hasta) : "hoy"}`;
+
+  // Ranking real por margen (para la medalla), independiente de la búsqueda/orden.
+  const rankByUser = new Map<string, number>();
+  (stats ?? []).forEach((r, i) => rankByUser.set(r.user_id, i));
+
+  const visibleStats = [...(stats ?? [])]
+    .filter((r) =>
+      (r.display_name ?? "").toLowerCase().includes(busqueda.trim().toLowerCase())
+    )
+    .sort((a, b) => {
+      const dir = orden.dir === "asc" ? 1 : -1;
+      const av = a[orden.campo];
+      const bv = b[orden.campo];
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
+    });
+
+  const toggleOrden = (campo: keyof StatRow) =>
+    setOrden((o) =>
+      o.campo === campo
+        ? { campo, dir: o.dir === "desc" ? "asc" : "desc" }
+        : { campo, dir: "desc" }
+    );
+  const flecha = (campo: keyof StatRow) =>
+    orden.campo === campo ? (orden.dir === "desc" ? " ↓" : " ↑") : "";
 
   return (
     <main className="flex flex-col gap-5">
@@ -330,43 +360,67 @@ export default function AdminStatsPage() {
         </div>
       )}
 
-      {/* Tabla por afiliado */}
+      {/* Buscar afiliado */}
+      {stats && stats.length > 0 && (
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar afiliado..."
+          className="w-full sm:max-w-xs rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      )}
+
+      {/* Tabla por afiliado (cabeceras clicables para ordenar) */}
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-white/10 text-slate-300 text-left">
-              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">
-                Afiliado
+              <th className="border border-white/10 p-0">
+                <button
+                  onClick={() => toggleOrden("display_name")}
+                  className="w-full text-left px-4 py-3 uppercase tracking-wide text-xs font-semibold hover:text-white"
+                >
+                  Afiliado{flecha("display_name")}
+                </button>
               </th>
-              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                Clics
-              </th>
-              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                Registros
-              </th>
-              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                FTD
-              </th>
-              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                Le pago
-              </th>
-              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                Mi margen
-              </th>
+              {(
+                [
+                  ["clicks", "Clics"],
+                  ["registrations", "Registros"],
+                  ["ftd", "FTD"],
+                  ["owed", "Le pago"],
+                  ["margin", "Mi margen"],
+                ] as [keyof StatRow, string][]
+              ).map(([campo, label]) => (
+                <th key={campo} className="border border-white/10 p-0 text-right">
+                  <button
+                    onClick={() => toggleOrden(campo)}
+                    className="w-full text-right px-4 py-3 uppercase tracking-wide text-xs font-semibold hover:text-white whitespace-nowrap"
+                  >
+                    {label}
+                    {flecha(campo)}
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {!stats || stats.length === 0 ? (
+            {visibleStats.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
                   className="border border-white/10 px-4 py-6 text-center text-slate-400"
                 >
-                  Todavía no hay estadísticas.
+                  {stats && stats.length > 0
+                    ? "Ningún afiliado coincide con la búsqueda."
+                    : "Todavía no hay estadísticas."}
                 </td>
               </tr>
             ) : (
-              stats.map((row, i) => (
+              visibleStats.map((row, i) => {
+                const rank = rankByUser.get(row.user_id) ?? i;
+                return (
                 <tr
                   key={row.user_id}
                   className={`${
@@ -381,10 +435,10 @@ export default function AdminStatsPage() {
                             "bg-amber-400/20 text-amber-300 border-amber-400/40",
                             "bg-slate-200/15 text-slate-100 border-slate-300/40",
                             "bg-orange-500/20 text-orange-300 border-orange-500/40",
-                          ][i] ?? "bg-white/5 text-slate-400 border-white/10"
+                          ][rank] ?? "bg-white/5 text-slate-400 border-white/10"
                         }`}
                       >
-                        {i + 1}
+                        {rank + 1}
                       </span>
                       <Link
                         href={`/admin/afiliado/${row.user_id}`}
@@ -419,7 +473,8 @@ export default function AdminStatsPage() {
                     {eur(row.margin)}
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
           {stats && stats.length > 0 && (
