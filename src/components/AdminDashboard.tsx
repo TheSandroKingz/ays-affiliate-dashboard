@@ -68,12 +68,6 @@ export default function AdminDashboard() {
   const [showInfo, setShowInfo] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [pendientes, setPendientes] = useState(0);
-  // Resumen histórico (desde el inicio): FTDs, generado a afiliados, beneficio.
-  const [historico, setHistorico] = useState<{
-    ftd: number;
-    structurePaid: number;
-    totalClean: number;
-  } | null>(null);
   const [mesPasado, setMesPasado] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
   const prevFtdRef = useRef<number | null>(null);
@@ -113,15 +107,6 @@ export default function AdminDashboard() {
         setTotals(res.month.totals);
         setDaily(res.month.daily ?? []);
         setPendientes(Number(res.pending ?? 0));
-        setHistorico(
-          res.allTime
-            ? {
-                ftd: Number(res.allTime.ftd ?? 0),
-                structurePaid: Number(res.allTime.structurePaid ?? 0),
-                totalClean: Number(res.allTime.totalClean ?? 0),
-              }
-            : null
-        );
         setMesPasado(
           typeof res.lastMonthClean === "number" ? res.lastMonthClean : null
         );
@@ -376,26 +361,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Resumen del negocio (histórico, desde el inicio) */}
-      {historico && (
-        <div className="animate-in" style={{ animationDelay: "0.24s" }}>
-          <p className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">
-            Desde el inicio
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "FTD totales", value: historico.ftd.toLocaleString("de-DE") },
-              { label: "Generado a afiliados", value: eur(historico.structurePaid) },
-              { label: "Mi beneficio", value: eur(historico.totalClean) },
-            ].map((h) => (
-              <div key={h.label} className="p-4 rounded-xl border border-white/10 bg-white/5">
-                <p className="text-xs text-slate-400 mb-1">{h.label}</p>
-                <p className="text-lg font-bold text-white">{h.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
