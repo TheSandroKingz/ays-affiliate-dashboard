@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
-import { Info, UserPlus } from "lucide-react";
+import { Info, UserPlus, TrendingUp, TrendingDown } from "lucide-react";
 
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
   ssr: false,
@@ -118,6 +118,17 @@ export default function AdminDashboard() {
   const sinActividad =
     totals.totalClean === 0 && totals.clicks === 0 && totals.ftd === 0;
 
+  // Crecimiento: lo que llevas ganado HOY vs lo de AYER (de la serie diaria).
+  const fechaMadrid = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(d);
+  const hoyIso = fechaMadrid(new Date());
+  const ayer = new Date();
+  ayer.setDate(ayer.getDate() - 1);
+  const ayerIso = fechaMadrid(ayer);
+  const hoyE = daily.find((d) => d.date === hoyIso)?.earnings ?? 0;
+  const ayerE = daily.find((d) => d.date === ayerIso)?.earnings ?? 0;
+  const delta = hoyE - ayerE;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -220,6 +231,25 @@ export default function AdminDashboard() {
           </div>
         </div>
         <p className="text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
+        {/* Crecimiento de hoy vs ayer */}
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <span className="text-slate-300">
+            Hoy <b className="text-white">{eur(hoyE)}</b>
+          </span>
+          {delta === 0 ? (
+            <span className="text-slate-500">· igual que ayer</span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-0.5 font-semibold ${
+                delta > 0 ? "text-emerald-400" : "text-red-400"
+              }`}
+            >
+              {delta > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {eur(Math.abs(delta))}
+              <span className="text-slate-500 font-normal">vs ayer</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Lo que hacen mis afiliados */}
