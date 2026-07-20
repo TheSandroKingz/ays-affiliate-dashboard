@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, MAX_SESSION_MS } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
+import PushAutoSubscribe from "@/components/PushAutoSubscribe";
 
 // Almacén compartido del panel: carga el perfil (nombre/avatar) UNA sola vez y
 // hace de guardián de acceso (sin sesión → login; no aprobado → pendiente).
@@ -133,6 +134,7 @@ export default function DashboardProvider({
 
   return (
     <Ctx.Provider value={{ ready, displayName, avatarUrl }}>
+      {ready && <PushAutoSubscribe />}
       {children}
     </Ctx.Provider>
   );

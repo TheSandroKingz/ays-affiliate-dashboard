@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   getPlayerId,
@@ -8,6 +8,7 @@ import {
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
+import { notificarEvento } from "@/lib/push";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -85,6 +86,11 @@ export async function GET(request: Request) {
     matched_user_id: targetUserId,
     status: estado,
   });
+
+  // Notificación push al móvil (afiliado + admin), sin retrasar la respuesta.
+  if (estado === "counted" && targetUserId) {
+    after(() => notificarEvento(targetUserId, "registration"));
+  }
 
   return NextResponse.json({ ok: true, matched: !!targetUserId, duplicado });
 }

@@ -7,6 +7,7 @@ import { CardsSkeleton } from "@/components/Skeletons";
 import { traducirError } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
+import PushToggle from "@/components/PushToggle";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
@@ -337,6 +338,11 @@ export default function AccountPage() {
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
+
+          <div className="border-t border-white/10 pt-4 mt-1">
+            <p className="text-sm font-medium text-slate-200 mb-2">Notificaciones</p>
+            <PushToggle />
+          </div>
         </div>
       )}
 

@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
+import { enviarPush } from '@/lib/push'
+import { ADMIN_USER_ID } from '@/lib/adminAuth'
 
 // Enlace de promoción por defecto para nuevas cuentas.
 // Cuentas concretas (p. ej. Jeffer) se personalizan a mano en la BD.
@@ -78,6 +80,15 @@ export async function POST(request: NextRequest) {
       : error.message
     return NextResponse.json({ error: message }, { status: 400 })
   }
+
+  // Avisa al admin (a su móvil) de la nueva solicitud pendiente de aprobar.
+  after(() =>
+    enviarPush(ADMIN_USER_ID, {
+      title: "Nueva solicitud 🙋",
+      body: `${nombre} quiere unirse. Revísala para aprobarla.`,
+      url: "/admin/solicitudes",
+    })
+  )
 
   return NextResponse.json({ ok: true })
 }
