@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { userId, amount } = await request.json();
+  const { userId, amount } = await request.json().catch(() => ({}));
   const amt = Number(amount);
 
   if (!userId || !Number.isFinite(amt) || amt <= 0) {

@@ -356,7 +356,11 @@ export default function AdminStatsPage() {
                       </span>
                     )}
                   </td>
-                  <td className="border border-white/10 px-4 py-3 text-right text-emerald-400 font-semibold">
+                  <td
+                    className={`border border-white/10 px-4 py-3 text-right font-semibold ${
+                      row.margin < 0 ? "text-red-400" : "text-emerald-400"
+                    }`}
+                  >
                     {eur(row.margin)}
                   </td>
                 </tr>
@@ -381,7 +385,11 @@ export default function AdminStatsPage() {
                 <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
                   {eur(totals.structureOwed)}
                 </td>
-                <td className="border border-white/10 px-4 py-3 text-right text-emerald-400">
+                <td
+                  className={`border border-white/10 px-4 py-3 text-right ${
+                    totals.structureMargin < 0 ? "text-red-400" : "text-emerald-400"
+                  }`}
+                >
                   {eur(totals.structureMargin)}
                 </td>
               </tr>
