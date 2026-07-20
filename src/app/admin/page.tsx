@@ -293,6 +293,43 @@ export default function AdminStatsPage() {
         ))}
       </div>
 
+      {/* Podio: top 3 afiliados por lo que te dejan */}
+      {stats && stats.some((s) => s.ftd > 0) && (
+        <div>
+          <p className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">
+            Top afiliados
+          </p>
+          <div className="grid grid-cols-3 gap-3 items-end">
+            {stats.slice(0, 3).map((s, i) => {
+              const podio = [
+                { medal: "🥇", ring: "border-amber-400/50", bg: "from-amber-400/20", up: "sm:-translate-y-2" },
+                { medal: "🥈", ring: "border-slate-300/40", bg: "from-slate-300/15", up: "" },
+                { medal: "🥉", ring: "border-orange-500/40", bg: "from-orange-500/25", up: "" },
+              ][i];
+              return (
+                <div
+                  key={s.user_id}
+                  className={`rounded-xl border ${podio.ring} bg-gradient-to-b ${podio.bg} to-transparent p-3 sm:p-4 flex flex-col items-center text-center ${podio.up}`}
+                >
+                  <span className="text-2xl leading-none">{podio.medal}</span>
+                  <span className="text-sm font-medium text-white mt-2 truncate max-w-full">
+                    {s.display_name ?? "—"}
+                  </span>
+                  <span
+                    className={`font-bold mt-1 ${
+                      s.margin < 0 ? "text-red-400" : "text-emerald-400"
+                    }`}
+                  >
+                    {eur(s.margin)}
+                  </span>
+                  <span className="text-xs text-slate-400 mt-0.5">{fmt(s.ftd)} FTD</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Tabla por afiliado */}
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
         <table className="w-full text-sm border-collapse">
