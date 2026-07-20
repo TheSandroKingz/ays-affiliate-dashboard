@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [ranking, setRanking] = useState<{ puesto: number; total: number } | null>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -156,6 +157,20 @@ export default function DashboardPage() {
         0
       );
       setTotalGenerado(propiaHist + Number(subRes?.totalHistorico ?? 0));
+
+      // Puesto en el ranking (en paralelo, sin bloquear el panel).
+      fetch("/api/account/ranking", {
+        headers: { Authorization: "Bearer " + session.access_token },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((b) =>
+          setRanking(
+            b && typeof b.puesto === "number"
+              ? { puesto: b.puesto, total: b.total }
+              : null
+          )
+        )
+        .catch(() => {});
 
       setLastUpdated(new Date());
       setLoading(false);
@@ -283,6 +298,15 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {!isAdmin && ranking && ranking.total >= 2 && (
+        <div className="animate-in inline-flex items-center gap-2 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-sm">
+          <span aria-hidden>🏆</span>
+          <span className="text-amber-100">
+            Vas <b className="text-white">#{ranking.puesto}</b> de {ranking.total} este mes
+          </span>
+        </div>
+      )}
 
       <div className="animate-in bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]" style={{ animationDelay: "0.05s" }}>
         <div className="flex items-center justify-between mb-3">
