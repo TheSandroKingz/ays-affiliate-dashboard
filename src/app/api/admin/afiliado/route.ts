@@ -35,6 +35,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Afiliado no encontrado" }, { status: 404 });
   }
 
+  // El correo vive en la capa de auth (auth.users), no en affiliates. Lo trae
+  // el service role. Es seguro: esta ruta ya está protegida solo para el admin.
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const email = authUser?.user?.email ?? null;
+
   let q = supabaseAdmin
     .from("affiliate_daily_stats")
     .select("date, clicks, registrations, ftd, commission")
@@ -46,5 +51,5 @@ export async function GET(request: Request) {
   const { data: daily, error: dErr } = await q;
   if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
 
-  return NextResponse.json({ perfil, daily: daily ?? [] });
+  return NextResponse.json({ perfil: { ...perfil, email }, daily: daily ?? [] });
 }

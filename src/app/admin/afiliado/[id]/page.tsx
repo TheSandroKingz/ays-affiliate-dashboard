@@ -29,6 +29,7 @@ type DailyRow = {
 type Perfil = {
   display_name: string | null;
   avatar_url: string | null;
+  email: string | null;
   cpa_spain: number | null;
   cpa_other: number | null;
   subaffiliate_percent: number | null;
@@ -177,6 +178,9 @@ export default function AfiliadoDetallePage() {
             <h1 className="text-2xl font-semibold text-white truncate">
               {perfil.display_name ?? "—"}
             </h1>
+            {perfil.email && (
+              <p className="text-sm text-slate-400 truncate">{perfil.email}</p>
+            )}
             {lastUpdated && (
               <p className="text-sm text-slate-500 mt-1">
                 Actualizado{" "}
