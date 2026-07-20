@@ -42,6 +42,12 @@ export default function ActividadPage() {
   const router = useRouter();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [sinPlayerId, setSinPlayerId] = useState(0);
+  const [resumen, setResumen] = useState<{
+    sinPlayerId: number;
+    duplicados: number;
+    noMatch: number;
+    repetidos: { player_id: string; veces: number }[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
@@ -69,6 +75,7 @@ export default function ActividadPage() {
       const body = await res.json();
       setEventos(Array.isArray(body.events) ? body.events : []);
       setSinPlayerId(Number(body.sinPlayerId ?? 0));
+      setResumen(body.resumen ?? null);
     } catch {
       setError(true);
     } finally {
@@ -113,6 +120,32 @@ export default function ActividadPage() {
           ⚠️ Hay <b>{sinPlayerId}</b> FTD contados <b>sin identificador de jugador</b>.
           Sin ese dato, si freshbet reenvía un FTD se contaría dos veces. Revisa
           que freshbet incluya el <span className="font-mono">playerid</span> en los postbacks.
+        </div>
+      )}
+
+      {resumen && resumen.repetidos.length > 0 && (
+        <div className="rounded-xl border border-red-400/60 bg-red-500/15 px-4 py-3 text-sm text-red-100">
+          🚨 <b>{resumen.repetidos.length}</b> jugador(es) contados MÁS de una vez
+          (posible doble pago):{" "}
+          <span className="font-mono">
+            {resumen.repetidos.map((r) => `${r.player_id} (${r.veces}×)`).join(", ")}
+          </span>
+          . Revísalo cuanto antes.
+        </div>
+      )}
+
+      {resumen && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Sin player_id", value: resumen.sinPlayerId },
+            { label: "Duplicados bloqueados", value: resumen.duplicados },
+            { label: "Sin emparejar", value: resumen.noMatch },
+          ].map((c) => (
+            <div key={c.label} className="p-3 rounded-xl border border-white/10 bg-white/5">
+              <p className="text-xs text-slate-400 mb-1">{c.label}</p>
+              <p className="text-lg font-bold text-white">{c.value}</p>
+            </div>
+          ))}
         </div>
       )}
 

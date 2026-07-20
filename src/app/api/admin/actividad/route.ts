@@ -43,10 +43,28 @@ export async function GET(request: Request) {
     name: e.matched_user_id ? names.get(e.matched_user_id) ?? null : null,
   }));
 
-  // FTD contados sin player_id = sin candado anti-duplicado (riesgo de dinero).
+  // Resumen de anomalías (de los últimos 100 eventos).
   const sinPlayerId = rows.filter(
     (r) => r.event_type === "ftd" && r.counted && !r.player_id
   ).length;
+  const duplicados = rows.filter((r) => r.status === "duplicate").length;
+  const noMatch = rows.filter((r) => r.status === "no_match").length;
 
-  return NextResponse.json({ events: rows, sinPlayerId });
+  // Jugadores CONTADOS más de una vez = doble pago real (no debería pasar con
+  // el candado; si aparece, hay que revisarlo ya).
+  const cnt = new Map<string, number>();
+  for (const r of rows) {
+    if (r.event_type === "ftd" && r.counted && r.player_id) {
+      cnt.set(r.player_id, (cnt.get(r.player_id) ?? 0) + 1);
+    }
+  }
+  const repetidos = [...cnt.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([player_id, veces]) => ({ player_id, veces }));
+
+  return NextResponse.json({
+    events: rows,
+    sinPlayerId,
+    resumen: { sinPlayerId, duplicados, noMatch, repetidos },
+  });
 }
