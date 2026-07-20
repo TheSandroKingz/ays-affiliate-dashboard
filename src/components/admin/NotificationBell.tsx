@@ -18,6 +18,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(0);
   const [eventos, setEventos] = useState<Ev[]>([]);
+  const [ftd24h, setFtd24h] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,9 +37,19 @@ export default function NotificationBell() {
           .catch(() => null),
       ]);
       setPending(Array.isArray(p?.pending) ? p.pending.length : 0);
-      const evs = (Array.isArray(a?.events) ? a.events : [])
+      const all: Ev[] = Array.isArray(a?.events) ? a.events : [];
+      // FTD de las últimas 24 h sobre TODOS los eventos (no solo los mostrados).
+      setFtd24h(
+        all.filter(
+          (e) =>
+            e.event_type === "ftd" &&
+            e.counted &&
+            Date.now() - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000
+        ).length
+      );
+      const evs = all
         .filter(
-          (e: Ev) =>
+          (e) =>
             e.counted && (e.event_type === "ftd" || e.event_type === "registration")
         )
         .slice(0, 6);
@@ -56,12 +67,7 @@ export default function NotificationBell() {
   }, []);
 
   // Novedades = solicitudes pendientes + FTD de las últimas 24 h.
-  const ftdRecientes = eventos.filter(
-    (e) =>
-      e.event_type === "ftd" &&
-      Date.now() - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000
-  ).length;
-  const total = pending + ftdRecientes;
+  const total = pending + ftd24h;
 
   function cuando(iso: string) {
     return new Date(iso).toLocaleString("es-ES", {

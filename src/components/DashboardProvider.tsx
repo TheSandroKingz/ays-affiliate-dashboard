@@ -102,8 +102,10 @@ export default function DashboardProvider({
     }
     check();
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      // Al iniciar sesión (login real) reiniciamos el contador de 3 días.
-      if (event === "SIGNED_IN") {
+      // Al iniciar sesión reiniciamos el contador de 3 días, pero SOLO si no
+      // hay uno ya: supabase-js re-emite SIGNED_IN al volver a la pestaña, y no
+      // queremos que eso reinicie el límite (si no, nunca saltaría).
+      if (event === "SIGNED_IN" && !localStorage.getItem("authStartAt")) {
         localStorage.setItem("authStartAt", String(Date.now()));
       }
       if (!session) {

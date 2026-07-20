@@ -191,7 +191,7 @@ export default function AdminDashboard() {
 
   // Comparativa del balance del mes vs el mes pasado (%).
   const pctMes =
-    mesPasado && mesPasado !== 0
+    mesPasado && mesPasado > 0
       ? ((totals.totalClean - mesPasado) / mesPasado) * 100
       : null;
 

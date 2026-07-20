@@ -183,6 +183,18 @@ export default function AdminStatsPage() {
       return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
     });
 
+  // Totales del pie: suman SOLO lo visible (coherente con la búsqueda).
+  const footer = visibleStats.reduce(
+    (acc, r) => ({
+      clicks: acc.clicks + r.clicks,
+      registrations: acc.registrations + r.registrations,
+      ftd: acc.ftd + r.ftd,
+      owed: acc.owed + r.owed,
+      margin: acc.margin + r.margin,
+    }),
+    { clicks: 0, registrations: 0, ftd: 0, owed: 0, margin: 0 }
+  );
+
   const toggleOrden = (campo: keyof StatRow) =>
     setOrden((o) =>
       o.campo === campo
@@ -477,30 +489,30 @@ export default function AdminStatsPage() {
               })
             )}
           </tbody>
-          {stats && stats.length > 0 && (
+          {visibleStats.length > 0 && (
             <tfoot>
               <tr className="bg-white/10 font-semibold">
                 <td className="border border-white/10 px-4 py-3 text-white">
-                  Total
+                  {busqueda.trim() ? "Total (filtrado)" : "Total"}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-white">
-                  {fmt(totals.clicks)}
+                  {fmt(footer.clicks)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-white">
-                  {fmt(totals.registrations)}
+                  {fmt(footer.registrations)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-white">
-                  {fmt(totals.ftd)}
+                  {fmt(footer.ftd)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
-                  {eur(totals.structureOwed)}
+                  {eur(footer.owed)}
                 </td>
                 <td
                   className={`border border-white/10 px-4 py-3 text-right ${
-                    totals.structureMargin < 0 ? "text-red-400" : "text-emerald-400"
+                    footer.margin < 0 ? "text-red-400" : "text-emerald-400"
                   }`}
                 >
-                  {eur(totals.structureMargin)}
+                  {eur(footer.margin)}
                 </td>
               </tr>
             </tfoot>
