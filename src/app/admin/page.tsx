@@ -242,10 +242,10 @@ export default function AdminStatsPage() {
         </div>
       )}
 
-      {/* Botón para desplegar el filtro (solo en móvil) */}
+      {/* Botón para desplegar el filtro (en móvil y en PC: ocupa menos) */}
       <button
         onClick={() => setMostrarFiltros((v) => !v)}
-        className="md:hidden flex items-center justify-between gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-sm text-white"
+        className="flex items-center justify-between gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-sm text-white max-w-xs"
       >
         <span className="flex items-center gap-2">
           <Calendar size={16} className="text-slate-400" />
@@ -257,11 +257,11 @@ export default function AdminStatsPage() {
         />
       </button>
 
-      {/* Filtro de fechas (plegado en móvil hasta desplegar; visible en escritorio) */}
+      {/* Filtro de fechas (plegado hasta desplegar, tanto en móvil como en PC) */}
       <div
         className={`${
           mostrarFiltros ? "flex" : "hidden"
-        } md:flex flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4`}
+        } flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4`}
       >
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex flex-col gap-1">
