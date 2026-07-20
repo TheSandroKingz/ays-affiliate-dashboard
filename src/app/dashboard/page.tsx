@@ -241,10 +241,17 @@ export default function DashboardPage() {
   const hoyISO = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
   const [yProj, mProj, dProj] = hoyISO.split("-").map(Number);
   const diasMes = new Date(yProj, mProj, 0).getDate();
-  const proyeccionRaw = dProj > 0 ? (balance / dProj) * diasMes : balance;
+  // El ritmo se cuenta desde el PRIMER FTD (no desde el día 1): el afiliado no
+  // empieza el día 1. dailyData va del día 1 al de hoy (una entrada por día).
+  const primerFtdIdx = dailyData.findIndex((d) => d.ftd > 0);
+  const diasTrabajados = primerFtdIdx >= 0 ? dProj - primerFtdIdx : 0;
+  const ritmoDia = diasTrabajados > 0 ? balance / diasTrabajados : 0;
+  const diasRestantes = diasMes - dProj;
+  const proyeccionRaw = balance + ritmoDia * diasRestantes;
   // Es una estimación: la redondeamos a múltiplo de 10 para que salga limpia.
   const proyeccion = Math.round(proyeccionRaw / 10) * 10;
-  const mostrarProyeccion = !isAdmin && balance > 0 && dProj < diasMes;
+  const mostrarProyeccion =
+    !isAdmin && balance > 0 && diasTrabajados > 0 && dProj < diasMes;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
   const sinActividad =
