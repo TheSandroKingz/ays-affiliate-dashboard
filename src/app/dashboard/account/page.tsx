@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { CardsSkeleton } from "@/components/Skeletons";
 import { traducirError } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
+import AvatarCropper from "@/components/AvatarCropper";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
@@ -16,7 +17,16 @@ export default function AccountPage() {
   const [firstName, setFirstName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Al elegir un archivo, lo abrimos en el recortador (no lo subimos directo).
+  function seleccionarFoto(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(String(reader.result));
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
   
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
@@ -275,9 +285,21 @@ export default function AccountPage() {
                 type="file"
                 accept="image/*"
                 ref={fileInputRef}
-                onChange={(e) => e.target.files && uploadAvatar(e.target.files[0])}
+                onChange={(e) => e.target.files?.[0] && seleccionarFoto(e.target.files[0])}
                 className="hidden"
               />
+              {cropSrc && (
+                <AvatarCropper
+                  src={cropSrc}
+                  onCancel={() => setCropSrc(null)}
+                  onConfirm={(blob) => {
+                    setCropSrc(null);
+                    uploadAvatar(
+                      new File([blob], "avatar.jpg", { type: "image/jpeg" })
+                    );
+                  }}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
