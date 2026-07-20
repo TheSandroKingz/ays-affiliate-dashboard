@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -18,6 +19,10 @@ function addDays(iso: string, n: number): string {
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + n);
   return dt.toISOString().slice(0, 10);
+}
+function fmtCorto(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
 }
 
 type StatRow = {
@@ -61,6 +66,8 @@ export default function AdminStatsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
 
@@ -92,6 +99,7 @@ export default function AdminStatsPage() {
         } else {
           setStats(body.stats);
           setTotals(body.totals);
+          setLastUpdated(new Date());
         }
       } catch {
         setError("No se pudieron cargar los datos.");
@@ -139,18 +147,60 @@ export default function AdminStatsPage() {
     );
   }
 
+  const rangoLabel =
+    !desde && !hasta
+      ? "Todo el histórico"
+      : `${desde ? fmtCorto(desde) : "inicio"} – ${hasta ? fmtCorto(hasta) : "hoy"}`;
+
   return (
     <main className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-white">Mis Afiliados</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Por cada FTD que traen, tú te quedas la diferencia entre tu CPA y el
-          suyo. Aquí ves lo que le pagas a cada uno y lo que te queda a ti.
-        </p>
+      {/* Cabecera con Actualizar (como el inicio) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">Mis Afiliados</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Lo que le pagas a cada uno y lo que te queda a ti.
+            {lastUpdated && (
+              <span className="text-slate-500">
+                {" · Actualizado "}
+                {lastUpdated.toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+          </p>
+        </div>
+        <button
+          onClick={() => load(desde, hasta)}
+          disabled={refreshing}
+          className="shrink-0 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          {refreshing ? "Actualizando..." : "Actualizar"}
+        </button>
       </div>
 
-      {/* Filtro de fechas */}
-      <div className="flex flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
+      {/* Botón para desplegar el filtro (solo en móvil) */}
+      <button
+        onClick={() => setMostrarFiltros((v) => !v)}
+        className="md:hidden flex items-center justify-between gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-sm text-white"
+      >
+        <span className="flex items-center gap-2">
+          <Calendar size={16} className="text-slate-400" />
+          {rangoLabel}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`transition-transform ${mostrarFiltros ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {/* Filtro de fechas (plegado en móvil hasta desplegar; visible en escritorio) */}
+      <div
+        className={`${
+          mostrarFiltros ? "flex" : "hidden"
+        } md:flex flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4`}
+      >
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400">Desde</label>
