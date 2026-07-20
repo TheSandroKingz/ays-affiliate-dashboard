@@ -1,6 +1,5 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { notificarTelegram } from "@/lib/notify";
 import {
   getPlayerId,
   reclamarEvento,
@@ -97,16 +96,6 @@ export async function GET(request: Request) {
     commission: comisionPagada,
     status: estado,
   });
-
-  // Alerta: un FTD contado SIN player_id no tiene candado anti-duplicados.
-  // Avisamos por Telegram para poder revisar la config de freshbet a tiempo.
-  if (estado === "counted" && !playerid) {
-    after(() =>
-      notificarTelegram(
-        `⚠️ <b>FTD contado SIN player_id</b>\nTracking: <b>${trackingcode || "—"}</b> · CPA: ${comisionPagada}€\nEl anti-duplicados no puede protegerlo. Revisa que freshbet envíe el id de jugador.`
-      )
-    );
-  }
 
   return NextResponse.json({ ok: true, matched: !!target, duplicado });
 }
