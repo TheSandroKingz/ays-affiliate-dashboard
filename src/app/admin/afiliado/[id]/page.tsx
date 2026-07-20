@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -41,10 +41,14 @@ export default function AfiliadoDetallePage() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [daily, setDaily] = useState<DailyRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState(false);
+  const [mostrarCobro, setMostrarCobro] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     setError(false);
     try {
       const {
@@ -65,10 +69,12 @@ export default function AfiliadoDetallePage() {
       const body = await res.json();
       setPerfil(body.perfil);
       setDaily(Array.isArray(body.daily) ? body.daily : []);
+      setLastUpdated(new Date());
     } catch {
       setError(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [userId, router]);
 
@@ -103,7 +109,7 @@ export default function AfiliadoDetallePage() {
         >
           <ArrowLeft size={16} /> Volver
         </Link>
-        <LoadError onRetry={load} />
+        <LoadError onRetry={() => load()} />
       </main>
     );
   }
@@ -123,9 +129,29 @@ export default function AfiliadoDetallePage() {
         <ArrowLeft size={16} /> Volver a Mis Afiliados
       </Link>
 
-      <h1 className="text-2xl font-semibold text-white">
-        {perfil.display_name ?? "—"}
-      </h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">
+            {perfil.display_name ?? "—"}
+          </h1>
+          {lastUpdated && (
+            <p className="text-sm text-slate-500 mt-1">
+              Actualizado{" "}
+              {lastUpdated.toLocaleTimeString("es-ES", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => load(true)}
+          disabled={refreshing}
+          className="shrink-0 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          {refreshing ? "Actualizando..." : "Actualizar"}
+        </button>
+      </div>
 
       {/* Ficha: CPA y % */}
       <div className="grid grid-cols-3 gap-3">
@@ -140,21 +166,34 @@ export default function AfiliadoDetallePage() {
         ))}
       </div>
 
-      {/* Datos de cobro (billeteras) y código */}
-      <div className="flex flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
-        <p className="text-sm font-medium text-slate-300">Datos de cobro</p>
-        {[
-          { label: "USDT (ERC-20)", value: perfil.wallet_erc20 },
-          { label: "USDT (TRC-20)", value: perfil.wallet_trc20 },
-          { label: "Código de tracking", value: perfil.freshaffs_tracking_code },
-        ].map((w) => (
-          <div key={w.label} className="flex flex-col gap-0.5">
-            <span className="text-xs text-slate-400">{w.label}</span>
-            <span className="text-sm text-white break-all font-mono">
-              {w.value ? w.value : <span className="text-slate-500">Sin definir</span>}
-            </span>
+      {/* Datos de cobro (billeteras) y código — plegado por defecto */}
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setMostrarCobro((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5"
+        >
+          <span>Datos de cobro</span>
+          <ChevronDown
+            size={16}
+            className={`transition-transform ${mostrarCobro ? "rotate-180" : ""}`}
+          />
+        </button>
+        {mostrarCobro && (
+          <div className="flex flex-col gap-3 px-4 pb-4 pt-1">
+            {[
+              { label: "USDT (ERC-20)", value: perfil.wallet_erc20 },
+              { label: "USDT (TRC-20)", value: perfil.wallet_trc20 },
+              { label: "Código de tracking", value: perfil.freshaffs_tracking_code },
+            ].map((w) => (
+              <div key={w.label} className="flex flex-col gap-0.5">
+                <span className="text-xs text-slate-400">{w.label}</span>
+                <span className="text-sm text-white break-all font-mono">
+                  {w.value ? w.value : <span className="text-slate-500">Sin definir</span>}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* Actividad diaria */}
