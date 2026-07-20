@@ -9,7 +9,6 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
 import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
-import CountUp from "@/components/CountUp";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
@@ -311,9 +310,7 @@ export default function DashboardPage() {
             </div>
         </div>
         </div>
-        <p className="text-3xl sm:text-4xl font-bold text-white">
-          <CountUp value={balance} format={eur} />
-        </p>
+        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(balance)}</p>
         {!isAdmin && (
           <div className="mt-3 flex items-center gap-2 text-sm">
             <span className="text-slate-300">

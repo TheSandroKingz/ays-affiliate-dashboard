@@ -8,7 +8,6 @@ import { eur } from "@/lib/format";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
-import CountUp from "@/components/CountUp";
 import { metricConfig } from "@/lib/metrics";
 import { Info, UserPlus, TrendingUp, TrendingDown } from "lucide-react";
 
@@ -301,9 +300,7 @@ export default function AdminDashboard() {
               </div>
             </div>
         </div>
-        <p className="text-3xl sm:text-4xl font-bold text-white">
-          <CountUp value={totals.totalClean} format={eur} />
-        </p>
+        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
         {/* Crecimiento de hoy vs ayer */}
         <div className="mt-3 flex items-center gap-2 text-sm">
           <span className="text-slate-300">
