@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
+
+// La gráfica (Recharts) es pesada: la cargamos en diferido, igual que el inicio.
+const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
+  ssr: false,
+  loading: () => <div className="h-[320px]" />,
+});
 
 type DailyRow = {
   date: string;
@@ -84,6 +91,23 @@ export default function AfiliadoDetallePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Datos para la gráfica: comisión por día en orden cronológico (la tabla va
+  // al revés, de más reciente a más antiguo).
+  const chartData = useMemo(
+    () =>
+      [...daily]
+        .sort((a, b) => (a.date < b.date ? -1 : 1))
+        .map((d) => ({
+          date: new Date(d.date + "T00:00:00Z").toLocaleDateString("es-ES", {
+            month: "short",
+            day: "2-digit",
+            timeZone: "UTC",
+          }),
+          commission: Number(d.commission ?? 0),
+        })),
+    [daily]
+  );
 
   const totals = useMemo(
     () =>
@@ -198,6 +222,23 @@ export default function AfiliadoDetallePage() {
                 </span>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Gráfica de comisión por día (como la del inicio) */}
+      <div className="relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6">
+        <p className="text-sm font-medium text-slate-300 mb-2">Comisión por día</p>
+        <BalanceChart
+          data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
+          activeMetrics={new Set(["commission"])}
+          primaryMetricKey="commission"
+        />
+        {daily.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <p className="text-sm text-slate-400 bg-black/50 border border-white/10 px-3 py-1.5 rounded-lg">
+              Aún no hay actividad
+            </p>
           </div>
         )}
       </div>
