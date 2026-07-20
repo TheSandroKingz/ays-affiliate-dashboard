@@ -52,6 +52,7 @@ export default function AfiliadoDetallePage() {
 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [daily, setDaily] = useState<DailyRow[]>([]);
+  const [deposito, setDeposito] = useState<{ media: number | null; num: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -127,6 +128,7 @@ export default function AfiliadoDetallePage() {
       setPerfil(body.perfil);
       setNombreEdit(body.perfil?.display_name ?? "");
       setDaily(Array.isArray(body.daily) ? body.daily : []);
+      setDeposito(body.deposito ?? null);
       setLastUpdated(new Date());
     } catch {
       setError(true);
@@ -268,6 +270,23 @@ export default function AfiliadoDetallePage() {
             <p className="text-lg font-bold text-white">{f.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Calidad de tráfico: depósito medio de los jugadores que trae */}
+      <div className="rounded-xl border border-white/15 bg-black/40 p-4">
+        <p className="text-xs text-slate-400 mb-1">Depósito medio (calidad de tráfico)</p>
+        {deposito && deposito.media !== null ? (
+          <p className="text-lg font-bold text-white">
+            {eur(deposito.media)}{" "}
+            <span className="text-xs text-slate-400 font-normal">
+              · {deposito.num} depósito{deposito.num === 1 ? "" : "s"}
+            </span>
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Sin datos todavía (freshbet debe enviar el importe del depósito).
+          </p>
+        )}
       </div>
 
       {/* Datos de cobro (billeteras) y código — plegado por defecto */}

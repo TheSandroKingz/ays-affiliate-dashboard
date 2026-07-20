@@ -23,6 +23,29 @@ export function getPlayerId(url: URL): string {
   return "";
 }
 
+// Importe del depósito (para medir la calidad del tráfico). Probamos varios
+// nombres de macro habituales. Devuelve 0 si freshbet no lo manda.
+export function getMonto(url: URL): number {
+  const names = [
+    "amount",
+    "depositamount",
+    "deposit_amount",
+    "ftdamount",
+    "ftd_amount",
+    "sumdep",
+    "depsum",
+    "value",
+  ];
+  for (const n of names) {
+    const raw = url.searchParams.get(n);
+    if (raw && raw.trim()) {
+      const v = Number(raw.trim().replace(",", "."));
+      if (Number.isFinite(v) && v > 0) return v;
+    }
+  }
+  return 0;
+}
+
 // Intenta "reclamar" el evento (idempotencia). Devuelve true si se debe CONTAR
 // (es nuevo, o no hay id, o la tabla no existe todavía), false si es un
 // duplicado ya contado. IMPORTANTE: solo llamar cuando el evento SÍ se va a
@@ -65,6 +88,7 @@ export type EventoPostback = {
   isocountry?: string;
   matched_user_id: string | null;
   commission?: number;
+  amount?: number; // importe del depósito (calidad de tráfico)
   status: EstadoEvento;
 };
 
@@ -73,21 +97,52 @@ export type EventoPostback = {
 // freshbet (p. ej. si trae player_id), revisar cuadres y detectar fraude.
 // BLINDADO: cualquier fallo aquí se ignora; NUNCA debe romper el postback.
 export async function registrarEvento(e: EventoPostback): Promise<void> {
-  await supabaseAdmin
-    .from("postback_events")
-    .insert({
-      event_type: e.event_type,
-      raw_query: e.raw_query,
-      tracking_code: e.tracking_code || null,
-      afp: e.afp || null,
-      player_id: e.player_id || null,
-      isocountry: e.isocountry || null,
-      matched_user_id: e.matched_user_id,
-      commission: e.commission ?? null,
-      counted: e.status === "counted",
-      status: e.status,
-    })
-    .then(() => {}, () => {});
+  const base = {
+    event_type: e.event_type,
+    raw_query: e.raw_query,
+    tracking_code: e.tracking_code || null,
+    afp: e.afp || null,
+    player_id: e.player_id || null,
+    isocountry: e.isocountry || null,
+    matched_user_id: e.matched_user_id,
+    commission: e.commission ?? null,
+    counted: e.status === "counted",
+    status: e.status,
+  };
+  try {
+    const { error } = await supabaseAdmin
+      .from("postback_events")
+      .insert({ ...base, amount: e.amount ?? null });
+    // Por si la columna 'amount' aún no existe: reintenta sin ella.
+    if (error) {
+      await supabaseAdmin.from("postback_events").insert(base);
+    }
+  } catch {
+    // Un fallo del log NUNCA debe romper el postback.
+  }
+}
+
+// Depósito medio de un afiliado (calidad de tráfico): media del importe de sus
+// FTD contados con importe > 0. Devuelve media=null si no hay datos (freshbet
+// aún no manda el importe, o la columna no existe). BLINDADO.
+export async function depositoMedio(
+  userId: string
+): Promise<{ media: number | null; num: number }> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("postback_events")
+      .select("amount")
+      .eq("matched_user_id", userId)
+      .eq("event_type", "ftd")
+      .eq("counted", true)
+      .not("amount", "is", null)
+      .gt("amount", 0);
+    if (error || !data || !data.length) return { media: null, num: 0 };
+    const sum = data.reduce((s, d) => s + Number(d.amount ?? 0), 0);
+    return { media: sum / data.length, num: data.length };
+  } catch {
+    return { media: null, num: 0 };
+  }
 }
 
 // Quita el secreto (?key=) de la query cruda antes de guardarla en el log.

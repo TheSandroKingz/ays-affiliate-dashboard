@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
+import { depositoMedio } from "@/lib/postback";
 
 // Detalle de UN afiliado (solo admin): su perfil (CPA, billeteras, código) y su
 // actividad diaria (clics, registros, FTD, comisión). Se usa al clicar su
@@ -71,10 +72,12 @@ export async function GET(request: Request) {
   }
 
   const email = authRes.data?.user?.email ?? null;
+  const deposito = await depositoMedio(userId);
 
   return NextResponse.json({
     perfil: { active: true, ...perfil, email },
     daily: dailyRes.data ?? [],
+    deposito, // { media, num }
   });
 }
 

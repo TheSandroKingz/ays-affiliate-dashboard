@@ -236,6 +236,13 @@ export default function DashboardPage() {
   const hoyC = dailyData.length ? dailyData[dailyData.length - 1].commission : 0;
   const ayerC = dailyData.length > 1 ? dailyData[dailyData.length - 2].commission : 0;
   const deltaHoy = hoyC - ayerC;
+
+  // Proyección de fin de mes: al ritmo actual, cuánto cerrará el mes.
+  const hoyISO = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const [yProj, mProj, dProj] = hoyISO.split("-").map(Number);
+  const diasMes = new Date(yProj, mProj, 0).getDate();
+  const proyeccion = dProj > 0 ? (balance / dProj) * diasMes : balance;
+  const mostrarProyeccion = !isAdmin && balance > 0 && dProj < diasMes;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
   const sinActividad =
@@ -330,6 +337,12 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
+        )}
+        {mostrarProyeccion && (
+          <p className="mt-1 text-xs text-slate-400">
+            A este ritmo cerrarás el mes en{" "}
+            <b className="text-emerald-400">≈ {eur(proyeccion)}</b>
+          </p>
         )}
       </div>
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>

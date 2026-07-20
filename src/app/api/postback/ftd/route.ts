@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   getPlayerId,
+  getMonto,
   reclamarEvento,
   liberarEvento,
   registrarEvento,
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
   const playerid = getPlayerId(url);
+  const monto = getMonto(url); // importe del depósito (0 si freshbet no lo manda)
 
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
@@ -94,6 +96,7 @@ export async function GET(request: Request) {
     isocountry,
     matched_user_id: target?.user_id ?? null,
     commission: comisionPagada,
+    amount: monto,
     status: estado,
   });
 

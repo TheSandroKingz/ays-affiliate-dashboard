@@ -13,6 +13,7 @@ export default function CommissionPlanPage() {
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
   const [promoLink, setPromoLink] = useState<string | null>(null);
   const [promoLinkCopied, setPromoLinkCopied] = useState(false);
+  const [deposito, setDeposito] = useState<{ media: number | null; num: number } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -43,6 +44,14 @@ export default function CommissionPlanPage() {
       setCpaSpain(data.cpa_spain ?? 85);
       setCpaOther(data.cpa_other ?? 85);
       setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
+
+      // Calidad de tráfico (depósito medio): en paralelo, sin bloquear.
+      fetch("/api/account/calidad", {
+        headers: { Authorization: "Bearer " + session.access_token },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((b) => setDeposito(b?.deposito ?? null))
+        .catch(() => {});
       setPromoLink(
         data.freshaffs_tracking_code
           ? `${window.location.origin}/go/${encodeURIComponent(
@@ -101,6 +110,28 @@ export default function CommissionPlanPage() {
           <p className="text-white font-semibold">
             €{cpaOther.toLocaleString("de-DE")}
           </p>
+        </div>
+      </div>
+
+      {/* Calidad de tu tráfico: depósito medio */}
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-white mb-1">Calidad de tu tráfico</h2>
+        <p className="text-sm text-slate-400 mb-4">
+          Cuanto mayor sea el depósito medio de los jugadores que traes, mejor
+          CPA puedes conseguir.
+        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-slate-200">Depósito medio</p>
+          {deposito && deposito.media !== null ? (
+            <p className="text-white font-semibold">
+              €{deposito.media.toLocaleString("de-DE", { maximumFractionDigits: 0 })}{" "}
+              <span className="text-xs text-slate-400 font-normal">
+                · {deposito.num} depósito{deposito.num === 1 ? "" : "s"}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">Aún sin datos</p>
+          )}
         </div>
       </div>
 
