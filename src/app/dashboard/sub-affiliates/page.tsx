@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
+import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
 
 type SubAffiliateRow = {
@@ -14,32 +15,33 @@ type SubAffiliateRow = {
 export default function SubAffiliatesPage() {
   const [rows, setRows] = useState<SubAffiliateRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [origin, setOrigin] = useState("");
   const [percent, setPercent] = useState(5);
 
-  useEffect(() => {
-    setOrigin(window.location.origin);
-
-    async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        setLoading(false);
+        setError(true);
         return;
       }
 
       // Las dos peticiones solo dependen de la sesión, no entre sí:
       // en paralelo para que la página cargue antes.
-      const [affiliateRes, subBody] = await Promise.all([
+      const [affiliateRes, subRes] = await Promise.all([
         supabase
           .from("affiliates")
           .select("id, subaffiliate_percent")
           .eq("user_id", session.user.id)
-          .single(),
+          .maybeSingle(),
         fetch("/api/subaffiliates", {
           method: "POST",
           headers: {
@@ -47,28 +49,49 @@ export default function SubAffiliatesPage() {
             Authorization: "Bearer " + session.access_token,
           },
           body: JSON.stringify({ userId: session.user.id }),
-        })
-          .then((r) => (r.ok ? r.json() : { rows: [] }))
-          .catch(() => ({ rows: [] })),
+        }),
       ]);
 
-      const affiliateRow = affiliateRes.data;
-      if (affiliateRow) {
-        setAffiliateId(affiliateRow.id);
-        setPercent(affiliateRow.subaffiliate_percent ?? 5);
+      // Si no pudimos leer tu perfil o la lista de subs, avisamos en vez de
+      // mostrar "no tienes subafiliados" (que sería falso si solo falló la red).
+      if (affiliateRes.error || !affiliateRes.data || !subRes.ok) {
+        setError(true);
+        return;
       }
-      setRows(subBody.rows ?? []);
+      const subBody = await subRes.json().catch(() => null);
+      if (!subBody || !Array.isArray(subBody.rows)) {
+        setError(true);
+        return;
+      }
 
+      setAffiliateId(affiliateRes.data.id);
+      setPercent(affiliateRes.data.subaffiliate_percent ?? 5);
+      setRows(subBody.rows);
+    } catch {
+      setError(true);
+    } finally {
       setLoading(false);
     }
-
-    load();
   }, []);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    load();
+  }, [load]);
 
   const totalCommission = rows.reduce((sum, r) => sum + r.commission, 0);
 
   if (loading) {
     return <TableSkeleton title="Subafiliados" cols={3} />;
+  }
+
+  if (error) {
+    return (
+      <main className="flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold text-white">Subafiliados</h1>
+        <LoadError onRetry={load} />
+      </main>
+    );
   }
 
   return (

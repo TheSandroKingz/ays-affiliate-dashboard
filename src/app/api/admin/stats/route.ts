@@ -91,14 +91,34 @@ export async function GET(request: Request) {
     byUser.set(d.user_id, acc);
   }
 
+  // Override que gana cada afiliado por sus subafiliados: su % sobre la
+  // comisión de los hijos que lo tienen a él como referido. Eso también se lo
+  // pagas tú, así que la columna "Le pago" debe incluirlo.
+  const overrideEarnedById = new Map<string, number>();
+  for (const child of structure ?? []) {
+    if (!child.referred_by || child.referred_by === me?.id) continue;
+    const parent = (structure ?? []).find((p) => p.id === child.referred_by);
+    if (!parent) continue;
+    const parentPct = percentById.get(child.referred_by) ?? 0;
+    const childCommission = byUser.get(child.user_id)?.commission ?? 0;
+    overrideEarnedById.set(
+      parent.user_id,
+      (overrideEarnedById.get(parent.user_id) ?? 0) + (parentPct / 100) * childCommission
+    );
+  }
+
   const stats = (structure ?? [])
     .map((a) => {
       const s = byUser.get(a.user_id) ?? empty();
+      const overrideEarned = overrideEarnedById.get(a.user_id) ?? 0;
+      const owed = s.commission + overrideEarned; // total que le pagas
       const margin = adminCpa * s.ftd - s.commission;
       return {
         user_id: a.user_id,
         display_name: a.display_name,
-        commission: s.commission, // lo que le pagas
+        commission: s.commission, // su comisión propia (CPA)
+        overrideEarned, // lo que gana de sus subafiliados
+        owed, // total a pagarle = comisión + override
         clicks: s.clicks,
         registrations: s.registrations,
         ftd: s.ftd,
@@ -131,8 +151,9 @@ export async function GET(request: Request) {
   const totals = {
     ownEarnings: own.commission, // mi link propio (CPA completo)
     structureMargin: structure_t.margin, // mi estructura (margen)
-    structurePaid: structure_t.commission, // lo que pago a afiliados
+    structurePaid: structure_t.commission, // comisiones propias de afiliados
     overridesPaid, // lo que pago a los padres por sus subafiliados
+    structureOwed: structure_t.commission + overridesPaid, // total que pago a afiliados
     // Lo que me llevo limpio = propio + margen − overrides a los padres.
     totalClean: own.commission + structure_t.margin - overridesPaid,
     clicks: own.clicks + structure_t.clicks,

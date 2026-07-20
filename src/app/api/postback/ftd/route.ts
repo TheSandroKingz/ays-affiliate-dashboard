@@ -20,7 +20,6 @@ export async function GET(request: Request) {
 
   // Atribución al afiliado concreto (para pagarle su CPA), si lo identificamos.
   let target: { user_id: string; cpa_spain: number | null; cpa_other: number | null } | null = null;
-  let isSubaffiliate = false;
 
   if (trackingcode) {
     const { data } = await supabaseAdmin
@@ -30,7 +29,6 @@ export async function GET(request: Request) {
       .limit(1);
     if (data?.[0]) {
       target = data[0];
-      isSubaffiliate = true;
     }
   }
 
@@ -51,9 +49,12 @@ export async function GET(request: Request) {
     const contar = await reclamarEvento(eventKey);
     duplicado = !contar;
     if (contar) {
-      const commission = isSubaffiliate
-        ? Number((isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0)
-        : 0;
+      // Todo FTD emparejado (por trackingcode o por afp) acredita el CPA del
+      // afiliado dueño de ese código/afp. Así tu propio tráfico (afp) también
+      // cuenta como tu comisión, igual que el de tus afiliados.
+      const commission = Number(
+        (isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0
+      );
 
       const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
         p_user_id: target.user_id,

@@ -23,7 +23,9 @@ function addDays(iso: string, n: number): string {
 type StatRow = {
   user_id: string;
   display_name: string | null;
-  commission: number; // lo que le pagas
+  commission: number; // su comisión propia
+  overrideEarned: number; // lo que gana de sus subafiliados
+  owed: number; // total que le pagas
   clicks: number;
   registrations: number;
   ftd: number;
@@ -32,6 +34,7 @@ type StatRow = {
 
 type Totals = {
   structurePaid: number;
+  structureOwed: number;
   clicks: number;
   registrations: number;
   ftd: number;
@@ -40,6 +43,7 @@ type Totals = {
 
 const emptyTotals: Totals = {
   structurePaid: 0,
+  structureOwed: 0,
   clicks: 0,
   registrations: 0,
   ftd: 0,
@@ -270,7 +274,12 @@ export default function AdminStatsPage() {
                     {fmt(row.ftd)}
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
-                    {eur(row.commission)}
+                    {eur(row.owed)}
+                    {row.overrideEarned > 0 && (
+                      <span className="block text-xs text-slate-500">
+                        incl. {eur(row.overrideEarned)} de subs
+                      </span>
+                    )}
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-emerald-400 font-semibold">
                     {eur(row.margin)}
@@ -295,7 +304,7 @@ export default function AdminStatsPage() {
                   {fmt(totals.ftd)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
-                  {eur(totals.structurePaid)}
+                  {eur(totals.structureOwed)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-emerald-400">
                   {eur(totals.structureMargin)}

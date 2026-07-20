@@ -1,53 +1,77 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { CardsSkeleton } from "@/components/Skeletons";
+import LoadError from "@/components/LoadError";
 
 export default function CommissionPlanPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [cpaSpain, setCpaSpain] = useState(85);
   const [cpaOther, setCpaOther] = useState(85);
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
   const [promoLink, setPromoLink] = useState<string | null>(null);
   const [promoLinkCopied, setPromoLinkCopied] = useState(false);
 
-  useEffect(() => {
-    async function loadData() {
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) {
-        setLoading(false);
+        setError(true);
         return;
       }
 
-      const { data } = await supabase
+      const { data, error: qErr } = await supabase
         .from("affiliates")
         .select("cpa_spain, cpa_other, subaffiliate_percent, promo_link, freshaffs_tracking_code")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (data) {
-        setCpaSpain(data.cpa_spain ?? 85);
-        setCpaOther(data.cpa_other ?? 85);
-        setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
-        setPromoLink(
-          data.freshaffs_tracking_code
-            ? `${window.location.origin}/go/${encodeURIComponent(
-                data.freshaffs_tracking_code
-              )}`
-            : data.promo_link ?? null
-        );
+      // Si no pudimos leer tu plan real, NO mostramos valores por defecto
+      // (podrían no ser los tuyos): mejor avisar y ofrecer reintentar.
+      if (qErr || !data) {
+        setError(true);
+        return;
       }
+
+      setCpaSpain(data.cpa_spain ?? 85);
+      setCpaOther(data.cpa_other ?? 85);
+      setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
+      setPromoLink(
+        data.freshaffs_tracking_code
+          ? `${window.location.origin}/go/${encodeURIComponent(
+              data.freshaffs_tracking_code
+            )}`
+          : data.promo_link ?? null
+      );
+    } catch {
+      setError(true);
+    } finally {
       setLoading(false);
     }
-    loadData();
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return <CardsSkeleton title="Plan de Comisión" cards={3} />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6 max-w-2xl">
+        <h1 className="text-2xl font-semibold text-white">Plan de Comisión</h1>
+        <LoadError onRetry={loadData} />
+      </div>
+    );
   }
 
   return (

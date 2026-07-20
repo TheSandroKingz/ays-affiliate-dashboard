@@ -26,11 +26,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   const { affiliateId, cpaSpain, cpaOther, subaffiliatePercent } = body;
 
   if (!affiliateId) {
     return NextResponse.json({ error: "Falta affiliateId" }, { status: 400 });
+  }
+
+  // Validación de rangos: un CPA negativo o un % fuera de 0-100 rompería los
+  // cálculos de margen/override. Aceptamos solo números dentro de límites sanos.
+  const cpa = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100000;
+  const pct = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100;
+
+  if (!cpa(cpaSpain) || !cpa(cpaOther) || !pct(subaffiliatePercent)) {
+    return NextResponse.json(
+      { error: "Valores inválidos: CPA entre 0 y 100000, % entre 0 y 100." },
+      { status: 400 }
+    );
   }
 
   const { error } = await supabaseAdmin

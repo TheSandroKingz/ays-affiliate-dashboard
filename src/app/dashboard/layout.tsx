@@ -28,7 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .select("approved")
           .eq("user_id", data.session.user.id)
           .maybeSingle();
-        if (!error && (!aff || aff.approved === false)) {
+        if (!error && (!aff || aff.approved !== true)) {
           router.replace("/pendiente");
           return;
         }

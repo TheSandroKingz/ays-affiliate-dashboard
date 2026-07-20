@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     referred_by: referredById,
     promo_link: DEFAULT_PROMO_LINK,
     subaffiliate_percent: 5,
+    approved: false, // toda cuenta nueva nace pendiente hasta que el admin la acepta
     accepted_terms: true,
     accepted_privacy: true,
   })
