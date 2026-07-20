@@ -24,10 +24,9 @@ export default function InstallAppButton({ onNavigate }: { onNavigate?: () => vo
     const nav = window.navigator as Navigator & { standalone?: boolean };
     const ua = nav.userAgent || "";
 
-    // ¿Ya instalada? (se abre a pantalla completa como app) → no mostrar.
+    // ¿Ya instalada? (se abre en modo app) → no mostrar.
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      window.matchMedia("(display-mode: fullscreen)").matches ||
       nav.standalone === true;
 
     const isIOS =
