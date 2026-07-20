@@ -69,8 +69,10 @@ export default function AdminStatsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  // Por defecto mostramos el MES en curso (como el panel de cada afiliado). El
+  // histórico sigue a un clic con el atajo "Todo".
+  const [desde, setDesde] = useState(() => inicioMes(hoyMadrid()));
+  const [hasta, setHasta] = useState(() => hoyMadrid());
 
   const load = useCallback(
     async (from: string, to: string) => {
@@ -114,7 +116,7 @@ export default function AdminStatsPage() {
   );
 
   useEffect(() => {
-    load("", ""); // sin filtro = todo
+    load(inicioMes(hoyMadrid()), hoyMadrid()); // por defecto: mes en curso
   }, [load]);
 
   const hoy = hoyMadrid();
