@@ -74,10 +74,35 @@ export async function GET(request: Request) {
   const email = authRes.data?.user?.email ?? null;
   const deposito = await depositoMedio(userId);
 
+  // Visitas al dashboard (hoy y últimos 7 días). Blindado si la tabla no existe.
+  const visitas = { hoy: 0, semana: 0 };
+  try {
+    const hoy = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date());
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    const hace7 = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(d);
+    const { data: vis } = await supabaseAdmin
+      .from("dashboard_visits")
+      .select("date, count")
+      .eq("user_id", userId)
+      .gte("date", hace7);
+    for (const v of vis ?? []) {
+      visitas.semana += Number(v.count ?? 0);
+      if (String(v.date).slice(0, 10) === hoy) visitas.hoy = Number(v.count ?? 0);
+    }
+  } catch {
+    /* tabla no disponible aún */
+  }
+
   return NextResponse.json({
     perfil: { active: true, ...perfil, email },
     daily: dailyRes.data ?? [],
-    deposito, // { media, num }
+    deposito,
+    visitas,
   });
 }
 

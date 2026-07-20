@@ -181,6 +181,25 @@ export default function DashboardPage() {
     loadStats();
   }, [loadStats]);
 
+  // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
+  // una cada 30 min para no inflar con recargas. El admin no cuenta.
+  useEffect(() => {
+    async function ping() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session || session.user.id === ADMIN_USER_ID) return;
+      const last = Number(localStorage.getItem("visitPing") || 0);
+      if (Date.now() - last < 30 * 60 * 1000) return;
+      localStorage.setItem("visitPing", String(Date.now()));
+      fetch("/api/account/visita", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.access_token },
+      }).catch(() => {});
+    }
+    ping();
+  }, []);
+
   const toggleMetric = (key: string) => {
     setActiveMetrics((prev) => {
       const next = new Set(prev);

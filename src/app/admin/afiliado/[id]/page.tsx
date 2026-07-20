@@ -52,6 +52,7 @@ export default function AfiliadoDetallePage() {
 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [daily, setDaily] = useState<DailyRow[]>([]);
+  const [visitas, setVisitas] = useState<{ hoy: number; semana: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -127,6 +128,7 @@ export default function AfiliadoDetallePage() {
       const body = await res.json();
       setPerfil(body.perfil);
       setDaily(Array.isArray(body.daily) ? body.daily : []);
+      setVisitas(body.visitas ?? null);
       setLastUpdated(new Date());
     } catch {
       setError(true);
@@ -239,6 +241,12 @@ export default function AfiliadoDetallePage() {
             </h1>
             {perfil.email && (
               <p className="text-sm text-slate-400 truncate">{perfil.email}</p>
+            )}
+            {visitas && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                Entradas hoy: <b className="text-slate-300">{visitas.hoy}</b> · últimos 7 días:{" "}
+                <b className="text-slate-300">{visitas.semana}</b>
+              </p>
             )}
             {lastUpdated && (
               <p className="text-sm text-slate-500 mt-1">
