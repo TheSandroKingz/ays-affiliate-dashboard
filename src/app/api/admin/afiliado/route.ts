@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser } from "@/lib/adminAuth";
+import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 
 // Detalle de UN afiliado (solo admin): su perfil (CPA, billeteras, código) y su
 // actividad diaria (clics, registros, FTD, comisión). Se usa al clicar su
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     supabaseAdmin
       .from("affiliates")
       .select(
-        "display_name, avatar_url, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at"
+        "display_name, avatar_url, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at, active"
       )
       .eq("user_id", userId)
       .maybeSingle(),
@@ -45,10 +45,25 @@ export async function GET(request: Request) {
     q,
   ]);
 
-  if (perfilRes.error) {
-    return NextResponse.json({ error: perfilRes.error.message }, { status: 500 });
+  let perfil = perfilRes.data as Record<string, unknown> | null;
+  let perfilErr = perfilRes.error;
+  // Por si la columna 'active' aún no existe: reintentamos sin ella.
+  if (perfilErr) {
+    const r = await supabaseAdmin
+      .from("affiliates")
+      .select(
+        "display_name, avatar_url, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at"
+      )
+      .eq("user_id", userId)
+      .maybeSingle();
+    perfil = r.data as Record<string, unknown> | null;
+    perfilErr = r.error;
   }
-  if (!perfilRes.data) {
+
+  if (perfilErr) {
+    return NextResponse.json({ error: perfilErr.message }, { status: 500 });
+  }
+  if (!perfil) {
     return NextResponse.json({ error: "Afiliado no encontrado" }, { status: 404 });
   }
   if (dailyRes.error) {
@@ -58,7 +73,60 @@ export async function GET(request: Request) {
   const email = authRes.data?.user?.email ?? null;
 
   return NextResponse.json({
-    perfil: { ...perfilRes.data, email },
+    perfil: { active: true, ...perfil, email },
     daily: dailyRes.data ?? [],
   });
+}
+
+// Gestión de un afiliado (solo admin): editar el nombre y activar/desactivar
+// (bloquear el acceso sin borrar la cuenta).
+export async function POST(request: Request) {
+  const user = await getAdminUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const { userId, display_name, active } = body;
+  if (!userId) {
+    return NextResponse.json({ error: "Falta userId" }, { status: 400 });
+  }
+  if (userId === ADMIN_USER_ID) {
+    return NextResponse.json(
+      { error: "No se puede modificar la cuenta de administrador." },
+      { status: 400 }
+    );
+  }
+
+  const update: Record<string, unknown> = {};
+  if (typeof display_name === "string") {
+    const n = display_name.trim();
+    if (n.length < 2 || n.length > 40) {
+      return NextResponse.json(
+        { error: "El nombre debe tener entre 2 y 40 caracteres." },
+        { status: 400 }
+      );
+    }
+    update.display_name = n;
+  }
+  if (typeof active === "boolean") {
+    update.active = active;
+  }
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from("affiliates")
+    .update(update)
+    .eq("user_id", userId);
+  if (error) {
+    const message =
+      error.code === "23505"
+        ? "Ese nombre ya está en uso, elige otro."
+        : error.message;
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, MAX_SESSION_MS } from "@/lib/supabaseClient";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 
 // Almacén compartido del panel: carga el perfil (nombre/avatar) UNA sola vez y
 // hace de guardián de acceso (sin sesión → login; no aprobado → pendiente).
@@ -53,15 +54,41 @@ export default function DashboardProvider({
           router.replace("/login");
           return;
         }
-        const { data: aff, error } = await supabase
-          .from("affiliates")
-          .select("approved, display_name, avatar_url")
-          .eq("user_id", data.session.user.id)
-          .maybeSingle();
+        const esAdmin = data.session.user.id === ADMIN_USER_ID;
+        let aff: {
+          approved?: boolean;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          active?: boolean;
+        } | null = null;
+        let error: unknown = null;
+        {
+          const r = await supabase
+            .from("affiliates")
+            .select("approved, display_name, avatar_url, active")
+            .eq("user_id", data.session.user.id)
+            .maybeSingle();
+          aff = r.data;
+          error = r.error;
+          // Por si la columna 'active' aún no existe: reintenta sin ella.
+          if (error) {
+            const r2 = await supabase
+              .from("affiliates")
+              .select("approved, display_name, avatar_url")
+              .eq("user_id", data.session.user.id)
+              .maybeSingle();
+            aff = r2.data;
+            error = r2.error;
+          }
+        }
         if (!active) return;
-        // Cuenta no aprobada o sin perfil → pendiente. En error transitorio no
-        // bloqueamos (RLS protege igualmente).
-        if (!error && (!aff || aff.approved !== true)) {
+        // Cuenta no aprobada, sin perfil o desactivada → pendiente. El admin
+        // NUNCA se bloquea. En error transitorio no bloqueamos (RLS protege).
+        if (
+          !esAdmin &&
+          !error &&
+          (!aff || aff.approved !== true || aff.active === false)
+        ) {
           router.replace("/pendiente");
           return;
         }
