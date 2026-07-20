@@ -58,39 +58,40 @@ export default function AfiliadoDetallePage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState(false);
   const [mostrarCobro, setMostrarCobro] = useState(false);
-  const [mostrarGestion, setMostrarGestion] = useState(false);
   const [periodo, setPeriodo] = useState<"mes" | "todo">("mes");
-  const [nombreEdit, setNombreEdit] = useState("");
-  const [gestionMsg, setGestionMsg] = useState<{ texto: string; ok: boolean } | null>(null);
-  const [gestionando, setGestionando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
 
-  async function gestionar(cambios: { display_name?: string; active?: boolean }) {
-    setGestionando(true);
-    setGestionMsg(null);
+  async function eliminarCuenta() {
+    const nombre = perfil?.display_name ?? "este afiliado";
+    if (
+      !window.confirm(
+        `¿ELIMINAR la cuenta de "${nombre}"? Se borrarán su cuenta y todos sus datos. Es irreversible.`
+      )
+    )
+      return;
+    setEliminando(true);
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-      const res = await fetch("/api/admin/afiliado", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({ userId, ...cambios }),
-      });
-      const b = await res.json().catch(() => ({}));
+      const res = await fetch(
+        "/api/admin/afiliado?userId=" + encodeURIComponent(userId),
+        {
+          method: "DELETE",
+          headers: { Authorization: "Bearer " + session.access_token },
+        }
+      );
       if (res.ok) {
-        setGestionMsg({ texto: "Guardado ✓", ok: true });
-        load(periodo, true);
+        router.replace("/admin");
       } else {
-        setGestionMsg({ texto: b.error || "Error", ok: false });
+        const b = await res.json().catch(() => ({}));
+        alert(b.error || "No se pudo eliminar.");
+        setEliminando(false);
       }
     } catch {
-      setGestionMsg({ texto: "Error de red", ok: false });
-    } finally {
-      setGestionando(false);
+      alert("Error de red.");
+      setEliminando(false);
     }
   }
 
@@ -126,7 +127,6 @@ export default function AfiliadoDetallePage() {
       }
       const body = await res.json();
       setPerfil(body.perfil);
-      setNombreEdit(body.perfil?.display_name ?? "");
       setDaily(Array.isArray(body.daily) ? body.daily : []);
       setDeposito(body.deposito ?? null);
       setLastUpdated(new Date());
@@ -197,9 +197,13 @@ export default function AfiliadoDetallePage() {
   }
 
   const fichas = [
-    { label: "CPA España", value: eur(Number(perfil.cpa_spain ?? 0)) },
-    { label: "CPA Otros", value: eur(Number(perfil.cpa_other ?? 0)) },
+    { label: "CPA", value: eur(Number(perfil.cpa_spain ?? 0)) },
     { label: "% Subafiliados", value: `${Number(perfil.subaffiliate_percent ?? 0)}%` },
+    {
+      label: "Depósito medio",
+      value:
+        deposito && deposito.media !== null ? eur(deposito.media) : "Sin datos",
+    },
   ];
 
   return (
@@ -272,23 +276,6 @@ export default function AfiliadoDetallePage() {
         ))}
       </div>
 
-      {/* Calidad de tráfico: depósito medio de los jugadores que trae */}
-      <div className="rounded-xl border border-white/15 bg-black/40 p-4">
-        <p className="text-xs text-slate-400 mb-1">Depósito medio (calidad de tráfico)</p>
-        {deposito && deposito.media !== null ? (
-          <p className="text-lg font-bold text-white">
-            {eur(deposito.media)}{" "}
-            <span className="text-xs text-slate-400 font-normal">
-              · {deposito.num} depósito{deposito.num === 1 ? "" : "s"}
-            </span>
-          </p>
-        ) : (
-          <p className="text-sm text-slate-500">
-            Sin datos todavía (freshbet debe enviar el importe del depósito).
-          </p>
-        )}
-      </div>
-
       {/* Datos de cobro (billeteras) y código — plegado por defecto */}
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
         <button
@@ -319,80 +306,14 @@ export default function AfiliadoDetallePage() {
         )}
       </div>
 
-      {/* Gestión: editar nombre y activar/desactivar (plegado) */}
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <button
-          onClick={() => setMostrarGestion((v) => !v)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5"
-        >
-          <span>Gestión</span>
-          <ChevronDown
-            size={16}
-            className={`transition-transform ${mostrarGestion ? "rotate-180" : ""}`}
-          />
-        </button>
-        {mostrarGestion && (
-          <div className="flex flex-col gap-4 px-4 pb-4 pt-1">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-400">Nombre</label>
-              <div className="flex items-center gap-2">
-                <input
-                  value={nombreEdit}
-                  onChange={(e) => setNombreEdit(e.target.value)}
-                  className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <button
-                  onClick={() => gestionar({ display_name: nombreEdit })}
-                  disabled={gestionando}
-                  className="shrink-0 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-                >
-                  Guardar
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-              <div>
-                <p className="text-sm text-white">Estado de la cuenta</p>
-                <p className="text-xs text-slate-400">
-                  {perfil.active === false
-                    ? "Desactivada — no puede entrar"
-                    : "Activa"}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const desactivando = perfil.active !== false;
-                  if (
-                    !desactivando ||
-                    window.confirm(
-                      `¿Desactivar a "${perfil.display_name ?? "este afiliado"}"? No podrá entrar hasta que lo reactives.`
-                    )
-                  ) {
-                    gestionar({ active: perfil.active === false });
-                  }
-                }}
-                disabled={gestionando}
-                className={`shrink-0 text-sm font-semibold px-4 py-2 rounded-lg transition text-white disabled:opacity-60 ${
-                  perfil.active === false
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-red-600/80 hover:bg-red-600"
-                }`}
-              >
-                {perfil.active === false ? "Activar" : "Desactivar"}
-              </button>
-            </div>
-            {gestionMsg && (
-              <span
-                className={`text-xs ${
-                  gestionMsg.ok ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {gestionMsg.texto}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Eliminar cuenta (irreversible) */}
+      <button
+        onClick={eliminarCuenta}
+        disabled={eliminando}
+        className="self-start border border-red-500/50 text-red-300 hover:bg-red-500/10 disabled:opacity-60 text-sm font-semibold px-4 py-2 rounded-lg transition"
+      >
+        {eliminando ? "Eliminando..." : "Eliminar cuenta"}
+      </button>
 
       {/* Periodo: este mes (cuadra con "Le pago") o histórico */}
       <div className="inline-flex rounded-lg border border-white/20 overflow-hidden w-fit">

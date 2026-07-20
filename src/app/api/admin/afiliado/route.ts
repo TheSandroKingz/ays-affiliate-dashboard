@@ -133,3 +133,35 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
+// Eliminar una cuenta de afiliado por completo (solo admin). Borra sus stats,
+// pagos, eventos, su fila y el usuario de auth. Irreversible.
+export async function DELETE(request: Request) {
+  const user = await getAdminUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  const url = new URL(request.url);
+  const userId = url.searchParams.get("userId");
+  if (!userId) {
+    return NextResponse.json({ error: "Falta userId" }, { status: 400 });
+  }
+  if (userId === ADMIN_USER_ID) {
+    return NextResponse.json(
+      { error: "No se puede eliminar la cuenta de administrador." },
+      { status: 400 }
+    );
+  }
+
+  await supabaseAdmin.from("affiliate_daily_stats").delete().eq("user_id", userId);
+  await supabaseAdmin.from("payments").delete().eq("user_id", userId);
+  await supabaseAdmin
+    .from("postback_events")
+    .delete()
+    .eq("matched_user_id", userId)
+    .then(() => {}, () => {});
+  await supabaseAdmin.from("affiliates").delete().eq("user_id", userId);
+  await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+
+  return NextResponse.json({ ok: true });
+}
