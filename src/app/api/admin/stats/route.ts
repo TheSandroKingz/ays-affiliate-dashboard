@@ -161,19 +161,36 @@ export async function GET(request: Request) {
     ftd: own.ftd + structure_t.ftd,
   };
 
-  // ---- Serie diaria combinada (para el gráfico de "lo que me llevo") ----
-  // Por día: mi comisión propia + el margen de la estructura ese día.
+  // ---- Serie diaria ----
+  // Por día devolvemos la actividad de la ESTRUCTURA (comisión que ganan mis
+  // afiliados, clics, registros, FTD) para el gráfico con métricas togglables,
+  // y además `earnings` = lo que me llevo yo ese día (para el "hoy vs ayer").
   const byDate = new Map<
     string,
-    { ownCom: number; structCom: number; structFtd: number }
+    {
+      ownCom: number;
+      structCom: number;
+      structClicks: number;
+      structReg: number;
+      structFtd: number;
+    }
   >();
   for (const d of daily) {
     const key = String(d.date).slice(0, 10);
-    const acc = byDate.get(key) ?? { ownCom: 0, structCom: 0, structFtd: 0 };
+    const acc =
+      byDate.get(key) ?? {
+        ownCom: 0,
+        structCom: 0,
+        structClicks: 0,
+        structReg: 0,
+        structFtd: 0,
+      };
     if (d.user_id === user.id) {
       acc.ownCom += Number(d.commission ?? 0);
     } else {
       acc.structCom += Number(d.commission ?? 0);
+      acc.structClicks += Number(d.clicks ?? 0);
+      acc.structReg += Number(d.registrations ?? 0);
       acc.structFtd += Number(d.ftd ?? 0);
     }
     byDate.set(key, acc);
@@ -181,7 +198,11 @@ export async function GET(request: Request) {
   const dailySeries = Array.from(byDate.entries())
     .map(([date, v]) => ({
       date,
-      earnings: v.ownCom + (adminCpa * v.structFtd - v.structCom),
+      commission: v.structCom, // lo que ganan mis afiliados ese día
+      clicks: v.structClicks,
+      registrations: v.structReg,
+      ftd: v.structFtd,
+      earnings: v.ownCom + (adminCpa * v.structFtd - v.structCom), // lo que me llevo
     }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 

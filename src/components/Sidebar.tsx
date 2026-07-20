@@ -75,29 +75,34 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           Panel
         </Link>
 
-        <button
-          onClick={() => setReportsOpen(!reportsOpen)}
-          className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
-          text-slate-300 hover:bg-white/10"
-        >
-          <span className="flex items-center gap-3">
-            <ClipboardList size={18} />
-            Informes
-          </span>
-          <ChevronDown
-            size={16}
-            className={`transition-transform ${reportsOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-        {reportsOpen && (
-          <div className="ml-8 flex flex-col gap-1">
-            {reportLinks.map((r) => (
-              <Link key={r.href} href={r.href} className={linkClass(r.href)} onClick={onClose}>
-                {r.name}
-              </Link>
-            ))}
-          </div>
-        )}{!isAdmin && (
+        {!isAdmin && (
+          <>
+            <button
+              onClick={() => setReportsOpen(!reportsOpen)}
+              className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
+              text-slate-300 hover:bg-white/10 w-full"
+            >
+              <span className="flex items-center gap-3">
+                <ClipboardList size={18} />
+                Informes
+              </span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${reportsOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {reportsOpen && (
+              <div className="ml-8 flex flex-col gap-1">
+                {reportLinks.map((r) => (
+                  <Link key={r.href} href={r.href} className={linkClass(r.href)} onClick={onClose}>
+                    {r.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {!isAdmin && (
           <Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
             <CreditCard size={18} />
             Pagos

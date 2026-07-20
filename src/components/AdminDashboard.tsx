@@ -8,7 +8,17 @@ import { eur } from "@/lib/format";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
+import { metricConfig } from "@/lib/metrics";
 import { Info, UserPlus, TrendingUp, TrendingDown } from "lucide-react";
+
+type DailyRow = {
+  date: string;
+  commission: number;
+  clicks: number;
+  registrations: number;
+  ftd: number;
+  earnings: number;
+};
 
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
   ssr: false,
@@ -35,10 +45,6 @@ const emptyTotals: Totals = {
   ftd: 0,
 };
 
-// Constante estable (fuera del componente) para no recrear el Set en cada
-// render y romper el memo del gráfico.
-const METRICA_COMISION = new Set(["commission"]);
-
 function saludo(): string {
   const h = new Date().getHours();
   if (h < 6) return "Buenas noches";
@@ -50,7 +56,10 @@ function saludo(): string {
 export default function AdminDashboard() {
   const { displayName } = useProfile(); // nombre desde el almacén compartido
   const [totals, setTotals] = useState<Totals>(emptyTotals);
-  const [daily, setDaily] = useState<{ date: string; earnings: number }[]>([]);
+  const [daily, setDaily] = useState<DailyRow[]>([]);
+  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(
+    () => new Set(["commission"])
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -71,8 +80,14 @@ export default function AdminDashboard() {
         setRefreshing(false);
         return;
       }
+      // Mes en curso (zona Madrid): el balance se reinicia el día 1, igual que
+      // el panel de cada afiliado y que Estadísticas.
+      const hoyIso = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Madrid",
+      }).format(new Date());
+      const inicioMesIso = hoyIso.slice(0, 7) + "-01";
       const [stRes, pendRes] = await Promise.all([
-        fetch("/api/admin/stats", {
+        fetch(`/api/admin/stats?from=${inicioMesIso}&to=${hoyIso}`, {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
         })
@@ -106,20 +121,37 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
-  // Memoizado por `daily`: así el gráfico no se repinta al abrir el tooltip u
-  // otros cambios de estado que no afectan a los datos.
+  const toggleMetric = (key: string) => {
+    setActiveMetrics((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // Datos del gráfico con TODAS las métricas de la estructura por día (para
+  // poder togglearlas con las tarjetas). Memoizado por `daily`.
   const chartData = useMemo(
     () =>
-      daily.map((d) => ({
-        date: new Date(d.date + "T00:00:00Z").toLocaleDateString("es-ES", {
-          month: "short",
-          day: "2-digit",
-          timeZone: "UTC",
-        }),
-        commission: d.earnings,
-      })),
+      daily.map((d) => {
+        const point: Record<string, number | string> = {
+          date: new Date(d.date + "T00:00:00Z").toLocaleDateString("es-ES", {
+            month: "short",
+            day: "2-digit",
+            timeZone: "UTC",
+          }),
+        };
+        metricConfig.forEach((m) => {
+          point[m.key] = Number((d as unknown as Record<string, number>)[m.key] ?? 0);
+        });
+        return point;
+      }),
     [daily]
   );
+
+  const primaryMetricKey =
+    activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
 
   if (loading) return <DashboardSkeleton />;
   if (loadError) return <LoadError onRetry={() => load()} />;
@@ -259,31 +291,37 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Lo que hacen mis afiliados */}
+      {/* Lo que hacen mis afiliados — tarjetas clicables que controlan el gráfico */}
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {[
-          { label: "Comisión", value: eur(totals.structurePaid), color: "#10b981" },
-          { label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
-          { label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-          { label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
-        ].map((c) => (
-          <div
-            key={c.label}
-            className="p-4 rounded-xl border border-white/15 border-t-4 bg-black/40"
-            style={{ borderTopColor: c.color }}
-          >
-            <p className="text-sm text-slate-300 mb-1">{c.label}</p>
-            <p className="text-xl font-bold text-white">{c.value}</p>
-          </div>
-        ))}
+          { key: "commission", label: "Comisión", value: eur(totals.structurePaid), color: "#10b981" },
+          { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
+          { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
+          { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
+        ].map((c) => {
+          const isActive = activeMetrics.has(c.key);
+          return (
+            <button
+              key={c.key}
+              onClick={() => toggleMetric(c.key)}
+              className={`text-left p-4 rounded-xl border border-white/15 border-t-4 bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 transition duration-200 cursor-pointer ${
+                isActive ? "opacity-100" : "opacity-50"
+              }`}
+              style={{ borderTopColor: c.color }}
+            >
+              <p className="text-sm text-slate-300 mb-1">{c.label}</p>
+              <p className="text-xl font-bold text-white">{c.value}</p>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Gráfico de lo que me llevo */}
+      {/* Gráfico de la actividad de mis afiliados (según las tarjetas activas) */}
       <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.18s" }}>
         <BalanceChart
           data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
-          activeMetrics={METRICA_COMISION}
-          primaryMetricKey="commission"
+          activeMetrics={activeMetrics}
+          primaryMetricKey={primaryMetricKey}
         />
         {sinActividad && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
