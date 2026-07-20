@@ -43,6 +43,10 @@ export async function GET(request: Request) {
     name: e.matched_user_id ? names.get(e.matched_user_id) ?? null : null,
   }));
 
+  // FTD RETENIDOS: frenados por sospecha de doble pago, esperando que decidas
+  // (contar o descartar). Van aparte, arriba del todo, para que no se pasen.
+  const retenidos = rows.filter((r) => r.status === "held");
+
   // Resumen de anomalías (de los últimos 100 eventos).
   const sinPlayerId = rows.filter(
     (r) => r.event_type === "ftd" && r.counted && !r.player_id
@@ -71,7 +75,14 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     events: eventosAfiliados,
+    retenidos,
     sinPlayerId,
-    resumen: { sinPlayerId, duplicados, noMatch, repetidos },
+    resumen: {
+      sinPlayerId,
+      duplicados,
+      noMatch,
+      repetidos,
+      retenidos: retenidos.length,
+    },
   });
 }

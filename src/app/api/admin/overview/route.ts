@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
+import { resumenSeguridad } from "@/lib/seguridad";
 
 // Vista consolidada del INICIO del admin: mes en curso + mes pasado + histórico
 // + solicitudes pendientes, todo con UNA sola consulta a affiliate_daily_stats
@@ -79,8 +80,11 @@ export async function GET(request: Request) {
   );
   const historico = computeAdminStats(all, user.id, me?.id, adminCpa, struct);
 
+  const seguridad = await resumenSeguridad();
+
   return NextResponse.json({
     adminCpa,
+    seguridad,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     lastMonthClean: mesPasado.totals.totalClean,
     allTime: {

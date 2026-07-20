@@ -6,6 +6,7 @@ import {
   reclamarEvento,
   liberarEvento,
   registrarEvento,
+  ftdYaContado,
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
@@ -60,26 +61,36 @@ export async function GET(request: Request) {
     const contar = await reclamarEvento(eventKey);
     duplicado = !contar;
     if (contar) {
-      // Todo FTD emparejado (por trackingcode o por afp) acredita el CPA del
-      // afiliado dueño de ese código/afp. Así tu propio tráfico (afp) también
-      // cuenta como tu comisión, igual que el de tus afiliados.
-      const commission = Number(
-        (isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0
-      );
-
-      const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
-        p_user_id: target.user_id,
-        p_date: today,
-        p_registrations: 0,
-        p_ftd: 1,
-        p_commission: commission,
-      });
-      if (error) {
-        await liberarEvento(eventKey);
-        estado = "error";
+      // Salvaguarda extra: aunque el candado diga "nuevo", si este jugador YA
+      // tenía un FTD CONTADO, NO sumamos el dinero. Lo dejamos RETENIDO para que
+      // el admin lo revise (contar o descartar). Así un doble pago es imposible
+      // aunque el candado fallara. NO liberamos el candado: si quedó reclamado,
+      // evita más retenidos por reenvíos del mismo FTD.
+      const yaContado = playerid ? await ftdYaContado(playerid) : false;
+      if (yaContado) {
+        estado = "held";
       } else {
-        estado = "counted";
-        comisionPagada = commission;
+        // Todo FTD emparejado (por trackingcode o por afp) acredita el CPA del
+        // afiliado dueño de ese código/afp. Así tu propio tráfico (afp) también
+        // cuenta como tu comisión, igual que el de tus afiliados.
+        const commission = Number(
+          (isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0
+        );
+
+        const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+          p_user_id: target.user_id,
+          p_date: today,
+          p_registrations: 0,
+          p_ftd: 1,
+          p_commission: commission,
+        });
+        if (error) {
+          await liberarEvento(eventKey);
+          estado = "error";
+        } else {
+          estado = "counted";
+          comisionPagada = commission;
+        }
       }
     } else {
       estado = "duplicate";

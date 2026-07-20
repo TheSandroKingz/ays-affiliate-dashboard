@@ -73,11 +73,42 @@ export async function liberarEvento(eventKey: string | null): Promise<void> {
 }
 
 // Estado con el que se cerró un postback:
-//  - counted   : se contó y (si aplica) se pagó el CPA
-//  - duplicate : ya se había contado (mismo player_id) → ignorado
-//  - no_match  : no se pudo atribuir a ningún afiliado
-//  - error     : se reclamó pero el incremento en BD falló (se liberó)
-export type EstadoEvento = "counted" | "duplicate" | "no_match" | "error";
+//  - counted    : se contó y (si aplica) se pagó el CPA
+//  - duplicate  : ya se había contado (mismo player_id) → ignorado
+//  - no_match   : no se pudo atribuir a ningún afiliado
+//  - error      : se reclamó pero el incremento en BD falló (se liberó)
+//  - held       : sospechoso (el jugador YA tenía un FTD contado y el candado no
+//                 lo frenó) → NO se cuenta; queda retenido para revisión manual
+//  - discarded  : un retenido que el admin descartó (no se cuenta)
+export type EstadoEvento =
+  | "counted"
+  | "duplicate"
+  | "no_match"
+  | "error"
+  | "held"
+  | "discarded";
+
+// ¿Este jugador YA tiene un FTD CONTADO? Salvaguarda extra anti-doble-pago,
+// independiente del candado `postback_dedup`: si por lo que sea el candado no
+// frenó un reenvío (p. ej. la tabla de candados no estaba disponible), esto
+// evita sumar el dinero dos veces. Ante la duda (fallo de lectura) devuelve
+// false: el candado sigue siendo la protección principal y no queremos perder
+// FTD legítimos. BLINDADO.
+export async function ftdYaContado(playerId: string): Promise<boolean> {
+  if (!playerId) return false;
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("postback_events")
+      .select("id", { count: "exact", head: true })
+      .eq("event_type", "ftd")
+      .eq("counted", true)
+      .eq("player_id", playerId);
+    if (error) return false;
+    return (count ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
 
 export type EventoPostback = {
   event_type: "registration" | "ftd" | "commission";

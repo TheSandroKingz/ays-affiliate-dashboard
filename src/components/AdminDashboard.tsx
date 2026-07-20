@@ -9,7 +9,7 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
-import { Info, UserPlus, TrendingUp, TrendingDown } from "lucide-react";
+import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react";
 
 type DailyRow = {
   date: string;
@@ -68,6 +68,11 @@ export default function AdminDashboard() {
   const [showInfo, setShowInfo] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [pendientes, setPendientes] = useState(0);
+  const [seguridad, setSeguridad] = useState<{
+    retenidos: number;
+    dobles: number;
+    ok: boolean;
+  } | null>(null);
   const [mesPasado, setMesPasado] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
   const prevFtdRef = useRef<number | null>(null);
@@ -107,6 +112,7 @@ export default function AdminDashboard() {
         setTotals(res.month.totals);
         setDaily(res.month.daily ?? []);
         setPendientes(Number(res.pending ?? 0));
+        setSeguridad(res.seguridad ?? null);
         setMesPasado(
           typeof res.lastMonthClean === "number" ? res.lastMonthClean : null
         );
@@ -228,6 +234,42 @@ export default function AdminDashboard() {
           {refreshing ? "Actualizando..." : "Actualizar"}
         </button>
       </div>
+
+      {/* Aviso de seguridad del dinero (solo si algo requiere revisión). Es lo
+          más prioritario: FTD retenidos por sospecha o un doble pago detectado. */}
+      {seguridad && !seguridad.ok && (
+        <Link
+          href="/admin/actividad"
+          className="animate-in flex items-center justify-between gap-3 bg-red-500/15 border border-red-400/60 rounded-xl px-5 py-4 hover:bg-red-500/25 transition-colors"
+        >
+          <span className="flex items-center gap-3">
+            <ShieldAlert size={20} className="text-red-400 shrink-0" />
+            <span className="text-sm text-red-100">
+              {seguridad.retenidos > 0 && (
+                <>
+                  <b className="text-white">
+                    {seguridad.retenidos} FTD retenido
+                    {seguridad.retenidos === 1 ? "" : "s"}
+                  </b>{" "}
+                  sin contar, a la espera de que lo revises.
+                </>
+              )}
+              {seguridad.dobles > 0 && (
+                <>
+                  {seguridad.retenidos > 0 ? " " : ""}
+                  <b className="text-white">
+                    {seguridad.dobles} posible doble pago
+                  </b>{" "}
+                  detectado.
+                </>
+              )}
+            </span>
+          </span>
+          <span className="text-xs font-semibold text-red-300 whitespace-nowrap">
+            Revisar →
+          </span>
+        </Link>
+      )}
 
       {/* Aviso de solicitudes pendientes (solo si hay). Se ve nada más entrar. */}
       {pendientes > 0 && (

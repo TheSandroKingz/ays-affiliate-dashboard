@@ -13,7 +13,7 @@ type Evento = {
   id: number;
   created_at: string;
   event_type: "registration" | "ftd" | "commission";
-  status: "counted" | "duplicate" | "no_match" | "error";
+  status: "counted" | "duplicate" | "no_match" | "error" | "held" | "discarded";
   counted: boolean;
   commission: number | null;
   player_id: string | null;
@@ -34,6 +34,10 @@ function estadoBadge(e: Evento) {
     return { label: "Contado", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40" };
   if (e.status === "duplicate")
     return { label: "Duplicado", cls: "bg-amber-500/20 text-amber-300 border-amber-400/40" };
+  if (e.status === "held")
+    return { label: "Retenido", cls: "bg-red-500/20 text-red-300 border-red-400/50" };
+  if (e.status === "discarded")
+    return { label: "Descartado", cls: "bg-white/10 text-slate-400 border-white/20" };
   if (e.status === "error")
     return { label: "Error", cls: "bg-red-500/20 text-red-300 border-red-400/40" };
   return { label: "Sin emparejar", cls: "bg-white/10 text-slate-300 border-white/20" };
@@ -42,6 +46,7 @@ function estadoBadge(e: Evento) {
 export default function ActividadPage() {
   const router = useRouter();
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [retenidos, setRetenidos] = useState<Evento[]>([]);
   const [sinPlayerId, setSinPlayerId] = useState(0);
   const [resumen, setResumen] = useState<{
     sinPlayerId: number;
@@ -49,6 +54,7 @@ export default function ActividadPage() {
     noMatch: number;
     repetidos: { player_id: string; veces: number }[];
   } | null>(null);
+  const [resolviendo, setResolviendo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
@@ -75,6 +81,7 @@ export default function ActividadPage() {
       }
       const body = await res.json();
       setEventos(Array.isArray(body.events) ? body.events : []);
+      setRetenidos(Array.isArray(body.retenidos) ? body.retenidos : []);
       setSinPlayerId(Number(body.sinPlayerId ?? 0));
       setResumen(body.resumen ?? null);
     } catch {
@@ -84,6 +91,40 @@ export default function ActividadPage() {
       setRefreshing(false);
     }
   }, [router]);
+
+  // Resolver un FTD retenido: contarlo (sumar el CPA) o descartarlo.
+  const resolver = useCallback(
+    async (id: number, accion: "contar" | "descartar") => {
+      if (accion === "contar" && !confirm("¿Contar este FTD y sumar el CPA al afiliado?"))
+        return;
+      if (accion === "descartar" && !confirm("¿Descartar este FTD? No se sumará nada."))
+        return;
+      setResolviendo(id);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch("/api/admin/actividad/resolver", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.access_token,
+          },
+          body: JSON.stringify({ id, accion }),
+        });
+        if (!res.ok) {
+          const b = await res.json().catch(() => ({}));
+          alert(b.error || "No se pudo resolver.");
+          return;
+        }
+        await load(true);
+      } finally {
+        setResolviendo(null);
+      }
+    },
+    [load]
+  );
 
   useEffect(() => {
     load();
@@ -115,6 +156,68 @@ export default function ActividadPage() {
           {refreshing ? "Actualizando..." : "Actualizar"}
         </button>
       </div>
+
+      {/* FTD RETENIDOS: frenados por sospecha de doble pago. NO se han contado.
+          Tú decides: contar (sumar el CPA) o descartar. */}
+      {retenidos.length > 0 && (
+        <div className="rounded-xl border border-red-400/60 bg-red-500/15 p-4">
+          <p className="text-sm font-semibold text-red-100 flex items-center gap-2">
+            🛑 {retenidos.length} FTD retenido{retenidos.length === 1 ? "" : "s"} — sin
+            contar hasta que decidas
+          </p>
+          <p className="text-xs text-red-200/80 mt-1 mb-3">
+            Este jugador ya tenía un FTD contado, así que no se ha sumado el dinero
+            para evitar un doble pago. Revísalo y decide.
+          </p>
+          <div className="flex flex-col gap-2">
+            {retenidos.map((e) => (
+              <div
+                key={e.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+              >
+                <div className="text-sm text-white min-w-0">
+                  <span className="font-medium">{e.name ?? e.tracking_code ?? "—"}</span>
+                  <span className="text-slate-400">
+                    {" "}
+                    · jugador{" "}
+                    <span className="font-mono text-xs">
+                      {e.player_id?.startsWith("legacy:") ? "(antiguo)" : e.player_id}
+                    </span>{" "}
+                    · {tiempoRelativo(e.created_at)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => resolver(e.id, "descartar")}
+                    disabled={resolviendo === e.id}
+                    className="text-xs font-semibold text-slate-300 hover:text-white border border-white/20 hover:bg-white/10 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
+                  >
+                    Descartar
+                  </button>
+                  <button
+                    onClick={() => resolver(e.id, "contar")}
+                    disabled={resolviendo === e.id}
+                    className="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
+                  >
+                    {resolviendo === e.id ? "..." : "Contar"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmación en verde: todo limpio (nada retenido, ni sin id, ni doble
+          pago). Así "no hay avisos" te lo dice explícito y te quedas tranquilo. */}
+      {resumen &&
+        retenidos.length === 0 &&
+        sinPlayerId === 0 &&
+        resumen.repetidos.length === 0 && (
+          <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 flex items-center gap-2">
+            ✔ Todo en orden — ningún doble pago ni FTD sospechoso. El dinero cuadra.
+          </div>
+        )}
 
       {sinPlayerId > 0 && (
         <div className="rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
