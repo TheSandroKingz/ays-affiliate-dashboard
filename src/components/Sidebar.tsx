@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
+import InstallAppButton from "@/components/InstallAppButton";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -142,6 +143,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             Admin
           </Link>
         )}
+
+        <InstallAppButton onNavigate={onClose} />
       </nav>
       <div className="mt-auto relative border-t border-white/10 pt-3 px-1">
         {profileOpen && (
