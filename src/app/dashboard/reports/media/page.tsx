@@ -286,15 +286,26 @@ export default function MediaReportPage() {
             </tr>
           </thead>
           <tbody>
-            {filas.map(({ etiqueta, row }, i) => (
+            {filas.map(({ etiqueta, row }, i) => {
+              const esHoy = agrupar === "dia" && String(row.date).slice(0, 10) === hoyMadrid();
+              return (
               <tr
                 key={row.date}
                 className={`text-white ${
-                  i % 2 === 1 ? "bg-white/[0.03]" : ""
+                  esHoy
+                    ? "bg-emerald-500/10"
+                    : i % 2 === 1
+                    ? "bg-white/[0.03]"
+                    : ""
                 } hover:bg-white/10 transition-colors`}
               >
-                <td className="border border-white/10 px-4 py-3">
+                <td
+                  className={`border border-white/10 px-4 py-3 ${
+                    esHoy ? "border-l-2 border-l-emerald-500 font-medium" : ""
+                  }`}
+                >
                   {etiqueta}
+                  {esHoy && <span className="text-emerald-400 text-xs"> · hoy</span>}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right">
                   {eur(Number(row.commission))}
@@ -309,7 +320,8 @@ export default function MediaReportPage() {
                   {row.ftd.toLocaleString("de-DE")}
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {filas.length === 0 && (
               <tr>
                 <td

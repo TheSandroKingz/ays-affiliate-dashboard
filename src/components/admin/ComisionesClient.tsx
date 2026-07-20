@@ -215,9 +215,13 @@ export default function ComisionesClient({
                 <span className="text-slate-300">
                   Pagado <b className="text-white">{eur(s.paid)}</b>
                 </span>
-                <span className={pending > 0 ? "text-amber-300" : "text-emerald-400"}>
-                  Pendiente <b>{eur(pending)}</b>
-                </span>
+                {pending > 0 ? (
+                  <span className="inline-flex items-center rounded-md bg-amber-500/15 border border-amber-400/40 px-2 py-0.5 text-amber-200 font-semibold">
+                    Pendiente {eur(pending)}
+                  </span>
+                ) : (
+                  <span className="text-emerald-400">Al día ✓</span>
+                )}
               </div>
             )}
             <div className="flex items-center gap-2">

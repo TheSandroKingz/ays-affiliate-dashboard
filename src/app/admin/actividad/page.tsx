@@ -7,6 +7,7 @@ import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
+import { tiempoRelativo } from "@/lib/ui";
 
 type Evento = {
   id: number;
@@ -173,7 +174,8 @@ export default function ActividadPage() {
             ) : (
               eventos.map((e, i) => {
                 const b = estadoBadge(e);
-                const fecha = new Date(e.created_at).toLocaleString("es-ES", {
+                const fecha = tiempoRelativo(e.created_at);
+                const fechaExacta = new Date(e.created_at).toLocaleString("es-ES", {
                   day: "2-digit",
                   month: "2-digit",
                   hour: "2-digit",
@@ -184,7 +186,10 @@ export default function ActividadPage() {
                     key={e.id}
                     className={`text-white ${i % 2 === 1 ? "bg-white/[0.03]" : ""} hover:bg-white/10 transition-colors`}
                   >
-                    <td className="border border-white/10 px-4 py-3 whitespace-nowrap text-slate-300">
+                    <td
+                      className="border border-white/10 px-4 py-3 whitespace-nowrap text-slate-300"
+                      title={fechaExacta}
+                    >
                       {fecha}
                     </td>
                     <td className="border border-white/10 px-4 py-3 whitespace-nowrap">

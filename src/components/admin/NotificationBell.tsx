@@ -66,6 +66,14 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // Contador de solicitudes pendientes en el título de la pestaña.
+  useEffect(() => {
+    document.title = pending > 0 ? `(${pending}) A&S Afiliados` : "A&S Afiliados";
+    return () => {
+      document.title = "A&S Afiliados";
+    };
+  }, [pending]);
+
   // Novedades = solicitudes pendientes + FTD de las últimas 24 h.
   const total = pending + ftd24h;
 

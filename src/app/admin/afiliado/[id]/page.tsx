@@ -11,6 +11,7 @@ import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
+import { hoyMadridISO, colorDeNombre } from "@/lib/ui";
 
 // La gráfica (Recharts) es pesada: la cargamos en diferido, igual que el inicio.
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
@@ -219,7 +220,10 @@ export default function AfiliadoDetallePage() {
               className="w-16 h-16 rounded-full object-cover border border-white/20 shrink-0"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xl font-bold text-slate-300 shrink-0">
+            <div
+              className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center text-xl font-bold text-white shrink-0"
+              style={{ backgroundColor: colorDeNombre(perfil.display_name) }}
+            >
               {(perfil.display_name ?? "?").charAt(0).toUpperCase()}
             </div>
           )}
@@ -337,7 +341,17 @@ export default function AfiliadoDetallePage() {
                 </p>
               </div>
               <button
-                onClick={() => gestionar({ active: perfil.active === false })}
+                onClick={() => {
+                  const desactivando = perfil.active !== false;
+                  if (
+                    !desactivando ||
+                    window.confirm(
+                      `¿Desactivar a "${perfil.display_name ?? "este afiliado"}"? No podrá entrar hasta que lo reactives.`
+                    )
+                  ) {
+                    gestionar({ active: perfil.active === false });
+                  }
+                }}
                 disabled={gestionando}
                 className={`shrink-0 text-sm font-semibold px-4 py-2 rounded-lg transition text-white disabled:opacity-60 ${
                   perfil.active === false
@@ -431,15 +445,26 @@ export default function AfiliadoDetallePage() {
                 </td>
               </tr>
             ) : (
-              daily.map((r, i) => (
+              daily.map((r, i) => {
+                const esHoy = String(r.date).slice(0, 10) === hoyMadridISO();
+                return (
                 <tr
                   key={r.date}
                   className={`text-white ${
-                    i % 2 === 1 ? "bg-white/[0.03]" : ""
+                    esHoy
+                      ? "bg-emerald-500/10"
+                      : i % 2 === 1
+                      ? "bg-white/[0.03]"
+                      : ""
                   } hover:bg-white/10 transition-colors`}
                 >
-                  <td className="border border-white/10 px-4 py-3">
+                  <td
+                    className={`border border-white/10 px-4 py-3 ${
+                      esHoy ? "border-l-2 border-l-emerald-500 font-medium" : ""
+                    }`}
+                  >
                     {new Date(r.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                    {esHoy && <span className="text-emerald-400 text-xs"> · hoy</span>}
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right">
                     {fmt(r.clicks)}
@@ -454,7 +479,8 @@ export default function AfiliadoDetallePage() {
                     {eur(Number(r.commission))}
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
           {daily.length > 0 && (
