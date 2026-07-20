@@ -52,7 +52,6 @@ export default function AfiliadoDetallePage() {
 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [daily, setDaily] = useState<DailyRow[]>([]);
-  const [deposito, setDeposito] = useState<{ media: number | null; num: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -128,7 +127,6 @@ export default function AfiliadoDetallePage() {
       const body = await res.json();
       setPerfil(body.perfil);
       setDaily(Array.isArray(body.daily) ? body.daily : []);
-      setDeposito(body.deposito ?? null);
       setLastUpdated(new Date());
     } catch {
       setError(true);
@@ -200,9 +198,11 @@ export default function AfiliadoDetallePage() {
     { label: "CPA", value: eur(Number(perfil.cpa_spain ?? 0)) },
     { label: "% Subafiliados", value: `${Number(perfil.subaffiliate_percent ?? 0)}%` },
     {
-      label: "Depósito medio",
+      label: "Conversión",
       value:
-        deposito && deposito.media !== null ? eur(deposito.media) : "Sin datos",
+        totals.clicks > 0
+          ? `${((totals.ftd / totals.clicks) * 100).toFixed(1)}%`
+          : "—",
     },
   ];
 

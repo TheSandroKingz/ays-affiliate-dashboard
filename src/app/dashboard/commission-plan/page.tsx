@@ -13,7 +13,7 @@ export default function CommissionPlanPage() {
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
   const [promoLink, setPromoLink] = useState<string | null>(null);
   const [promoLinkCopied, setPromoLinkCopied] = useState(false);
-  const [deposito, setDeposito] = useState<{ media: number | null; num: number } | null>(null);
+  const [conversion, setConversion] = useState<{ clicks: number; ftd: number; pct: number | null } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -50,7 +50,7 @@ export default function CommissionPlanPage() {
         headers: { Authorization: "Bearer " + session.access_token },
       })
         .then((r) => (r.ok ? r.json() : null))
-        .then((b) => setDeposito(b?.deposito ?? null))
+        .then((b) => setConversion(b?.conversion ?? null))
         .catch(() => {});
       setPromoLink(
         data.freshaffs_tracking_code
@@ -113,20 +113,20 @@ export default function CommissionPlanPage() {
         </div>
       </div>
 
-      {/* Calidad de tu tráfico: depósito medio */}
+      {/* Calidad de tu tráfico: tasa de conversión */}
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-1">Calidad de tu tráfico</h2>
         <p className="text-sm text-slate-400 mb-4">
-          Cuanto mayor sea el depósito medio de los jugadores que traes, mejor
-          CPA puedes conseguir.
+          Cuántos FTD sacas de tus clics. Cuanto mejor conviertas, mejor CPA
+          puedes conseguir.
         </p>
         <div className="flex items-center justify-between">
-          <p className="text-slate-200">Depósito medio</p>
-          {deposito && deposito.media !== null ? (
+          <p className="text-slate-200">Conversión</p>
+          {conversion && conversion.pct !== null ? (
             <p className="text-white font-semibold">
-              €{deposito.media.toLocaleString("de-DE", { maximumFractionDigits: 0 })}{" "}
+              {conversion.pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })}%{" "}
               <span className="text-xs text-slate-400 font-normal">
-                · {deposito.num} depósito{deposito.num === 1 ? "" : "s"}
+                · {conversion.ftd} FTD de {conversion.clicks.toLocaleString("de-DE")} clics
               </span>
             </p>
           ) : (
