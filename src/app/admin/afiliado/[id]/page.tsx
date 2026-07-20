@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -27,6 +28,7 @@ type DailyRow = {
 
 type Perfil = {
   display_name: string | null;
+  avatar_url: string | null;
   cpa_spain: number | null;
   cpa_other: number | null;
   subaffiliate_percent: number | null;
@@ -157,22 +159,37 @@ export default function AfiliadoDetallePage() {
       </Link>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">
-            {perfil.display_name ?? "—"}
-          </h1>
-          {lastUpdated && (
-            <p className="text-sm text-slate-500 mt-1">
-              Actualizado{" "}
-              {lastUpdated.toLocaleTimeString("es-ES", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              <span className="text-[0.5em] opacity-70">
-                :{String(lastUpdated.getSeconds()).padStart(2, "0")}
-              </span>
-            </p>
+        <div className="flex items-center gap-4 min-w-0">
+          {perfil.avatar_url ? (
+            <Image
+              src={perfil.avatar_url}
+              alt={perfil.display_name ?? "Afiliado"}
+              width={64}
+              height={64}
+              className="w-16 h-16 rounded-full object-cover border border-white/20 shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xl font-bold text-slate-300 shrink-0">
+              {(perfil.display_name ?? "?").charAt(0).toUpperCase()}
+            </div>
           )}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold text-white truncate">
+              {perfil.display_name ?? "—"}
+            </h1>
+            {lastUpdated && (
+              <p className="text-sm text-slate-500 mt-1">
+                Actualizado{" "}
+                {lastUpdated.toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                <span className="text-[0.5em] opacity-70">
+                  :{String(lastUpdated.getSeconds()).padStart(2, "0")}
+                </span>
+              </p>
+            )}
+          </div>
         </div>
         <button
           onClick={() => load(true)}

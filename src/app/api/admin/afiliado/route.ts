@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   const { data: perfil, error: pErr } = await supabaseAdmin
     .from("affiliates")
     .select(
-      "display_name, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at"
+      "display_name, avatar_url, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at"
     )
     .eq("user_id", userId)
     .maybeSingle();

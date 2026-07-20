@@ -317,12 +317,23 @@ export default function AdminStatsPage() {
                   } hover:bg-white/10 transition-colors`}
                 >
                   <td className="border border-white/10 px-4 py-3 whitespace-nowrap">
-                    <Link
-                      href={`/admin/afiliado/${row.user_id}`}
-                      className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
-                    >
-                      {row.display_name ?? "—"}
-                    </Link>
+                    <span className="inline-flex items-center gap-2">
+                      {row.margin > 0 && i < 3 ? (
+                        <span aria-hidden className="w-5 text-center">
+                          {["🥇", "🥈", "🥉"][i]}
+                        </span>
+                      ) : (
+                        <span className="w-5 text-center text-xs font-semibold text-slate-500">
+                          {i + 1}
+                        </span>
+                      )}
+                      <Link
+                        href={`/admin/afiliado/${row.user_id}`}
+                        className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
+                      >
+                        {row.display_name ?? "—"}
+                      </Link>
+                    </span>
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white">
                     {fmt(row.clicks)}
