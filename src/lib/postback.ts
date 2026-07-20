@@ -48,3 +48,51 @@ export async function liberarEvento(eventKey: string | null): Promise<void> {
     .eq("event_key", eventKey)
     .then(() => {}, () => {});
 }
+
+// Estado con el que se cerró un postback:
+//  - counted   : se contó y (si aplica) se pagó el CPA
+//  - duplicate : ya se había contado (mismo player_id) → ignorado
+//  - no_match  : no se pudo atribuir a ningún afiliado
+//  - error     : se reclamó pero el incremento en BD falló (se liberó)
+export type EstadoEvento = "counted" | "duplicate" | "no_match" | "error";
+
+export type EventoPostback = {
+  event_type: "registration" | "ftd" | "commission";
+  raw_query: string;
+  tracking_code?: string;
+  afp?: string;
+  player_id?: string;
+  isocountry?: string;
+  matched_user_id: string | null;
+  commission?: number;
+  status: EstadoEvento;
+};
+
+// Registro de auditoría: guarda CADA postback recibido (crudo + resultado) en
+// `postback_events`. Es la caja negra del dinero: permite verificar qué manda
+// freshbet (p. ej. si trae player_id), revisar cuadres y detectar fraude.
+// BLINDADO: cualquier fallo aquí se ignora; NUNCA debe romper el postback.
+export async function registrarEvento(e: EventoPostback): Promise<void> {
+  await supabaseAdmin
+    .from("postback_events")
+    .insert({
+      event_type: e.event_type,
+      raw_query: e.raw_query,
+      tracking_code: e.tracking_code || null,
+      afp: e.afp || null,
+      player_id: e.player_id || null,
+      isocountry: e.isocountry || null,
+      matched_user_id: e.matched_user_id,
+      commission: e.commission ?? null,
+      counted: e.status === "counted",
+      status: e.status,
+    })
+    .then(() => {}, () => {});
+}
+
+// Quita el secreto (?key=) de la query cruda antes de guardarla en el log.
+export function queryLimpia(url: URL): string {
+  const p = new URLSearchParams(url.search);
+  p.delete("key");
+  return p.toString();
+}

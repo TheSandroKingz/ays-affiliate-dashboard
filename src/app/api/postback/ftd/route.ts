@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getPlayerId, reclamarEvento, liberarEvento } from "@/lib/postback";
+import {
+  getPlayerId,
+  reclamarEvento,
+  liberarEvento,
+  registrarEvento,
+  queryLimpia,
+  type EstadoEvento,
+} from "@/lib/postback";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -44,6 +51,8 @@ export async function GET(request: Request) {
   // Idempotencia: solo dentro de la rama con afiliado emparejado. Reclamamos,
   // pagamos el CPA, y si el conteo falla, liberamos para que un reintento cuente.
   let duplicado = false;
+  let estado: EstadoEvento = "no_match";
+  let comisionPagada = 0;
   if (target) {
     const eventKey = playerid ? `ftd:${playerid}` : null;
     const contar = await reclamarEvento(eventKey);
@@ -63,9 +72,30 @@ export async function GET(request: Request) {
         p_ftd: 1,
         p_commission: commission,
       });
-      if (error) await liberarEvento(eventKey);
+      if (error) {
+        await liberarEvento(eventKey);
+        estado = "error";
+      } else {
+        estado = "counted";
+        comisionPagada = commission;
+      }
+    } else {
+      estado = "duplicate";
     }
   }
+
+  // Caja negra: guardamos el evento pase lo que pase (no bloquea la respuesta).
+  await registrarEvento({
+    event_type: "ftd",
+    raw_query: queryLimpia(url),
+    tracking_code: trackingcode,
+    afp,
+    player_id: playerid,
+    isocountry,
+    matched_user_id: target?.user_id ?? null,
+    commission: comisionPagada,
+    status: estado,
+  });
 
   return NextResponse.json({ ok: true, matched: !!target, duplicado });
 }

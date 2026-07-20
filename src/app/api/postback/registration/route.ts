@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getPlayerId, reclamarEvento, liberarEvento } from "@/lib/postback";
+import {
+  getPlayerId,
+  reclamarEvento,
+  liberarEvento,
+  registrarEvento,
+  queryLimpia,
+  type EstadoEvento,
+} from "@/lib/postback";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -44,6 +51,7 @@ export async function GET(request: Request) {
   // el token en una entrega no atribuida). Reclamamos, contamos, y si el conteo
   // falla, liberamos para que un reintento de freshbet lo cuente.
   let duplicado = false;
+  let estado: EstadoEvento = "no_match";
   if (targetUserId) {
     const eventKey = playerid ? `reg:${playerid}` : null;
     const contar = await reclamarEvento(eventKey);
@@ -56,9 +64,27 @@ export async function GET(request: Request) {
         p_ftd: 0,
         p_commission: 0,
       });
-      if (error) await liberarEvento(eventKey);
+      if (error) {
+        await liberarEvento(eventKey);
+        estado = "error";
+      } else {
+        estado = "counted";
+      }
+    } else {
+      estado = "duplicate";
     }
   }
+
+  // Caja negra: guardamos el evento pase lo que pase (no bloquea la respuesta).
+  await registrarEvento({
+    event_type: "registration",
+    raw_query: queryLimpia(url),
+    tracking_code: trackingcode,
+    afp,
+    player_id: playerid,
+    matched_user_id: targetUserId,
+    status: estado,
+  });
 
   return NextResponse.json({ ok: true, matched: !!targetUserId, duplicado });
 }
