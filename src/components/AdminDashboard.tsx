@@ -68,6 +68,12 @@ export default function AdminDashboard() {
   const [showInfo, setShowInfo] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [pendientes, setPendientes] = useState(0);
+  // Resumen histórico (desde el inicio): FTDs, generado a afiliados, beneficio.
+  const [historico, setHistorico] = useState<{
+    ftd: number;
+    structurePaid: number;
+    totalClean: number;
+  } | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -88,7 +94,7 @@ export default function AdminDashboard() {
         timeZone: "Europe/Madrid",
       }).format(new Date());
       const inicioMesIso = hoyIso.slice(0, 7) + "-01";
-      const [stRes, pendRes] = await Promise.all([
+      const [stRes, pendRes, histRes] = await Promise.all([
         fetch(`/api/admin/stats?from=${inicioMesIso}&to=${hoyIso}`, {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
@@ -101,8 +107,24 @@ export default function AdminDashboard() {
         })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
+        // Sin filtro de fecha = histórico completo (desde el inicio).
+        fetch("/api/admin/stats", {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
       ]);
       setPendientes(Array.isArray(pendRes?.pending) ? pendRes.pending.length : 0);
+      setHistorico(
+        histRes?.totals
+          ? {
+              ftd: Number(histRes.totals.ftd ?? 0),
+              structurePaid: Number(histRes.totals.structurePaid ?? 0),
+              totalClean: Number(histRes.totals.totalClean ?? 0),
+            }
+          : null
+      );
       // Si la carga de datos falló, mostramos error (no 0€ falsos).
       if (!stRes || !stRes.totals) {
         setLoadError(true);
@@ -333,6 +355,27 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Resumen del negocio (histórico, desde el inicio) */}
+      {historico && (
+        <div className="animate-in" style={{ animationDelay: "0.24s" }}>
+          <p className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">
+            Desde el inicio
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "FTD totales", value: historico.ftd.toLocaleString("de-DE") },
+              { label: "Generado a afiliados", value: eur(historico.structurePaid) },
+              { label: "Mi beneficio", value: eur(historico.totalClean) },
+            ].map((h) => (
+              <div key={h.label} className="p-4 rounded-xl border border-white/10 bg-white/5">
+                <p className="text-xs text-slate-400 mb-1">{h.label}</p>
+                <p className="text-lg font-bold text-white">{h.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
