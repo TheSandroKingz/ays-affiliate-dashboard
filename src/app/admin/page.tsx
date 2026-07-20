@@ -262,7 +262,7 @@ export default function AdminStatsPage() {
       </div>
 
       {/* Tarjetas de actividad de la red */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {affCards.map((card) => (
           <div
             key={card.label}
