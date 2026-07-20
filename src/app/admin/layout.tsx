@@ -37,6 +37,12 @@ export default function AdminLayout({
           >
             Actividad
           </Link>
+          <Link
+            href="/admin/memoria"
+            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
+          >
+            Memoria
+          </Link>
           <SolicitudesNavLink />
         </nav>
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
