@@ -168,8 +168,10 @@ export default function AdminStatsPage() {
                 {lastUpdated.toLocaleTimeString("es-ES", {
                   hour: "2-digit",
                   minute: "2-digit",
-                  second: "2-digit",
                 })}
+                <span className="text-[0.7em] opacity-70">
+                  :{String(lastUpdated.getSeconds()).padStart(2, "0")}
+                </span>
               </span>
             )}
           </p>
