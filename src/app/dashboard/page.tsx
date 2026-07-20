@@ -343,7 +343,8 @@ export default function DashboardPage() {
         {mostrarProyeccion && (
           <p className="mt-1 text-[11px] text-slate-500">
             A este ritmo cerrarás el mes en{" "}
-            <span className="text-slate-300 font-medium">≈ {eur(proyeccion)}</span>
+            <span className="text-slate-300 font-medium">{eur(proyeccion)}</span>{" "}
+            aproximadamente
           </p>
         )}
       </div>
