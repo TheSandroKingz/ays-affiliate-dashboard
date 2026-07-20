@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
-import { Info } from "lucide-react";
+import { Info, UserPlus } from "lucide-react";
 
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
   ssr: false,
@@ -50,6 +51,7 @@ export default function AdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -64,14 +66,20 @@ export default function AdminDashboard() {
         setRefreshing(false);
         return;
       }
-      const [affRes, stRes] = await Promise.all([
+      const [affRes, stRes, pendRes] = await Promise.all([
         supabase.from("affiliates").select("display_name").eq("user_id", session.user.id).single(),
         fetch("/api/admin/stats", {
           headers: { Authorization: "Bearer " + session.access_token },
         })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
+        fetch("/api/admin/pending", {
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
       ]);
+      setPendientes(Array.isArray(pendRes?.pending) ? pendRes.pending.length : 0);
       // Si la carga de datos falló, mostramos error (no 0€ falsos).
       if (!stRes || !stRes.totals) {
         setLoadError(true);
@@ -147,6 +155,28 @@ export default function AdminDashboard() {
           {refreshing ? "Actualizando..." : "Actualizar"}
         </button>
       </div>
+
+      {/* Aviso de solicitudes pendientes (solo si hay). Se ve nada más entrar. */}
+      {pendientes > 0 && (
+        <Link
+          href="/admin/solicitudes"
+          className="animate-in flex items-center justify-between gap-3 bg-amber-500/15 border border-amber-400/50 rounded-xl px-5 py-4 hover:bg-amber-500/25 transition-colors"
+        >
+          <span className="flex items-center gap-3">
+            <UserPlus size={20} className="text-amber-400 shrink-0" />
+            <span className="text-sm text-amber-100">
+              Tienes{" "}
+              <b className="text-white">
+                {pendientes} {pendientes === 1 ? "solicitud" : "solicitudes"}
+              </b>{" "}
+              pendiente{pendientes === 1 ? "" : "s"} de aprobar
+            </span>
+          </span>
+          <span className="text-xs font-semibold text-amber-300 whitespace-nowrap">
+            Ver →
+          </span>
+        </Link>
+      )}
 
       {/* Lo que me llevo limpio */}
       <div
