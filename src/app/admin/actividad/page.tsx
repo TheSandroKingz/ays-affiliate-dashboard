@@ -203,7 +203,9 @@ export default function ActividadPage() {
                       </span>
                     </td>
                     <td className="border border-white/10 px-4 py-3 whitespace-nowrap">
-                      {e.player_id ? (
+                      {e.player_id?.startsWith("legacy:") ? (
+                        <span className="text-xs text-slate-500">(antiguo)</span>
+                      ) : e.player_id ? (
                         <span className="font-mono text-xs text-slate-300">{e.player_id}</span>
                       ) : e.event_type === "ftd" && e.counted ? (
                         <span className="text-red-400 text-xs font-semibold">sin id ⚠️</span>
