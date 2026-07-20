@@ -20,15 +20,21 @@ export default function AdminLayout({
             className="max-w-full h-auto"
           />
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/admin" className="text-slate-300 hover:text-white transition-colors">
+        <nav className="flex items-center gap-4 text-sm min-w-0 overflow-x-auto">
+          <Link href="/admin" className="text-slate-300 hover:text-white transition-colors whitespace-nowrap">
             Estadísticas
           </Link>
           <Link
             href="/admin/comisiones"
-            className="text-slate-300 hover:text-white transition-colors"
+            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
           >
             Comisiones
+          </Link>
+          <Link
+            href="/admin/actividad"
+            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
+          >
+            Actividad
           </Link>
           <SolicitudesNavLink />
         </nav>
