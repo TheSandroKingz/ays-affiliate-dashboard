@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Copias de seguridad de datos (contienen billeteras/PII, NO subir a git)
+backups/
