@@ -10,35 +10,47 @@ type PromptEvent = Event & {
 };
 
 // Botón "Instalar app" para el menú lateral.
-// - Solo aparece en MÓVIL (iPhone/Android). En PC no se muestra.
-// - Si ya está instalada (se abre en modo app), tampoco aparece.
-// - En Android usa el instalador nativo si el navegador lo ofrece; si no,
-//   muestra las instrucciones. En iPhone siempre muestra instrucciones
-//   (Safari no permite instalar por código).
+// - Aparece en cualquier MÓVIL/TÁCTIL que no sea claramente un PC.
+// - No aparece si ya está instalada (se abre en modo app) ni en escritorio.
+// - En Android usa el instalador nativo si el navegador lo ofrece; si no (y en
+//   iPhone), muestra las instrucciones para añadirla a la pantalla de inicio.
 export default function InstallAppButton({ onNavigate }: { onNavigate?: () => void }) {
   const [deferred, setDeferred] = useState<PromptEvent | null>(null);
-  const [platform, setPlatform] = useState<"ios" | "android" | "other" | null>(null);
-  const [installed, setInstalled] = useState(true); // oculto hasta comprobar
+  const [platform, setPlatform] = useState<"ios" | "android" | "otro">("otro");
+  const [show, setShow] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const nav = window.navigator as Navigator & { standalone?: boolean };
     const ua = nav.userAgent || "";
+
+    // ¿Ya instalada? (se abre a pantalla completa como app) → no mostrar.
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
       nav.standalone === true;
-    setInstalled(standalone);
-    const isIOS = /iphone|ipad|ipod/i.test(ua);
-    const isAndroid = /android/i.test(ua);
-    setPlatform(isIOS ? "ios" : isAndroid ? "android" : "other");
 
-    // Chrome puede lanzar este evento muy pronto; lo capturamos si llega, pero
-    // el botón NO depende de él (en Android caemos a instrucciones si no viene).
+    const isIOS =
+      /iphone|ipad|ipod/i.test(ua) ||
+      // iPadOS 13+ se hace pasar por Mac: lo detectamos por el táctil.
+      (nav.platform === "MacIntel" && (nav.maxTouchPoints || 0) > 1);
+    const isAndroid = /android/i.test(ua);
+
+    // "Es móvil/táctil y no un PC": por UA, o por puntero grueso (dedo) en
+    // pantalla no enorme. Así aparece aunque el navegador no diga iOS/Android.
+    const tactilPequeno =
+      window.matchMedia("(pointer: coarse)").matches && window.innerWidth < 1024;
+    const esMovil =
+      isIOS || isAndroid || /mobile/i.test(ua) || tactilPequeno;
+
+    setPlatform(isIOS ? "ios" : isAndroid ? "android" : "otro");
+    setShow(esMovil && !standalone);
+
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setDeferred(e as PromptEvent);
     };
-    const onInstalled = () => setInstalled(true);
+    const onInstalled = () => setShow(false);
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
@@ -47,13 +59,10 @@ export default function InstallAppButton({ onNavigate }: { onNavigate?: () => vo
     };
   }, []);
 
-  // Ya instalada → nada. Y solo en móvil: en PC (o UA desconocida) no aparece.
-  if (installed) return null;
-  if (platform !== "ios" && platform !== "android") return null;
+  if (!show) return null;
 
   const handleClick = async () => {
     if (deferred) {
-      // Android con instalador nativo capturado: un toque y listo.
       await deferred.prompt();
       setDeferred(null);
       onNavigate?.();
@@ -66,7 +75,7 @@ export default function InstallAppButton({ onNavigate }: { onNavigate?: () => vo
     <div>
       <button
         onClick={handleClick}
-        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 hover:bg-white/10 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-emerald-400 hover:bg-white/10 transition-colors"
       >
         <Download size={18} />
         Instalar app
@@ -80,10 +89,16 @@ export default function InstallAppButton({ onNavigate }: { onNavigate?: () => vo
               <b>Compartir</b> (abajo) y luego{" "}
               <b>&quot;Añadir a pantalla de inicio&quot;</b>.
             </>
-          ) : (
+          ) : platform === "android" ? (
             <>
               En Android: abre el menú <b>⋮</b> (arriba a la derecha) y pulsa{" "}
               <b>&quot;Instalar aplicación&quot;</b> o{" "}
+              <b>&quot;Añadir a pantalla de inicio&quot;</b>.
+            </>
+          ) : (
+            <>
+              Abre el menú de tu navegador y busca{" "}
+              <b>&quot;Instalar app&quot;</b> o{" "}
               <b>&quot;Añadir a pantalla de inicio&quot;</b>.
             </>
           )}

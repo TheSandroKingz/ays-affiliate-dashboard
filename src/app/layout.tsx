@@ -17,7 +17,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // "black" (no translucent): el contenido empieza DEBAJO de la barra de
+    // estado, así el header nunca queda tapado por la hora/notch en la app.
+    statusBarStyle: "black",
     title: "A&S Afiliados",
   },
   icons: {

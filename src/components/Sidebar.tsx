@@ -61,7 +61,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         }`;
     return (
     <aside
-      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 border-r border-white/10 bg-black/95 backdrop-blur py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
+      className={`fixed md:static top-0 left-0 h-full w-64 shrink-0 overflow-y-auto border-r border-white/10 bg-black/95 backdrop-blur py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
