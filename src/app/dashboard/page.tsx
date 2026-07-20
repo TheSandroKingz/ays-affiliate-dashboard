@@ -241,7 +241,9 @@ export default function DashboardPage() {
   const hoyISO = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
   const [yProj, mProj, dProj] = hoyISO.split("-").map(Number);
   const diasMes = new Date(yProj, mProj, 0).getDate();
-  const proyeccion = dProj > 0 ? (balance / dProj) * diasMes : balance;
+  const proyeccionRaw = dProj > 0 ? (balance / dProj) * diasMes : balance;
+  // Es una estimación: la redondeamos a múltiplo de 10 para que salga limpia.
+  const proyeccion = Math.round(proyeccionRaw / 10) * 10;
   const mostrarProyeccion = !isAdmin && balance > 0 && dProj < diasMes;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
