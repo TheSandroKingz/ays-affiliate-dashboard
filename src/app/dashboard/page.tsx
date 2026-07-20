@@ -303,7 +303,7 @@ export default function DashboardPage() {
         <div className="animate-in inline-flex items-center gap-2 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-sm">
           <span aria-hidden>🏆</span>
           <span className="text-amber-100">
-            Vas <b className="text-white">#{ranking.puesto}</b> de {ranking.total} este mes
+            Vas <b className="text-white">#{ranking.puesto}</b> este mes
           </span>
         </div>
       )}
