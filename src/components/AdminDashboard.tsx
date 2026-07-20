@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -76,6 +76,8 @@ export default function AdminDashboard() {
     totalClean: number;
   } | null>(null);
   const [mesPasado, setMesPasado] = useState<number | null>(null);
+  const [celebrar, setCelebrar] = useState(false);
+  const prevFtdRef = useRef<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -147,6 +149,13 @@ export default function AdminDashboard() {
       if (!stRes || !stRes.totals) {
         setLoadError(true);
       } else {
+        // Celebración: si al actualizar hay MÁS FTD que antes, ¡nuevo FTD!
+        const nuevoFtd = Number(stRes.totals.ftd ?? 0);
+        if (prevFtdRef.current !== null && nuevoFtd > prevFtdRef.current) {
+          setCelebrar(true);
+          setTimeout(() => setCelebrar(false), 4500);
+        }
+        prevFtdRef.current = nuevoFtd;
         setTotals(stRes.totals);
         setDaily(stRes.daily ?? []);
         setLastUpdated(new Date());
@@ -220,6 +229,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
+      {celebrar && (
+        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+          <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
+            <span className="text-xl">🎉</span> ¡Nuevo FTD!
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">

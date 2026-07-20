@@ -59,6 +59,16 @@ label,
   animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Toast de celebración (¡nuevo FTD!). */
+@keyframes celebra-pop {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.8); }
+  60%  { transform: translateY(-4px) scale(1.05); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-celebra {
+  animation: celebra-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Respeta la preferencia del sistema de reducir movimiento (accesibilidad). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
