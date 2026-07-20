@@ -144,7 +144,7 @@ export default function AfiliadoDetallePage() {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-              <span className="text-[0.7em] opacity-70">
+              <span className="text-[0.5em] opacity-70">
                 :{String(lastUpdated.getSeconds()).padStart(2, "0")}
               </span>
             </p>
