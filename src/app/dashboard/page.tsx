@@ -341,9 +341,9 @@ export default function DashboardPage() {
           </div>
         )}
         {mostrarProyeccion && (
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-500">
             A este ritmo cerrarás el mes en{" "}
-            <b className="text-emerald-400">≈ {eur(proyeccion)}</b>
+            <span className="text-slate-300 font-medium">≈ {eur(proyeccion)}</span>
           </p>
         )}
       </div>
