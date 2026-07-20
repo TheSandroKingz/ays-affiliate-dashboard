@@ -255,7 +255,7 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-400">
                 {new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                 {lastUpdated && (
-                  <span className="text-slate-500"> · Actualizado {lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-slate-500"> · Actualizado {lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
                 )}
               </p>
             </div>

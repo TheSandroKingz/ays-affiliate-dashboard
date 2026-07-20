@@ -92,6 +92,7 @@ export default function AdminStatsPage() {
 
       try {
         const res = await fetch("/api/admin/stats" + qs, {
+          cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
         });
         const body = await res.json();
@@ -167,6 +168,7 @@ export default function AdminStatsPage() {
                 {lastUpdated.toLocaleTimeString("es-ES", {
                   hour: "2-digit",
                   minute: "2-digit",
+                  second: "2-digit",
                 })}
               </span>
             )}

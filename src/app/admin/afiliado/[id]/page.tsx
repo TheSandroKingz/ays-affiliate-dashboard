@@ -60,7 +60,10 @@ export default function AfiliadoDetallePage() {
       }
       const res = await fetch(
         "/api/admin/afiliado?userId=" + encodeURIComponent(userId),
-        { headers: { Authorization: "Bearer " + session.access_token } }
+        {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        }
       );
       if (!res.ok) {
         setError(true);
@@ -140,6 +143,7 @@ export default function AfiliadoDetallePage() {
               {lastUpdated.toLocaleTimeString("es-ES", {
                 hour: "2-digit",
                 minute: "2-digit",
+                second: "2-digit",
               })}
             </p>
           )}

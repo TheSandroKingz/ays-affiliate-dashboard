@@ -69,11 +69,13 @@ export default function AdminDashboard() {
       const [affRes, stRes, pendRes] = await Promise.all([
         supabase.from("affiliates").select("display_name").eq("user_id", session.user.id).single(),
         fetch("/api/admin/stats", {
+          cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
         })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
         fetch("/api/admin/pending", {
+          cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
         })
           .then((r) => (r.ok ? r.json() : null))
@@ -142,6 +144,7 @@ export default function AdminDashboard() {
                 {lastUpdated.toLocaleTimeString("es-ES", {
                   hour: "2-digit",
                   minute: "2-digit",
+                  second: "2-digit",
                 })}
               </span>
             )}
