@@ -136,11 +136,10 @@ export default function ActividadPage() {
       )}
 
       {resumen && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: "Sin player_id", value: resumen.sinPlayerId },
             { label: "Duplicados bloqueados", value: resumen.duplicados },
-            { label: "Sin emparejar", value: resumen.noMatch },
           ].map((c) => (
             <div key={c.label} className="p-3 rounded-xl border border-white/10 bg-white/5">
               <p className="text-xs text-slate-400 mb-1">{c.label}</p>

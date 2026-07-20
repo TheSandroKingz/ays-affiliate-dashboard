@@ -14,12 +14,20 @@ type Ev = {
   counted: boolean;
 };
 
+const t = (iso: string) => new Date(iso).getTime();
+
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(0);
+  const [pendingList, setPendingList] = useState<{ created_at: string }[]>([]);
+  const [ftdRecientes, setFtdRecientes] = useState<{ created_at: string }[]>([]);
   const [eventos, setEventos] = useState<Ev[]>([]);
-  const [ftd24h, setFtd24h] = useState(0);
+  const [visto, setVisto] = useState(0); // timestamp de la última vez que se abrió
   const ref = useRef<HTMLDivElement>(null);
+
+  // Marca de "visto" guardada (para que el número no vuelva a salir sin novedades).
+  useEffect(() => {
+    setVisto(Number(localStorage.getItem("notifVisto") || 0));
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -36,24 +44,26 @@ export default function NotificationBell() {
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
       ]);
-      setPending(Array.isArray(p?.pending) ? p.pending.length : 0);
+      setPendingList(Array.isArray(p?.pending) ? p.pending : []);
       const all: Ev[] = Array.isArray(a?.events) ? a.events : [];
-      // FTD de las últimas 24 h sobre TODOS los eventos (no solo los mostrados).
-      setFtd24h(
-        all.filter(
-          (e) =>
-            e.event_type === "ftd" &&
-            e.counted &&
-            Date.now() - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000
-        ).length
+      setFtdRecientes(
+        all
+          .filter(
+            (e) =>
+              e.event_type === "ftd" &&
+              e.counted &&
+              Date.now() - t(e.created_at) < 24 * 60 * 60 * 1000
+          )
+          .map((e) => ({ created_at: e.created_at }))
       );
-      const evs = all
-        .filter(
-          (e) =>
-            e.counted && (e.event_type === "ftd" || e.event_type === "registration")
-        )
-        .slice(0, 6);
-      setEventos(evs);
+      setEventos(
+        all
+          .filter(
+            (e) =>
+              e.counted && (e.event_type === "ftd" || e.event_type === "registration")
+          )
+          .slice(0, 6)
+      );
     }
     load();
   }, []);
@@ -66,7 +76,13 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // Contador de solicitudes pendientes en el título de la pestaña.
+  // Novedades SIN VER = solicitudes o FTD más nuevos que la última vez que abriste.
+  const nuevas =
+    pendingList.filter((p) => t(p.created_at) > visto).length +
+    ftdRecientes.filter((e) => t(e.created_at) > visto).length;
+
+  // El título de la pestaña sigue avisando de solicitudes pendientes (a resolver).
+  const pending = pendingList.length;
   useEffect(() => {
     document.title = pending > 0 ? `(${pending}) A&S Afiliados` : "A&S Afiliados";
     return () => {
@@ -74,8 +90,18 @@ export default function NotificationBell() {
     };
   }, [pending]);
 
-  // Novedades = solicitudes pendientes + FTD de las últimas 24 h.
-  const total = pending + ftd24h;
+  function abrir() {
+    setOpen((v) => {
+      const next = !v;
+      // Al abrir, marcamos todo como visto → el número desaparece.
+      if (next) {
+        const now = Date.now();
+        localStorage.setItem("notifVisto", String(now));
+        setVisto(now);
+      }
+      return next;
+    });
+  }
 
   function cuando(iso: string) {
     return new Date(iso).toLocaleString("es-ES", {
@@ -89,14 +115,14 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={abrir}
         aria-label="Novedades"
         className="relative flex items-center p-2 text-slate-300 hover:text-white"
       >
         <Bell size={18} />
-        {total > 0 && (
+        {nuevas > 0 && (
           <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-black text-[10px] font-bold rounded-full min-w-[16px] h-[16px] px-1 inline-flex items-center justify-center">
-            {total}
+            {nuevas}
           </span>
         )}
       </button>
