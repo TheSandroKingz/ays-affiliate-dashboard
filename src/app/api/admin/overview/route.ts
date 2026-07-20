@@ -30,7 +30,8 @@ export async function GET(request: Request) {
   const idsToLoad = [user.id, ...structIds];
 
   // Una única consulta: todo el histórico. Los periodos se filtran en memoria.
-  const [dailyRes, pendRes] = await Promise.all([
+  // La comprobación de seguridad va EN PARALELO (no en serie) para no frenar.
+  const [dailyRes, pendRes, seguridad] = await Promise.all([
     supabaseAdmin
       .from("affiliate_daily_stats")
       .select("user_id, date, commission, clicks, registrations, ftd")
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
       .from("affiliates")
       .select("user_id", { count: "exact", head: true })
       .eq("approved", false),
+    resumenSeguridad(),
   ]);
   if (dailyRes.error) {
     return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
@@ -79,8 +81,6 @@ export async function GET(request: Request) {
     struct
   );
   const historico = computeAdminStats(all, user.id, me?.id, adminCpa, struct);
-
-  const seguridad = await resumenSeguridad();
 
   return NextResponse.json({
     adminCpa,

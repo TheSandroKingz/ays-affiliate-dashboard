@@ -10,7 +10,8 @@ import {
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
-import { notificarEvento } from "@/lib/push";
+import { notificarEvento, enviarPush } from "@/lib/push";
+import { ADMIN_USER_ID } from "@/lib/adminAuth";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -115,6 +116,16 @@ export async function GET(request: Request) {
   // Notificación push al móvil (afiliado + admin), sin retrasar la respuesta.
   if (estado === "counted" && target) {
     after(() => notificarEvento(target.user_id, "ftd"));
+  }
+  // Si quedó RETENIDO por sospecha, avisamos al admin para que lo revise ya.
+  if (estado === "held") {
+    after(() =>
+      enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ FTD retenido",
+        body: "Un FTD quedó sin contar por sospecha de doble pago. Revísalo en Actividad.",
+        url: "/admin/actividad",
+      })
+    );
   }
 
   return NextResponse.json({ ok: true, matched: !!target, duplicado });

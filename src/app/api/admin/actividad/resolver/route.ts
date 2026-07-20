@@ -60,10 +60,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Candado: reclamamos el evento para que nunca pueda contarse dos veces.
-  const eventKey = ev.player_id ? `ftd:${ev.player_id}` : null;
-  await reclamarEvento(eventKey);
-
   const { data: aff } = await supabaseAdmin
     .from("affiliates")
     .select("cpa_spain, cpa_other")
@@ -72,6 +68,29 @@ export async function POST(request: Request) {
   const commission = Number(
     (ev.isocountry === "ES" ? aff?.cpa_spain : aff?.cpa_other) ?? 0
   );
+
+  // RECLAMO ATÓMICO: marcamos "counted" solo si SIGUE en "held". Este UPDATE es
+  // atómico en Postgres, así que si se pulsa dos veces (o hay dos pestañas),
+  // solo UNA gana y solo se suma UNA vez. Si no gana ninguna fila, ya se resolvió.
+  const { data: claimed, error: claimErr } = await supabaseAdmin
+    .from("postback_events")
+    .update({ status: "counted", counted: true, commission })
+    .eq("id", id)
+    .eq("status", "held")
+    .select("id");
+  if (claimErr) {
+    return NextResponse.json({ error: claimErr.message }, { status: 500 });
+  }
+  if (!claimed || claimed.length === 0) {
+    return NextResponse.json(
+      { error: "Ese evento ya está resuelto." },
+      { status: 409 }
+    );
+  }
+
+  // Candado por player_id (protección adicional frente a reenvíos futuros).
+  const eventKey = ev.player_id ? `ftd:${ev.player_id}` : null;
+  await reclamarEvento(eventKey);
 
   // Se cuenta en la fecha de hoy (cuando lo apruebas), zona Madrid.
   const fecha = new Intl.DateTimeFormat("en-CA", {
@@ -86,16 +105,14 @@ export async function POST(request: Request) {
     p_commission: commission,
   });
   if (incErr) {
+    // El incremento falló: revertimos a "held" para poder reintentar (no se
+    // queda como contado sin haber sumado).
+    await supabaseAdmin
+      .from("postback_events")
+      .update({ status: "held", counted: false, commission: 0 })
+      .eq("id", id)
+      .then(() => {}, () => {});
     return NextResponse.json({ error: incErr.message }, { status: 500 });
-  }
-
-  const { error: updErr } = await supabaseAdmin
-    .from("postback_events")
-    .update({ status: "counted", counted: true, commission })
-    .eq("id", id)
-    .eq("status", "held");
-  if (updErr) {
-    return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, accion, commission });
