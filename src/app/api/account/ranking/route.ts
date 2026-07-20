@@ -16,12 +16,22 @@ export async function GET(request: Request) {
   }).format(new Date());
   const from = hoy.slice(0, 7) + "-01";
 
-  // Afiliados (no el admin) activos.
-  const { data: affs } = await supabaseAdmin
+  // Afiliados (no el admin) aprobados y activos.
+  let affsRes = await supabaseAdmin
     .from("affiliates")
     .select("user_id")
-    .neq("user_id", ADMIN_USER_ID);
-  const ids = (affs ?? []).map((a) => a.user_id);
+    .neq("user_id", ADMIN_USER_ID)
+    .eq("approved", true)
+    .neq("active", false);
+  // Por si la columna 'active' no existiera: reintenta sin ese filtro.
+  if (affsRes.error) {
+    affsRes = await supabaseAdmin
+      .from("affiliates")
+      .select("user_id")
+      .neq("user_id", ADMIN_USER_ID)
+      .eq("approved", true);
+  }
+  const ids = (affsRes.data ?? []).map((a) => a.user_id);
   if (!ids.length) return NextResponse.json({ puesto: 1, total: 1, miFtd: 0 });
 
   const { data: daily } = await supabaseAdmin

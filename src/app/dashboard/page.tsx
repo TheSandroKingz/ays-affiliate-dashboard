@@ -266,7 +266,7 @@ export default function DashboardPage() {
   // Es una estimación: la redondeamos a múltiplo de 10 para que salga limpia.
   const proyeccion = Math.round(proyeccionRaw / 10) * 10;
   const mostrarProyeccion =
-    !isAdmin && balance > 0 && diasTrabajados > 0 && dProj < diasMes;
+    !isAdmin && balance > 0 && diasTrabajados > 0 && dProj < diasMes && proyeccion > 0;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
   const sinActividad =

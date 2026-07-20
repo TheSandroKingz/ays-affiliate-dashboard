@@ -52,7 +52,8 @@ export async function GET(request: Request) {
       return {
         mes,
         ftd: totals.ftd,
-        structurePaid: totals.structurePaid,
+        // Lo pagado a afiliados incluye comisiones propias + overrides a padres.
+        structurePaid: totals.structureOwed,
         totalClean: totals.totalClean,
         clicks: totals.clicks,
         registrations: totals.registrations,

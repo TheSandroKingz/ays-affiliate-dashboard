@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       "id, created_at, event_type, status, counted, commission, player_id, tracking_code, afp, isocountry, matched_user_id"
     )
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(300);
 
   // Si la tabla aún no existe, devolvemos vacío (no rompe el panel).
   if (error) {
