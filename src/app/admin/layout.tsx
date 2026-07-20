@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import SolicitudesNavLink from "@/components/admin/SolicitudesNavLink";
+import NotificationBell from "@/components/admin/NotificationBell";
 
 export default function AdminLayout({
   children,
@@ -38,12 +39,15 @@ export default function AdminLayout({
           </Link>
           <SolicitudesNavLink />
         </nav>
-        <Link
-          href="/dashboard"
-          className="ml-auto text-sm font-medium text-emerald-400 hover:text-emerald-300"
-        >
-          Volver al panel
-        </Link>
+        <div className="ml-auto flex items-center gap-3 sm:gap-4">
+          <NotificationBell />
+          <Link
+            href="/dashboard"
+            className="text-sm font-medium text-emerald-400 hover:text-emerald-300 whitespace-nowrap"
+          >
+            Volver al panel
+          </Link>
+        </div>
       </header>
       <main className="p-4 sm:p-6 md:p-8">{children}</main>
     </div>
