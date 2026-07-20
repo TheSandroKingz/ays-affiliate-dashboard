@@ -150,7 +150,10 @@ export async function GET(request: Request) {
 
   const totals = {
     ownEarnings: own.commission, // mi link propio (CPA completo)
-    structureMargin: structure_t.margin, // mi estructura (margen)
+    structureMargin: structure_t.margin, // margen bruto de la estructura
+    // Margen NETO de la estructura = margen bruto − overrides que pago a padres.
+    // Es lo que de verdad me queda de mis afiliados (cuadra con totalClean).
+    structureMarginNet: structure_t.margin - overridesPaid,
     structurePaid: structure_t.commission, // comisiones propias de afiliados
     overridesPaid, // lo que pago a los padres por sus subafiliados
     structureOwed: structure_t.commission + overridesPaid, // total que pago a afiliados

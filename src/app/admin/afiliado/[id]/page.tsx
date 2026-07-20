@@ -55,26 +55,34 @@ export default function AfiliadoDetallePage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState(false);
   const [mostrarCobro, setMostrarCobro] = useState(false);
+  const [periodo, setPeriodo] = useState<"mes" | "todo">("mes");
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(false);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session || session.user.id !== ADMIN_USER_ID) {
-        router.replace("/dashboard");
-        return;
-      }
-      const res = await fetch(
-        "/api/admin/afiliado?userId=" + encodeURIComponent(userId),
-        {
+  const load = useCallback(
+    async (per: "mes" | "todo", isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(false);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session || session.user.id !== ADMIN_USER_ID) {
+          router.replace("/dashboard");
+          return;
+        }
+        // Por defecto el MES en curso (cuadra con "Le pago" de Estadísticas);
+        // "Todo" muestra el histórico.
+        let qs = "userId=" + encodeURIComponent(userId);
+        if (per === "mes") {
+          const hoy = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Europe/Madrid",
+          }).format(new Date());
+          qs += `&from=${hoy.slice(0, 7)}-01&to=${hoy}`;
+        }
+        const res = await fetch("/api/admin/afiliado?" + qs, {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
-        }
-      );
+        });
       if (!res.ok) {
         setError(true);
         return;
@@ -92,8 +100,13 @@ export default function AfiliadoDetallePage() {
   }, [userId, router]);
 
   useEffect(() => {
-    load();
+    load("mes");
   }, [load]);
+
+  function cambiarPeriodo(per: "mes" | "todo") {
+    setPeriodo(per);
+    load(per);
+  }
 
   // Datos para la gráfica: comisión por día en orden cronológico (la tabla va
   // al revés, de más reciente a más antiguo).
@@ -139,7 +152,7 @@ export default function AfiliadoDetallePage() {
         >
           <ArrowLeft size={16} /> Volver
         </Link>
-        <LoadError onRetry={() => load()} />
+        <LoadError onRetry={() => load(periodo)} />
       </main>
     );
   }
@@ -196,7 +209,7 @@ export default function AfiliadoDetallePage() {
           </div>
         </div>
         <button
-          onClick={() => load(true)}
+          onClick={() => load(periodo, true)}
           disabled={refreshing}
           className="shrink-0 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
         >
@@ -245,6 +258,26 @@ export default function AfiliadoDetallePage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Periodo: este mes (cuadra con "Le pago") o histórico */}
+      <div className="inline-flex rounded-lg border border-white/20 overflow-hidden w-fit">
+        {([
+          { key: "mes", label: "Este mes" },
+          { key: "todo", label: "Todo" },
+        ] as const).map((p) => (
+          <button
+            key={p.key}
+            onClick={() => cambiarPeriodo(p.key)}
+            className={`px-4 py-2 text-sm ${
+              periodo === p.key
+                ? "bg-emerald-600 text-white"
+                : "text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       {/* Gráfica de comisión por día (como la del inicio) */}

@@ -28,6 +28,7 @@ const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
 type Totals = {
   ownEarnings: number;
   structureMargin: number;
+  structureMarginNet: number;
   structurePaid: number;
   totalClean: number;
   clicks: number;
@@ -38,6 +39,7 @@ type Totals = {
 const emptyTotals: Totals = {
   ownEarnings: 0,
   structureMargin: 0,
+  structureMarginNet: 0,
   structurePaid: 0,
   totalClean: 0,
   clicks: 0,
@@ -261,7 +263,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center justify-between py-1 text-sm">
                 <span className="text-slate-300">Mi estructura</span>
-                <span className="font-medium text-white">{eur(totals.structureMargin)}</span>
+                <span className="font-medium text-white">{eur(totals.structureMarginNet)}</span>
               </div>
               <div className="flex items-center justify-between py-1 text-sm border-t border-white/10 mt-1 pt-2">
                 <span className="text-slate-300">Mi balance</span>

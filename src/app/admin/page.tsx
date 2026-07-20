@@ -45,6 +45,8 @@ type Totals = {
   registrations: number;
   ftd: number;
   structureMargin: number;
+  structureMarginNet: number;
+  overridesPaid: number;
 };
 
 const emptyTotals: Totals = {
@@ -54,6 +56,8 @@ const emptyTotals: Totals = {
   registrations: 0,
   ftd: 0,
   structureMargin: 0,
+  structureMarginNet: 0,
+  overridesPaid: 0,
 };
 
 function fmt(n: number) {
@@ -68,6 +72,7 @@ export default function AdminStatsPage() {
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [adminCpa, setAdminCpa] = useState<number | null>(null);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   // Por defecto mostramos el MES en curso (como el panel de cada afiliado). El
   // histórico sigue a un clic con el atajo "Todo".
@@ -103,6 +108,7 @@ export default function AdminStatsPage() {
         } else {
           setStats(body.stats);
           setTotals(body.totals);
+          setAdminCpa(Number(body.adminCpa ?? 0));
           setLastUpdated(new Date());
         }
       } catch {
@@ -187,6 +193,13 @@ export default function AdminStatsPage() {
         </button>
       </div>
 
+      {adminCpa === 0 && (
+        <div className="rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          ⚠️ Tu CPA no está configurado (0 €), así que los márgenes que ves están
+          mal. Ponlo en <span className="font-semibold">Comisiones</span>.
+        </div>
+      )}
+
       {/* Botón para desplegar el filtro (solo en móvil) */}
       <button
         onClick={() => setMostrarFiltros((v) => !v)}
@@ -258,7 +271,12 @@ export default function AdminStatsPage() {
       {/* Margen total de la estructura (el total limpio está en el inicio) */}
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
         <p className="text-sm font-medium text-slate-300 mb-3">Mi margen de afiliados</p>
-        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.structureMargin)}</p>
+        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.structureMarginNet)}</p>
+        {totals.overridesPaid > 0 && (
+          <p className="text-xs text-slate-400 mt-2">
+            Ya descontados {eur(totals.overridesPaid)} de overrides a padres.
+          </p>
+        )}
       </div>
 
       {/* Tarjetas de actividad de la red */}
