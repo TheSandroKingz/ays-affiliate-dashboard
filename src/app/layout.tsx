@@ -13,11 +13,23 @@ const geistSans = Poppins({
 export const metadata: Metadata = {
   title: "A&S Afiliados",
   description: "Panel de estadísticas para afiliados",
+  // Instalable en el móvil (PWA): icono en la pantalla de inicio y modo app.
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "A&S Afiliados",
+  },
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export const viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
