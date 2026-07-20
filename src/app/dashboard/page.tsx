@@ -120,7 +120,7 @@ export default function DashboardPage() {
             .from("affiliates")
             .select("display_name")
             .eq("user_id", user.id)
-            .single(),
+            .maybeSingle(),
           supabase
             .from("affiliate_daily_stats")
             .select("date, commission, clicks, registrations, ftd")
@@ -138,8 +138,9 @@ export default function DashboardPage() {
             .catch(() => ({ rows: [] })),
         ]);
 
-      // Si falló la carga de datos, mostramos error (no 0€ falsos).
-      if (affiliateRes.error || dailyRes.error) {
+      // Solo bloqueamos si falla la carga de DATOS (lo que importa). Un fallo al
+      // leer el nombre no debe tapar el panel: se muestra sin nombre.
+      if (dailyRes.error) {
         setLoadError(true);
         setLoading(false);
         setRefreshing(false);

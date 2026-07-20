@@ -22,24 +22,6 @@ export async function GET(request: Request) {
   const from = fechaOk(url.searchParams.get("from"));
   const to = fechaOk(url.searchParams.get("to"));
 
-  const { data: perfil, error: pErr } = await supabaseAdmin
-    .from("affiliates")
-    .select(
-      "display_name, avatar_url, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at"
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
-  if (!perfil) {
-    return NextResponse.json({ error: "Afiliado no encontrado" }, { status: 404 });
-  }
-
-  // El correo vive en la capa de auth (auth.users), no en affiliates. Lo trae
-  // el service role. Es seguro: esta ruta ya está protegida solo para el admin.
-  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-  const email = authUser?.user?.email ?? null;
-
   let q = supabaseAdmin
     .from("affiliate_daily_stats")
     .select("date, clicks, registrations, ftd, commission")
@@ -48,8 +30,35 @@ export async function GET(request: Request) {
   if (from) q = q.gte("date", from);
   if (to) q = q.lte("date", to);
 
-  const { data: daily, error: dErr } = await q;
-  if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
+  // Las tres consultas solo dependen de userId: en paralelo (más rápido).
+  // El correo vive en la capa de auth (auth.users), no en affiliates; lo trae
+  // el service role. Es seguro: esta ruta está protegida solo para el admin.
+  const [perfilRes, authRes, dailyRes] = await Promise.all([
+    supabaseAdmin
+      .from("affiliates")
+      .select(
+        "display_name, avatar_url, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20, freshaffs_tracking_code, created_at"
+      )
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabaseAdmin.auth.admin.getUserById(userId),
+    q,
+  ]);
 
-  return NextResponse.json({ perfil: { ...perfil, email }, daily: daily ?? [] });
+  if (perfilRes.error) {
+    return NextResponse.json({ error: perfilRes.error.message }, { status: 500 });
+  }
+  if (!perfilRes.data) {
+    return NextResponse.json({ error: "Afiliado no encontrado" }, { status: 404 });
+  }
+  if (dailyRes.error) {
+    return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
+  }
+
+  const email = authRes.data?.user?.email ?? null;
+
+  return NextResponse.json({
+    perfil: { ...perfilRes.data, email },
+    daily: dailyRes.data ?? [],
+  });
 }

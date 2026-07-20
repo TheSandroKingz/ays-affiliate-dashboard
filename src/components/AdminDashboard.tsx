@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -33,6 +33,10 @@ const emptyTotals: Totals = {
   registrations: 0,
   ftd: 0,
 };
+
+// Constante estable (fuera del componente) para no recrear el Set en cada
+// render y romper el memo del gráfico.
+const METRICA_COMISION = new Set(["commission"]);
 
 function saludo(): string {
   const h = new Date().getHours();
@@ -103,17 +107,23 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
+  // Memoizado por `daily`: así el gráfico no se repinta al abrir el tooltip u
+  // otros cambios de estado que no afectan a los datos.
+  const chartData = useMemo(
+    () =>
+      daily.map((d) => ({
+        date: new Date(d.date + "T00:00:00Z").toLocaleDateString("es-ES", {
+          month: "short",
+          day: "2-digit",
+          timeZone: "UTC",
+        }),
+        commission: d.earnings,
+      })),
+    [daily]
+  );
+
   if (loading) return <DashboardSkeleton />;
   if (loadError) return <LoadError onRetry={() => load()} />;
-
-  const chartData = daily.map((d) => ({
-    date: new Date(d.date + "T00:00:00Z").toLocaleDateString("es-ES", {
-      month: "short",
-      day: "2-digit",
-      timeZone: "UTC",
-    }),
-    commission: d.earnings,
-  }));
 
   const sinActividad =
     totals.totalClean === 0 && totals.clicks === 0 && totals.ftd === 0;
@@ -275,7 +285,7 @@ export default function AdminDashboard() {
       <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.18s" }}>
         <BalanceChart
           data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
-          activeMetrics={new Set(["commission"])}
+          activeMetrics={METRICA_COMISION}
           primaryMetricKey="commission"
         />
         {sinActividad && (

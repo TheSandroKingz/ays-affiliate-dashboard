@@ -87,7 +87,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       }`}
     >
         <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
-          <Image src="/logo.png" alt="A&S Afiliados" width={150} height={74} priority />
+          <Image src="/logo.png" alt="A&S Afiliados" width={150} height={74} />
         </Link>
 
       <nav className="flex flex-col gap-1">
@@ -177,7 +177,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex
           items-center justify-center text-sm font-semibold shrink-0 overflow-hidden relative">
             {avatarUrl ? (
-                <Image src={avatarUrl} alt="Foto de perfil" fill className="object-cover" />
+                <Image src={avatarUrl} alt="Foto de perfil" fill sizes="32px" className="object-cover" />
               ) : userEmail ? (
                 userEmail[0].toUpperCase()
               ) : (
