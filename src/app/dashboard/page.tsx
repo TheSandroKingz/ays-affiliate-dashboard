@@ -8,6 +8,7 @@ import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
 import LoadError from "@/components/LoadError";
+import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
@@ -80,7 +81,7 @@ export default function DashboardPage() {
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const { displayName } = useProfile(); // nombre desde el almacén compartido
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -110,44 +111,34 @@ export default function DashboardPage() {
         return;
       }
 
-      // Las consultas son independientes entre sí: las lanzamos en paralelo
-      // en lugar de una detrás de otra para que el panel cargue antes.
-      // La última obtiene la comisión que este afiliado gana por sus
-      // subafiliados (calculada en el servidor con permisos elevados).
-      const [affiliateRes, dailyRes, subRes] =
-        await Promise.all([
-          supabase
-            .from("affiliates")
-            .select("display_name")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("affiliate_daily_stats")
-            .select("date, commission, clicks, registrations, ftd")
-            .eq("user_id", user.id)
-            .order("date", { ascending: true }),
-          fetch("/api/subaffiliates", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + session.access_token,
-            },
-            body: JSON.stringify({ userId: user.id }),
-          })
-            .then((r) => (r.ok ? r.json() : { rows: [] }))
-            .catch(() => ({ rows: [] })),
-        ]);
+      // Las consultas son independientes entre sí: las lanzamos en paralelo.
+      // El nombre ya lo tiene el almacén compartido, así que aquí solo pedimos
+      // los datos diarios y la comisión de subafiliados (una consulta menos).
+      const [dailyRes, subRes] = await Promise.all([
+        supabase
+          .from("affiliate_daily_stats")
+          .select("date, commission, clicks, registrations, ftd")
+          .eq("user_id", user.id)
+          .order("date", { ascending: true }),
+        fetch("/api/subaffiliates", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.access_token,
+          },
+          body: JSON.stringify({ userId: user.id }),
+        })
+          .then((r) => (r.ok ? r.json() : { rows: [] }))
+          .catch(() => ({ rows: [] })),
+      ]);
 
-      // Solo bloqueamos si falla la carga de DATOS (lo que importa). Un fallo al
-      // leer el nombre no debe tapar el panel: se muestra sin nombre.
+      // Solo bloqueamos si falla la carga de DATOS (lo que importa).
       if (dailyRes.error) {
         setLoadError(true);
         setLoading(false);
         setRefreshing(false);
         return;
       }
-
-      setDisplayName(affiliateRes.data?.display_name ?? null);
 
       setDailyData(fillMissingDays(dailyRes.data ?? []));
 

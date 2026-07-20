@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import InstallAppButton from "@/components/InstallAppButton";
+import { useProfile } from "@/components/DashboardProvider";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -34,39 +35,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith("/dashboard/reports"));
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  // Nombre y foto vienen del almacén compartido (una sola carga para toda la app).
+  const { displayName, avatarUrl } = useProfile();
 
   useEffect(() => {
+    // getSession lee de localStorage (sin red): barato, solo para email/admin.
     supabase.auth.getSession().then(({ data }) => {
       const user = data.session?.user;
       setUserEmail(user?.email ?? null);
       setIsAdmin(user?.id === ADMIN_USER_ID);
-      if (user) {
-        supabase
-          .from("affiliates")
-          .select("avatar_url, display_name")
-          .eq("user_id", user.id)
-          .maybeSingle()
-          .then(({ data: aff }) => {
-            setAvatarUrl(aff?.avatar_url ?? null);
-            setDisplayName(aff?.display_name ?? null);
-          });
-      }
     });
-  }, []);
-
-  // El perfil (nombre/foto) puede cambiar en Configuración de Cuenta: nos
-  // actualizamos al instante sin recargar toda la app.
-  useEffect(() => {
-    const onUpdate = (e: Event) => {
-      const d = (e as CustomEvent).detail ?? {};
-      if (d.display_name !== undefined) setDisplayName(d.display_name);
-      if (d.avatar_url !== undefined) setAvatarUrl(d.avatar_url);
-    };
-    window.addEventListener("profile-updated", onUpdate);
-    return () => window.removeEventListener("profile-updated", onUpdate);
   }, []);
 
   async function handleLogout() {

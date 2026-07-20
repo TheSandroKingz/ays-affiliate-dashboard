@@ -1,50 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Image from "next/image";
-import { supabase } from "@/lib/supabaseClient";
+import DashboardProvider, { useProfile } from "@/components/DashboardProvider";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [ready, setReady] = useState(false);
-  const router = useRouter();
-
-  // Guardián de acceso: sin sesión → login; cuenta NO aprobada → pendiente.
-  useEffect(() => {
-    async function check() {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (!data.session) {
-          router.replace("/login");
-          return;
-        }
-        // ¿La cuenta está aprobada y tiene perfil? Si no (o está a medias) →
-        // pantalla de pendiente. En error transitorio no bloqueamos (RLS protege).
-        const { data: aff, error } = await supabase
-          .from("affiliates")
-          .select("approved")
-          .eq("user_id", data.session.user.id)
-          .maybeSingle();
-        if (!error && (!aff || aff.approved !== true)) {
-          router.replace("/pendiente");
-          return;
-        }
-        setReady(true);
-      } catch {
-        // Ante cualquier fallo (red, Supabase lento), NO dejamos la pantalla en
-        // blanco: mostramos el panel (los datos están protegidos por RLS igual).
-        setReady(true);
-      }
-    }
-    check();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace("/login");
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [router]);
+  const { ready } = useProfile();
 
   return (
     <div className="flex min-h-screen bg-black">
@@ -70,5 +34,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{ready ? children : null}</main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <DashboardProvider>
+      <Shell>{children}</Shell>
+    </DashboardProvider>
   );
 }

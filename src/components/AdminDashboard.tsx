@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
+import { useProfile } from "@/components/DashboardProvider";
 import { Info, UserPlus, TrendingUp, TrendingDown } from "lucide-react";
 
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
@@ -47,7 +48,7 @@ function saludo(): string {
 }
 
 export default function AdminDashboard() {
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const { displayName } = useProfile(); // nombre desde el almacén compartido
   const [totals, setTotals] = useState<Totals>(emptyTotals);
   const [daily, setDaily] = useState<{ date: string; earnings: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +71,7 @@ export default function AdminDashboard() {
         setRefreshing(false);
         return;
       }
-      const [affRes, stRes, pendRes] = await Promise.all([
-        supabase.from("affiliates").select("display_name").eq("user_id", session.user.id).single(),
+      const [stRes, pendRes] = await Promise.all([
         fetch("/api/admin/stats", {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
@@ -90,7 +90,6 @@ export default function AdminDashboard() {
       if (!stRes || !stRes.totals) {
         setLoadError(true);
       } else {
-        setDisplayName(affRes.data?.display_name ?? null);
         setTotals(stRes.totals);
         setDaily(stRes.daily ?? []);
         setLastUpdated(new Date());
