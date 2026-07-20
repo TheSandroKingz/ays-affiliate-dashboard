@@ -79,6 +79,7 @@ export default function ComisionesClient({
       setPagoMsg({ id, texto: `Pago de €${importe} registrado ✓`, ok: true });
       setPagoImporte((p) => ({ ...p, [id]: "" }));
       cargarSaldos(); // refrescar pagado/pendiente
+      window.dispatchEvent(new CustomEvent("pago-registrado")); // refrescar historial
     } else {
       const b = await res.json().catch(() => ({}));
       setPagoMsg({ id, texto: b.error || "Error al registrar", ok: false });

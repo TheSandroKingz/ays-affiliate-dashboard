@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import ComisionesClient from "@/components/admin/ComisionesClient";
+import PaymentHistory from "@/components/admin/PaymentHistory";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { CardsSkeleton } from "@/components/Skeletons";
 
@@ -73,6 +74,7 @@ export default function ComisionesPage() {
         Plan de Comisión por Afiliado
       </h1>
       <ComisionesClient affiliates={affiliates} accessToken={accessToken} />
+      <PaymentHistory accessToken={accessToken} />
     </main>
   );
 }
