@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { eur } from "@/lib/format";
 
 type Affiliate = {
   id: string;
@@ -39,6 +40,23 @@ export default function ComisionesClient({
   const [pagoImporte, setPagoImporte] = useState<Record<string, string>>({});
   const [pagandoId, setPagandoId] = useState<string | null>(null);
   const [pagoMsg, setPagoMsg] = useState<{ id: string; texto: string; ok: boolean } | null>(null);
+  // Saldos del mes por afiliado (gana / pagado) para pagar lo pendiente.
+  const [saldos, setSaldos] = useState<Record<string, { owed: number; paid: number }>>({});
+
+  const cargarSaldos = useCallback(async () => {
+    const res = await fetch("/api/admin/saldos", {
+      cache: "no-store",
+      headers: { Authorization: "Bearer " + accessToken },
+    }).catch(() => null);
+    if (res && res.ok) {
+      const b = await res.json().catch(() => null);
+      if (b && b.saldos) setSaldos(b.saldos);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    cargarSaldos();
+  }, [cargarSaldos]);
 
   async function registrarPago(id: string, userId: string) {
     const importe = Number((pagoImporte[id] ?? "").replace(",", "."));
@@ -60,6 +78,7 @@ export default function ComisionesClient({
     if (res.ok) {
       setPagoMsg({ id, texto: `Pago de €${importe} registrado ✓`, ok: true });
       setPagoImporte((p) => ({ ...p, [id]: "" }));
+      cargarSaldos(); // refrescar pagado/pendiente
     } else {
       const b = await res.json().catch(() => ({}));
       setPagoMsg({ id, texto: b.error || "Error al registrar", ok: false });
@@ -113,7 +132,10 @@ export default function ComisionesClient({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {rows.map((row) => (
+      {rows.map((row) => {
+        const s = saldos[row.userId];
+        const pending = s ? Math.max(0, s.owed - s.paid) : 0;
+        return (
         <div
           key={row.id}
           className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4"
@@ -183,7 +205,20 @@ export default function ComisionesClient({
 
           {/* Registrar pago al afiliado (aparece en su historial de Pagos) */}
           <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-            <p className="text-xs font-medium text-slate-400">Registrar pago</p>
+            <p className="text-xs font-medium text-slate-400">Pago del mes</p>
+            {s && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                <span className="text-slate-300">
+                  Gana <b className="text-white">{eur(s.owed)}</b>
+                </span>
+                <span className="text-slate-300">
+                  Pagado <b className="text-white">{eur(s.paid)}</b>
+                </span>
+                <span className={pending > 0 ? "text-amber-300" : "text-emerald-400"}>
+                  Pendiente <b>{eur(pending)}</b>
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -203,6 +238,16 @@ export default function ComisionesClient({
                 {pagandoId === row.id ? "..." : "Registrar"}
               </button>
             </div>
+            {pending > 0 && (
+              <button
+                onClick={() =>
+                  setPagoImporte((p) => ({ ...p, [row.id]: String(pending) }))
+                }
+                className="self-start text-xs text-emerald-400 hover:text-emerald-300"
+              >
+                Poner lo pendiente ({eur(pending)})
+              </button>
+            )}
             {pagoMsg?.id === row.id && (
               <span
                 className={`text-xs ${
@@ -250,7 +295,8 @@ export default function ComisionesClient({
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
