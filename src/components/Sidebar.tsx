@@ -47,7 +47,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           .from("affiliates")
           .select("avatar_url, display_name")
           .eq("user_id", user.id)
-          .single()
+          .maybeSingle()
           .then(({ data: aff }) => {
             setAvatarUrl(aff?.avatar_url ?? null);
             setDisplayName(aff?.display_name ?? null);
