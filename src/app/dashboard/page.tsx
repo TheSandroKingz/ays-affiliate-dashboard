@@ -10,7 +10,7 @@ import AdminDashboard from "@/components/AdminDashboard";
 import LoadError from "@/components/LoadError";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
-import { Info } from "lucide-react";
+import { Info, TrendingUp, TrendingDown } from "lucide-react";
 
 // El gráfico (Recharts) es pesado; lo cargamos en diferido para que el resto
 // del panel aparezca antes. Reserva la altura para evitar saltos de layout.
@@ -239,6 +239,11 @@ export default function DashboardPage() {
 
   // Total ganado este mes = comisión propia + subafiliados del mes.
   const balance = totals.commission + subCommission;
+  // Crecimiento: comisión de HOY vs AYER (últimos dos días de la serie, que va
+  // del día 1 del mes hasta hoy en orden).
+  const hoyC = dailyData.length ? dailyData[dailyData.length - 1].commission : 0;
+  const ayerC = dailyData.length > 1 ? dailyData[dailyData.length - 2].commission : 0;
+  const deltaHoy = hoyC - ayerC;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
   const sinActividad =
@@ -316,6 +321,26 @@ export default function DashboardPage() {
         </div>
         </div>
         <p className="text-4xl font-bold text-white">{eur(balance)}</p>
+        {!isAdmin && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <span className="text-slate-300">
+              Hoy <b className="text-white">{eur(hoyC)}</b>
+            </span>
+            {deltaHoy === 0 ? (
+              <span className="text-slate-500">· igual que ayer</span>
+            ) : (
+              <span
+                className={`inline-flex items-center gap-0.5 font-semibold ${
+                  deltaHoy > 0 ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {deltaHoy > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {eur(Math.abs(deltaHoy))}
+                <span className="text-slate-500 font-normal">vs ayer</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
