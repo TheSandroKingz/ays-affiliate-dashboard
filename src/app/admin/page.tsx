@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
@@ -311,8 +312,13 @@ export default function AdminStatsPage() {
                     i % 2 === 1 ? "bg-white/[0.03]" : ""
                   } hover:bg-white/10 transition-colors`}
                 >
-                  <td className="border border-white/10 px-4 py-3 text-white whitespace-nowrap">
-                    {row.display_name ?? "—"}
+                  <td className="border border-white/10 px-4 py-3 whitespace-nowrap">
+                    <Link
+                      href={`/admin/afiliado/${row.user_id}`}
+                      className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
+                    >
+                      {row.display_name ?? "—"}
+                    </Link>
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white">
                     {fmt(row.clicks)}

@@ -1,0 +1,242 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { ADMIN_USER_ID } from "@/lib/adminId";
+import { TableSkeleton } from "@/components/Skeletons";
+import LoadError from "@/components/LoadError";
+import { eur } from "@/lib/format";
+
+type DailyRow = {
+  date: string;
+  clicks: number;
+  registrations: number;
+  ftd: number;
+  commission: number;
+};
+
+type Perfil = {
+  display_name: string | null;
+  cpa_spain: number | null;
+  cpa_other: number | null;
+  subaffiliate_percent: number | null;
+  wallet_erc20: string | null;
+  wallet_trc20: string | null;
+  freshaffs_tracking_code: string | null;
+  created_at: string | null;
+};
+
+function fmt(n: number) {
+  return n.toLocaleString("de-DE");
+}
+
+export default function AfiliadoDetallePage() {
+  const params = useParams();
+  const router = useRouter();
+  const userId = String(params.id ?? "");
+
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [daily, setDaily] = useState<DailyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session || session.user.id !== ADMIN_USER_ID) {
+        router.replace("/dashboard");
+        return;
+      }
+      const res = await fetch(
+        "/api/admin/afiliado?userId=" + encodeURIComponent(userId),
+        { headers: { Authorization: "Bearer " + session.access_token } }
+      );
+      if (!res.ok) {
+        setError(true);
+        return;
+      }
+      const body = await res.json();
+      setPerfil(body.perfil);
+      setDaily(Array.isArray(body.daily) ? body.daily : []);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, router]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const totals = useMemo(
+    () =>
+      daily.reduce(
+        (acc, r) => ({
+          clicks: acc.clicks + Number(r.clicks ?? 0),
+          registrations: acc.registrations + Number(r.registrations ?? 0),
+          ftd: acc.ftd + Number(r.ftd ?? 0),
+          commission: acc.commission + Number(r.commission ?? 0),
+        }),
+        { clicks: 0, registrations: 0, ftd: 0, commission: 0 }
+      ),
+    [daily]
+  );
+
+  if (loading) {
+    return <TableSkeleton title="Detalle del afiliado" cols={5} />;
+  }
+
+  if (error || !perfil) {
+    return (
+      <main className="flex flex-col gap-6">
+        <Link
+          href="/admin"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+        >
+          <ArrowLeft size={16} /> Volver
+        </Link>
+        <LoadError onRetry={load} />
+      </main>
+    );
+  }
+
+  const fichas = [
+    { label: "CPA España", value: eur(Number(perfil.cpa_spain ?? 0)) },
+    { label: "CPA Otros", value: eur(Number(perfil.cpa_other ?? 0)) },
+    { label: "% Subafiliados", value: `${Number(perfil.subaffiliate_percent ?? 0)}%` },
+  ];
+
+  return (
+    <main className="flex flex-col gap-5">
+      <Link
+        href="/admin"
+        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+      >
+        <ArrowLeft size={16} /> Volver a Mis Afiliados
+      </Link>
+
+      <h1 className="text-2xl font-semibold text-white">
+        {perfil.display_name ?? "—"}
+      </h1>
+
+      {/* Ficha: CPA y % */}
+      <div className="grid grid-cols-3 gap-3">
+        {fichas.map((f) => (
+          <div
+            key={f.label}
+            className="p-4 rounded-xl border border-white/15 bg-black/40"
+          >
+            <p className="text-xs text-slate-400 mb-1">{f.label}</p>
+            <p className="text-lg font-bold text-white">{f.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Datos de cobro (billeteras) y código */}
+      <div className="flex flex-col gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
+        <p className="text-sm font-medium text-slate-300">Datos de cobro</p>
+        {[
+          { label: "USDT (ERC-20)", value: perfil.wallet_erc20 },
+          { label: "USDT (TRC-20)", value: perfil.wallet_trc20 },
+          { label: "Código de tracking", value: perfil.freshaffs_tracking_code },
+        ].map((w) => (
+          <div key={w.label} className="flex flex-col gap-0.5">
+            <span className="text-xs text-slate-400">{w.label}</span>
+            <span className="text-sm text-white break-all font-mono">
+              {w.value ? w.value : <span className="text-slate-500">Sin definir</span>}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Actividad diaria */}
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-white/10 text-slate-300 text-left">
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">
+                Día
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
+                Clics
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
+                Registros
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
+                FTD
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
+                Comisión
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {daily.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="border border-white/10 px-4 py-6 text-center text-slate-400"
+                >
+                  Todavía no hay actividad.
+                </td>
+              </tr>
+            ) : (
+              daily.map((r, i) => (
+                <tr
+                  key={r.date}
+                  className={`text-white ${
+                    i % 2 === 1 ? "bg-white/[0.03]" : ""
+                  } hover:bg-white/10 transition-colors`}
+                >
+                  <td className="border border-white/10 px-4 py-3">
+                    {new Date(r.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right">
+                    {fmt(r.clicks)}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right">
+                    {fmt(r.registrations)}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right">
+                    {fmt(r.ftd)}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right">
+                    {eur(Number(r.commission))}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+          {daily.length > 0 && (
+            <tfoot>
+              <tr className="bg-white/10 text-white font-semibold">
+                <td className="border border-white/10 px-4 py-3">Total</td>
+                <td className="border border-white/10 px-4 py-3 text-right">
+                  {fmt(totals.clicks)}
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right">
+                  {fmt(totals.registrations)}
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right">
+                  {fmt(totals.ftd)}
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right">
+                  {eur(totals.commission)}
+                </td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </main>
+  );
+}
