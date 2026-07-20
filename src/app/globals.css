@@ -30,6 +30,24 @@ body {
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
+  /* Evita que iOS agrande el texto al girar el móvil. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Tacto tipo app nativa en móvil: sin el destello gris al tocar y taps
+   instantáneos (sin el retardo de "doble toque para hacer zoom"). */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+input,
+select,
+textarea,
+label,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 /* Entrada suave de los bloques del panel (premium, solo CSS). */
