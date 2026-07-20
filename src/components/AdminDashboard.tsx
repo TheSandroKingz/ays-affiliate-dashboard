@@ -92,72 +92,40 @@ export default function AdminDashboard() {
         setRefreshing(false);
         return;
       }
-      // Mes en curso (zona Madrid): el balance se reinicia el día 1, igual que
-      // el panel de cada afiliado y que Estadísticas.
-      const hoyIso = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Europe/Madrid",
-      }).format(new Date());
-      const inicioMesIso = hoyIso.slice(0, 7) + "-01";
-      // Rango del mes pasado (para la comparativa).
-      const [y, m] = hoyIso.split("-").map(Number);
-      const finMesPasado = new Date(Date.UTC(y, m - 1, 1));
-      finMesPasado.setUTCDate(0); // último día del mes anterior
-      const finMesPasadoIso = finMesPasado.toISOString().slice(0, 10);
-      const iniMesPasadoIso = finMesPasadoIso.slice(0, 7) + "-01";
-      const [stRes, pendRes, histRes, prevRes] = await Promise.all([
-        fetch(`/api/admin/stats?from=${inicioMesIso}&to=${hoyIso}`, {
-          cache: "no-store",
-          headers: { Authorization: "Bearer " + session.access_token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        fetch("/api/admin/pending", {
-          cache: "no-store",
-          headers: { Authorization: "Bearer " + session.access_token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        // Sin filtro de fecha = histórico completo (desde el inicio).
-        fetch("/api/admin/stats", {
-          cache: "no-store",
-          headers: { Authorization: "Bearer " + session.access_token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        // Mes pasado (para la comparativa).
-        fetch(`/api/admin/stats?from=${iniMesPasadoIso}&to=${finMesPasadoIso}`, {
-          cache: "no-store",
-          headers: { Authorization: "Bearer " + session.access_token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-      ]);
-      setMesPasado(
-        prevRes?.totals ? Number(prevRes.totals.totalClean ?? 0) : null
-      );
-      setPendientes(Array.isArray(pendRes?.pending) ? pendRes.pending.length : 0);
-      setHistorico(
-        histRes?.totals
-          ? {
-              ftd: Number(histRes.totals.ftd ?? 0),
-              structurePaid: Number(histRes.totals.structurePaid ?? 0),
-              totalClean: Number(histRes.totals.totalClean ?? 0),
-            }
-          : null
-      );
+      // Una sola llamada: mes en curso + mes pasado + histórico + pendientes.
+      const res = await fetch("/api/admin/overview", {
+        cache: "no-store",
+        headers: { Authorization: "Bearer " + session.access_token },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
       // Si la carga de datos falló, mostramos error (no 0€ falsos).
-      if (!stRes || !stRes.totals) {
+      if (!res || !res.month?.totals) {
         setLoadError(true);
       } else {
         // Celebración: si al actualizar hay MÁS FTD que antes, ¡nuevo FTD!
-        const nuevoFtd = Number(stRes.totals.ftd ?? 0);
+        const nuevoFtd = Number(res.month.totals.ftd ?? 0);
         if (prevFtdRef.current !== null && nuevoFtd > prevFtdRef.current) {
           setCelebrar(true);
           setTimeout(() => setCelebrar(false), 4500);
         }
         prevFtdRef.current = nuevoFtd;
-        setTotals(stRes.totals);
-        setDaily(stRes.daily ?? []);
+        setTotals(res.month.totals);
+        setDaily(res.month.daily ?? []);
+        setPendientes(Number(res.pending ?? 0));
+        setHistorico(
+          res.allTime
+            ? {
+                ftd: Number(res.allTime.ftd ?? 0),
+                structurePaid: Number(res.allTime.structurePaid ?? 0),
+                totalClean: Number(res.allTime.totalClean ?? 0),
+              }
+            : null
+        );
+        setMesPasado(
+          typeof res.lastMonthClean === "number" ? res.lastMonthClean : null
+        );
         setLastUpdated(new Date());
       }
     } catch {
