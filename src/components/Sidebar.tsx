@@ -54,7 +54,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   }
 
   const linkClass = (href: string) =>
-    `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+    `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
       pathname === href
         ? "bg-white/10 text-white"
         : "text-slate-300 hover:bg-white/10"
@@ -77,7 +77,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         <button
           onClick={() => setReportsOpen(!reportsOpen)}
-          className="flex items-center justify-between gap-3 px-4 py-2 rounded-lg text-sm font-medium
+          className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
           text-slate-300 hover:bg-white/10"
         >
           <span className="flex items-center gap-3">

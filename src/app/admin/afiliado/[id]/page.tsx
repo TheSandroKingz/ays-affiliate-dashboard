@@ -205,7 +205,7 @@ export default function AfiliadoDetallePage() {
       </div>
 
       {/* Ficha: CPA y % */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {fichas.map((f) => (
           <div
             key={f.label}

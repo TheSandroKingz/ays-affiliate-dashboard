@@ -208,19 +208,18 @@ export default function AdminDashboard() {
         className="animate-in bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]"
         style={{ animationDelay: "0.05s" }}
       >
-        <div className="flex items-center gap-1.5 mb-3">
+        <div className="group relative flex items-center gap-1.5 mb-3">
           <span className="text-sm font-medium text-slate-300">Mi balance</span>
-          <div className="group relative">
             <button
               type="button"
               onClick={() => setShowInfo((v) => !v)}
               aria-label="Ver desglose"
-              className="flex items-center text-slate-400 hover:text-slate-300"
+              className="flex items-center p-2 -m-2 text-slate-400 hover:text-slate-300"
             >
-              <Info size={15} className="cursor-help" />
+              <Info size={16} className="cursor-help" />
             </button>
             <div
-              className={`pointer-events-none absolute left-0 top-6 z-10 w-64 rounded-lg border border-white/20 bg-black/95 backdrop-blur p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
+              className={`pointer-events-none absolute left-0 top-8 z-10 w-64 max-w-[calc(100vw-2.5rem)] rounded-lg border border-white/20 bg-black/95 backdrop-blur p-3 shadow-xl transition-opacity group-hover:opacity-100 ${
                 showInfo ? "opacity-100" : "opacity-0"
               }`}
             >
@@ -237,9 +236,8 @@ export default function AdminDashboard() {
                 <span className="font-semibold text-emerald-400">{eur(totals.totalClean)}</span>
               </div>
             </div>
-          </div>
         </div>
-        <p className="text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
+        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
         {/* Crecimiento de hoy vs ayer */}
         <div className="mt-3 flex items-center gap-2 text-sm">
           <span className="text-slate-300">

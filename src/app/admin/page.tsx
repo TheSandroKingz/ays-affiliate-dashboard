@@ -216,7 +216,7 @@ export default function AdminStatsPage() {
               value={desde}
               max={hasta || hoy}
               onChange={(e) => setDesde(e.target.value)}
-              className="rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -227,7 +227,7 @@ export default function AdminStatsPage() {
               min={desde}
               max={hoy}
               onChange={(e) => setHasta(e.target.value)}
-              className="rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <button
@@ -247,7 +247,7 @@ export default function AdminStatsPage() {
                 setHasta(a.to);
                 load(a.from, a.to);
               }}
-              className="rounded-full border border-white/20 px-3 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+              className="rounded-full border border-white/20 px-3.5 py-1.5 text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
             >
               {a.label}
             </button>
@@ -258,11 +258,11 @@ export default function AdminStatsPage() {
       {/* Margen total de la estructura (el total limpio está en el inicio) */}
       <div className="bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
         <p className="text-sm font-medium text-slate-300 mb-3">Mi margen de afiliados</p>
-        <p className="text-4xl font-bold text-white">{eur(totals.structureMargin)}</p>
+        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.structureMargin)}</p>
       </div>
 
       {/* Tarjetas de actividad de la red */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {affCards.map((card) => (
           <div
             key={card.label}
