@@ -12,7 +12,7 @@ import Confetti from "@/components/Confetti";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
-import { Info, TrendingUp, TrendingDown } from "lucide-react";
+import { Info, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 
 // El gráfico (Recharts) es pesado; lo cargamos en diferido para que el resto
 // del panel aparezca antes. Reserva la altura para evitar saltos de layout.
@@ -37,9 +37,16 @@ function saludo(): string {
   return "Buenas noches";
 }
 
-// Emoji del saludo según la hora (detalle cálido).
+// Emoji del saludo: festivo si es un día especial, si no según la hora.
 function saludoEmoji(): string {
-  const h = new Date().getHours();
+  const d = new Date();
+  const md = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const festivos: Record<string, string> = {
+    "12-24": "🎄", "12-25": "🎄", "12-31": "🎆", "01-01": "🎆",
+    "01-06": "👑", "10-31": "🎃", "02-14": "❤️",
+  };
+  if (festivos[md]) return festivos[md];
+  const h = d.getHours();
   if (h < 6) return "🌙";
   if (h < 14) return "☀️";
   if (h < 21) return "🌤️";
@@ -103,6 +110,7 @@ export default function DashboardPage() {
   const [welcomeCerrado, setWelcomeCerrado] = useState(true);
   const [celebrar, setCelebrar] = useState(false);
   const prevFtdRef = useRef<number | null>(null);
+  const [subioPuesto, setSubioPuesto] = useState<number | null>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -224,6 +232,18 @@ export default function DashboardPage() {
     }
   }, [ftdActual]);
 
+  // Aviso si sube de puesto en el ranking (comparado con la última vez).
+  useEffect(() => {
+    if (!ranking || ranking.total < 2) return;
+    const prev = Number(localStorage.getItem("ultimoPuesto") || 0);
+    localStorage.setItem("ultimoPuesto", String(ranking.puesto));
+    if (prev > 0 && ranking.puesto < prev) {
+      setSubioPuesto(ranking.puesto);
+      const t = setTimeout(() => setSubioPuesto(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [ranking]);
+
   // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
   // una cada 30 min para no inflar con recargas. El admin no cuenta.
   useEffect(() => {
@@ -327,6 +347,20 @@ export default function DashboardPage() {
     return count;
   }, [rawDaily]);
 
+  // Histórico para logros y récord: total de FTD y mejor mes.
+  const hist = useMemo(() => {
+    let total = 0;
+    const porMes = new Map<string, number>();
+    for (const r of rawDaily) {
+      const f = Number(r.ftd ?? 0);
+      total += f;
+      const k = String(r.date).slice(0, 7);
+      porMes.set(k, (porMes.get(k) ?? 0) + f);
+    }
+    const mejorMes = porMes.size ? Math.max(...porMes.values()) : 0;
+    return { total, mejorMes };
+  }, [rawDaily]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -390,6 +424,13 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+      {subioPuesto !== null && (
+        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+          <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
+            <span className="text-xl">⬆️</span> ¡Has subido al #{subioPuesto}!
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
             <h1 className="text-2xl font-semibold text-white">{saludo()}{displayName && <>, <span className="text-emerald-400">{displayName}</span></>} {saludoEmoji()}</h1>
@@ -405,8 +446,9 @@ export default function DashboardPage() {
           <button
             onClick={() => loadStats(true)}
             disabled={refreshing}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
           >
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
             {refreshing ? "Actualizando..." : "Actualizar"}
           </button>
         </div>
@@ -540,17 +582,46 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Racha de FTD y días que quedan de mes (detalles motivadores). */}
-      {!isAdmin && (racha >= 2 || diasRestantesMes > 0) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 -mt-2">
+      {/* Racha, días de mes y récord (detalles pequeños y motivadores). */}
+      {!isAdmin && (racha >= 2 || diasRestantesMes > 0 || hist.mejorMes > 0) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 -mt-3">
           {racha >= 2 && (
-            <span>🔥 <b className="text-slate-200">{racha} días</b> seguidos con FTD</span>
+            <span>🔥 <b className="text-slate-300">{racha} días</b> seguidos con FTD</span>
           )}
           {diasRestantesMes > 0 && (
-            <span>🗓️ Quedan <b className="text-slate-200">{diasRestantesMes} días</b> de mes</span>
+            <span>🗓️ Quedan <b className="text-slate-300">{diasRestantesMes} días</b> de mes</span>
+          )}
+          {hist.mejorMes > 0 && (
+            <span>🏆 Récord: <b className="text-slate-300">{hist.mejorMes} FTD/mes</b></span>
           )}
         </div>
       )}
+
+      {/* Logros desbloqueados (insignias). */}
+      {!isAdmin && (() => {
+        const logros = [
+          { emoji: "🥇", nombre: "Primer FTD", ok: hist.total >= 1 },
+          { emoji: "🏅", nombre: "10 FTD", ok: hist.total >= 10 },
+          { emoji: "⭐", nombre: "25 FTD", ok: hist.total >= 25 },
+          { emoji: "💎", nombre: "50 FTD", ok: hist.total >= 50 },
+          { emoji: "👑", nombre: "100 FTD", ok: hist.total >= 100 },
+          { emoji: "🔥", nombre: "Racha de 7", ok: racha >= 7 },
+        ].filter((l) => l.ok);
+        if (!logros.length) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+            {logros.map((l) => (
+              <span
+                key={l.nombre}
+                title={l.nombre}
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300"
+              >
+                <span aria-hidden>{l.emoji}</span> {l.nombre}
+              </span>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
