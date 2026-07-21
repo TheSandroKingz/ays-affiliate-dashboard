@@ -83,10 +83,31 @@ export async function GET(request: Request) {
   );
   const historico = computeAdminStats(all, user.id, me?.id, adminCpa, struct);
 
+  // Afiliado del mes: el que más FTD te ha generado este mes.
+  const top = [...mes.stats].filter((s) => s.ftd > 0).sort((a, b) => b.ftd - a.ftd)[0];
+  const afiliadoDelMes = top ? { nombre: top.display_name, ftd: top.ftd } : null;
+
+  // Comparativa "a estas alturas": beneficio limpio del mes pasado hasta el
+  // MISMO día del mes (para comparar con el actual de forma justa).
+  const dia = Number(hoy.slice(8, 10));
+  const finMesPasadoDia = Number(finMesPasado.slice(8, 10));
+  const mismoDia = Math.min(dia, finMesPasadoDia);
+  const lastMonthSameDay =
+    inicioMesPasado.slice(0, 7) + "-" + String(mismoDia).padStart(2, "0");
+  const lastMonthToDateClean = computeAdminStats(
+    enRango(inicioMesPasado, lastMonthSameDay),
+    user.id,
+    me?.id,
+    adminCpa,
+    struct
+  ).totals.totalClean;
+
   return NextResponse.json({
     adminCpa,
     seguridad,
     freshbet,
+    afiliadoDelMes,
+    lastMonthToDateClean,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     lastMonthClean: mesPasado.totals.totalClean,
     allTime: {

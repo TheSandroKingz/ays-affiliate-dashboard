@@ -80,7 +80,10 @@ export default function AdminDashboard() {
     alerta: boolean;
   } | null>(null);
   const [mesPasado, setMesPasado] = useState<number | null>(null);
+  const [afiliadoDelMes, setAfiliadoDelMes] = useState<{ nombre: string | null; ftd: number } | null>(null);
+  const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
+  const [hito, setHito] = useState<number | null>(null);
   const prevFtdRef = useRef<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -109,6 +112,7 @@ export default function AdminDashboard() {
         setLoadError(true);
       } else {
         // Celebración: si al actualizar hay MÁS FTD que antes, ¡nuevo FTD!
+        const esPrimeraCarga = prevFtdRef.current === null;
         const nuevoFtd = Number(res.month.totals.ftd ?? 0);
         if (prevFtdRef.current !== null && nuevoFtd > prevFtdRef.current) {
           setCelebrar(true);
@@ -120,9 +124,33 @@ export default function AdminDashboard() {
         setPendientes(Number(res.pending ?? 0));
         setSeguridad(res.seguridad ?? null);
         setFreshbet(res.freshbet ?? null);
+        setAfiliadoDelMes(res.afiliadoDelMes ?? null);
+        setLastMonthToDate(
+          typeof res.lastMonthToDateClean === "number" ? res.lastMonthToDateClean : null
+        );
         setMesPasado(
           typeof res.lastMonthClean === "number" ? res.lastMonthClean : null
         );
+
+        // Hitos de beneficio: confeti al pasar 100/250/500/1000... por primera
+        // vez este mes (recordado en localStorage para no repetir).
+        const limpio = Number(res.month.totals.totalClean ?? 0);
+        const hitos = [100, 250, 500, 1000, 2000, 3000, 5000, 10000];
+        const mesKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
+          .format(new Date())
+          .slice(0, 7);
+        const yaKey = "hitoBeneficio:" + mesKey;
+        const yaCelebrado = Number(localStorage.getItem(yaKey) || 0);
+        const alcanzado = [...hitos].reverse().find((h) => limpio >= h) ?? 0;
+        if (alcanzado > yaCelebrado) {
+          localStorage.setItem(yaKey, String(alcanzado));
+          // No celebramos en la primera carga si ya venía superado (evita confeti
+          // al abrir): solo cuando el hito se cruza estando ya en la página.
+          if (!esPrimeraCarga) {
+            setHito(alcanzado);
+            setTimeout(() => setHito(null), 6000);
+          }
+        }
         setLastUpdated(new Date());
       }
     } catch {
@@ -200,6 +228,16 @@ export default function AdminDashboard() {
           <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
             <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
               <span className="text-xl">🎉</span> ¡Nuevo FTD!
+            </div>
+          </div>
+        </>
+      )}
+      {hito !== null && (
+        <>
+          <Confetti />
+          <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+            <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
+              <span className="text-xl">🏆</span> ¡Has pasado los {eur(hito)} este mes!
             </div>
           </div>
         </>
@@ -392,7 +430,35 @@ export default function AdminDashboard() {
             <span className="text-slate-500">que el mes pasado</span>
           </div>
         )}
+        {/* Comparativa justa: a estas alturas del mes pasado (mismo día). */}
+        {lastMonthToDate !== null && lastMonthToDate > 0 && (
+          <div className="mt-1 text-[11px] text-slate-500">
+            {(() => {
+              const d = totals.totalClean - lastMonthToDate;
+              const mejor = d >= 0;
+              return (
+                <>
+                  <span className={mejor ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
+                    {mejor ? "▲" : "▼"} {eur(Math.abs(d))}
+                  </span>{" "}
+                  que el mes pasado a estas alturas
+                </>
+              );
+            })()}
+          </div>
+        )}
       </div>
+
+      {/* Afiliado del mes (quién más te ha generado este mes). */}
+      {afiliadoDelMes && afiliadoDelMes.nombre && (
+        <div className="animate-in inline-flex items-center gap-2 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-sm">
+          <span aria-hidden>👑</span>
+          <span className="text-amber-100">
+            Afiliado del mes: <b className="text-white">{afiliadoDelMes.nombre}</b>{" "}
+            <span className="text-slate-400">({afiliadoDelMes.ftd} FTD)</span>
+          </span>
+        </div>
+      )}
 
       {/* Lo que hacen mis afiliados — tarjetas clicables que controlan el gráfico */}
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
