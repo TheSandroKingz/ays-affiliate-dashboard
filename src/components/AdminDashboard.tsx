@@ -79,7 +79,6 @@ export default function AdminDashboard() {
     clics7: number;
     alerta: boolean;
   } | null>(null);
-  const [afiliadoDelMes, setAfiliadoDelMes] = useState<{ nombre: string | null; ftd: number } | null>(null);
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
   const [hito, setHito] = useState<number | null>(null);
@@ -123,7 +122,6 @@ export default function AdminDashboard() {
         setPendientes(Number(res.pending ?? 0));
         setSeguridad(res.seguridad ?? null);
         setFreshbet(res.freshbet ?? null);
-        setAfiliadoDelMes(res.afiliadoDelMes ?? null);
         setLastMonthToDate(
           typeof res.lastMonthToDateClean === "number" ? res.lastMonthToDateClean : null
         );
@@ -434,16 +432,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Afiliado del mes (quién más te ha generado este mes). */}
-      {afiliadoDelMes && afiliadoDelMes.nombre && (
-        <div className="animate-in inline-flex items-center gap-2 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-sm">
-          <span aria-hidden>👑</span>
-          <span className="text-amber-100">
-            Afiliado del mes: <b className="text-white">{afiliadoDelMes.nombre}</b>{" "}
-            <span className="text-slate-400">({afiliadoDelMes.ftd} FTD)</span>
-          </span>
-        </div>
-      )}
 
       {/* Lo que hacen mis afiliados — tarjetas clicables que controlan el gráfico */}
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
