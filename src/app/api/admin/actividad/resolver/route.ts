@@ -105,14 +105,19 @@ export async function POST(request: Request) {
     p_commission: commission,
   });
   if (incErr) {
-    // El incremento falló: revertimos a "held" para poder reintentar (no se
-    // queda como contado sin haber sumado).
-    await supabaseAdmin
-      .from("postback_events")
-      .update({ status: "held", counted: false, commission: 0 })
-      .eq("id", id)
-      .then(() => {}, () => {});
-    return NextResponse.json({ error: incErr.message }, { status: 500 });
+    // IMPORTANTE: NO revertimos a "held". El RPC pudo haber confirmado el
+    // incremento aunque devolviera error (timeout / respuesta perdida). Si lo
+    // revirtiéramos, un segundo "Contar" volvería a sumar el dinero DOS VECES.
+    // Lo dejamos como "counted" (el candado atómico ya impide reintentos): en
+    // el peor caso queda un FTD sin sumar (nunca un doble pago). Se avisa para
+    // revisarlo a mano.
+    return NextResponse.json(
+      {
+        error:
+          "Marcado como contado, pero el incremento devolvió error. Revisa el balance del afiliado antes de nada (no vuelvas a pulsar Contar).",
+      },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true, accion, commission });

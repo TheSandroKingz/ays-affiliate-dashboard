@@ -79,7 +79,6 @@ export default function AdminDashboard() {
     clics7: number;
     alerta: boolean;
   } | null>(null);
-  const [mesPasado, setMesPasado] = useState<number | null>(null);
   const [afiliadoDelMes, setAfiliadoDelMes] = useState<{ nombre: string | null; ftd: number } | null>(null);
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
@@ -127,9 +126,6 @@ export default function AdminDashboard() {
         setAfiliadoDelMes(res.afiliadoDelMes ?? null);
         setLastMonthToDate(
           typeof res.lastMonthToDateClean === "number" ? res.lastMonthToDateClean : null
-        );
-        setMesPasado(
-          typeof res.lastMonthClean === "number" ? res.lastMonthClean : null
         );
 
         // Hitos de beneficio: confeti al pasar 100/250/500/1000... por primera
@@ -211,13 +207,17 @@ export default function AdminDashboard() {
   ayer.setDate(ayer.getDate() - 1);
   const ayerIso = fechaMadrid(ayer);
   const hoyE = daily.find((d) => d.date === hoyIso)?.earnings ?? 0;
-  const ayerE = daily.find((d) => d.date === ayerIso)?.earnings ?? 0;
+  const ayerRow = daily.find((d) => d.date === ayerIso);
+  const ayerE = ayerRow?.earnings ?? 0;
   const delta = hoyE - ayerE;
+  // Solo comparamos con ayer si ayer está en los datos del mes (no el día 1).
+  const hayAyer = !!ayerRow;
 
-  // Comparativa del balance del mes vs el mes pasado (%).
+  // Comparativa JUSTA: mes actual vs el mes pasado HASTA EL MISMO DÍA (no contra
+  // el mes pasado completo, que a mitad de mes daría siempre negativo).
   const pctMes =
-    mesPasado && mesPasado > 0
-      ? ((totals.totalClean - mesPasado) / mesPasado) * 100
+    lastMonthToDate && lastMonthToDate > 0
+      ? ((totals.totalClean - lastMonthToDate) / lastMonthToDate) * 100
       : null;
 
   return (
@@ -403,21 +403,23 @@ export default function AdminDashboard() {
           <span className="text-slate-300">
             Hoy <b className="text-white">{eur(hoyE)}</b>
           </span>
-          {delta === 0 ? (
-            <span className="text-slate-500">· igual que ayer</span>
-          ) : (
-            <span
-              className={`inline-flex items-center gap-0.5 font-semibold ${
-                delta > 0 ? "text-emerald-400" : "text-red-400"
-              }`}
-            >
-              {delta > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-              {eur(Math.abs(delta))}
-              <span className="text-slate-500 font-normal">vs ayer</span>
-            </span>
-          )}
+          {hayAyer &&
+            (delta === 0 ? (
+              <span className="text-slate-500">· igual que ayer</span>
+            ) : (
+              <span
+                className={`inline-flex items-center gap-0.5 font-semibold ${
+                  delta > 0 ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {delta > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {eur(Math.abs(delta))}
+                <span className="text-slate-500 font-normal">vs ayer</span>
+              </span>
+            ))}
         </div>
-        {pctMes !== null && (
+        {/* Comparativa justa: a estas alturas del mes pasado (mismo día). */}
+        {lastMonthToDate !== null && lastMonthToDate > 0 && pctMes !== null && (
           <div className="mt-1 text-xs">
             <span
               className={`inline-flex items-center gap-0.5 font-semibold ${
@@ -425,26 +427,9 @@ export default function AdminDashboard() {
               }`}
             >
               {pctMes >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {Math.abs(pctMes).toLocaleString("de-DE", { maximumFractionDigits: 0 })}%
+              {eur(Math.abs(totals.totalClean - lastMonthToDate))}
             </span>{" "}
-            <span className="text-slate-500">que el mes pasado</span>
-          </div>
-        )}
-        {/* Comparativa justa: a estas alturas del mes pasado (mismo día). */}
-        {lastMonthToDate !== null && lastMonthToDate > 0 && (
-          <div className="mt-1 text-[11px] text-slate-500">
-            {(() => {
-              const d = totals.totalClean - lastMonthToDate;
-              const mejor = d >= 0;
-              return (
-                <>
-                  <span className={mejor ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-                    {mejor ? "▲" : "▼"} {eur(Math.abs(d))}
-                  </span>{" "}
-                  que el mes pasado a estas alturas
-                </>
-              );
-            })()}
+            <span className="text-slate-500">que el mes pasado a estas alturas</span>
           </div>
         )}
       </div>

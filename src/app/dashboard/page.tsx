@@ -107,6 +107,7 @@ export default function DashboardPage() {
   const [ranking, setRanking] = useState<{ puesto: number; total: number } | null>(null);
   // Histórico crudo (todas las fechas) para meta, mejores días y aviso del día 1.
   const [rawDaily, setRawDaily] = useState<DailyPoint[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [welcomeCerrado, setWelcomeCerrado] = useState(true);
   const [celebrar, setCelebrar] = useState(false);
   const prevFtdRef = useRef<number | null>(null);
@@ -126,6 +127,8 @@ export default function DashboardPage() {
         setRefreshing(false);
         return;
       }
+
+      setUserId(user.id);
 
       // Cuenta de admin: tiene su propio panel dedicado (AdminDashboard).
       if (user.id === ADMIN_USER_ID) {
@@ -221,26 +224,29 @@ export default function DashboardPage() {
     loadStats();
   }, [loadStats]);
 
-  // Bienvenida solo la primera vez (hasta que la cierre).
+  // Bienvenida solo la primera vez (hasta que la cierre). Clave por usuario.
   useEffect(() => {
-    setWelcomeCerrado(localStorage.getItem("welcomeCerrado") === "1");
-  }, []);
+    if (!userId) return;
+    setWelcomeCerrado(localStorage.getItem("welcomeCerrado:" + userId) === "1");
+  }, [userId]);
   const cerrarWelcome = () => {
-    localStorage.setItem("welcomeCerrado", "1");
+    if (userId) localStorage.setItem("welcomeCerrado:" + userId, "1");
     setWelcomeCerrado(true);
   };
 
-  // Aviso si sube de puesto en el ranking (comparado con la última vez).
+  // Aviso si sube de puesto en el ranking (comparado con la última vez). Clave
+  // por usuario (para no cruzar avisos entre cuentas en un mismo dispositivo).
   useEffect(() => {
-    if (!ranking || ranking.total < 2) return;
-    const prev = Number(localStorage.getItem("ultimoPuesto") || 0);
-    localStorage.setItem("ultimoPuesto", String(ranking.puesto));
+    if (!ranking || ranking.total < 2 || !userId) return;
+    const key = "ultimoPuesto:" + userId;
+    const prev = Number(localStorage.getItem(key) || 0);
+    localStorage.setItem(key, String(ranking.puesto));
     if (prev > 0 && ranking.puesto < prev) {
       setSubioPuesto(ranking.puesto);
       const t = setTimeout(() => setSubioPuesto(null), 5000);
       return () => clearTimeout(t);
     }
-  }, [ranking]);
+  }, [ranking, userId]);
 
   // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
   // una cada 30 min para no inflar con recargas. El admin no cuenta.
@@ -250,9 +256,10 @@ export default function DashboardPage() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session || session.user.id === ADMIN_USER_ID) return;
-      const last = Number(localStorage.getItem("visitPing") || 0);
+      const key = "visitPing:" + session.user.id;
+      const last = Number(localStorage.getItem(key) || 0);
       if (Date.now() - last < 30 * 60 * 1000) return;
-      localStorage.setItem("visitPing", String(Date.now()));
+      localStorage.setItem(key, String(Date.now()));
       fetch("/api/account/visita", {
         method: "POST",
         headers: { Authorization: "Bearer " + session.access_token },
@@ -556,19 +563,21 @@ export default function DashboardPage() {
             <span className="text-slate-300">
               Hoy <b className="text-white">{eur(hoyC)}</b>
             </span>
-            {deltaHoy === 0 ? (
-              <span className="text-slate-500">· igual que ayer</span>
-            ) : (
-              <span
-                className={`inline-flex items-center gap-0.5 font-semibold ${
-                  deltaHoy > 0 ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {deltaHoy > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                {eur(Math.abs(deltaHoy))}
-                <span className="text-slate-500 font-normal">vs ayer</span>
-              </span>
-            )}
+            {/* Solo comparamos con ayer si ayer está en el mes (no el día 1). */}
+            {dailyData.length > 1 &&
+              (deltaHoy === 0 ? (
+                <span className="text-slate-500">· igual que ayer</span>
+              ) : (
+                <span
+                  className={`inline-flex items-center gap-0.5 font-semibold ${
+                    deltaHoy > 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {deltaHoy > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {eur(Math.abs(deltaHoy))}
+                  <span className="text-slate-500 font-normal">vs ayer</span>
+                </span>
+              ))}
           </div>
         )}
         {mostrarProyeccion && (
