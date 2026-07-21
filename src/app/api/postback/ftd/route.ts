@@ -75,8 +75,11 @@ export async function GET(request: Request) {
         // Todo FTD emparejado (por trackingcode o por afp) acredita el CPA del
         // afiliado dueño de ese código/afp. Así tu propio tráfico (afp) también
         // cuenta como tu comisión, igual que el de tus afiliados.
+        // País desconocido (isocountry vacío) → tarifa de España por defecto
+        // (casino español), no la de "otros países".
+        const esOtroPais = isocountry && isocountry !== "ES";
         const commission = Number(
-          (isocountry === "ES" ? target.cpa_spain : target.cpa_other) ?? 0
+          (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
         );
 
         const { error } = await supabaseAdmin.rpc("increment_daily_stats", {

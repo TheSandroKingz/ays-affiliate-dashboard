@@ -101,9 +101,16 @@ export async function reactivarSiConcedido(): Promise<void> {
   if (!pushSoportado() || !VAPID) return;
   if (Notification.permission !== "granted") return;
   try {
-    if (sessionStorage.getItem("pushSincronizado") === "1") return;
+    // Clave por USUARIO: si en la misma pestaña entra otra cuenta, se vuelve a
+    // registrar su dispositivo (no se queda atado al usuario anterior).
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const key = "pushSincronizado:" + session.user.id;
+    if (sessionStorage.getItem(key) === "1") return;
     await activarPush();
-    sessionStorage.setItem("pushSincronizado", "1");
+    sessionStorage.setItem(key, "1");
   } catch {
     /* silencioso */
   }

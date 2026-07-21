@@ -9,8 +9,10 @@ import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
 import { LOGROS, calcularStatsLogros, type LogroStats } from "@/lib/logros";
+import { useProfile } from "@/components/DashboardProvider";
 
 export default function AccountPage() {
+  const { birthdate: perfilBirthdate } = useProfile();
   const [activeTab, setActiveTab] = useState<
     "personal" | "cobro" | "logros" | "seguridad" | "privacidad"
   >("personal");
@@ -54,8 +56,9 @@ export default function AccountPage() {
       }
       setEmail(user.email ?? "");
 
-      // Las 3 consultas son independientes: en paralelo (más rápido).
-      const [perfilRes, filasRes, bRes] = await Promise.all([
+      // Dos consultas en paralelo (la fecha de nacimiento ya viene del perfil
+      // compartido, así no repetimos la misma fila de affiliates).
+      const [perfilRes, filasRes] = await Promise.all([
         supabase
           .from("affiliates")
           .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
@@ -65,11 +68,6 @@ export default function AccountPage() {
           .from("affiliate_daily_stats")
           .select("date, ftd, registrations")
           .eq("user_id", user.id),
-        supabase
-          .from("affiliates")
-          .select("birthdate")
-          .eq("user_id", user.id)
-          .maybeSingle(),
       ]);
 
       const data = perfilRes.data;
@@ -82,12 +80,18 @@ export default function AccountPage() {
         setWalletTrc20(data.wallet_trc20 ?? "");
       }
       setLogroStats(calcularStatsLogros(filasRes.data ?? []));
-      if (bRes.data?.birthdate) setBirthdate(String(bRes.data.birthdate).slice(0, 10));
 
       setLoading(false);
     }
     loadData();
-  }, []);async function uploadAvatar(file: File) {
+  }, []);
+
+  // Fecha de nacimiento inicial desde el perfil compartido (sin consulta extra).
+  useEffect(() => {
+    if (perfilBirthdate) setBirthdate(String(perfilBirthdate).slice(0, 10));
+  }, [perfilBirthdate]);
+
+  async function uploadAvatar(file: File) {
     setUploading(true);
     const {
       data: { session },

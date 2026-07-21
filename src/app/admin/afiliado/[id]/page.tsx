@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -95,8 +95,12 @@ export default function AfiliadoDetallePage() {
     }
   }
 
+  const reqRef = useRef(0);
   const load = useCallback(
     async (per: "mes" | "todo", isRefresh = false) => {
+      // Token de petición: descartamos respuestas obsoletas al cambiar de
+      // periodo rápido (para no mostrar datos del periodo equivocado).
+      const reqId = ++reqRef.current;
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setError(false);
@@ -121,6 +125,7 @@ export default function AfiliadoDetallePage() {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
         });
+      if (reqId !== reqRef.current) return; // respuesta obsoleta
       if (!res.ok) {
         setError(true);
         return;
@@ -131,10 +136,12 @@ export default function AfiliadoDetallePage() {
       setVisitas(body.visitas ?? null);
       setLastUpdated(new Date());
     } catch {
-      setError(true);
+      if (reqId === reqRef.current) setError(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (reqId === reqRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [userId, router]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Calendar, ChevronDown } from "lucide-react";
@@ -84,8 +84,10 @@ export default function AdminStatsPage() {
     dir: "desc",
   });
 
+  const reqRef = useRef(0);
   const load = useCallback(
     async (from: string, to: string) => {
+      const reqId = ++reqRef.current;
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -108,6 +110,7 @@ export default function AdminStatsPage() {
           headers: { Authorization: "Bearer " + session.access_token },
         });
         const body = await res.json();
+        if (reqId !== reqRef.current) return; // respuesta obsoleta: descartar
         if (!res.ok) {
           setError(body.error || "Error al cargar");
         } else {
@@ -117,10 +120,12 @@ export default function AdminStatsPage() {
           setLastUpdated(new Date());
         }
       } catch {
-        setError("No se pudieron cargar los datos.");
+        if (reqId === reqRef.current) setError("No se pudieron cargar los datos.");
       } finally {
-        setLoaded(true);
-        setRefreshing(false);
+        if (reqId === reqRef.current) {
+          setLoaded(true);
+          setRefreshing(false);
+        }
       }
     },
     [router]

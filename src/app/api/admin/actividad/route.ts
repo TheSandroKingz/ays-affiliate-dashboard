@@ -58,7 +58,9 @@ export async function GET(request: Request) {
   // el candado; si aparece, hay que revisarlo ya).
   const cnt = new Map<string, number>();
   for (const r of rows) {
-    if (r.event_type === "ftd" && r.counted && r.player_id) {
+    // Solo los contados AUTOMÁTICAMENTE (status "counted"); los aprobados a mano
+    // quedan "resolved" y no cuentan como doble.
+    if (r.event_type === "ftd" && r.status === "counted" && r.player_id) {
       cnt.set(r.player_id, (cnt.get(r.player_id) ?? 0) + 1);
     }
   }

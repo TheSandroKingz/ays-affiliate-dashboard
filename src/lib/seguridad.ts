@@ -84,9 +84,12 @@ export async function resumenSeguridad(): Promise<ResumenSeguridad> {
 
     const retenidos = data.filter((r) => r.status === "held").length;
 
+    // Solo contamos como "doble" los FTD contados AUTOMÁTICAMENTE (status
+    // "counted"). Los aprobados a mano por el admin quedan como "resolved" y no
+    // cuentan (si no, cada aprobación de un retenido daría falsa alarma).
     const cnt = new Map<string, number>();
     for (const r of data) {
-      if (r.counted && r.player_id) {
+      if (r.status === "counted" && r.player_id) {
         cnt.set(r.player_id, (cnt.get(r.player_id) ?? 0) + 1);
       }
     }

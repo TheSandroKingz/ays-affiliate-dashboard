@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -45,7 +45,12 @@ export default function MediaReportPage() {
   const [agrupar, setAgrupar] = useState<"dia" | "mes">("dia");
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
+  // Token de petición: solo aplicamos la respuesta de la ÚLTIMA llamada, para
+  // que al cambiar de rango rápido una respuesta lenta no pise a la buena.
+  const reqRef = useRef(0);
+
   async function fetchData(from: string, to: string, isRefresh = false) {
+    const reqId = ++reqRef.current;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setLoadError(false);
@@ -55,8 +60,10 @@ export default function MediaReportPage() {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) {
-        setLoading(false);
-        setRefreshing(false);
+        if (reqId === reqRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
         return;
       }
       const { data, error } = await supabase
@@ -66,13 +73,16 @@ export default function MediaReportPage() {
         .gte("date", from)
         .lte("date", to)
         .order("date", { ascending: false });
+      if (reqId !== reqRef.current) return; // respuesta obsoleta: la descartamos
       if (error) setLoadError(true);
       else setRows((data as DailyRow[]) ?? []);
     } catch {
-      setLoadError(true);
+      if (reqId === reqRef.current) setLoadError(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (reqId === reqRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 

@@ -86,7 +86,8 @@ export type EstadoEvento =
   | "no_match"
   | "error"
   | "held"
-  | "discarded";
+  | "discarded"
+  | "resolved"; // FTD retenido aprobado a mano por el admin (dinero sí sumado)
 
 // ¿Este jugador YA tiene un FTD CONTADO? Salvaguarda extra anti-doble-pago,
 // independiente del candado `postback_dedup`: si por lo que sea el candado no

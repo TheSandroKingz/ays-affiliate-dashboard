@@ -73,12 +73,10 @@ export default function PaymentHistory({ accessToken }: { accessToken: string })
               pagos.map((p, i) => (
                 <tr key={p.id} className={`text-white ${i % 2 === 1 ? "bg-white/[0.03]" : ""}`}>
                   <td className="border border-white/10 px-4 py-3 whitespace-nowrap text-slate-300">
-                    {new Date(p.date).toLocaleString("es-ES", {
+                    {new Date(String(p.date).slice(0, 10) + "T00:00:00").toLocaleDateString("es-ES", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
                     })}
                   </td>
                   <td className="border border-white/10 px-4 py-3 whitespace-nowrap">

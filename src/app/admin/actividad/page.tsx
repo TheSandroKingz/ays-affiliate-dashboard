@@ -13,7 +13,7 @@ type Evento = {
   id: number;
   created_at: string;
   event_type: "registration" | "ftd" | "commission";
-  status: "counted" | "duplicate" | "no_match" | "error" | "held" | "discarded";
+  status: "counted" | "duplicate" | "no_match" | "error" | "held" | "discarded" | "resolved";
   counted: boolean;
   commission: number | null;
   player_id: string | null;
@@ -32,6 +32,8 @@ const TIPO: Record<string, string> = {
 function estadoBadge(e: Evento) {
   if (e.status === "counted")
     return { label: "Contado", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40" };
+  if (e.status === "resolved")
+    return { label: "Contado (aprobado)", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40" };
   if (e.status === "duplicate")
     return { label: "Duplicado", cls: "bg-amber-500/20 text-amber-300 border-amber-400/40" };
   if (e.status === "held")

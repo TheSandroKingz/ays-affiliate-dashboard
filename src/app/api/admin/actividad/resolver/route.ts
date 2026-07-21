@@ -65,16 +65,21 @@ export async function POST(request: Request) {
     .select("cpa_spain, cpa_other")
     .eq("user_id", ev.matched_user_id)
     .maybeSingle();
+  // País desconocido → tarifa España por defecto (casino español).
+  const esOtroPais = ev.isocountry && ev.isocountry !== "ES";
   const commission = Number(
-    (ev.isocountry === "ES" ? aff?.cpa_spain : aff?.cpa_other) ?? 0
+    (esOtroPais ? aff?.cpa_other : aff?.cpa_spain) ?? 0
   );
 
   // RECLAMO ATÓMICO: marcamos "counted" solo si SIGUE en "held". Este UPDATE es
   // atómico en Postgres, así que si se pulsa dos veces (o hay dos pestañas),
   // solo UNA gana y solo se suma UNA vez. Si no gana ninguna fila, ya se resolvió.
+  // Estado "resolved" (no "counted") para distinguir un FTD que TÚ aprobaste
+  // manualmente de un conteo automático. Así el detector de "doble pago" no lo
+  // confunde con una duplicación real (el dinero sí se suma: counted = true).
   const { data: claimed, error: claimErr } = await supabaseAdmin
     .from("postback_events")
-    .update({ status: "counted", counted: true, commission })
+    .update({ status: "resolved", counted: true, commission })
     .eq("id", id)
     .eq("status", "held")
     .select("id");

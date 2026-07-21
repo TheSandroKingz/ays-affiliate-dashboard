@@ -24,7 +24,13 @@ export async function POST(request: Request) {
     user_id: userId,
     amount: amt,
     status: "paid",
-    date: new Date().toISOString(),
+    // Fecha CONTABLE en zona Madrid (YYYY-MM-DD), coherente con el filtro
+    // mensual de saldos. Con la hora UTC un pago de madrugada del día 1 caía en
+    // el mes anterior y dejaba el pendiente inflado. La hora exacta queda en
+    // created_at.
+    date: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date()),
   });
 
   if (error) {
