@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { saludFreshbet } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
+import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -72,6 +73,66 @@ export async function GET(request: Request) {
     }
   } catch {
     /* nunca romper el cron */
+  }
+
+  // Resumen de AYER al admin (solo si hubo actividad). Blindado.
+  try {
+    const [ty, tm, td] = today.split("-").map(Number);
+    const ad = new Date(Date.UTC(ty, tm - 1, td));
+    ad.setUTCDate(ad.getUTCDate() - 1);
+    const ayer = ad.toISOString().slice(0, 10);
+
+    const { data: me } = await supabaseAdmin
+      .from("affiliates")
+      .select("id, cpa_spain")
+      .eq("user_id", ADMIN_USER_ID)
+      .maybeSingle();
+    const { data: structure } = await supabaseAdmin
+      .from("affiliates")
+      .select("id, user_id, display_name, referred_by, subaffiliate_percent")
+      .neq("user_id", ADMIN_USER_ID);
+    const ids = [ADMIN_USER_ID, ...(structure ?? []).map((s) => s.user_id)];
+    const { data: dayRows } = await supabaseAdmin
+      .from("affiliate_daily_stats")
+      .select("user_id, date, commission, clicks, registrations, ftd")
+      .in("user_id", ids)
+      .eq("date", ayer);
+    const r = computeAdminStats(
+      (dayRows ?? []) as DailyRow[],
+      ADMIN_USER_ID,
+      me?.id,
+      Number(me?.cpa_spain ?? 0),
+      (structure ?? []) as StructRow[]
+    );
+    if (r.totals.ftd > 0 || r.totals.registrations > 0) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "📊 Resumen de ayer",
+        body: `${r.totals.ftd} FTD · +${Math.round(r.totals.totalClean)}€ limpio · ${r.totals.registrations} registros`,
+        url: "/admin",
+      });
+    }
+  } catch {
+    /* nunca romper el cron */
+  }
+
+  // Aviso de cumpleaños de afiliados (hoy). Blindado.
+  try {
+    const md = today.slice(5); // MM-DD
+    const { data: cumples } = await supabaseAdmin
+      .from("affiliates")
+      .select("display_name, birthdate")
+      .not("birthdate", "is", null);
+    for (const c of cumples ?? []) {
+      if (String(c.birthdate).slice(5) === md) {
+        await enviarPush(ADMIN_USER_ID, {
+          title: "🎂 Cumpleaños",
+          body: `Hoy cumple ${c.display_name}. ¡Felicítale!`,
+          url: "/admin",
+        });
+      }
+    }
+  } catch {
+    /* columna no disponible o sin datos */
   }
 
   return NextResponse.json({ inserted: rows.length, date: today, freshbetAlerta });
