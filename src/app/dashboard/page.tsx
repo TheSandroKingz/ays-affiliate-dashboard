@@ -88,6 +88,9 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [ranking, setRanking] = useState<{ puesto: number; total: number } | null>(null);
+  // Histórico crudo (todas las fechas) para meta, mejores días y aviso del día 1.
+  const [rawDaily, setRawDaily] = useState<DailyPoint[]>([]);
+  const [welcomeCerrado, setWelcomeCerrado] = useState(true);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -142,6 +145,7 @@ export default function DashboardPage() {
       }
 
       setDailyData(fillMissingDays(dailyRes.data ?? []));
+      setRawDaily((dailyRes.data ?? []) as DailyPoint[]);
 
       const subRows: { commission: number }[] = subRes?.rows ?? [];
       const subTotal = subRows.reduce(
@@ -180,6 +184,15 @@ export default function DashboardPage() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  // Bienvenida solo la primera vez (hasta que la cierre).
+  useEffect(() => {
+    setWelcomeCerrado(localStorage.getItem("welcomeCerrado") === "1");
+  }, []);
+  const cerrarWelcome = () => {
+    localStorage.setItem("welcomeCerrado", "1");
+    setWelcomeCerrado(true);
+  };
 
   // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
   // una cada 30 min para no inflar con recargas. El admin no cuenta.
@@ -250,6 +263,35 @@ export default function DashboardPage() {
     [totals, isAdmin]
   );
 
+  // Mes anterior (para la meta "superar el mes pasado" y el aviso del día 1).
+  const mesAnterior = useMemo(() => {
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+    const [y, m] = hoy.split("-").map(Number);
+    const prev = new Date(Date.UTC(y, m - 2, 1)); // mes anterior
+    const key = prev.toISOString().slice(0, 7);
+    let commission = 0, ftd = 0;
+    for (const r of rawDaily) {
+      if (String(r.date).slice(0, 7) === key) {
+        commission += Number(r.commission ?? 0);
+        ftd += Number(r.ftd ?? 0);
+      }
+    }
+    return { commission, ftd };
+  }, [rawDaily]);
+
+  // Mejor día de la semana por clics (para saber cuándo publicar).
+  const mejorDia = useMemo(() => {
+    const nombres = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+    const acc = [0, 0, 0, 0, 0, 0, 0];
+    for (const r of rawDaily) {
+      const d = new Date(String(r.date).slice(0, 10) + "T00:00:00Z");
+      acc[d.getUTCDay()] += Number(r.clicks ?? 0);
+    }
+    let best = 0, bi = -1;
+    acc.forEach((c, i) => { if (c > best) { best = c; bi = i; } });
+    return bi >= 0 ? { nombre: nombres[bi], clics: best } : null;
+  }, [rawDaily]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -294,6 +336,15 @@ export default function DashboardPage() {
     totals.registrations === 0 &&
     totals.ftd === 0;
 
+  // Meta del mes: superar los FTD del mes pasado (o 5 si es tu primer mes).
+  const ftdMes = totals.ftd;
+  const metaFtd = mesAnterior.ftd > 0 ? mesAnterior.ftd : 5;
+  const metaSuperada = ftdMes >= metaFtd;
+  const metaPct = metaFtd > 0 ? Math.min(100, Math.round((ftdMes / metaFtd) * 100)) : 0;
+  // Aviso primeros días de mes: el balance se reinició; lo anterior se paga aparte.
+  const diaDelMes = Number(hoyISO.slice(8, 10));
+  const mostrarAvisoMes = !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -317,6 +368,38 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Bienvenida (solo la primera vez). Explica lo básico sin agobiar. */}
+      {!isAdmin && !welcomeCerrado && (
+        <div className="animate-in relative bg-emerald-500/10 border border-emerald-400/40 rounded-xl p-5 pr-10">
+          <button
+            onClick={cerrarWelcome}
+            aria-label="Cerrar"
+            className="absolute top-3 right-3 text-slate-400 hover:text-white text-lg leading-none"
+          >
+            ×
+          </button>
+          <p className="text-white font-semibold mb-1">¡Bienvenido/a{displayName ? `, ${displayName}` : ""}! 👋</p>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            Comparte tu enlace y ganas por cada jugador que se registre y haga su
+            primer depósito. Encuentra tu enlace en{" "}
+            <b className="text-emerald-300">Plan de comisiones</b>. Aquí verás tus
+            clics, registros, FTD y lo que llevas ganado este mes.
+          </p>
+        </div>
+      )}
+
+      {/* Aviso de cambio de mes: el balance se reinicia, lo anterior se paga aparte. */}
+      {mostrarAvisoMes && (
+        <div className="animate-in flex items-start gap-3 bg-white/5 border border-white/15 rounded-xl px-4 py-3">
+          <span className="text-lg leading-none">📅</span>
+          <p className="text-sm text-slate-300">
+            Nuevo mes: tu balance se ha reiniciado a 0. Lo que ganaste el mes
+            pasado (<b className="text-white">{eur(mesAnterior.commission)}</b>) se
+            te paga aparte, no lo pierdes.
+          </p>
+        </div>
+      )}
 
       {!isAdmin && ranking && ranking.total >= 2 && (
         <div className="animate-in inline-flex items-center gap-2 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-sm">
@@ -398,6 +481,38 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
+      {/* Meta del mes (superar el mes pasado) + mejor día para publicar. */}
+      {!isAdmin && (
+        <div className="animate-in bg-white/5 border border-white/10 rounded-xl p-4 max-w-lg" style={{ animationDelay: "0.09s" }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-slate-300">
+              {metaSuperada ? "🎉 ¡Meta del mes superada!" : "Meta del mes"}
+            </span>
+            <span className="text-sm font-semibold text-white">
+              {ftdMes} / {metaFtd} FTD
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                metaSuperada ? "bg-emerald-400" : "bg-emerald-500"
+              }`}
+              style={{ width: `${metaSuperada ? 100 : metaPct}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            {mesAnterior.ftd > 0
+              ? metaSuperada
+                ? `Has superado tus ${mesAnterior.ftd} FTD del mes pasado. ¡A por más!`
+                : `El mes pasado hiciste ${mesAnterior.ftd} FTD. ¡A superarlo!`
+              : "Tu primer objetivo del mes: 5 FTD."}
+            {mejorDia && mejorDia.clics > 0 && (
+              <> · Tu mejor día suele ser el <b className="text-slate-300">{mejorDia.nombre}</b>.</>
+            )}
+          </p>
+        </div>
+      )}
+
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);
