@@ -167,6 +167,22 @@ export default function DashboardPage() {
       setDailyData(fillMissingDays(dailyRes.data ?? []));
       setRawDaily((dailyRes.data ?? []) as DailyPoint[]);
 
+      // Celebración de FTD: comparamos el total de FTD del MES con la carga
+      // anterior. Solo salta si AUMENTA (no en la primera carga), así no aparece
+      // cada vez que entras al inicio.
+      const hoyMes = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
+        .format(new Date())
+        .slice(0, 7);
+      const mesFtd = (dailyRes.data ?? []).reduce(
+        (s, r) => (String(r.date).slice(0, 7) === hoyMes ? s + Number(r.ftd ?? 0) : s),
+        0
+      );
+      if (prevFtdRef.current !== null && mesFtd > prevFtdRef.current) {
+        setCelebrar(true);
+        setTimeout(() => setCelebrar(false), 6000);
+      }
+      prevFtdRef.current = mesFtd;
+
       const subRows: { commission: number }[] = subRes?.rows ?? [];
       const subTotal = subRows.reduce(
         (sum, r) => sum + Number(r.commission ?? 0),
@@ -213,24 +229,6 @@ export default function DashboardPage() {
     localStorage.setItem("welcomeCerrado", "1");
     setWelcomeCerrado(true);
   };
-
-  // Celebración: si al actualizar hay MÁS FTD que antes, ¡nuevo FTD!
-  const ftdActual = useMemo(
-    () => rawDaily.reduce((s, r) => {
-      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
-      return String(r.date).slice(0, 7) === hoy.slice(0, 7) ? s + Number(r.ftd ?? 0) : s;
-    }, 0),
-    [rawDaily]
-  );
-  useEffect(() => {
-    const prev = prevFtdRef.current;
-    prevFtdRef.current = ftdActual;
-    if (prev !== null && ftdActual > prev) {
-      setCelebrar(true);
-      const t = setTimeout(() => setCelebrar(false), 4500);
-      return () => clearTimeout(t);
-    }
-  }, [ftdActual]);
 
   // Aviso si sube de puesto en el ranking (comparado con la última vez).
   useEffect(() => {
