@@ -224,10 +224,15 @@ export default function DashboardPage() {
     loadStats();
   }, [loadStats]);
 
-  // Bienvenida solo la primera vez (hasta que la cierre). Clave por usuario.
+  // Bienvenida SOLO la primera vez en esa cuenta. La marcamos como vista en
+  // cuanto se muestra (no solo al pulsar la ×), así no vuelve a aparecer aunque
+  // no la cierre a mano. Clave por usuario.
   useEffect(() => {
     if (!userId) return;
-    setWelcomeCerrado(localStorage.getItem("welcomeCerrado:" + userId) === "1");
+    const key = "welcomeCerrado:" + userId;
+    const yaVista = localStorage.getItem(key) === "1";
+    setWelcomeCerrado(yaVista);
+    if (!yaVista) localStorage.setItem(key, "1"); // se muestra ahora, nunca más
   }, [userId]);
   const cerrarWelcome = () => {
     if (userId) localStorage.setItem("welcomeCerrado:" + userId, "1");
