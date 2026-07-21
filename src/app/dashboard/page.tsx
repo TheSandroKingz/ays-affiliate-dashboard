@@ -279,19 +279,6 @@ export default function DashboardPage() {
     return { commission, ftd };
   }, [rawDaily]);
 
-  // Mejor día de la semana por clics (para saber cuándo publicar).
-  const mejorDia = useMemo(() => {
-    const nombres = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-    const acc = [0, 0, 0, 0, 0, 0, 0];
-    for (const r of rawDaily) {
-      const d = new Date(String(r.date).slice(0, 10) + "T00:00:00Z");
-      acc[d.getUTCDay()] += Number(r.clicks ?? 0);
-    }
-    let best = 0, bi = -1;
-    acc.forEach((c, i) => { if (c > best) { best = c; bi = i; } });
-    return bi >= 0 ? { nombre: nombres[bi], clics: best } : null;
-  }, [rawDaily]);
-
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -336,23 +323,6 @@ export default function DashboardPage() {
     totals.registrations === 0 &&
     totals.ftd === 0;
 
-  // Meta por NIVELES que suben solos: al llegar a un objetivo aparece el
-  // siguiente, así siempre hay algo por delante (motivación continua). La
-  // escalera incluye superar el mes pasado como uno de los hitos.
-  const ftdMes = totals.ftd;
-  const escalera = Array.from(
-    new Set([
-      ...(mesAnterior.ftd > 0 ? [mesAnterior.ftd] : []),
-      3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200,
-    ])
-  ).sort((a, b) => a - b);
-  // Objetivo actual = siguiente número de la escalera por encima del actual, así
-  // al alcanzarlo salta solo al siguiente (10 → 15 → 20…).
-  const nextMeta = escalera.find((v) => v > ftdMes) ?? ftdMes + 25;
-  // Barra REALISTA: proporción absoluta (6 de 10 = 60%).
-  const metaPct = nextMeta > 0 ? Math.min(100, Math.round((ftdMes / nextMeta) * 100)) : 0;
-  const faltan = Math.max(1, nextMeta - ftdMes);
-  const recordBatido = mesAnterior.ftd > 0 && ftdMes >= mesAnterior.ftd;
   // Aviso primeros días de mes: el balance se reinició; lo anterior se paga aparte.
   const diaDelMes = Number(hoyISO.slice(8, 10));
   const mostrarAvisoMes = !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
@@ -413,38 +383,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Ranking + barra de progreso en la MISMA línea (compacto). */}
-      {!isAdmin && (
-        <div className="animate-in flex flex-col gap-1.5 w-full max-w-lg self-start">
-          <div className="flex items-center gap-3">
-            {ranking && ranking.total >= 2 && (
-              <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs">
-                <span aria-hidden className="text-sm">🏆</span>
-                <span className="text-amber-100">
-                  Vas <b className="text-white">#{ranking.puesto}</b>
-                </span>
-              </span>
-            )}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                  style={{ width: `${metaPct}%` }}
-                />
-              </div>
-              <span className="text-xs font-semibold text-white whitespace-nowrap">
-                {ftdMes}/{nextMeta} FTD
-              </span>
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-500">
-            {recordBatido && "🔥 Racha imparable · "}
-            Siguiente: <b className="text-slate-300">{nextMeta} FTD</b> ·{" "}
-            {faltan === 1 ? "¡solo 1 más!" : `faltan ${faltan}`}
-            {mejorDia && mejorDia.clics > 0 && (
-              <> · mejor día: <b className="text-slate-300">{mejorDia.nombre}</b></>
-            )}
-          </p>
+      {!isAdmin && ranking && ranking.total >= 2 && (
+        <div className="animate-in inline-flex items-center gap-1.5 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs">
+          <span aria-hidden className="text-sm">🏆</span>
+          <span className="text-amber-100">
+            Vas <b className="text-white">#{ranking.puesto}</b> este mes
+          </span>
         </div>
       )}
 
