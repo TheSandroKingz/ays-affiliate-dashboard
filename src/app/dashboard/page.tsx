@@ -595,31 +595,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Logros desbloqueados (insignias). */}
-      {!isAdmin && (() => {
-        const logros = [
-          { emoji: "🥇", nombre: "Primer FTD", ok: hist.total >= 1 },
-          { emoji: "🏅", nombre: "10 FTD", ok: hist.total >= 10 },
-          { emoji: "⭐", nombre: "25 FTD", ok: hist.total >= 25 },
-          { emoji: "💎", nombre: "50 FTD", ok: hist.total >= 50 },
-          { emoji: "👑", nombre: "100 FTD", ok: hist.total >= 100 },
-          { emoji: "🔥", nombre: "Racha de 7", ok: racha >= 7 },
-        ].filter((l) => l.ok);
-        if (!logros.length) return null;
-        return (
-          <div className="flex flex-wrap items-center gap-1.5 -mt-1">
-            {logros.map((l) => (
-              <span
-                key={l.nombre}
-                title={l.nombre}
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300"
-              >
-                <span aria-hidden>{l.emoji}</span> {l.nombre}
-              </span>
-            ))}
-          </div>
-        );
-      })()}
 
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {

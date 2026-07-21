@@ -8,11 +8,13 @@ import { traducirError } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
+import { LOGROS, calcularStatsLogros, type LogroStats } from "@/lib/logros";
 
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<
-    "personal" | "cobro" | "seguridad" | "privacidad"
+    "personal" | "cobro" | "logros" | "seguridad" | "privacidad"
   >("personal");
+  const [logroStats, setLogroStats] = useState<LogroStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -65,6 +67,17 @@ export default function AccountPage() {
       setAvatarUrl(data.avatar_url ?? null);
       setWalletErc20(data.wallet_erc20 ?? "");
       setWalletTrc20(data.wallet_trc20 ?? "");
+      }
+
+      // Estadísticas para los logros (blindado; no bloquea la cuenta).
+      try {
+        const { data: filas } = await supabase
+          .from("affiliate_daily_stats")
+          .select("date, ftd, registrations")
+          .eq("user_id", user.id);
+        setLogroStats(calcularStatsLogros(filas ?? []));
+      } catch {
+        /* sin datos */
       }
 
       // Fecha de nacimiento aparte y blindada (por si la columna no existe aún).
@@ -256,6 +269,7 @@ export default function AccountPage() {
   const tabs = [
     { key: "personal", label: "Información Personal" },
     { key: "cobro", label: "Datos de cobro" },
+    { key: "logros", label: "Logros" },
     { key: "seguridad", label: "Seguridad" },
     { key: "privacidad", label: "Ajustes de Privacidad" },
   ] as const;
@@ -417,6 +431,54 @@ export default function AccountPage() {
           >
             {savingWallets ? "Guardando..." : "Guardar"}
           </button>
+        </div>
+      )}
+
+      {activeTab === "logros" && (
+        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
+          {(() => {
+            const conseguidos = logroStats
+              ? LOGROS.filter((l) => l.cond(logroStats)).length
+              : 0;
+            return (
+              <p className="text-sm text-slate-300 mb-5">
+                Has desbloqueado <b className="text-white">{conseguidos}</b> de{" "}
+                <b className="text-white">{LOGROS.length}</b> logros. ¡A por todos!
+              </p>
+            );
+          })()}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {LOGROS.map((l) => {
+              const ok = logroStats ? l.cond(logroStats) : false;
+              return (
+                <div
+                  key={l.id}
+                  className={`flex flex-col items-center text-center gap-1.5 rounded-xl border p-4 transition ${
+                    ok
+                      ? "border-amber-400/60 bg-amber-500/10 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
+                      : "border-white/10 bg-black/30"
+                  }`}
+                >
+                  <span
+                    className={`text-4xl ${ok ? "" : "grayscale opacity-30"}`}
+                    aria-hidden
+                  >
+                    {l.emoji}
+                  </span>
+                  <span
+                    className={`text-xs font-semibold ${
+                      ok ? "text-amber-200" : "text-slate-500"
+                    }`}
+                  >
+                    {l.nombre}
+                  </span>
+                  <span className={`text-[10px] leading-tight ${ok ? "text-slate-300" : "text-slate-600"}`}>
+                    {ok ? l.desc : "🔒 Bloqueado"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
