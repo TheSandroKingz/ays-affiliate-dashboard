@@ -336,11 +336,24 @@ export default function DashboardPage() {
     totals.registrations === 0 &&
     totals.ftd === 0;
 
-  // Meta del mes: superar los FTD del mes pasado (o 5 si es tu primer mes).
+  // Meta por NIVELES que suben solos: al llegar a un objetivo aparece el
+  // siguiente, así siempre hay algo por delante (motivación continua). La
+  // escalera incluye superar el mes pasado como uno de los hitos.
   const ftdMes = totals.ftd;
-  const metaFtd = mesAnterior.ftd > 0 ? mesAnterior.ftd : 5;
-  const metaSuperada = ftdMes >= metaFtd;
-  const metaPct = metaFtd > 0 ? Math.min(100, Math.round((ftdMes / metaFtd) * 100)) : 0;
+  const escalera = Array.from(
+    new Set([
+      ...(mesAnterior.ftd > 0 ? [mesAnterior.ftd] : []),
+      3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200,
+    ])
+  ).sort((a, b) => a - b);
+  const nextMeta = escalera.find((v) => v > ftdMes) ?? ftdMes + 25;
+  const prevMeta = [...escalera].reverse().find((v) => v <= ftdMes) ?? 0;
+  const metaPct =
+    nextMeta > prevMeta
+      ? Math.min(100, Math.max(0, Math.round(((ftdMes - prevMeta) / (nextMeta - prevMeta)) * 100)))
+      : 0;
+  const faltan = Math.max(1, nextMeta - ftdMes);
+  const recordBatido = mesAnterior.ftd > 0 && ftdMes >= mesAnterior.ftd;
   // Aviso primeros días de mes: el balance se reinició; lo anterior se paga aparte.
   const diaDelMes = Number(hoyISO.slice(8, 10));
   const mostrarAvisoMes = !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
@@ -481,31 +494,29 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
-      {/* Meta del mes (superar el mes pasado) + mejor día para publicar. */}
+      {/* Meta por niveles: siempre hacia el siguiente objetivo (nunca para). */}
       {!isAdmin && (
         <div className="animate-in bg-white/5 border border-white/10 rounded-xl p-4 max-w-lg" style={{ animationDelay: "0.09s" }}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-slate-300">
-              {metaSuperada ? "🎉 ¡Meta del mes superada!" : "Meta del mes"}
+              {recordBatido ? "🔥 Racha imparable" : "Tu progreso"}
             </span>
             <span className="text-sm font-semibold text-white">
-              {ftdMes} / {metaFtd} FTD
+              {ftdMes} / {nextMeta} FTD
             </span>
           </div>
           <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                metaSuperada ? "bg-emerald-400" : "bg-emerald-500"
-              }`}
-              style={{ width: `${metaSuperada ? 100 : metaPct}%` }}
+              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+              style={{ width: `${metaPct}%` }}
             />
           </div>
           <p className="text-xs text-slate-500 mt-2">
-            {mesAnterior.ftd > 0
-              ? metaSuperada
-                ? `Has superado tus ${mesAnterior.ftd} FTD del mes pasado. ¡A por más!`
-                : `El mes pasado hiciste ${mesAnterior.ftd} FTD. ¡A superarlo!`
-              : "Tu primer objetivo del mes: 5 FTD."}
+            Siguiente objetivo: <b className="text-slate-300">{nextMeta} FTD</b> ·{" "}
+            {faltan === 1 ? "¡solo 1 más!" : `te faltan ${faltan}`}
+            {recordBatido && mesAnterior.ftd > 0 && (
+              <> · Ya superaste tus {mesAnterior.ftd} del mes pasado 🎉</>
+            )}
             {mejorDia && mejorDia.clics > 0 && (
               <> · Tu mejor día suele ser el <b className="text-slate-300">{mejorDia.nombre}</b>.</>
             )}
