@@ -113,28 +113,6 @@ export default function CommissionPlanPage() {
         </div>
       </div>
 
-      {/* Calidad de tu tráfico: tasa de conversión */}
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-1">Calidad de tu tráfico</h2>
-        <p className="text-sm text-slate-400 mb-4">
-          Cuántos FTD sacas de tus clics. Cuanto mejor conviertas, mejor CPA
-          puedes conseguir.
-        </p>
-        <div className="flex items-center justify-between">
-          <p className="text-slate-200">Conversión</p>
-          {conversion && conversion.pct !== null ? (
-            <p className="text-white font-semibold">
-              {conversion.pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })}%{" "}
-              <span className="text-xs text-slate-400 font-normal">
-                · {conversion.ftd} FTD de {conversion.clicks.toLocaleString("de-DE")} clics
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm text-slate-500">Aún sin datos</p>
-          )}
-        </div>
-      </div>
-
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Campaña Activa</h2>
         <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
@@ -169,6 +147,24 @@ export default function CommissionPlanPage() {
         <div className="flex items-center justify-between">
           <p className="text-slate-200">Depósito mínimo</p>
           <p className="text-white font-semibold">€20</p>
+        </div>
+      </div>
+
+      {/* Conversión: FTD que sacas de tus clics (su propio recuadro). */}
+      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Conversión</h2>
+        <div className="flex items-center justify-between">
+          <p className="text-slate-200">FTD por clics</p>
+          {conversion && conversion.pct !== null ? (
+            <p className="text-white font-semibold">
+              {conversion.pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })}%{" "}
+              <span className="text-xs text-slate-400 font-normal">
+                · {conversion.ftd} FTD de {conversion.clicks.toLocaleString("de-DE")} clics
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">Aún sin datos</p>
+          )}
         </div>
       </div>
     </div>

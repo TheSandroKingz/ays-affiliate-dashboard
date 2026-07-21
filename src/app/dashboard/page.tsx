@@ -496,29 +496,26 @@ export default function DashboardPage() {
       </div>
       {/* Meta por niveles: siempre hacia el siguiente objetivo (nunca para). */}
       {!isAdmin && (
-        <div className="animate-in bg-white/5 border border-white/10 rounded-xl p-4 max-w-lg" style={{ animationDelay: "0.09s" }}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-300">
+        <div className="animate-in bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 max-w-lg" style={{ animationDelay: "0.09s" }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-slate-300">
               {recordBatido ? "🔥 Racha imparable" : "Tu progreso"}
             </span>
-            <span className="text-sm font-semibold text-white">
+            <span className="text-xs font-semibold text-white">
               {ftdMes} / {nextMeta} FTD
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all duration-500"
               style={{ width: `${metaPct}%` }}
             />
           </div>
-          <p className="text-xs text-slate-500 mt-2">
-            Siguiente objetivo: <b className="text-slate-300">{nextMeta} FTD</b> ·{" "}
-            {faltan === 1 ? "¡solo 1 más!" : `te faltan ${faltan}`}
-            {recordBatido && mesAnterior.ftd > 0 && (
-              <> · Ya superaste tus {mesAnterior.ftd} del mes pasado 🎉</>
-            )}
+          <p className="text-[11px] text-slate-500 mt-1.5">
+            Siguiente: <b className="text-slate-300">{nextMeta} FTD</b> ·{" "}
+            {faltan === 1 ? "¡solo 1 más!" : `faltan ${faltan}`}
             {mejorDia && mejorDia.clics > 0 && (
-              <> · Tu mejor día suele ser el <b className="text-slate-300">{mejorDia.nombre}</b>.</>
+              <> · mejor día: <b className="text-slate-300">{mejorDia.nombre}</b></>
             )}
           </p>
         </div>
