@@ -50,5 +50,23 @@ export async function GET(request: Request) {
     (structure ?? []) as StructRow[]
   );
 
-  return NextResponse.json({ adminCpa, stats, totals, own, daily });
+  // Mini-gráfica (sparkline) por afiliado: sus clics diarios en el rango, en
+  // orden de fecha. Sirve para ver la tendencia de un vistazo en la tabla.
+  const grupos = new Map<string, { date: string; clicks: number }[]>();
+  for (const d of dailyRaw ?? []) {
+    const arr = grupos.get(d.user_id) ?? [];
+    arr.push({ date: String(d.date).slice(0, 10), clicks: Number(d.clicks ?? 0) });
+    grupos.set(d.user_id, arr);
+  }
+  const spark = new Map<string, number[]>();
+  for (const [uid, arr] of grupos) {
+    arr.sort((a, b) => (a.date < b.date ? -1 : 1));
+    spark.set(uid, arr.map((x) => x.clicks));
+  }
+  const statsSpark = stats.map((s) => ({
+    ...s,
+    spark: spark.get(s.user_id) ?? [],
+  }));
+
+  return NextResponse.json({ adminCpa, stats: statsSpark, totals, own, daily });
 }
