@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
@@ -34,6 +34,15 @@ function saludo(): string {
   if (h < 14) return "Buenos días";
   if (h < 21) return "Buenas tardes";
   return "Buenas noches";
+}
+
+// Emoji del saludo según la hora (detalle cálido).
+function saludoEmoji(): string {
+  const h = new Date().getHours();
+  if (h < 6) return "🌙";
+  if (h < 14) return "☀️";
+  if (h < 21) return "🌤️";
+  return "🌙";
 }
 
 function last7Days(): DailyPoint[] {
@@ -91,6 +100,8 @@ export default function DashboardPage() {
   // Histórico crudo (todas las fechas) para meta, mejores días y aviso del día 1.
   const [rawDaily, setRawDaily] = useState<DailyPoint[]>([]);
   const [welcomeCerrado, setWelcomeCerrado] = useState(true);
+  const [celebrar, setCelebrar] = useState(false);
+  const prevFtdRef = useRef<number | null>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -193,6 +204,24 @@ export default function DashboardPage() {
     localStorage.setItem("welcomeCerrado", "1");
     setWelcomeCerrado(true);
   };
+
+  // Celebración: si al actualizar hay MÁS FTD que antes, ¡nuevo FTD!
+  const ftdActual = useMemo(
+    () => rawDaily.reduce((s, r) => {
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+      return String(r.date).slice(0, 7) === hoy.slice(0, 7) ? s + Number(r.ftd ?? 0) : s;
+    }, 0),
+    [rawDaily]
+  );
+  useEffect(() => {
+    const prev = prevFtdRef.current;
+    prevFtdRef.current = ftdActual;
+    if (prev !== null && ftdActual > prev) {
+      setCelebrar(true);
+      const t = setTimeout(() => setCelebrar(false), 4500);
+      return () => clearTimeout(t);
+    }
+  }, [ftdActual]);
 
   // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
   // una cada 30 min para no inflar con recargas. El admin no cuenta.
@@ -329,9 +358,16 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {celebrar && (
+        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+          <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
+            <span className="text-xl">🎉</span> ¡Nuevo FTD!
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-            <h1 className="text-2xl font-semibold text-white">{saludo()}{displayName && <>, <span className="text-emerald-400">{displayName}</span></>}</h1>
+            <h1 className="text-2xl font-semibold text-white">{saludo()}{displayName && <>, <span className="text-emerald-400">{displayName}</span></>} {saludoEmoji()}</h1>
               <p className="text-sm text-slate-400">
                 {new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                 {lastUpdated && (
