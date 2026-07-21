@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { CardsSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
+import { Check, Copy } from "lucide-react";
 
 export default function CommissionPlanPage() {
   const [loading, setLoading] = useState(true);
@@ -137,9 +138,21 @@ export default function CommissionPlanPage() {
                     setTimeout(() => setPromoLinkCopied(false), 1500);
                   } catch {}
                 }}
-                className="shrink-0 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                  promoLinkCopied
+                    ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
+                    : "border-white/20 text-white hover:bg-white/10"
+                }`}
               >
-                {promoLinkCopied ? "Copiado" : "Copiar enlace"}
+                {promoLinkCopied ? (
+                  <>
+                    <Check size={15} className="animate-celebra" /> ¡Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={15} /> Copiar enlace
+                  </>
+                )}
               </button>
             </div>
           </div>
