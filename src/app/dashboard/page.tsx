@@ -8,6 +8,7 @@ import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
 import LoadError from "@/components/LoadError";
+import Confetti from "@/components/Confetti";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
@@ -308,6 +309,24 @@ export default function DashboardPage() {
     return { commission, ftd };
   }, [rawDaily]);
 
+  // Racha: días seguidos con FTD (cuenta hacia atrás desde hoy; si hoy aún no
+  // hay, sigue viva contando desde ayer). Solo se muestra si es de 2 o más.
+  const racha = useMemo(() => {
+    const conFtd = new Set(
+      rawDaily.filter((r) => Number(r.ftd ?? 0) > 0).map((r) => String(r.date).slice(0, 10))
+    );
+    if (conFtd.size === 0) return 0;
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+    const d = new Date(hoy + "T00:00:00Z");
+    if (!conFtd.has(hoy)) d.setUTCDate(d.getUTCDate() - 1);
+    let count = 0;
+    while (conFtd.has(d.toISOString().slice(0, 10))) {
+      count++;
+      d.setUTCDate(d.getUTCDate() - 1);
+    }
+    return count;
+  }, [rawDaily]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -355,15 +374,19 @@ export default function DashboardPage() {
   // Aviso primeros días de mes: el balance se reinició; lo anterior se paga aparte.
   const diaDelMes = Number(hoyISO.slice(8, 10));
   const mostrarAvisoMes = !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
+  const diasRestantesMes = Math.max(0, diasMes - diaDelMes);
 
   return (
     <div className="flex flex-col gap-6">
       {celebrar && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
-            <span className="text-xl">🎉</span> ¡Nuevo FTD!
+        <>
+          <Confetti />
+          <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+            <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
+              <span className="text-xl">🎉</span> ¡Nuevo FTD!
+            </div>
           </div>
-        </div>
+        </>
       )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
@@ -371,7 +394,7 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-400">
                 {new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                 {lastUpdated && (
-                  <span className="text-slate-500"> · Actualizado {lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}<span className="text-[0.5em] opacity-70">:{String(lastUpdated.getSeconds()).padStart(2, "0")}</span></span>
+                  <span className="text-slate-500"> · <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle animate-latido" /> Actualizado {lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}<span className="text-[0.5em] opacity-70">:{String(lastUpdated.getSeconds()).padStart(2, "0")}</span></span>
                 )}
               </p>
             </div>
@@ -499,6 +522,19 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
+
+      {/* Racha de FTD y días que quedan de mes (detalles motivadores). */}
+      {!isAdmin && (racha >= 2 || diasRestantesMes > 0) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 -mt-2">
+          {racha >= 2 && (
+            <span>🔥 <b className="text-slate-200">{racha} días</b> seguidos con FTD</span>
+          )}
+          {diasRestantesMes > 0 && (
+            <span>🗓️ Quedan <b className="text-slate-200">{diasRestantesMes} días</b> de mes</span>
+          )}
+        </div>
+      )}
+
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);

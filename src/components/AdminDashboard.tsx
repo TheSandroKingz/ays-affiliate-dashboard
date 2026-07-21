@@ -10,6 +10,7 @@ import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react";
+import Confetti from "@/components/Confetti";
 
 type DailyRow = {
   date: string;
@@ -194,11 +195,14 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-6">
       {celebrar && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
-            <span className="text-xl">🎉</span> ¡Nuevo FTD!
+        <>
+          <Confetti />
+          <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+            <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
+              <span className="text-xl">🎉</span> ¡Nuevo FTD!
+            </div>
           </div>
-        </div>
+        </>
       )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
@@ -220,7 +224,7 @@ export default function AdminDashboard() {
             {lastUpdated && (
               <span className="text-slate-500">
                 {" "}
-                · Actualizado{" "}
+                · <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle animate-latido" /> Actualizado{" "}
                 {lastUpdated.toLocaleTimeString("es-ES", {
                   hour: "2-digit",
                   minute: "2-digit",

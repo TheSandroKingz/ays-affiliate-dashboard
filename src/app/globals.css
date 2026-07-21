@@ -69,6 +69,29 @@ label,
   animation: celebra-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Confeti (al llegar un FTD). Cada pieza cae girando desde arriba. */
+@keyframes confetti-fall {
+  0%   { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+.confetti-pieza {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: confetti-fall linear forwards;
+}
+
+/* Punto "en directo" que late suavemente. */
+@keyframes latido {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.75); }
+}
+.animate-latido {
+  animation: latido 1.6s ease-in-out infinite;
+}
+
 /* Respeta la preferencia del sistema de reducir movimiento (accesibilidad). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
