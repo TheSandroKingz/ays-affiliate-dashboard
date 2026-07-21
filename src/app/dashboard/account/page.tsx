@@ -54,43 +54,35 @@ export default function AccountPage() {
       }
       setEmail(user.email ?? "");
 
-      const { data } = await supabase
-        .from("affiliates")
-        .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
-        .eq("user_id", user.id)
-        .single();
-
-      if (data) {
-        setFirstName(data.display_name ?? "");
-      setAcceptedTerms(data.accepted_terms ?? false);
-      setAcceptedPrivacy(data.accepted_privacy ?? false);
-      setAvatarUrl(data.avatar_url ?? null);
-      setWalletErc20(data.wallet_erc20 ?? "");
-      setWalletTrc20(data.wallet_trc20 ?? "");
-      }
-
-      // Estadísticas para los logros (blindado; no bloquea la cuenta).
-      try {
-        const { data: filas } = await supabase
+      // Las 3 consultas son independientes: en paralelo (más rápido).
+      const [perfilRes, filasRes, bRes] = await Promise.all([
+        supabase
+          .from("affiliates")
+          .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
+          .eq("user_id", user.id)
+          .single(),
+        supabase
           .from("affiliate_daily_stats")
           .select("date, ftd, registrations")
-          .eq("user_id", user.id);
-        setLogroStats(calcularStatsLogros(filas ?? []));
-      } catch {
-        /* sin datos */
-      }
-
-      // Fecha de nacimiento aparte y blindada (por si la columna no existe aún).
-      try {
-        const { data: b } = await supabase
+          .eq("user_id", user.id),
+        supabase
           .from("affiliates")
           .select("birthdate")
           .eq("user_id", user.id)
-          .maybeSingle();
-        if (b?.birthdate) setBirthdate(String(b.birthdate).slice(0, 10));
-      } catch {
-        /* columna no disponible aún */
+          .maybeSingle(),
+      ]);
+
+      const data = perfilRes.data;
+      if (data) {
+        setFirstName(data.display_name ?? "");
+        setAcceptedTerms(data.accepted_terms ?? false);
+        setAcceptedPrivacy(data.accepted_privacy ?? false);
+        setAvatarUrl(data.avatar_url ?? null);
+        setWalletErc20(data.wallet_erc20 ?? "");
+        setWalletTrc20(data.wallet_trc20 ?? "");
       }
+      setLogroStats(calcularStatsLogros(filasRes.data ?? []));
+      if (bRes.data?.birthdate) setBirthdate(String(bRes.data.birthdate).slice(0, 10));
 
       setLoading(false);
     }
