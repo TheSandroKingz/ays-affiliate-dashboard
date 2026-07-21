@@ -12,6 +12,66 @@ export type ResumenSeguridad = {
   ok: boolean;
 };
 
+// Salud de la conexión con FreshBet. Todo depende de que FreshBet nos mande los
+// postbacks; si dejara de hacerlo, perderíamos FTDs sin enterarnos. Como los
+// CLICS los contamos NOSOTROS (en /go, independiente de FreshBet), podemos
+// distinguir "está roto" (hay clics pero FreshBet no manda nada) de "no hay
+// tráfico" (nadie entra → normal que no llegue nada).
+//   - ultimoEvento : fecha del último postback recibido (null si nunca)
+//   - diasSin      : días desde ese último evento (999 si nunca)
+//   - clics7       : clics de los últimos 7 días (tráfico real)
+//   - alerta       : true si es sospechoso (7+ días de silencio CON tráfico)
+export type SaludFreshbet = {
+  ultimoEvento: string | null;
+  diasSin: number;
+  clics7: number;
+  alerta: boolean;
+};
+
+export async function saludFreshbet(): Promise<SaludFreshbet> {
+  const vacio: SaludFreshbet = {
+    ultimoEvento: null,
+    diasSin: 999,
+    clics7: 0,
+    alerta: false,
+  };
+  try {
+    const hace7 = new Date(Date.now() - 7 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+
+    const [ultRes, clicksRes] = await Promise.all([
+      supabaseAdmin
+        .from("postback_events")
+        .select("created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("clicks")
+        .gte("date", hace7),
+    ]);
+
+    const ultimoEvento = (ultRes.data?.created_at as string | undefined) ?? null;
+    const diasSin = ultimoEvento
+      ? Math.floor((Date.now() - new Date(ultimoEvento).getTime()) / 86400000)
+      : 999;
+    const clics7 = (clicksRes.data ?? []).reduce(
+      (s, r) => s + Number(r.clicks ?? 0),
+      0
+    );
+
+    // Sospechoso: una semana entera sin NINGÚN evento de FreshBet pese a que SÍ
+    // hubo tráfico (al menos 5 clics). Sin tráfico no alertamos (sería normal).
+    const alerta = diasSin >= 7 && clics7 >= 5;
+
+    return { ultimoEvento, diasSin, clics7, alerta };
+  } catch {
+    return vacio;
+  }
+}
+
 export async function resumenSeguridad(): Promise<ResumenSeguridad> {
   try {
     const { data, error } = await supabaseAdmin

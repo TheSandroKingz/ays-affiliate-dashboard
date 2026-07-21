@@ -73,6 +73,11 @@ export default function AdminDashboard() {
     dobles: number;
     ok: boolean;
   } | null>(null);
+  const [freshbet, setFreshbet] = useState<{
+    diasSin: number;
+    clics7: number;
+    alerta: boolean;
+  } | null>(null);
   const [mesPasado, setMesPasado] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
   const prevFtdRef = useRef<number | null>(null);
@@ -113,6 +118,7 @@ export default function AdminDashboard() {
         setDaily(res.month.daily ?? []);
         setPendientes(Number(res.pending ?? 0));
         setSeguridad(res.seguridad ?? null);
+        setFreshbet(res.freshbet ?? null);
         setMesPasado(
           typeof res.lastMonthClean === "number" ? res.lastMonthClean : null
         );
@@ -266,6 +272,28 @@ export default function AdminDashboard() {
             </span>
           </span>
           <span className="text-xs font-semibold text-red-300 whitespace-nowrap">
+            Revisar →
+          </span>
+        </Link>
+      )}
+
+      {/* Salud de FreshBet: avisa si lleva días sin enviar NINGÚN evento pese a
+          haber tráfico (posible configuración rota = fuga de dinero silenciosa). */}
+      {freshbet?.alerta && (
+        <Link
+          href="/admin/actividad"
+          className="animate-in flex items-center justify-between gap-3 bg-amber-500/15 border border-amber-400/50 rounded-xl px-5 py-4 hover:bg-amber-500/25 transition-colors"
+        >
+          <span className="flex items-center gap-3">
+            <ShieldAlert size={20} className="text-amber-400 shrink-0" />
+            <span className="text-sm text-amber-100">
+              FreshBet lleva <b className="text-white">{freshbet.diasSin} días</b> sin
+              enviar ningún evento, pero ha habido{" "}
+              <b className="text-white">{freshbet.clics7} clics</b>. Puede que se
+              haya desconfigurado — compruébalo.
+            </span>
+          </span>
+          <span className="text-xs font-semibold text-amber-300 whitespace-nowrap">
             Revisar →
           </span>
         </Link>

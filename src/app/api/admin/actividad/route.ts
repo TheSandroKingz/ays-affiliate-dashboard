@@ -73,9 +73,14 @@ export async function GET(request: Request) {
     (r) => r.matched_user_id && r.matched_user_id !== ADMIN_USER_ID
   );
 
+  // Fecha del último evento recibido de FreshBet (de TODOS, no solo afiliados):
+  // sirve para ver de un vistazo si FreshBet sigue enviando.
+  const ultimoEvento = rows[0]?.created_at ?? null;
+
   return NextResponse.json({
     events: eventosAfiliados,
     retenidos,
+    ultimoEvento,
     sinPlayerId,
     resumen: {
       sinPlayerId,

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { saludFreshbet } from "@/lib/seguridad";
+import { enviarPush } from "@/lib/push";
+import { ADMIN_USER_ID } from "@/lib/adminAuth";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -54,5 +57,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ inserted: rows.length, date: today });
+  // Vigilancia de FreshBet: si lleva días en silencio pese a haber tráfico,
+  // avisamos al admin al móvil (fuga de dinero silenciosa). Blindado.
+  let freshbetAlerta = false;
+  try {
+    const salud = await saludFreshbet();
+    freshbetAlerta = salud.alerta;
+    if (salud.alerta) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ FreshBet en silencio",
+        body: `${salud.diasSin} días sin ningún evento y ${salud.clics7} clics. Revisa que siga configurado.`,
+        url: "/admin/actividad",
+      });
+    }
+  } catch {
+    /* nunca romper el cron */
+  }
+
+  return NextResponse.json({ inserted: rows.length, date: today, freshbetAlerta });
 }

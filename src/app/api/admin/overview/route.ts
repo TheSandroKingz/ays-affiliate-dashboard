@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
-import { resumenSeguridad } from "@/lib/seguridad";
+import { resumenSeguridad, saludFreshbet } from "@/lib/seguridad";
 
 // Vista consolidada del INICIO del admin: mes en curso + mes pasado + histórico
 // + solicitudes pendientes, todo con UNA sola consulta a affiliate_daily_stats
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   // Una única consulta: todo el histórico. Los periodos se filtran en memoria.
   // La comprobación de seguridad va EN PARALELO (no en serie) para no frenar.
-  const [dailyRes, pendRes, seguridad] = await Promise.all([
+  const [dailyRes, pendRes, seguridad, freshbet] = await Promise.all([
     supabaseAdmin
       .from("affiliate_daily_stats")
       .select("user_id, date, commission, clicks, registrations, ftd")
@@ -41,6 +41,7 @@ export async function GET(request: Request) {
       .select("user_id", { count: "exact", head: true })
       .eq("approved", false),
     resumenSeguridad(),
+    saludFreshbet(),
   ]);
   if (dailyRes.error) {
     return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
@@ -85,6 +86,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     adminCpa,
     seguridad,
+    freshbet,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     lastMonthClean: mesPasado.totals.totalClean,
     allTime: {

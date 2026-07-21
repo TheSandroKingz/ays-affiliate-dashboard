@@ -47,6 +47,7 @@ export default function ActividadPage() {
   const router = useRouter();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [retenidos, setRetenidos] = useState<Evento[]>([]);
+  const [ultimoEvento, setUltimoEvento] = useState<string | null>(null);
   const [sinPlayerId, setSinPlayerId] = useState(0);
   const [resumen, setResumen] = useState<{
     sinPlayerId: number;
@@ -82,6 +83,7 @@ export default function ActividadPage() {
       const body = await res.json();
       setEventos(Array.isArray(body.events) ? body.events : []);
       setRetenidos(Array.isArray(body.retenidos) ? body.retenidos : []);
+      setUltimoEvento(body.ultimoEvento ?? null);
       setSinPlayerId(Number(body.sinPlayerId ?? 0));
       setResumen(body.resumen ?? null);
     } catch {
@@ -147,6 +149,25 @@ export default function ActividadPage() {
           <p className="text-sm text-slate-400 mt-1">
             Últimos eventos que manda freshbet (registros, FTD, comisión).
           </p>
+          {(() => {
+            const dias = ultimoEvento
+              ? Math.floor(
+                  (Date.now() - new Date(ultimoEvento).getTime()) / 86400000
+                )
+              : null;
+            const viejo = dias === null || dias >= 7;
+            return (
+              <p
+                className={`text-xs mt-1 ${
+                  viejo ? "text-amber-300" : "text-emerald-300/80"
+                }`}
+              >
+                {viejo ? "⚠️ " : "✔ "}
+                Último evento de FreshBet:{" "}
+                {ultimoEvento ? tiempoRelativo(ultimoEvento) : "nunca"}
+              </p>
+            );
+          })()}
         </div>
         <button
           onClick={() => load(true)}
