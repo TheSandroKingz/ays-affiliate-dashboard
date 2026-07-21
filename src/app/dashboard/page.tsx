@@ -91,7 +91,7 @@ export default function DashboardPage() {
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { displayName } = useProfile(); // nombre desde el almacén compartido
+  const { displayName, birthdate } = useProfile(); // perfil compartido
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -375,6 +375,8 @@ export default function DashboardPage() {
   const diaDelMes = Number(hoyISO.slice(8, 10));
   const mostrarAvisoMes = !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
   const diasRestantesMes = Math.max(0, diasMes - diaDelMes);
+  // ¿Es hoy su cumpleaños? (compara mes-día en zona Madrid).
+  const esCumple = !isAdmin && !!birthdate && hoyISO.slice(5) === String(birthdate).slice(5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -428,6 +430,21 @@ export default function DashboardPage() {
             clics, registros, FTD y lo que llevas ganado este mes.
           </p>
         </div>
+      )}
+
+      {/* ¡Feliz cumpleaños! (con confeti). */}
+      {esCumple && (
+        <>
+          <Confetti />
+          <div className="animate-in rounded-xl border border-amber-400/50 bg-amber-500/10 px-5 py-4 text-center">
+            <p className="text-lg font-semibold text-white">
+              🎂 ¡Feliz cumpleaños{displayName ? `, ${displayName}` : ""}! 🎉
+            </p>
+            <p className="text-sm text-amber-100/90 mt-1">
+              Que tengas un día genial (y muchos FTD 😉).
+            </p>
+          </div>
+        </>
       )}
 
       {/* Aviso de cambio de mes: el balance se reinicia, lo anterior se paga aparte. */}

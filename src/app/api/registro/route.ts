@@ -40,6 +40,27 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Fecha de nacimiento (opcional pero validada): formato correcto y 18+.
+  let birthdate: string | null = null
+  if (body.birthdate) {
+    const raw = String(body.birthdate)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return NextResponse.json({ error: 'Fecha de nacimiento no válida.' }, { status: 400 })
+    }
+    const nac = new Date(raw + 'T00:00:00')
+    const hoy = new Date()
+    let edad = hoy.getFullYear() - nac.getFullYear()
+    const m = hoy.getMonth() - nac.getMonth()
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+    if (Number.isNaN(nac.getTime()) || edad < 18 || edad > 120) {
+      return NextResponse.json(
+        { error: 'Debes ser mayor de edad (18+) para registrarte.' },
+        { status: 400 }
+      )
+    }
+    birthdate = raw
+  }
+
   // Validamos que, si viene un "referido por", sea un afiliado real.
   let referredById: string | null = null
   if (body.referredBy) {
@@ -51,7 +72,7 @@ export async function POST(request: NextRequest) {
     referredById = padre?.id ?? null
   }
 
-  const { error } = await supabaseAdmin.from('affiliates').insert({
+  const fila: Record<string, unknown> = {
     user_id: authData.user.id,
     display_name: nombre,
     referred_by: referredById,
@@ -60,7 +81,16 @@ export async function POST(request: NextRequest) {
     approved: false, // toda cuenta nueva nace pendiente hasta que el admin la acepta
     accepted_terms: true,
     accepted_privacy: true,
-  })
+  }
+  if (birthdate) fila.birthdate = birthdate
+
+  let { error } = await supabaseAdmin.from('affiliates').insert(fila)
+  // Por si la columna 'birthdate' aún no existe: reintenta sin ella (no bloquea).
+  if (error && birthdate) {
+    delete fila.birthdate
+    const r = await supabaseAdmin.from('affiliates').insert(fila)
+    error = r.error
+  }
 
   if (error) {
     // El perfil no se creó (lo más común: nombre de usuario duplicado).

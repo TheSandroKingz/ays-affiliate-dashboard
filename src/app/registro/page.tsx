@@ -11,6 +11,7 @@ export default function RegistroPage() {
   const router = useRouter()
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
+  const [fechaNac, setFechaNac] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +36,20 @@ export default function RegistroPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    // Mayoría de edad: debe tener 18+ años.
+    if (fechaNac) {
+      const nac = new Date(fechaNac + 'T00:00:00')
+      const hoy = new Date()
+      let edad = hoy.getFullYear() - nac.getFullYear()
+      const m = hoy.getMonth() - nac.getMonth()
+      if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+      if (edad < 18) {
+        setError('Debes ser mayor de edad (18+) para registrarte.')
+        return
+      }
+    }
+
     setLoading(true)
 
     const cleanEmail = email.trim()
@@ -75,6 +90,7 @@ export default function RegistroPage() {
       body: JSON.stringify({
         displayName: nombre.trim(),
         referredBy: ref,
+        birthdate: fechaNac || null,
       }),
     })
 
@@ -134,6 +150,18 @@ export default function RegistroPage() {
               autoCapitalize="none"
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="tu@email.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-200 mb-1">Fecha de nacimiento</label>
+            <input
+              type="date"
+              value={fechaNac}
+              onChange={(e) => setFechaNac(e.target.value)}
+              required
+              max={new Date().toISOString().slice(0, 10)}
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 

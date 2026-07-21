@@ -16,6 +16,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [birthdate, setBirthdate] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -65,6 +66,19 @@ export default function AccountPage() {
       setWalletErc20(data.wallet_erc20 ?? "");
       setWalletTrc20(data.wallet_trc20 ?? "");
       }
+
+      // Fecha de nacimiento aparte y blindada (por si la columna no existe aún).
+      try {
+        const { data: b } = await supabase
+          .from("affiliates")
+          .select("birthdate")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (b?.birthdate) setBirthdate(String(b.birthdate).slice(0, 10));
+      } catch {
+        /* columna no disponible aún */
+      }
+
       setLoading(false);
     }
     loadData();
@@ -127,13 +141,21 @@ export default function AccountPage() {
       return;
     }
 
-    const { error } = await supabase
+    const upd: Record<string, unknown> = {
+      first_name: firstName.trim(),
+      display_name: firstName.trim(),
+    };
+    if (birthdate) upd.birthdate = birthdate;
+    let { error } = await supabase
       .from("affiliates")
-      .update({
-        first_name: firstName.trim(),
-        display_name: firstName.trim(),
-      })
+      .update(upd)
       .eq("user_id", user.id);
+    // Por si la columna 'birthdate' aún no existe: reintenta sin ella.
+    if (error && birthdate) {
+      delete upd.birthdate;
+      const r = await supabase.from("affiliates").update(upd).eq("user_id", user.id);
+      error = r.error;
+    }
 
     let emailError = false;
     if (!error && emailChanged) {
@@ -331,6 +353,17 @@ export default function AccountPage() {
           />
         </div>
           
+          <div>
+            <label className="block text-sm font-medium text-slate-200 mb-1">Fecha de nacimiento</label>
+            <input
+              type="date"
+              value={birthdate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-2.5 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
           <button
             onClick={savePersonal}
             disabled={saving}

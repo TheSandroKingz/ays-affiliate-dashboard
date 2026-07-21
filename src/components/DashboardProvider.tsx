@@ -14,12 +14,14 @@ type ProfileCtx = {
   ready: boolean;
   displayName: string | null;
   avatarUrl: string | null;
+  birthdate: string | null;
 };
 
 const Ctx = createContext<ProfileCtx>({
   ready: false,
   displayName: null,
   avatarUrl: null,
+  birthdate: null,
 });
 
 export const useProfile = () => useContext(Ctx);
@@ -33,6 +35,7 @@ export default function DashboardProvider({
   const [ready, setReady] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [birthdate, setBirthdate] = useState<string | null>(null);
 
   // Guardián de acceso + carga del perfil (mismo comportamiento que antes).
   useEffect(() => {
@@ -61,17 +64,18 @@ export default function DashboardProvider({
           display_name?: string | null;
           avatar_url?: string | null;
           active?: boolean;
+          birthdate?: string | null;
         } | null = null;
         let error: unknown = null;
         {
           const r = await supabase
             .from("affiliates")
-            .select("approved, display_name, avatar_url, active")
+            .select("approved, display_name, avatar_url, active, birthdate")
             .eq("user_id", data.session.user.id)
             .maybeSingle();
           aff = r.data;
           error = r.error;
-          // Por si la columna 'active' aún no existe: reintenta sin ella.
+          // Por si alguna columna nueva (active/birthdate) aún no existe: reintenta.
           if (error) {
             const r2 = await supabase
               .from("affiliates")
@@ -95,6 +99,7 @@ export default function DashboardProvider({
         }
         setDisplayName(aff?.display_name ?? null);
         setAvatarUrl(aff?.avatar_url ?? null);
+        setBirthdate(aff?.birthdate ?? null);
         setReady(true);
       } catch {
         // Ante cualquier fallo NO dejamos la pantalla en blanco.
@@ -133,7 +138,7 @@ export default function DashboardProvider({
   }, []);
 
   return (
-    <Ctx.Provider value={{ ready, displayName, avatarUrl }}>
+    <Ctx.Provider value={{ ready, displayName, avatarUrl, birthdate }}>
       {ready && <PushAutoSubscribe />}
       {children}
     </Ctx.Provider>
