@@ -402,8 +402,8 @@ export default function DashboardPage() {
       )}
 
       {!isAdmin && ranking && ranking.total >= 2 && (
-        <div className="animate-in inline-flex items-center gap-2 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-sm">
-          <span aria-hidden>🏆</span>
+        <div className="animate-in inline-flex items-center gap-1.5 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs">
+          <span aria-hidden className="text-sm">🏆</span>
           <span className="text-amber-100">
             Vas <b className="text-white">#{ranking.puesto}</b> este mes
           </span>
