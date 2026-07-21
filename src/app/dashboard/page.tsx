@@ -346,12 +346,11 @@ export default function DashboardPage() {
       3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200,
     ])
   ).sort((a, b) => a - b);
+  // Objetivo actual = siguiente número de la escalera por encima del actual, así
+  // al alcanzarlo salta solo al siguiente (10 → 15 → 20…).
   const nextMeta = escalera.find((v) => v > ftdMes) ?? ftdMes + 25;
-  const prevMeta = [...escalera].reverse().find((v) => v <= ftdMes) ?? 0;
-  const metaPct =
-    nextMeta > prevMeta
-      ? Math.min(100, Math.max(0, Math.round(((ftdMes - prevMeta) / (nextMeta - prevMeta)) * 100)))
-      : 0;
+  // Barra REALISTA: proporción absoluta (6 de 10 = 60%).
+  const metaPct = nextMeta > 0 ? Math.min(100, Math.round((ftdMes / nextMeta) * 100)) : 0;
   const faltan = Math.max(1, nextMeta - ftdMes);
   const recordBatido = mesAnterior.ftd > 0 && ftdMes >= mesAnterior.ftd;
   // Aviso primeros días de mes: el balance se reinició; lo anterior se paga aparte.
@@ -414,12 +413,38 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!isAdmin && ranking && ranking.total >= 2 && (
-        <div className="animate-in inline-flex items-center gap-1.5 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs">
-          <span aria-hidden className="text-sm">🏆</span>
-          <span className="text-amber-100">
-            Vas <b className="text-white">#{ranking.puesto}</b> este mes
-          </span>
+      {/* Ranking + barra de progreso en la MISMA línea (compacto). */}
+      {!isAdmin && (
+        <div className="animate-in flex flex-col gap-1.5 w-full max-w-lg self-start">
+          <div className="flex items-center gap-3">
+            {ranking && ranking.total >= 2 && (
+              <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs">
+                <span aria-hidden className="text-sm">🏆</span>
+                <span className="text-amber-100">
+                  Vas <b className="text-white">#{ranking.puesto}</b>
+                </span>
+              </span>
+            )}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${metaPct}%` }}
+                />
+              </div>
+              <span className="text-xs font-semibold text-white whitespace-nowrap">
+                {ftdMes}/{nextMeta} FTD
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {recordBatido && "🔥 Racha imparable · "}
+            Siguiente: <b className="text-slate-300">{nextMeta} FTD</b> ·{" "}
+            {faltan === 1 ? "¡solo 1 más!" : `faltan ${faltan}`}
+            {mejorDia && mejorDia.clics > 0 && (
+              <> · mejor día: <b className="text-slate-300">{mejorDia.nombre}</b></>
+            )}
+          </p>
         </div>
       )}
 
@@ -494,33 +519,6 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
-      {/* Meta por niveles: siempre hacia el siguiente objetivo (nunca para). */}
-      {!isAdmin && (
-        <div className="animate-in bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 max-w-lg" style={{ animationDelay: "0.09s" }}>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-slate-300">
-              {recordBatido ? "🔥 Racha imparable" : "Tu progreso"}
-            </span>
-            <span className="text-xs font-semibold text-white">
-              {ftdMes} / {nextMeta} FTD
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${metaPct}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1.5">
-            Siguiente: <b className="text-slate-300">{nextMeta} FTD</b> ·{" "}
-            {faltan === 1 ? "¡solo 1 más!" : `faltan ${faltan}`}
-            {mejorDia && mejorDia.clics > 0 && (
-              <> · mejor día: <b className="text-slate-300">{mejorDia.nombre}</b></>
-            )}
-          </p>
-        </div>
-      )}
-
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);

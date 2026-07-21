@@ -96,11 +96,14 @@ export async function desactivarPush(): Promise<boolean> {
 
 // Si el permiso YA está concedido, se asegura de que la suscripción existe y
 // está guardada en el servidor (por si cambió de sesión o dispositivo). Silencioso.
+// Solo lo hace UNA vez por sesión del navegador (evita reenvíos en cada apertura).
 export async function reactivarSiConcedido(): Promise<void> {
   if (!pushSoportado() || !VAPID) return;
   if (Notification.permission !== "granted") return;
   try {
+    if (sessionStorage.getItem("pushSincronizado") === "1") return;
     await activarPush();
+    sessionStorage.setItem("pushSincronizado", "1");
   } catch {
     /* silencioso */
   }
