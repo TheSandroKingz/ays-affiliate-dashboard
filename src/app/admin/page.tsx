@@ -36,33 +36,7 @@ type StatRow = {
   registrations: number;
   ftd: number;
   margin: number; // lo que te quedas tú
-  spark?: number[]; // clics diarios en el rango (mini-gráfica de tendencia)
 };
-
-// Mini-gráfica de tendencia (sparkline) en SVG, sin librerías. Muestra la forma
-// de los clics diarios. Si hay 0-1 puntos o todo a cero, no dibuja nada.
-function Sparkline({ data }: { data: number[] }) {
-  if (!data || data.length < 2) return null;
-  const max = Math.max(...data);
-  if (max <= 0) return null;
-  const w = 64, h = 18;
-  const step = w / (data.length - 1);
-  const pts = data
-    .map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`)
-    .join(" ");
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block" aria-hidden>
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="#10b981"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 type Totals = {
   structurePaid: number;
@@ -441,15 +415,12 @@ export default function AdminStatsPage() {
                       >
                         {rank + 1}
                       </span>
-                      <span className="inline-flex flex-col gap-0.5">
-                        <Link
-                          href={`/admin/afiliado/${row.user_id}`}
-                          className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
-                        >
-                          {row.display_name ?? "—"}
-                        </Link>
-                        {row.spark && <Sparkline data={row.spark} />}
-                      </span>
+                      <Link
+                        href={`/admin/afiliado/${row.user_id}`}
+                        className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium"
+                      >
+                        {row.display_name ?? "—"}
+                      </Link>
                     </span>
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white">
