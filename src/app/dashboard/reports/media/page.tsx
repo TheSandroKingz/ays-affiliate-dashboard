@@ -199,7 +199,10 @@ export default function MediaReportPage() {
               type="date"
               value={desde}
               max={hasta}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(e) => {
+                setDesde(e.target.value);
+                if (e.target.value) fetchData(e.target.value, hasta, true);
+              }}
               className={inputClass}
             />
           </div>
@@ -210,7 +213,10 @@ export default function MediaReportPage() {
               value={hasta}
               min={desde}
               max={hoy}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(e) => {
+                setHasta(e.target.value);
+                if (e.target.value) fetchData(desde, e.target.value, true);
+              }}
               className={inputClass}
             />
           </div>

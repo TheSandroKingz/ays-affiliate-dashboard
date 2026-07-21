@@ -270,7 +270,10 @@ export default function AdminStatsPage() {
               type="date"
               value={desde}
               max={hasta || hoy}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(e) => {
+                setDesde(e.target.value);
+                if (e.target.value) load(e.target.value, hasta);
+              }}
               className="rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -281,7 +284,10 @@ export default function AdminStatsPage() {
               value={hasta}
               min={desde}
               max={hoy}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(e) => {
+                setHasta(e.target.value);
+                if (e.target.value) load(desde, e.target.value);
+              }}
               className="rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 [color-scheme:dark] accent-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
