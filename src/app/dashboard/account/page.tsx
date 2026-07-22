@@ -10,6 +10,7 @@ import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
 import { LOGROS, calcularStatsLogros, type LogroStats } from "@/lib/logros";
 import { useProfile } from "@/components/DashboardProvider";
+import { TONOS, getTono, setTono, reproducirSonido, type TonoNotif } from "@/lib/sonido";
 
 export default function AccountPage() {
   const { birthdate: perfilBirthdate } = useProfile();
@@ -19,6 +20,7 @@ export default function AccountPage() {
   const [logroStats, setLogroStats] = useState<LogroStats | null>(null);
   const [notifFtd, setNotifFtd] = useState(true);
   const [notifRegistro, setNotifRegistro] = useState(true);
+  const [tono, setTonoState] = useState<TonoNotif>("off");
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -122,6 +124,16 @@ export default function AccountPage() {
   useEffect(() => {
     if (perfilBirthdate) setBirthdate(String(perfilBirthdate).slice(0, 10));
   }, [perfilBirthdate]);
+
+  // Tono de sonido guardado en este dispositivo.
+  useEffect(() => {
+    setTonoState(getTono());
+  }, []);
+  const elegirTono = (t: TonoNotif) => {
+    setTonoState(t);
+    setTono(t);
+    reproducirSonido(t); // preview
+  };
 
   async function uploadAvatar(file: File) {
     setUploading(true);
@@ -445,6 +457,29 @@ export default function AccountPage() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs text-slate-400 mb-2">Sonido al entrar un QFTD:</p>
+              <div className="flex flex-wrap gap-2">
+                {TONOS.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => elegirTono(o.id)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                      tono === o.id
+                        ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
+                        : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                Toca un tono para escucharlo. Suena en este dispositivo cuando
+                entra un QFTD nuevo.
+              </p>
             </div>
           </div>
         </div>

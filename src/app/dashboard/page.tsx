@@ -9,6 +9,7 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
 import LoadError from "@/components/LoadError";
 import Confetti from "@/components/Confetti";
+import { reproducirSonido } from "@/lib/sonido";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { eur } from "@/lib/format";
@@ -182,6 +183,7 @@ export default function DashboardPage() {
       );
       if (prevFtdRef.current !== null && mesFtd > prevFtdRef.current) {
         setCelebrar(true);
+        reproducirSonido();
         setTimeout(() => setCelebrar(false), 6000);
       }
       prevFtdRef.current = mesFtd;

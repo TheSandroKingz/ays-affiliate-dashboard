@@ -11,6 +11,7 @@ import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react";
 import Confetti from "@/components/Confetti";
+import { reproducirSonido } from "@/lib/sonido";
 
 type DailyRow = {
   date: string;
@@ -114,6 +115,7 @@ export default function AdminDashboard() {
         const nuevoFtd = Number(res.month.totals.ftd ?? 0);
         if (prevFtdRef.current !== null && nuevoFtd > prevFtdRef.current) {
           setCelebrar(true);
+          reproducirSonido();
           setTimeout(() => setCelebrar(false), 4500);
         }
         prevFtdRef.current = nuevoFtd;
