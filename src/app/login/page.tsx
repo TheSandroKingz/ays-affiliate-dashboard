@@ -21,30 +21,27 @@ export default function LoginPage() {
     setLoading(true)
 
     const cleanId = email.trim()
-    let loginEmail = cleanId
 
-if (!cleanId.includes('@')) {
-  const res = await fetch('/api/login-lookup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier: cleanId }),
-  })
-  const body = await res.json()
-  if (!res.ok || !body.email) {
-    setError(body.error || 'Usuario no encontrado')
-    setLoading(false)
-    return
-  }
-  loginEmail = body.email
-}
+    // Login en el servidor: resuelve usuario→email allí (sin exponer el correo)
+    // y valida la contraseña. Nos devuelve solo los tokens de sesión.
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: cleanId, password }),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok || !body.access_token) {
+      setError(body.error || 'Usuario o contraseña incorrectos')
+      setLoading(false)
+      return
+    }
 
-const { error: signInError } = await supabase.auth.signInWithPassword({
-  email: loginEmail,
-  password,
-})
-
-    if (signInError) {
-      setError(traducirError(signInError.message))
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: body.access_token,
+      refresh_token: body.refresh_token,
+    })
+    if (sessionError) {
+      setError(traducirError(sessionError.message))
       setLoading(false)
       return
     }

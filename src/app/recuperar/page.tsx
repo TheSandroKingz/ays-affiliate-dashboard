@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
 import Image from 'next/image'
-import { supabase } from '@/lib/supabaseClient'
-import { traducirError } from '@/lib/authErrors'
 
 export default function RecuperarPage() {
   const [email, setEmail] = useState('')
@@ -18,34 +16,16 @@ export default function RecuperarPage() {
     setLoading(true)
 
     const cleanId = email.trim()
-    let resetEmail = cleanId
 
-    if (!cleanId.includes('@')) {
-      const res = await fetch('/api/login-lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: cleanId }),
-      })
-      const body = await res.json()
-      if (!res.ok || !body.email) {
-        setError(body.error || 'Usuario no encontrado')
-        setLoading(false)
-        return
-      }
-      resetEmail = body.email
-    }
-
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
+    // Todo en el servidor: resuelve usuario→email allí (sin exponerlo) y manda
+    // el email de reseteo. Responde igual exista o no la cuenta (no se enumera).
+    await fetch('/api/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: cleanId }),
+    }).catch(() => {})
 
     setLoading(false)
-
-    if (resetError) {
-      setError(traducirError(resetError.message))
-      return
-    }
-
     setSent(true)
   }
 
