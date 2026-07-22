@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase, MAX_SESSION_MS } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import PushAutoSubscribe from "@/components/PushAutoSubscribe";
+import FestiveBanner from "@/components/FestiveBanner";
 
 // Almacén compartido del panel: carga el perfil (nombre/avatar) UNA sola vez y
 // hace de guardián de acceso (sin sesión → login; no aprobado → pendiente).
@@ -140,6 +141,11 @@ export default function DashboardProvider({
   return (
     <Ctx.Provider value={{ ready, displayName, avatarUrl, birthdate }}>
       {ready && <PushAutoSubscribe />}
+      {ready && (
+        <div className="mb-4">
+          <FestiveBanner />
+        </div>
+      )}
       {children}
     </Ctx.Provider>
   );
