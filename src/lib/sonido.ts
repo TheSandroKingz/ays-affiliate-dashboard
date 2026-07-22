@@ -3,24 +3,22 @@
 
 export type TonoNotif =
   | "off"
-  | "caja"
-  | "campana"
+  | "venta"
+  | "kaching"
+  | "registradora"
+  | "monedas"
   | "moneda"
-  | "arpa"
-  | "gota"
-  | "ping"
-  | "tada";
+  | "arpa";
 const KEY = "sonidoNotif";
 
 export const TONOS: { id: TonoNotif; label: string }[] = [
   { id: "off", label: "Silencio" },
-  { id: "caja", label: "Caja (cha-ching)" },
-  { id: "campana", label: "Campana" },
+  { id: "venta", label: "Venta (cha-ching)" },
+  { id: "kaching", label: "Ka-ching brillante" },
+  { id: "registradora", label: "Registradora" },
+  { id: "monedas", label: "Monedas" },
   { id: "moneda", label: "Moneda" },
   { id: "arpa", label: "Arpa (celestial)" },
-  { id: "gota", label: "Gota (agua)" },
-  { id: "ping", label: "Ping (limpio)" },
-  { id: "tada", label: "Tada (logro)" },
 ];
 
 export function getTono(): TonoNotif {
@@ -83,13 +81,28 @@ export function reproducirSonido(tono?: TonoNotif) {
   if (!ac) return;
   try {
     if (ac.state === "suspended") ac.resume();
-    if (t === "caja") {
-      // Dos notas brillantes ascendentes tipo caja registradora.
-      nota(ac, 988, 0, 0.12, 0.22, "square");
-      nota(ac, 1319, 0.09, 0.22, 0.2, "square");
-    } else if (t === "campana") {
-      nota(ac, 1175, 0, 0.6, 0.22, "sine");
-      nota(ac, 2350, 0, 0.5, 0.08, "sine");
+    if (t === "venta") {
+      // "Cha-ching" de venta tipo Shopify: golpe corto + campanilla brillante.
+      nota(ac, 784, 0, 0.09, 0.2, "square"); // "cha"
+      nota(ac, 1568, 0.09, 0.4, 0.22, "triangle"); // "ching" brillante
+      nota(ac, 2349, 0.09, 0.35, 0.1, "sine"); // chispa
+    } else if (t === "kaching") {
+      // Ka-ching con acorde brillante y chispa aguda.
+      nota(ac, 587, 0, 0.08, 0.18, "square"); // "ka"
+      nota(ac, 1319, 0.08, 0.45, 0.2, "triangle");
+      nota(ac, 1760, 0.08, 0.4, 0.16, "triangle");
+      nota(ac, 2637, 0.08, 0.3, 0.08, "sine"); // chispa
+    } else if (t === "registradora") {
+      // Dos campanillas de caja registradora (ding-ding) con armónico.
+      nota(ac, 1568, 0, 0.28, 0.2, "sine");
+      nota(ac, 3136, 0, 0.2, 0.06, "sine");
+      nota(ac, 2093, 0.13, 0.35, 0.2, "sine");
+      nota(ac, 4186, 0.13, 0.25, 0.05, "sine");
+    } else if (t === "monedas") {
+      // Cascada de monedas: varios blips brillantes seguidos.
+      [1976, 2349, 1760, 2637, 2093].forEach((f, i) =>
+        nota(ac, f, i * 0.05, 0.12, 0.16, "square")
+      );
     } else if (t === "moneda") {
       nota(ac, 1760, 0, 0.08, 0.2, "square");
       nota(ac, 2637, 0.06, 0.18, 0.18, "square");
@@ -98,19 +111,6 @@ export function reproducirSonido(tono?: TonoNotif) {
       [659, 784, 988, 1319].forEach((f, i) =>
         nota(ac, f, i * 0.06, 0.5, 0.16, "sine")
       );
-    } else if (t === "gota") {
-      // Gota de agua: blip que cae de agudo a grave.
-      nota(ac, 1500, 0, 0.08, 0.18, "sine");
-      nota(ac, 700, 0.05, 0.16, 0.2, "sine");
-    } else if (t === "ping") {
-      // Ping limpio con un armónico suave.
-      nota(ac, 1400, 0, 0.55, 0.2, "sine");
-      nota(ac, 2800, 0, 0.35, 0.05, "sine");
-    } else if (t === "tada") {
-      // "Ta-daa": nota corta y luego acorde de logro.
-      nota(ac, 784, 0, 0.1, 0.18, "triangle");
-      nota(ac, 1047, 0.13, 0.45, 0.2, "triangle");
-      nota(ac, 659, 0.13, 0.45, 0.12, "triangle");
     }
   } catch {
     /* nada */
