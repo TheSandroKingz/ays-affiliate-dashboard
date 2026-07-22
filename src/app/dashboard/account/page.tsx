@@ -62,10 +62,14 @@ export default function AccountPage() {
 
       // Dos consultas en paralelo (la fecha de nacimiento ya viene del perfil
       // compartido, así no repetimos la misma fila de affiliates).
-      const [perfilRes, filasRes] = await Promise.all([
+      // Dos consultas en paralelo. Las preferencias de notificaciones
+      // (notif_ftd/notif_registro) van en el MISMO select del perfil para no
+      // hacer un tercer viaje a la misma fila. Si el select fallara (columnas
+      // aún sin crear), reintentamos sin ellas para no romper la página.
+      let [perfilRes, filasRes] = await Promise.all([
         supabase
           .from("affiliates")
-          .select("first_name, last_name, phone, avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
+          .select("avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20, notif_ftd, notif_registro")
           .eq("user_id", user.id)
           .single(),
         supabase
@@ -73,32 +77,26 @@ export default function AccountPage() {
           .select("date, ftd, registrations, clicks")
           .eq("user_id", user.id),
       ]);
+      if (perfilRes.error) {
+        perfilRes = await supabase
+          .from("affiliates")
+          .select("avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
+          .eq("user_id", user.id)
+          .single();
+      }
 
-      const data = perfilRes.data;
+      const data = perfilRes.data as Record<string, unknown> | null;
       if (data) {
-        setFirstName(data.display_name ?? "");
-        setAcceptedTerms(data.accepted_terms ?? false);
-        setAcceptedPrivacy(data.accepted_privacy ?? false);
-        setAvatarUrl(data.avatar_url ?? null);
-        setWalletErc20(data.wallet_erc20 ?? "");
-        setWalletTrc20(data.wallet_trc20 ?? "");
+        setFirstName((data.display_name as string) ?? "");
+        setAcceptedTerms((data.accepted_terms as boolean) ?? false);
+        setAcceptedPrivacy((data.accepted_privacy as boolean) ?? false);
+        setAvatarUrl((data.avatar_url as string) ?? null);
+        setWalletErc20((data.wallet_erc20 as string) ?? "");
+        setWalletTrc20((data.wallet_trc20 as string) ?? "");
+        setNotifFtd((data.notif_ftd as boolean) ?? true);
+        setNotifRegistro((data.notif_registro as boolean) ?? true);
       }
       setLogroStats(calcularStatsLogros(filasRes.data ?? []));
-
-      // Preferencias de notificaciones (blindado; por defecto ambas activadas).
-      try {
-        const { data: prefs } = await supabase
-          .from("affiliates")
-          .select("notif_ftd, notif_registro")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (prefs) {
-          setNotifFtd(prefs.notif_ftd ?? true);
-          setNotifRegistro(prefs.notif_registro ?? true);
-        }
-      } catch {
-        /* columnas no disponibles aún */
-      }
 
       setLoading(false);
     }

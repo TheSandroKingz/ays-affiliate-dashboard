@@ -57,20 +57,6 @@ function saludo(): string {
   return "Buenas noches";
 }
 
-// Convierte lo que escribe el admin ("20.746,89", "20746.89", "20746") a número.
-function parseImporte(s: string): number | null {
-  const clean = s
-    .replace(/[€\s]/g, "")
-    .replace(/\.(?=\d{3}(\D|$))/g, "") // puntos de millar
-    .replace(",", ".");
-  const n = parseFloat(clean);
-  return Number.isFinite(n) ? n : null;
-}
-
-const mesKeyMadrid = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
-    .format(new Date())
-    .slice(0, 7);
 
 export default function AdminDashboard() {
   const { displayName } = useProfile(); // nombre desde el almacén compartido
@@ -100,27 +86,6 @@ export default function AdminDashboard() {
   const [celebrar, setCelebrar] = useState(false);
   const [hito, setHito] = useState<number | null>(null);
   const prevFtdRef = useRef<number | null>(null);
-  // Cuadre con FreshBet: el nº que marca FreshBet este mes (lo teclea el admin,
-  // guardado por mes en este dispositivo). Se compara con el bruto de AYS.
-  const [fbInput, setFbInput] = useState("");
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cuadreFreshbet:" + mesKeyMadrid());
-      if (saved) setFbInput(saved);
-    } catch {
-      /* nada */
-    }
-  }, []);
-
-  const onFbChange = (v: string) => {
-    setFbInput(v);
-    try {
-      localStorage.setItem("cuadreFreshbet:" + mesKeyMadrid(), v);
-    } catch {
-      /* nada */
-    }
-  };
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -257,14 +222,6 @@ export default function AdminDashboard() {
     lastMonthToDate && lastMonthToDate > 0
       ? ((totals.totalClean - lastMonthToDate) / lastMonthToDate) * 100
       : null;
-
-  // Cuadre con FreshBet: bruto de AYS (antes de pagar a afiliados) = lo que AYS
-  // cree que FreshBet te ha generado este mes. Se compara con lo que tú metes.
-  const brutoAys =
-    totals.ownEarnings + totals.structureMargin + totals.structurePaid;
-  const fbNum = parseImporte(fbInput);
-  const difFb = fbNum !== null ? brutoAys - fbNum : null;
-  const cuadraFb = difFb !== null && Math.abs(difFb) <= 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -476,51 +433,6 @@ export default function AdminDashboard() {
               {eur(Math.abs(totals.totalClean - lastMonthToDate))}
             </span>{" "}
             <span className="text-slate-500">que el mes pasado a estas alturas</span>
-          </div>
-        )}
-      </div>
-
-      {/* Cuadre con FreshBet: metes lo que marca FreshBet este mes y te dice si
-          cuadra con lo que AYS ha contado (bruto, antes de pagar a afiliados).
-          Es tu red de seguridad contra fugas o postbacks perdidos. */}
-      <div
-        className="animate-in bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 max-w-lg"
-        style={{ animationDelay: "0.09s" }}
-      >
-        <p className="text-sm font-medium text-slate-300 mb-3">🧮 Cuadre con FreshBet</p>
-        <div className="flex items-center justify-between text-sm mb-3">
-          <span className="text-slate-400">AYS cuenta este mes</span>
-          <span className="font-semibold text-white">{eur(brutoAys)}</span>
-        </div>
-        <label className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-slate-400 whitespace-nowrap">Lo que marca FreshBet</span>
-          <span className="relative">
-            <input
-              inputMode="decimal"
-              value={fbInput}
-              onChange={(e) => onFbChange(e.target.value)}
-              placeholder="0,00"
-              className="w-32 rounded-lg bg-white/10 border border-white/20 text-white text-sm text-right pl-3 pr-6 py-1.5 focus:outline-none focus:border-emerald-400/60"
-            />
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</span>
-          </span>
-        </label>
-        {difFb !== null && (
-          <div
-            className={`mt-3 text-sm rounded-lg px-3 py-2 ${
-              cuadraFb
-                ? "bg-emerald-500/15 text-emerald-300"
-                : "bg-amber-500/15 text-amber-200"
-            }`}
-          >
-            {cuadraFb ? (
-              <>✓ Cuadra con FreshBet</>
-            ) : (
-              <>
-                ⚠️ Diferencia de <b>{eur(Math.abs(difFb))}</b> —{" "}
-                {difFb > 0 ? "AYS cuenta de más" : "AYS cuenta de menos"}
-              </>
-            )}
           </div>
         )}
       </div>

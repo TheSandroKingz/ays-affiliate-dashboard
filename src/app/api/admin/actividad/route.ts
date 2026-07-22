@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
+import { deteccionFraude } from "@/lib/seguridad";
 
 // Actividad de postbacks (solo admin): los últimos eventos que manda freshbet
 // (registro/FTD/comisión) desde la "caja negra" postback_events, con el nombre
@@ -11,13 +12,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { data: events, error } = await supabaseAdmin
-    .from("postback_events")
-    .select(
-      "id, created_at, event_type, status, counted, commission, player_id, tracking_code, afp, isocountry, matched_user_id"
-    )
-    .order("created_at", { ascending: false })
-    .limit(300);
+  const [{ data: events, error }, fraude] = await Promise.all([
+    supabaseAdmin
+      .from("postback_events")
+      .select(
+        "id, created_at, event_type, status, counted, commission, player_id, tracking_code, afp, isocountry, matched_user_id"
+      )
+      .order("created_at", { ascending: false })
+      .limit(300),
+    deteccionFraude(),
+  ]);
 
   // Si la tabla aún no existe, devolvemos vacío (no rompe el panel).
   if (error) {
@@ -93,5 +97,6 @@ export async function GET(request: Request) {
       repetidos,
       retenidos: retenidos.length,
     },
+    fraude,
   });
 }

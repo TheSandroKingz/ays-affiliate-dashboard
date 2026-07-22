@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabaseAdmin";
+import { ADMIN_USER_ID, esCuentaPropia } from "./adminId";
 
 // Estado de seguridad del dinero (solo admin). Mira la caja negra de postbacks
 // y detecta lo único que sería robo/doble pago real:
@@ -67,6 +68,110 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
     const alerta = diasSin >= 7 && clics7 >= 5;
 
     return { ultimoEvento, diasSin, clics7, alerta };
+  } catch {
+    return vacio;
+  }
+}
+
+// Detección de fraude/autodepósito. FreshBet NO nos da la IP del depositante,
+// así que usamos dos señales honestas con lo que YA tenemos:
+//   - conversionAnomala : afiliados con demasiados FTD para tan pocos clics
+//     (patrón típico de farmear CPA autodepositándose). Excluye cuentas propias
+//     (Mongolitos es tráfico directo SIN clics en /go → daría falso positivo) y
+//     al admin.
+//   - jugadoresCompartidos : un mismo player_id atribuido a MÁS de un afiliado
+//     (multicuenta / colusión). El candado ya evita el doble pago, pero esto lo
+//     saca a la luz para que lo revises.
+// Blindado: ante cualquier fallo devuelve vacío (no asusta con falsos positivos).
+export type Fraude = {
+  conversionAnomala: {
+    user_id: string;
+    nombre: string | null;
+    ftd: number;
+    clicks: number;
+    pct: number;
+  }[];
+  jugadoresCompartidos: { player_id: string; afiliados: string[] }[];
+  hayAlerta: boolean;
+};
+
+export async function deteccionFraude(): Promise<Fraude> {
+  const vacio: Fraude = {
+    conversionAnomala: [],
+    jugadoresCompartidos: [],
+    hayAlerta: false,
+  };
+  try {
+    const inicioMes =
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
+        .format(new Date())
+        .slice(0, 7) + "-01";
+
+    const [evRes, dailyRes, affRes] = await Promise.all([
+      supabaseAdmin
+        .from("postback_events")
+        .select("player_id, matched_user_id")
+        .in("event_type", ["ftd", "commission"])
+        .not("player_id", "is", null)
+        .not("matched_user_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, clicks, ftd")
+        .gte("date", inicioMes),
+      supabaseAdmin.from("affiliates").select("user_id, display_name"),
+    ]);
+
+    const nombres = new Map<string, string | null>();
+    for (const a of affRes.data ?? []) nombres.set(a.user_id, a.display_name);
+
+    // Mismo jugador en varios afiliados (colusión / multicuenta).
+    const porJugador = new Map<string, Set<string>>();
+    for (const e of evRes.data ?? []) {
+      const p = e.player_id as string | null;
+      const u = e.matched_user_id as string | null;
+      if (!p || !u || p.startsWith("legacy:")) continue;
+      let set = porJugador.get(p);
+      if (!set) porJugador.set(p, (set = new Set()));
+      set.add(u);
+    }
+    const jugadoresCompartidos = [...porJugador.entries()]
+      .filter(([, set]) => set.size > 1)
+      .map(([player_id, set]) => ({
+        player_id,
+        afiliados: [...set].map((id) => nombres.get(id) ?? id),
+      }));
+
+    // Conversión anómala este mes por afiliado (muchos FTD, pocos clics).
+    const agg = new Map<string, { clicks: number; ftd: number }>();
+    for (const d of dailyRes.data ?? []) {
+      const acc = agg.get(d.user_id) ?? { clicks: 0, ftd: 0 };
+      acc.clicks += Number(d.clicks ?? 0);
+      acc.ftd += Number(d.ftd ?? 0);
+      agg.set(d.user_id, acc);
+    }
+    const conversionAnomala = [...agg.entries()]
+      .filter(([uid, v]) => {
+        if (uid === ADMIN_USER_ID || esCuentaPropia(uid)) return false;
+        // Umbral prudente: al menos 3 FTD y una tasa clic→FTD ≥ 30% (el tráfico
+        // real convierte muy por debajo; esto solo salta con algo muy raro).
+        return v.ftd >= 3 && v.clicks > 0 && v.ftd / v.clicks >= 0.3;
+      })
+      .map(([uid, v]) => ({
+        user_id: uid,
+        nombre: nombres.get(uid) ?? null,
+        ftd: v.ftd,
+        clicks: v.clicks,
+        pct: (v.ftd / v.clicks) * 100,
+      }));
+
+    return {
+      conversionAnomala,
+      jugadoresCompartidos,
+      hayAlerta:
+        conversionAnomala.length > 0 || jugadoresCompartidos.length > 0,
+    };
   } catch {
     return vacio;
   }

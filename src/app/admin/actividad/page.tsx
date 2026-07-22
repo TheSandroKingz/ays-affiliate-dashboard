@@ -61,6 +61,17 @@ export default function ActividadPage() {
     noMatch: number;
     repetidos: { player_id: string; veces: number }[];
   } | null>(null);
+  const [fraude, setFraude] = useState<{
+    conversionAnomala: {
+      user_id: string;
+      nombre: string | null;
+      ftd: number;
+      clicks: number;
+      pct: number;
+    }[];
+    jugadoresCompartidos: { player_id: string; afiliados: string[] }[];
+    hayAlerta: boolean;
+  } | null>(null);
   const [resolviendo, setResolviendo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,6 +103,7 @@ export default function ActividadPage() {
       setUltimoEvento(body.ultimoEvento ?? null);
       setSinPlayerId(Number(body.sinPlayerId ?? 0));
       setResumen(body.resumen ?? null);
+      setFraude(body.fraude ?? null);
     } catch {
       setError(true);
     } finally {
@@ -240,11 +252,66 @@ export default function ActividadPage() {
       {resumen &&
         retenidos.length === 0 &&
         sinPlayerId === 0 &&
-        resumen.repetidos.length === 0 && (
+        resumen.repetidos.length === 0 &&
+        !fraude?.hayAlerta && (
           <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 flex items-center gap-2">
             ✔ Todo en orden — ningún doble pago ni FTD sospechoso. El dinero cuadra.
           </div>
         )}
+
+      {/* FRAUDE / AUTODEPÓSITO: señales para que las revises (no bloquean dinero,
+          solo avisan). Conversión anómala = muchos FTD para tan pocos clics;
+          jugador compartido = mismo player_id en varios afiliados. */}
+      {fraude && fraude.conversionAnomala.length > 0 && (
+        <div className="rounded-xl border border-amber-400/60 bg-amber-500/15 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-100 flex items-center gap-2">
+            🕵️ Conversión anómala — posible autodepósito
+          </p>
+          <p className="text-xs text-amber-200/80 mt-1 mb-2">
+            Estos afiliados tienen demasiados FTD para tan pocos clics (el tráfico
+            real convierte mucho menos). Revísalo por si se autodepositan para
+            farmear CPA.
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {fraude.conversionAnomala.map((c) => (
+              <div
+                key={c.user_id}
+                className="flex items-center justify-between gap-2 text-sm text-white rounded-lg border border-white/10 bg-black/30 px-3 py-1.5"
+              >
+                <span className="font-medium">{c.nombre ?? "—"}</span>
+                <span className="text-amber-200">
+                  <b>{c.ftd}</b> FTD / {c.clicks} clics ·{" "}
+                  <b>{c.pct.toLocaleString("es-ES", { maximumFractionDigits: 0 })}%</b>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {fraude && fraude.jugadoresCompartidos.length > 0 && (
+        <div className="rounded-xl border border-amber-400/60 bg-amber-500/15 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-100 flex items-center gap-2">
+            👥 Mismo jugador en varios afiliados
+          </p>
+          <p className="text-xs text-amber-200/80 mt-1 mb-2">
+            Un mismo jugador aparece atribuido a más de un afiliado (multicuenta o
+            colusión). No se ha pagado doble (el candado lo evita), pero conviene
+            mirarlo.
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {fraude.jugadoresCompartidos.map((j) => (
+              <div
+                key={j.player_id}
+                className="flex items-center justify-between gap-2 text-sm text-white rounded-lg border border-white/10 bg-black/30 px-3 py-1.5"
+              >
+                <span className="font-mono text-xs text-slate-300">{j.player_id}</span>
+                <span className="text-amber-200">{j.afiliados.join(" · ")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {sinPlayerId > 0 && (
         <div className="rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
