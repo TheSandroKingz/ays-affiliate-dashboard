@@ -5,10 +5,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { CardsSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
 import { Check, Copy } from "lucide-react";
+import { esCuentaPropia } from "@/lib/adminId";
 
 export default function CommissionPlanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [esPropia, setEsPropia] = useState(false);
   const [cpaSpain, setCpaSpain] = useState(85);
   const [cpaOther, setCpaOther] = useState(85);
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
@@ -28,6 +30,7 @@ export default function CommissionPlanPage() {
         setError(true);
         return;
       }
+      setEsPropia(esCuentaPropia(user.id));
 
       const { data, error: qErr } = await supabase
         .from("affiliates")
@@ -90,6 +93,7 @@ export default function CommissionPlanPage() {
 
       
 
+      {!esPropia && (
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
 <h2 className="text-lg font-semibold text-white mb-4">Subafiliados</h2>
 <div className="flex items-center justify-between">
@@ -97,6 +101,7 @@ export default function CommissionPlanPage() {
 <p className="text-white font-semibold">{subaffiliatePercent}%</p>
 </div>
 </div>
+      )}
 
 <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
 <h2 className="text-lg font-semibold text-white mb-4">CPA</h2>

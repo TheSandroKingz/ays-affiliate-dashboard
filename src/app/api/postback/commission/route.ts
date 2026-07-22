@@ -13,6 +13,7 @@ import {
 } from "@/lib/postback";
 import { notificarEvento, enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
+import { esCuentaPropia } from "@/lib/adminId";
 
 // QFTD (depósito CUALIFICADO): FreshBet manda este postback cuando GENERA la
 // comisión, es decir, cuando el depósito cualifica. ESTE es el evento que PAGA:
@@ -140,10 +141,13 @@ export async function GET(request: Request) {
         if (yaContado) {
           estado = "held";
         } else {
+          // Cuenta propia del admin (Mongolitos): NO se le acredita comisión
+          // (el dinero es del admin, se queda como margen entero). El FTD sí
+          // cuenta, y su CPA se muestra en su panel, pero no genera "le pago".
           const esOtroPais = isocountry && isocountry !== "ES";
-          const commission = Number(
-            (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
-          );
+          const commission = esCuentaPropia(target.user_id)
+            ? 0
+            : Number((esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0);
           const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
             p_user_id: target.user_id,
             p_date: today,

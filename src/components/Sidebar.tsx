@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { ADMIN_USER_ID } from "@/lib/adminId";
+import { ADMIN_USER_ID, esCuentaPropia } from "@/lib/adminId";
 import InstallAppButton from "@/components/InstallAppButton";
 import { useProfile } from "@/components/DashboardProvider";
 import {
@@ -36,6 +36,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [esPropia, setEsPropia] = useState(false);
   // Nombre y foto vienen del almacén compartido (una sola carga para toda la app).
   const { displayName, avatarUrl } = useProfile();
 
@@ -45,6 +46,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       const user = data.session?.user;
       setUserEmail(user?.email ?? null);
       setIsAdmin(user?.id === ADMIN_USER_ID);
+      setEsPropia(esCuentaPropia(user?.id));
     });
   }, []);
 
@@ -102,14 +104,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             )}
           </>
         )}
-        {!isAdmin && (
+        {!isAdmin && !esPropia && (
           <Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
             <CreditCard size={18} />
             Pagos
           </Link>
         )}
 
-        {!isAdmin && (
+        {!isAdmin && !esPropia && (
           <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
             <Users size={18} />
             Subafiliados
