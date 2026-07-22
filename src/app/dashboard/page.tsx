@@ -111,6 +111,9 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [welcomeCerrado, setWelcomeCerrado] = useState(true);
   const [celebrar, setCelebrar] = useState(false);
+  // Si el FTD nuevo convierte HOY en tu mejor día, guardamos el nº para celebrar
+  // un "récord" (si no, es un FTD normal). null = no es récord.
+  const [recordHoy, setRecordHoy] = useState<number | null>(null);
   const prevFtdRef = useRef<number | null>(null);
   const [subioPuesto, setSubioPuesto] = useState<number | null>(null);
 
@@ -174,17 +177,31 @@ export default function DashboardPage() {
       // Celebración de FTD: comparamos el total de FTD del MES con la carga
       // anterior. Solo salta si AUMENTA (no en la primera carga), así no aparece
       // cada vez que entras al inicio.
-      const hoyMes = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
-        .format(new Date())
-        .slice(0, 7);
-      const mesFtd = (dailyRes.data ?? []).reduce(
-        (s, r) => (String(r.date).slice(0, 7) === hoyMes ? s + Number(r.ftd ?? 0) : s),
-        0
-      );
+      const hoyDia = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
+        .format(new Date());
+      const hoyMes = hoyDia.slice(0, 7);
+      // FTD del mes (para saber si hay uno nuevo), FTD de HOY y el mejor día
+      // ANTERIOR (excluyendo hoy) — para detectar récord personal.
+      let mesFtd = 0;
+      let hoyFtd = 0;
+      let mejorDiaPrevio = 0;
+      for (const r of dailyRes.data ?? []) {
+        const f = Number(r.ftd ?? 0);
+        const key = String(r.date).slice(0, 10);
+        if (key.slice(0, 7) === hoyMes) mesFtd += f;
+        if (key === hoyDia) hoyFtd = f;
+        else if (f > mejorDiaPrevio) mejorDiaPrevio = f;
+      }
       if (prevFtdRef.current !== null && mesFtd > prevFtdRef.current) {
         setCelebrar(true);
         reproducirSonido();
-        setTimeout(() => setCelebrar(false), 6000);
+        // Récord solo si HOY supera tu mejor día histórico (y ya tenías historial,
+        // para no cantar "récord" con el primer FTD de tu vida).
+        if (hoyFtd > mejorDiaPrevio && mejorDiaPrevio > 0) setRecordHoy(hoyFtd);
+        setTimeout(() => {
+          setCelebrar(false);
+          setRecordHoy(null);
+        }, 6000);
       }
       prevFtdRef.current = mesFtd;
 
@@ -430,9 +447,15 @@ export default function DashboardPage() {
         <>
           <Confetti />
           <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-            <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
-              <span className="text-xl">🎉</span> ¡Nuevo FTD!
-            </div>
+            {recordHoy !== null ? (
+              <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
+                <span className="text-xl">🏆</span> ¡Nuevo récord! {recordHoy} FTD hoy
+              </div>
+            ) : (
+              <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
+                <span className="text-xl">🎉</span> ¡Nuevo FTD!
+              </div>
+            )}
           </div>
         </>
       )}
