@@ -580,8 +580,8 @@ export default function AccountPage() {
                               {l.nombre} {p.hecho && <span className="text-emerald-400">✓</span>}
                             </span>
                             <span className="text-xs text-slate-400 shrink-0">
-                              {p.valor}
-                              {p.sufijo}/{p.meta}
+                              {p.valor.toLocaleString("es-ES")}
+                              {p.sufijo}/{p.meta.toLocaleString("es-ES")}
                               {p.sufijo}
                             </span>
                           </div>

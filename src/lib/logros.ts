@@ -24,28 +24,34 @@ export type Logro = {
 };
 
 export const LOGROS: Logro[] = [
-  // Primeros pasos
-  { id: "primer-registro", emoji: "🌱", nombre: "El comienzo", desc: "Tu primer registro", meta: 1, valor: (s) => s.totalRegistros },
-  { id: "primer-ftd", emoji: "🥇", nombre: "Estreno", desc: "Tu primer FTD", meta: 1, valor: (s) => s.totalFtd },
-  // Hitos de FTD (tier)
-  { id: "10-ftd", emoji: "🏅", nombre: "Veterano", desc: "Acumula 10 FTD", meta: 10, valor: (s) => s.totalFtd },
-  { id: "50-ftd", emoji: "💎", nombre: "Diamante", desc: "Acumula 50 FTD", meta: 50, valor: (s) => s.totalFtd },
-  { id: "100-ftd", emoji: "👑", nombre: "Leyenda", desc: "Acumula 100 FTD", meta: 100, valor: (s) => s.totalFtd },
+  // Hitos de FTD (de novato a ballena)
+  { id: "ftd-1", emoji: "🥇", nombre: "Estreno", desc: "Tu primer FTD", meta: 1, valor: (s) => s.totalFtd },
+  { id: "ftd-50", emoji: "🎯", nombre: "Arrancando", desc: "Acumula 50 FTD", meta: 50, valor: (s) => s.totalFtd },
+  { id: "ftd-250", emoji: "🏅", nombre: "Veterano", desc: "Acumula 250 FTD", meta: 250, valor: (s) => s.totalFtd },
+  { id: "ftd-1000", emoji: "💎", nombre: "Diamante", desc: "Acumula 1.000 FTD", meta: 1000, valor: (s) => s.totalFtd },
+  { id: "ftd-2500", emoji: "👑", nombre: "Leyenda", desc: "Acumula 2.500 FTD", meta: 2500, valor: (s) => s.totalFtd },
+  { id: "ftd-5000", emoji: "🐋", nombre: "Ballena", desc: "Acumula 5.000 FTD", meta: 5000, valor: (s) => s.totalFtd },
   // Rachas
-  { id: "racha-3", emoji: "🔥", nombre: "En racha", desc: "3 días seguidos con FTD", meta: 3, valor: (s) => s.maxRacha },
-  { id: "racha-7", emoji: "🚀", nombre: "Imparable", desc: "7 días seguidos con FTD", meta: 7, valor: (s) => s.maxRacha },
-  // Días redondos
-  { id: "dia-3", emoji: "💥", nombre: "Día redondo", desc: "3 FTD en un mismo día", meta: 3, valor: (s) => s.mejorDia },
-  { id: "dia-5", emoji: "⚡", nombre: "Explosión", desc: "5 FTD en un mismo día", meta: 5, valor: (s) => s.mejorDia },
+  { id: "racha-7", emoji: "🔥", nombre: "En racha", desc: "7 días seguidos con FTD", meta: 7, valor: (s) => s.maxRacha },
+  { id: "racha-30", emoji: "🚀", nombre: "Imparable", desc: "30 días seguidos con FTD", meta: 30, valor: (s) => s.maxRacha },
+  // Días top
+  { id: "dia-25", emoji: "💥", nombre: "Día top", desc: "25 FTD en un mismo día", meta: 25, valor: (s) => s.mejorDia },
+  { id: "dia-50", emoji: "⚡", nombre: "Día histórico", desc: "50 FTD en un mismo día", meta: 50, valor: (s) => s.mejorDia },
   // Mes fuerte
-  { id: "mes-10", emoji: "🌟", nombre: "Mes de oro", desc: "10 FTD en un mismo mes", meta: 10, valor: (s) => s.mejorMes },
+  { id: "mes-250", emoji: "🌟", nombre: "Mes de oro", desc: "250 FTD en un mismo mes", meta: 250, valor: (s) => s.mejorMes },
+  { id: "mes-500", emoji: "🏆", nombre: "Mes récord", desc: "500 FTD en un mismo mes", meta: 500, valor: (s) => s.mejorMes },
   // Tráfico
-  { id: "clicks-500", emoji: "🧲", nombre: "Imán de tráfico", desc: "500 clics acumulados", meta: 500, valor: (s) => s.totalClicks },
+  { id: "clicks-10k", emoji: "🧲", nombre: "Imán de tráfico", desc: "10.000 clics acumulados", meta: 10000, valor: (s) => s.totalClicks },
+  { id: "clicks-50k", emoji: "📡", nombre: "Viral", desc: "50.000 clics acumulados", meta: 50000, valor: (s) => s.totalClicks },
   // Calidad
-  { id: "conv-5", emoji: "🎣", nombre: "Francotirador", desc: "5% de conversión (FTD/clics)", meta: 5, sufijo: "%", valor: (s) => Math.round(s.conversion * 10) / 10 },
+  { id: "conv-25", emoji: "🎣", nombre: "Francotirador", desc: "25% de conversión (FTD/clics)", meta: 25, sufijo: "%", valor: (s) => Math.round(s.conversion * 10) / 10 },
+  { id: "conv-40", emoji: "🎯", nombre: "Élite", desc: "40% de conversión (FTD/clics)", meta: 40, sufijo: "%", valor: (s) => Math.round(s.conversion * 10) / 10 },
+  // Reclutando
+  { id: "reg-500", emoji: "👥", nombre: "Reclutador", desc: "500 registros", meta: 500, valor: (s) => s.totalRegistros },
+  { id: "reg-2000", emoji: "📣", nombre: "Multitud", desc: "2.000 registros", meta: 2000, valor: (s) => s.totalRegistros },
   // Constancia
-  { id: "dias-10", emoji: "📅", nombre: "Constante", desc: "Consigue FTD en 10 días distintos", meta: 10, valor: (s) => s.diasConFtd },
-  { id: "meses-3", emoji: "🗓️", nombre: "Fiel", desc: "Consigue FTD en 3 meses distintos", meta: 3, valor: (s) => s.mesesConFtd },
+  { id: "dias-30", emoji: "📅", nombre: "Constante", desc: "FTD en 30 días distintos", meta: 30, valor: (s) => s.diasConFtd },
+  { id: "meses-6", emoji: "🗓️", nombre: "Fiel", desc: "FTD en 6 meses distintos", meta: 6, valor: (s) => s.mesesConFtd },
 ];
 
 // Progreso de un logro (0..100 %) y si está conseguido.
