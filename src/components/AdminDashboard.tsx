@@ -186,7 +186,11 @@ export default function AdminDashboard() {
           }),
         };
         metricConfig.forEach((m) => {
-          point[m.key] = Number((d as unknown as Record<string, number>)[m.key] ?? 0);
+          // La métrica de dinero en admin es TU MARGEN (earnings), que incluye
+          // tus cuentas propias (Mongolitos), acorde con FTD/clics que también
+          // lo incluyen. El resto (clics/registros/ftd) va tal cual.
+          const src = m.key === "commission" ? "earnings" : m.key;
+          point[m.key] = Number((d as unknown as Record<string, number>)[src] ?? 0);
         });
         return point;
       }),
@@ -441,7 +445,7 @@ export default function AdminDashboard() {
       {/* Lo que hacen mis afiliados — tarjetas clicables que controlan el gráfico */}
       <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {[
-          { key: "commission", label: "Comisión", value: eur(totals.structurePaid), color: "#10b981" },
+          { key: "commission", label: "Margen", value: eur(totals.totalClean), color: "#10b981" },
           { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
           { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
           { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
@@ -469,6 +473,7 @@ export default function AdminDashboard() {
           data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
           activeMetrics={activeMetrics}
           primaryMetricKey={primaryMetricKey}
+          labelOverrides={{ commission: "Margen" }}
         />
         {sinActividad && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

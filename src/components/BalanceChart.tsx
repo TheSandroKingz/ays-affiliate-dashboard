@@ -19,10 +19,14 @@ function BalanceChart({
   data,
   activeMetrics,
   primaryMetricKey,
+  labelOverrides,
 }: {
   data: ChartPoint[];
   activeMetrics: Set<string>;
   primaryMetricKey: string;
+  // Sobreescribe la etiqueta de una métrica (p. ej. en admin "commission" es tu
+  // MARGEN, no la comisión de afiliados).
+  labelOverrides?: Record<string, string>;
 }) {
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -74,7 +78,9 @@ function BalanceChart({
           itemStyle={{ color: "#34d399" }}
           formatter={(value, name) => {
             const metric = metricConfig.find((m) => m.key === name);
-            return [value, metric ? metric.label : name];
+            const label =
+              labelOverrides?.[name as string] ?? (metric ? metric.label : name);
+            return [value, label];
           }}
         />
         {(() => {
