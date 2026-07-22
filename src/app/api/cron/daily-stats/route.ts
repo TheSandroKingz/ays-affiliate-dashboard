@@ -135,5 +135,72 @@ export async function GET(request: Request) {
     /* columna no disponible o sin datos */
   }
 
+  // Resumen SEMANAL los lunes (últimos 7 días). Blindado.
+  try {
+    const dow = new Date(today + "T12:00:00Z").getUTCDay(); // 1 = lunes
+    if (dow === 1) {
+      const [ty, tm, td] = today.split("-").map(Number);
+      const ini = new Date(Date.UTC(ty, tm - 1, td));
+      ini.setUTCDate(ini.getUTCDate() - 7);
+      const desde = ini.toISOString().slice(0, 10);
+      const { data: me } = await supabaseAdmin
+        .from("affiliates").select("id, cpa_spain").eq("user_id", ADMIN_USER_ID).maybeSingle();
+      const { data: structure } = await supabaseAdmin
+        .from("affiliates")
+        .select("id, user_id, display_name, referred_by, subaffiliate_percent")
+        .neq("user_id", ADMIN_USER_ID);
+      const ids = [ADMIN_USER_ID, ...(structure ?? []).map((s) => s.user_id)];
+      const { data: wRows } = await supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, date, commission, clicks, registrations, ftd")
+        .in("user_id", ids)
+        .gte("date", desde)
+        .lt("date", today);
+      const r = computeAdminStats(
+        (wRows ?? []) as DailyRow[], ADMIN_USER_ID, me?.id,
+        Number(me?.cpa_spain ?? 0), (structure ?? []) as StructRow[]
+      );
+      await enviarPush(ADMIN_USER_ID, {
+        title: "📅 Resumen de la semana",
+        body: `${r.totals.ftd} FTD · +${Math.round(r.totals.totalClean)}€ limpio · ${r.totals.registrations} registros`,
+        url: "/admin",
+      });
+    }
+  } catch {
+    /* nunca romper el cron */
+  }
+
+  // Aviso: afiliado que lleva 7 días sin entrar (para darle un toque). Blindado.
+  try {
+    const { data: affs } = await supabaseAdmin
+      .from("affiliates")
+      .select("user_id, display_name")
+      .neq("user_id", ADMIN_USER_ID)
+      .eq("approved", true);
+    const hoyMs = new Date(today + "T00:00:00Z").getTime();
+    for (const a of affs ?? []) {
+      const { data: vis } = await supabaseAdmin
+        .from("dashboard_visits")
+        .select("date")
+        .eq("user_id", a.user_id)
+        .order("date", { ascending: false })
+        .limit(1);
+      const ultima = vis?.[0]?.date;
+      if (!ultima) continue;
+      const dias = Math.round(
+        (hoyMs - new Date(String(ultima) + "T00:00:00Z").getTime()) / 86400000
+      );
+      if (dias === 7) {
+        await enviarPush(ADMIN_USER_ID, {
+          title: "👀 Afiliado inactivo",
+          body: `${a.display_name} lleva 7 días sin entrar. ¿Le das un toque?`,
+          url: "/admin",
+        });
+      }
+    }
+  } catch {
+    /* tabla de visitas no disponible aún */
+  }
+
   return NextResponse.json({ inserted: rows.length, date: today, freshbetAlerta });
 }

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
+import { enviarPush } from "@/lib/push";
 
 // Registrar un pago a un afiliado (solo admin). Aparece en su historial de
 // "Pagos". No toca su balance (el balance es mensual y va aparte).
@@ -36,6 +37,15 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Aviso al afiliado de que le has pagado (sin retrasar la respuesta).
+  after(() =>
+    enviarPush(userId, {
+      title: "💸 Pago recibido",
+      body: `Se te ha pagado ${amt.toLocaleString("es-ES")}€. ¡Gracias!`,
+      url: "/dashboard/payments",
+    })
+  );
 
   return NextResponse.json({ ok: true });
 }
