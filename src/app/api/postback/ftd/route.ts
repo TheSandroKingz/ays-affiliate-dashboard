@@ -1,18 +1,12 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import {
-  getPlayerId,
-  getMonto,
-  reclamarEvento,
-  liberarEvento,
-  registrarEvento,
-  ftdYaContado,
-  queryLimpia,
-  type EstadoEvento,
-} from "@/lib/postback";
-import { notificarEvento, enviarPush } from "@/lib/push";
-import { ADMIN_USER_ID } from "@/lib/adminAuth";
+import { getPlayerId, getMonto, registrarEvento, queryLimpia } from "@/lib/postback";
 
+// Postback de FTD = CUALQUIER primer depósito (aunque no cualifique). FreshBet
+// lo manda "for each new first time deposit". NO suma dinero: el pago va por el
+// QFTD (postback de comisión = depósito cualificado). Aquí solo dejamos
+// constancia del depósito en la caja negra (status "deposit"), que además sirve
+// de prueba de que ese jugador depositó (lo exige el QFTD para poder contar).
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const key = url.searchParams.get("key");
@@ -24,85 +18,27 @@ export async function GET(request: Request) {
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
   const playerid = getPlayerId(url);
-  const monto = getMonto(url); // importe del depósito (0 si freshbet no lo manda)
+  const monto = getMonto(url);
 
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Madrid",
-  }).format(new Date());
-
-  // Atribución al afiliado concreto (para pagarle su CPA), si lo identificamos.
-  let target: { user_id: string; cpa_spain: number | null; cpa_other: number | null } | null = null;
-
+  // Atribución (solo para el registro; no suma nada).
+  let matchedUserId: string | null = null;
   if (trackingcode) {
     const { data } = await supabaseAdmin
       .from("affiliates")
-      .select("user_id, cpa_spain, cpa_other")
+      .select("user_id")
       .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
       .limit(1);
-    if (data?.[0]) {
-      target = data[0];
-    }
+    matchedUserId = data?.[0]?.user_id ?? null;
   }
-
-  if (!target && afp) {
+  if (!matchedUserId && afp) {
     const { data } = await supabaseAdmin
       .from("affiliates")
-      .select("user_id, cpa_spain, cpa_other")
+      .select("user_id")
       .eq("freshaffs_affiliate_id", afp)
       .limit(1);
-    target = data?.[0] ?? null;
+    matchedUserId = data?.[0]?.user_id ?? null;
   }
 
-  // Idempotencia: solo dentro de la rama con afiliado emparejado. Reclamamos,
-  // pagamos el CPA, y si el conteo falla, liberamos para que un reintento cuente.
-  let duplicado = false;
-  let estado: EstadoEvento = "no_match";
-  let comisionPagada = 0;
-  if (target) {
-    const eventKey = playerid ? `ftd:${playerid}` : null;
-    const contar = await reclamarEvento(eventKey);
-    duplicado = !contar;
-    if (contar) {
-      // Salvaguarda extra: aunque el candado diga "nuevo", si este jugador YA
-      // tenía un FTD CONTADO, NO sumamos el dinero. Lo dejamos RETENIDO para que
-      // el admin lo revise (contar o descartar). Así un doble pago es imposible
-      // aunque el candado fallara. NO liberamos el candado: si quedó reclamado,
-      // evita más retenidos por reenvíos del mismo FTD.
-      const yaContado = playerid ? await ftdYaContado(playerid) : false;
-      if (yaContado) {
-        estado = "held";
-      } else {
-        // Todo FTD emparejado (por trackingcode o por afp) acredita el CPA del
-        // afiliado dueño de ese código/afp. Así tu propio tráfico (afp) también
-        // cuenta como tu comisión, igual que el de tus afiliados.
-        // País desconocido (isocountry vacío) → tarifa de España por defecto
-        // (casino español), no la de "otros países".
-        const esOtroPais = isocountry && isocountry !== "ES";
-        const commission = Number(
-          (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
-        );
-
-        const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
-          p_user_id: target.user_id,
-          p_date: today,
-          p_registrations: 0,
-          p_ftd: 1,
-          p_commission: commission,
-        });
-        if (error) {
-          await liberarEvento(eventKey);
-          estado = "error";
-        } else {
-          estado = "counted";
-          comisionPagada = commission;
-        }
-      }
-    } else {
-      estado = "duplicate";
-    }
-  }
-
-  // Caja negra: guardamos el evento pase lo que pase (no bloquea la respuesta).
   await registrarEvento({
     event_type: "ftd",
     raw_query: queryLimpia(url),
@@ -110,26 +46,10 @@ export async function GET(request: Request) {
     afp,
     player_id: playerid,
     isocountry,
-    matched_user_id: target?.user_id ?? null,
-    commission: comisionPagada,
+    matched_user_id: matchedUserId,
     amount: monto,
-    status: estado,
+    status: "deposit", // depósito recibido, no cualificado → no suma dinero
   });
 
-  // Notificación push al móvil (afiliado + admin), sin retrasar la respuesta.
-  if (estado === "counted" && target) {
-    after(() => notificarEvento(target.user_id, "ftd"));
-  }
-  // Si quedó RETENIDO por sospecha, avisamos al admin para que lo revise ya.
-  if (estado === "held") {
-    after(() =>
-      enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ FTD retenido",
-        body: "Un FTD quedó sin contar por sospecha de doble pago. Revísalo en Actividad.",
-        url: "/admin/actividad",
-      })
-    );
-  }
-
-  return NextResponse.json({ ok: true, matched: !!target, duplicado });
+  return NextResponse.json({ ok: true, matched: !!matchedUserId, counted: false });
 }

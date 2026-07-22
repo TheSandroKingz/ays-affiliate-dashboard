@@ -47,9 +47,11 @@ export async function GET(request: Request) {
   // (contar o descartar). Van aparte, arriba del todo, para que no se pasen.
   const retenidos = rows.filter((r) => r.status === "held");
 
+  // Un QFTD/FTD contado va como counted; los QFTD son event_type "commission".
+  const esFtdOQftd = (t: string) => t === "ftd" || t === "commission";
   // Resumen de anomalías (de los últimos 100 eventos).
   const sinPlayerId = rows.filter(
-    (r) => r.event_type === "ftd" && r.counted && !r.player_id
+    (r) => esFtdOQftd(r.event_type) && r.counted && !r.player_id
   ).length;
   const duplicados = rows.filter((r) => r.status === "duplicate").length;
   const noMatch = rows.filter((r) => r.status === "no_match").length;
@@ -60,7 +62,7 @@ export async function GET(request: Request) {
   for (const r of rows) {
     // Solo los contados AUTOMÁTICAMENTE (status "counted"); los aprobados a mano
     // quedan "resolved" y no cuentan como doble.
-    if (r.event_type === "ftd" && r.status === "counted" && r.player_id) {
+    if (esFtdOQftd(r.event_type) && r.status === "counted" && r.player_id) {
       cnt.set(r.player_id, (cnt.get(r.player_id) ?? 0) + 1);
     }
   }

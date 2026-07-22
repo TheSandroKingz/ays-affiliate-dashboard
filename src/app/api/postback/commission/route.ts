@@ -1,11 +1,29 @@
-import { NextResponse } from "next/server";
-import { getPlayerId, registrarEvento, queryLimpia } from "@/lib/postback";
+import { NextResponse, after } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  getPlayerId,
+  reclamarEvento,
+  liberarEvento,
+  registrarEvento,
+  ftdYaContado,
+  depositoPrevio,
+  queryLimpia,
+  type EstadoEvento,
+} from "@/lib/postback";
+import { notificarEvento, enviarPush } from "@/lib/push";
+import { ADMIN_USER_ID } from "@/lib/adminAuth";
 
-// Modelo actual: los afiliados cobran SOLO CPA (postback de FTD) y tú te quedas
-// el margen (tu CPA − el suyo), que se calcula a partir de los FTD. La comisión
-// que manda freshbet NO se usa para nada aquí, así que este postback solo
-// responde OK (para que freshbet no reciba errores) sin sumar nada. Aun así lo
-// dejamos registrado en la caja negra para tener el historial completo.
+// QFTD (depósito CUALIFICADO): FreshBet manda este postback cuando GENERA la
+// comisión, es decir, cuando el depósito cualifica. ESTE es el evento que PAGA:
+// aquí sumamos el FTD del afiliado y su CPA. El postback de "ftd" a secas es
+// cualquier primer depósito (no cualificado) y NO suma dinero.
+//
+// SALVAGUARDAS (imposible colar dinero falso):
+//  1) Debe emparejar con un afiliado (por trackingcode o afp).
+//  2) Debe traer player_id (userid), o no contamos.
+//  3) Debe existir un DEPÓSITO previo de ese jugador (postback de FTD). Así, los
+//     tests de FreshBet (jugador inventado, sin depósito) nunca cuentan.
+//  4) Candado por jugador + retención si ya estaba contado (anti-doble-pago).
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const key = url.searchParams.get("key");
@@ -13,16 +31,104 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const afp = url.searchParams.get("afp") ?? "";
+  const trackingcode = url.searchParams.get("trackingcode") ?? "";
+  const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
+  const playerid = getPlayerId(url);
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+
+  // Atribución al afiliado (por trackingcode y, si no, por afp).
+  let target: { user_id: string; cpa_spain: number | null; cpa_other: number | null } | null = null;
+  if (trackingcode) {
+    const { data } = await supabaseAdmin
+      .from("affiliates")
+      .select("user_id, cpa_spain, cpa_other")
+      .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
+      .limit(1);
+    target = data?.[0] ?? null;
+  }
+  if (!target && afp) {
+    const { data } = await supabaseAdmin
+      .from("affiliates")
+      .select("user_id, cpa_spain, cpa_other")
+      .eq("freshaffs_affiliate_id", afp)
+      .limit(1);
+    target = data?.[0] ?? null;
+  }
+
+  let duplicado = false;
+  let estado: EstadoEvento = "no_match";
+  let comisionPagada = 0;
+
+  if (target && playerid) {
+    // Salvaguarda 3: sin depósito previo de este jugador = ruido de test → fuera.
+    const hayDeposito = await depositoPrevio(playerid);
+    if (!hayDeposito) {
+      estado = "no_match";
+    } else {
+      const eventKey = `qftd:${playerid}`;
+      const contar = await reclamarEvento(eventKey);
+      duplicado = !contar;
+      if (contar) {
+        // Si este jugador YA tenía un FTD/QFTD contado, NO sumamos: retenido.
+        const yaContado = await ftdYaContado(playerid);
+        if (yaContado) {
+          estado = "held";
+        } else {
+          const esOtroPais = isocountry && isocountry !== "ES";
+          const commission = Number(
+            (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
+          );
+          const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+            p_user_id: target.user_id,
+            p_date: today,
+            p_registrations: 0,
+            p_ftd: 1,
+            p_commission: commission,
+          });
+          if (error) {
+            await liberarEvento(eventKey);
+            estado = "error";
+          } else {
+            estado = "counted";
+            comisionPagada = commission;
+          }
+        }
+      } else {
+        estado = "duplicate";
+      }
+    }
+  }
+
+  // Caja negra: registramos SIEMPRE (event_type "commission" = QFTD).
   await registrarEvento({
     event_type: "commission",
     raw_query: queryLimpia(url),
-    tracking_code: url.searchParams.get("trackingcode") ?? "",
-    afp: url.searchParams.get("afp") ?? "",
-    player_id: getPlayerId(url),
-    isocountry: (url.searchParams.get("isocountry") ?? "").toUpperCase(),
-    matched_user_id: null,
-    status: "no_match",
+    tracking_code: trackingcode,
+    afp,
+    player_id: playerid,
+    isocountry,
+    matched_user_id: target?.user_id ?? null,
+    commission: comisionPagada,
+    status: estado,
   });
 
-  return NextResponse.json({ ok: true });
+  // Avisos push (sin retrasar la respuesta).
+  if (estado === "counted" && target) {
+    after(() => notificarEvento(target.user_id, "ftd"));
+  }
+  if (estado === "held") {
+    after(() =>
+      enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ QFTD retenido",
+        body: "Un QFTD quedó sin contar por sospecha de doble pago. Revísalo en Actividad.",
+        url: "/admin/actividad",
+      })
+    );
+  }
+
+  return NextResponse.json({ ok: true, matched: !!target, duplicado });
 }

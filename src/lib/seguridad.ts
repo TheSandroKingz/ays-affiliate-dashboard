@@ -74,10 +74,11 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
 
 export async function resumenSeguridad(): Promise<ResumenSeguridad> {
   try {
+    // FTD antiguos + QFTD nuevos (los QFTD se registran como "commission").
     const { data, error } = await supabaseAdmin
       .from("postback_events")
       .select("status, counted, player_id")
-      .eq("event_type", "ftd")
+      .in("event_type", ["ftd", "commission"])
       .order("created_at", { ascending: false })
       .limit(500);
     if (error || !data) return { retenidos: 0, dobles: 0, ok: true };

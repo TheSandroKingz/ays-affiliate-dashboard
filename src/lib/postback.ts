@@ -87,7 +87,8 @@ export type EstadoEvento =
   | "error"
   | "held"
   | "discarded"
-  | "resolved"; // FTD retenido aprobado a mano por el admin (dinero sí sumado)
+  | "resolved" // FTD retenido aprobado a mano por el admin (dinero sí sumado)
+  | "deposit"; // primer depósito recibido, aún NO cualificado (no suma dinero)
 
 // ¿Este jugador YA tiene un FTD CONTADO? Salvaguarda extra anti-doble-pago,
 // independiente del candado `postback_dedup`: si por lo que sea el candado no
@@ -101,8 +102,27 @@ export async function ftdYaContado(playerId: string): Promise<boolean> {
     const { count, error } = await supabaseAdmin
       .from("postback_events")
       .select("id", { count: "exact", head: true })
-      .eq("event_type", "ftd")
+      .in("event_type", ["ftd", "commission"]) // FTD antiguos + QFTD (commission)
       .eq("counted", true)
+      .eq("player_id", playerId);
+    if (error) return false;
+    return (count ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+// ¿Existe un DEPÓSITO (postback de FTD) previo de este jugador? Un QFTD real
+// SIEMPRE viene precedido del depósito. Si no hay depósito, la comisión es ruido
+// de pruebas (jugador inventado) y NO debe contar. Ante fallo devuelve false
+// (no contamos: preferimos retener que colar un falso). BLINDADO.
+export async function depositoPrevio(playerId: string): Promise<boolean> {
+  if (!playerId) return false;
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("postback_events")
+      .select("id", { count: "exact", head: true })
+      .eq("event_type", "ftd")
       .eq("player_id", playerId);
     if (error) return false;
     return (count ?? 0) > 0;

@@ -13,7 +13,7 @@ type Evento = {
   id: number;
   created_at: string;
   event_type: "registration" | "ftd" | "commission";
-  status: "counted" | "duplicate" | "no_match" | "error" | "held" | "discarded" | "resolved";
+  status: "counted" | "duplicate" | "no_match" | "error" | "held" | "discarded" | "resolved" | "deposit";
   counted: boolean;
   commission: number | null;
   player_id: string | null;
@@ -24,9 +24,9 @@ type Evento = {
 };
 
 const TIPO: Record<string, string> = {
-  ftd: "FTD",
+  ftd: "Depósito",
   registration: "Registro",
-  commission: "Comisión",
+  commission: "QFTD",
 };
 
 function estadoBadge(e: Evento) {
@@ -40,6 +40,8 @@ function estadoBadge(e: Evento) {
     return { label: "Retenido", cls: "bg-red-500/20 text-red-300 border-red-400/50" };
   if (e.status === "discarded")
     return { label: "Descartado", cls: "bg-white/10 text-slate-400 border-white/20" };
+  if (e.status === "deposit")
+    return { label: "Depósito (sin cualificar)", cls: "bg-white/10 text-slate-300 border-white/20" };
   if (e.status === "error")
     return { label: "Error", cls: "bg-red-500/20 text-red-300 border-red-400/40" };
   return { label: "Sin emparejar", cls: "bg-white/10 text-slate-300 border-white/20" };
