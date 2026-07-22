@@ -460,24 +460,29 @@ export default function AccountPage() {
             </div>
             <div className="mt-4">
               <p className="text-xs text-slate-400 mb-2">Sonido al entrar un QFTD:</p>
-              <div className="flex flex-wrap gap-2">
-                {TONOS.map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => elegirTono(o.id)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                      tono === o.id
-                        ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
-                        : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <select
+                  value={tono}
+                  onChange={(e) => elegirTono(e.target.value as TonoNotif)}
+                  className="flex-1 max-w-xs rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {TONOS.map((o) => (
+                    <option key={o.id} value={o.id} className="bg-black">
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => reproducirSonido(tono)}
+                  disabled={tono === "off"}
+                  className="shrink-0 rounded-lg border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-40"
+                >
+                  ▶ Probar
+                </button>
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5">
-                Toca un tono para escucharlo. Suena en este dispositivo cuando
+                Al elegir un tono suena solo. Se oye en este dispositivo cuando
                 entra un QFTD nuevo.
               </p>
             </div>
