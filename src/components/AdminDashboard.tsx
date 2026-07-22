@@ -79,6 +79,7 @@ export default function AdminDashboard() {
     diasSin: number;
     clics7: number;
     alerta: boolean;
+    qftdRoto?: boolean;
   } | null>(null);
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [paises, setPaises] = useState<{ code: string; n: number }[]>([]);
@@ -342,6 +343,28 @@ export default function AdminDashboard() {
             </span>
           </span>
           <span className="text-xs font-semibold text-amber-300 whitespace-nowrap">
+            Revisar →
+          </span>
+        </Link>
+      )}
+
+      {/* Fuga silenciosa: llegan depósitos pero NINGÚN QFTD se acredita (posible
+          postback de COMISIÓN roto = dinero sin sumar). Es lo más grave. */}
+      {freshbet?.qftdRoto && (
+        <Link
+          href="/admin/actividad"
+          className="animate-in flex items-center justify-between gap-3 bg-red-500/15 border border-red-400/60 rounded-xl px-5 py-4 hover:bg-red-500/25 transition-colors"
+        >
+          <span className="flex items-center gap-3">
+            <ShieldAlert size={20} className="text-red-400 shrink-0" />
+            <span className="text-sm text-red-100">
+              Llegan <b className="text-white">depósitos</b> pero{" "}
+              <b className="text-white">ningún QFTD se está contando</b>. Puede que
+              el postback de <b className="text-white">comisión</b> se haya roto —
+              estarías dejando de acreditar dinero. Compruébalo.
+            </span>
+          </span>
+          <span className="text-xs font-semibold text-red-300 whitespace-nowrap">
             Revisar →
           </span>
         </Link>

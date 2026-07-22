@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
-import { reclamarEvento } from "@/lib/postback";
+import { reclamarEvento, liberarEvento, ftdYaContado } from "@/lib/postback";
 
 // Resolver un FTD RETENIDO (solo admin). Un retenido es un FTD que NO se contó
 // por sospecha de doble pago. El admin decide:
@@ -71,6 +71,34 @@ export async function POST(request: Request) {
     (esOtroPais ? aff?.cpa_other : aff?.cpa_spain) ?? 0
   );
 
+  // ── ANTI-DOBLE-PAGO (por jugador, no solo por evento) ────────────────────
+  // El reclamo atómico de más abajo solo evita contar DOS VECES el MISMO evento.
+  // Pero pueden existir VARIOS retenidos del mismo jugador (FreshBet reenvía);
+  // aprobar dos pagaría dos veces. Antes de sumar comprobamos, por player_id:
+  //   (1) ftdYaContado: ¿ese jugador ya tiene algún evento contado (automático
+  //       o de otra aprobación)? → NO sumar.
+  //   (2) Candado atómico por jugador (MISMA clave que el flujo automático,
+  //       qftd:<player>) para ganar cualquier carrera entre dos aprobaciones.
+  // Si cualquiera falla, descartamos este retenido sin sumar.
+  if (ev.player_id) {
+    const yaContado = await ftdYaContado(ev.player_id);
+    const gotLock = yaContado ? false : await reclamarEvento(`qftd:${ev.player_id}`);
+    if (!gotLock) {
+      await supabaseAdmin
+        .from("postback_events")
+        .update({ status: "discarded" })
+        .eq("id", id)
+        .eq("status", "held");
+      return NextResponse.json(
+        {
+          error:
+            "Este jugador ya estaba contado. No se ha vuelto a sumar (evitado un doble pago).",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   // RECLAMO ATÓMICO: marcamos "counted" solo si SIGUE en "held". Este UPDATE es
   // atómico en Postgres, así que si se pulsa dos veces (o hay dos pestañas),
   // solo UNA gana y solo se suma UNA vez. Si no gana ninguna fila, ya se resolvió.
@@ -83,19 +111,18 @@ export async function POST(request: Request) {
     .eq("id", id)
     .eq("status", "held")
     .select("id");
-  if (claimErr) {
-    return NextResponse.json({ error: claimErr.message }, { status: 500 });
-  }
-  if (!claimed || claimed.length === 0) {
+  if (claimErr || !claimed || claimed.length === 0) {
+    // No ganamos el evento (ya resuelto / error): soltamos el candado de jugador
+    // que acabamos de reclamar para no dejarlo bloqueado.
+    if (ev.player_id) await liberarEvento(`qftd:${ev.player_id}`);
+    if (claimErr) {
+      return NextResponse.json({ error: claimErr.message }, { status: 500 });
+    }
     return NextResponse.json(
       { error: "Ese evento ya está resuelto." },
       { status: 409 }
     );
   }
-
-  // Candado por player_id (protección adicional frente a reenvíos futuros).
-  const eventKey = ev.player_id ? `ftd:${ev.player_id}` : null;
-  await reclamarEvento(eventKey);
 
   // Se cuenta en la fecha de hoy (cuando lo apruebas), zona Madrid.
   const fecha = new Intl.DateTimeFormat("en-CA", {

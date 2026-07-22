@@ -49,11 +49,15 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
-    // La cabecera Origin (que pone el navegador) es el dominio PÚBLICO real; el
-    // origin de request.url puede ser el host interno tras el proxy de Vercel,
-    // y el enlace del email apuntaría a un dominio equivocado.
+    // Dominio para el enlace de reseteo. PREFERIMOS una URL fija de servidor
+    // (NEXT_PUBLIC_SITE_URL): la cabecera Origin la controla el atacante (curl),
+    // y sin allowlist estricta en Supabase podría desviar el enlace a otro
+    // dominio y robar el token. Si no está la env, caemos al Origin (Supabase
+    // rechaza redirectTo fuera de su allowlist, que es la protección real).
     const origin =
-      request.headers.get("origin") || new URL(request.url).origin;
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      request.headers.get("origin") ||
+      new URL(request.url).origin;
     await authClient.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/reset-password`,
     });

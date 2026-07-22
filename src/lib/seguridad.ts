@@ -27,6 +27,9 @@ export type SaludFreshbet = {
   diasSin: number;
   clics7: number;
   alerta: boolean;
+  // Llegan depósitos (postback ftd) pero NINGÚN QFTD contado (postback de
+  // comisión): posible postback de comisión roto = dinero que no se acredita.
+  qftdRoto: boolean;
 };
 
 export async function saludFreshbet(): Promise<SaludFreshbet> {
@@ -35,13 +38,15 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
     diasSin: 999,
     clics7: 0,
     alerta: false,
+    qftdRoto: false,
   };
   try {
     const hace7 = new Date(Date.now() - 7 * 86400000)
       .toISOString()
       .slice(0, 10);
+    const hace3 = new Date(Date.now() - 3 * 86400000).toISOString();
 
-    const [ultRes, clicksRes] = await Promise.all([
+    const [ultRes, clicksRes, recientesRes] = await Promise.all([
       supabaseAdmin
         .from("postback_events")
         .select("created_at")
@@ -52,6 +57,10 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
         .from("affiliate_daily_stats")
         .select("clicks")
         .gte("date", hace7),
+      supabaseAdmin
+        .from("postback_events")
+        .select("event_type, counted")
+        .gte("created_at", hace3),
     ]);
 
     const ultimoEvento = (ultRes.data?.created_at as string | undefined) ?? null;
@@ -63,11 +72,23 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
       0
     );
 
+    // Fuga silenciosa: en el modelo QFTD, el dinero se acredita SOLO con el
+    // postback de comisión. Si se rompiera solo ese (y siguiera llegando el de
+    // ftd), habría depósitos pero 0 QFTD contado → 0€ acreditado sin avisar.
+    // Umbral prudente (≥5 depósitos y 0 QFTD en 3 días) para no dar falsa alarma.
+    let depositos3d = 0;
+    let qftdContados3d = 0;
+    for (const r of recientesRes.data ?? []) {
+      if (r.event_type === "ftd") depositos3d++;
+      else if (r.event_type === "commission" && r.counted) qftdContados3d++;
+    }
+    const qftdRoto = depositos3d >= 5 && qftdContados3d === 0;
+
     // Sospechoso: una semana entera sin NINGÚN evento de FreshBet pese a que SÍ
     // hubo tráfico (al menos 5 clics). Sin tráfico no alertamos (sería normal).
     const alerta = diasSin >= 7 && clics7 >= 5;
 
-    return { ultimoEvento, diasSin, clics7, alerta };
+    return { ultimoEvento, diasSin, clics7, alerta, qftdRoto };
   } catch {
     return vacio;
   }
