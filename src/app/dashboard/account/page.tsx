@@ -8,7 +8,7 @@ import { traducirError } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
-import { LOGROS, calcularStatsLogros, type LogroStats } from "@/lib/logros";
+import { LOGROS, calcularStatsLogros, progresoLogro, type LogroStats } from "@/lib/logros";
 import { useProfile } from "@/components/DashboardProvider";
 import { TONOS, getTono, setTono, reproducirSonido, type TonoNotif } from "@/lib/sonido";
 
@@ -532,50 +532,69 @@ export default function AccountPage() {
       )}
 
       {activeTab === "logros" && (
-        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
+        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 sm:p-6">
           {(() => {
-            const conseguidos = logroStats
-              ? LOGROS.filter((l) => l.cond(logroStats)).length
-              : 0;
+            const stats = logroStats ?? { totalFtd: 0, totalRegistros: 0, maxRacha: 0, mejorMes: 0 };
+            const hechos = LOGROS.filter((l) => progresoLogro(l, stats).hecho).length;
+            const pctTotal = Math.round((hechos / LOGROS.length) * 100);
             return (
-              <p className="text-sm text-slate-300 mb-5">
-                Has desbloqueado <b className="text-white">{conseguidos}</b> de{" "}
-                <b className="text-white">{LOGROS.length}</b> logros. ¡A por todos!
-              </p>
+              <>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-semibold text-white">Logros</p>
+                  <p className="text-sm text-slate-300">
+                    <b className="text-white">{hechos}</b> / {LOGROS.length}
+                  </p>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mb-5">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${pctTotal}%` }}
+                  />
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {LOGROS.map((l) => {
+                    const p = progresoLogro(l, stats);
+                    return (
+                      <div
+                        key={l.id}
+                        className={`flex items-center gap-3 rounded-xl border p-3 transition ${
+                          p.hecho
+                            ? "border-amber-400/50 bg-amber-500/10 shadow-[0_0_14px_rgba(245,158,11,0.25)]"
+                            : "border-white/10 bg-black/30"
+                        }`}
+                      >
+                        <span
+                          className={`flex items-center justify-center w-11 h-11 rounded-lg text-2xl shrink-0 ${
+                            p.hecho ? "bg-amber-500/15" : "bg-white/5 grayscale opacity-40"
+                          }`}
+                          aria-hidden
+                        >
+                          {l.emoji}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-sm font-semibold truncate ${p.hecho ? "text-amber-200" : "text-white"}`}>
+                              {l.nombre} {p.hecho && <span className="text-emerald-400">✓</span>}
+                            </span>
+                            <span className="text-xs text-slate-400 shrink-0">
+                              {p.valor}/{p.meta}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mb-1.5 truncate">{l.desc}</p>
+                          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${p.hecho ? "bg-amber-400" : "bg-emerald-500"}`}
+                              style={{ width: `${p.pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             );
           })()}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {LOGROS.map((l) => {
-              const ok = logroStats ? l.cond(logroStats) : false;
-              return (
-                <div
-                  key={l.id}
-                  className={`flex flex-col items-center text-center gap-1.5 rounded-xl border p-4 transition ${
-                    ok
-                      ? "border-amber-400/60 bg-amber-500/10 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
-                      : "border-white/10 bg-black/30"
-                  }`}
-                >
-                  <span
-                    className={`text-4xl ${ok ? "" : "grayscale opacity-30"}`}
-                    aria-hidden
-                  >
-                    {l.emoji}
-                  </span>
-                  <span
-                    className={`text-xs font-semibold ${
-                      ok ? "text-amber-200" : "text-slate-500"
-                    }`}
-                  >
-                    {l.nombre}
-                  </span>
-                  <span className={`text-[10px] leading-tight ${ok ? "text-slate-300" : "text-slate-600"}`}>
-                    {ok ? l.desc : "🔒 Bloqueado"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 

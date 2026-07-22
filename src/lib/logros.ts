@@ -1,5 +1,5 @@
-// Logros (trofeos) del afiliado. Se muestran todos en Cuenta → Logros; los no
-// conseguidos salen apagados (oscuros) y los conseguidos con color y brillo.
+// Logros del afiliado, estilo Twitch: cada uno tiene una META y un progreso
+// hacia ella, así se ve cuánto falta aunque no esté conseguido.
 
 export type LogroStats = {
   totalFtd: number;
@@ -13,21 +13,29 @@ export type Logro = {
   emoji: string;
   nombre: string;
   desc: string;
-  cond: (s: LogroStats) => boolean;
+  meta: number; // objetivo a alcanzar
+  valor: (s: LogroStats) => number; // progreso actual
 };
 
 export const LOGROS: Logro[] = [
-  { id: "primer-registro", emoji: "🌱", nombre: "El comienzo", desc: "Tu primer registro", cond: (s) => s.totalRegistros >= 1 },
-  { id: "primer-ftd", emoji: "🥇", nombre: "Primer FTD", desc: "Consigue tu primer FTD", cond: (s) => s.totalFtd >= 1 },
-  { id: "5-ftd", emoji: "🎯", nombre: "Cogiendo ritmo", desc: "Acumula 5 FTD", cond: (s) => s.totalFtd >= 5 },
-  { id: "10-ftd", emoji: "🏅", nombre: "Veterano", desc: "Acumula 10 FTD", cond: (s) => s.totalFtd >= 10 },
-  { id: "25-ftd", emoji: "⭐", nombre: "Estrella", desc: "Acumula 25 FTD", cond: (s) => s.totalFtd >= 25 },
-  { id: "50-ftd", emoji: "💎", nombre: "Diamante", desc: "Acumula 50 FTD", cond: (s) => s.totalFtd >= 50 },
-  { id: "100-ftd", emoji: "👑", nombre: "Leyenda", desc: "Acumula 100 FTD", cond: (s) => s.totalFtd >= 100 },
-  { id: "racha-3", emoji: "🔥", nombre: "En racha", desc: "3 días seguidos con FTD", cond: (s) => s.maxRacha >= 3 },
-  { id: "racha-7", emoji: "🚀", nombre: "Imparable", desc: "7 días seguidos con FTD", cond: (s) => s.maxRacha >= 7 },
-  { id: "mes-10", emoji: "🌟", nombre: "Gran mes", desc: "10 FTD en un mismo mes", cond: (s) => s.mejorMes >= 10 },
+  { id: "primer-registro", emoji: "🌱", nombre: "El comienzo", desc: "Consigue tu primer registro", meta: 1, valor: (s) => s.totalRegistros },
+  { id: "primer-ftd", emoji: "🥇", nombre: "Primer FTD", desc: "Consigue tu primer FTD", meta: 1, valor: (s) => s.totalFtd },
+  { id: "5-ftd", emoji: "🎯", nombre: "Cogiendo ritmo", desc: "Acumula 5 FTD", meta: 5, valor: (s) => s.totalFtd },
+  { id: "10-ftd", emoji: "🏅", nombre: "Veterano", desc: "Acumula 10 FTD", meta: 10, valor: (s) => s.totalFtd },
+  { id: "25-ftd", emoji: "⭐", nombre: "Estrella", desc: "Acumula 25 FTD", meta: 25, valor: (s) => s.totalFtd },
+  { id: "50-ftd", emoji: "💎", nombre: "Diamante", desc: "Acumula 50 FTD", meta: 50, valor: (s) => s.totalFtd },
+  { id: "100-ftd", emoji: "👑", nombre: "Leyenda", desc: "Acumula 100 FTD", meta: 100, valor: (s) => s.totalFtd },
+  { id: "racha-3", emoji: "🔥", nombre: "En racha", desc: "3 días seguidos con FTD", meta: 3, valor: (s) => s.maxRacha },
+  { id: "racha-7", emoji: "🚀", nombre: "Imparable", desc: "7 días seguidos con FTD", meta: 7, valor: (s) => s.maxRacha },
+  { id: "mes-10", emoji: "🌟", nombre: "Gran mes", desc: "10 FTD en un mismo mes", meta: 10, valor: (s) => s.mejorMes },
 ];
+
+// Progreso de un logro (0..1) y si está conseguido.
+export function progresoLogro(l: Logro, s: LogroStats) {
+  const v = Math.min(l.valor(s), l.meta);
+  const pct = l.meta > 0 ? Math.round((v / l.meta) * 100) : 0;
+  return { valor: v, meta: l.meta, pct, hecho: l.valor(s) >= l.meta };
+}
 
 type Fila = { date: string; ftd: number; registrations?: number };
 
@@ -47,8 +55,6 @@ export function calcularStatsLogros(filas: Fila[]): LogroStats {
     if (f > 0) diasConFtd.push(String(r.date).slice(0, 10));
   }
 
-  // Racha máxima: recorremos las fechas con FTD ordenadas y contamos runs de
-  // días consecutivos.
   diasConFtd.sort();
   let maxRacha = 0;
   let actual = 0;

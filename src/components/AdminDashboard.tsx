@@ -82,7 +82,6 @@ export default function AdminDashboard() {
   } | null>(null);
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [paises, setPaises] = useState<{ code: string; n: number }[]>([]);
-  const [conversionGlobal, setConversionGlobal] = useState<number | null>(null);
   const [celebrar, setCelebrar] = useState(false);
   const [hito, setHito] = useState<number | null>(null);
   const prevFtdRef = useRef<number | null>(null);
@@ -130,9 +129,6 @@ export default function AdminDashboard() {
           typeof res.lastMonthToDateClean === "number" ? res.lastMonthToDateClean : null
         );
         setPaises(Array.isArray(res.paises) ? res.paises : []);
-        setConversionGlobal(
-          typeof res.conversionGlobal === "number" ? res.conversionGlobal : null
-        );
 
         // Hitos de beneficio: confeti al pasar 100/250/500/1000... por primera
         // vez este mes (recordado en localStorage para no repetir).
@@ -482,34 +478,21 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* De dónde vienen los jugadores + conversión global del negocio. */}
-      {(paises.length > 0 || conversionGlobal !== null) && (
-        <div className="animate-in grid gap-3 sm:grid-cols-2" style={{ animationDelay: "0.22s" }}>
-          {paises.length > 0 && (
-            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5">
-              <p className="text-sm font-medium text-slate-300 mb-3">🌍 De dónde vienen</p>
-              <div className="flex flex-col gap-2">
-                {paises.slice(0, 6).map((p) => (
-                  <div key={p.code} className="flex items-center justify-between text-sm">
-                    <span className="text-white">
-                      {banderaEmoji(p.code)}{" "}
-                      <span className="text-slate-300">{nombrePais(p.code)}</span>
-                    </span>
-                    <span className="font-semibold text-white">{p.n}</span>
-                  </div>
-                ))}
+      {/* De dónde vienen los jugadores. */}
+      {paises.length > 0 && (
+        <div className="animate-in bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 max-w-lg" style={{ animationDelay: "0.22s" }}>
+          <p className="text-sm font-medium text-slate-300 mb-3">🌍 De dónde vienen</p>
+          <div className="flex flex-col gap-2">
+            {paises.slice(0, 6).map((p) => (
+              <div key={p.code} className="flex items-center justify-between text-sm">
+                <span className="text-white">
+                  {banderaEmoji(p.code)}{" "}
+                  <span className="text-slate-300">{nombrePais(p.code)}</span>
+                </span>
+                <span className="font-semibold text-white">{p.n}</span>
               </div>
-            </div>
-          )}
-          {conversionGlobal !== null && (
-            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 flex flex-col justify-center">
-              <p className="text-sm font-medium text-slate-300 mb-1">Conversión global</p>
-              <p className="text-3xl font-bold text-white">
-                {conversionGlobal.toLocaleString("de-DE", { maximumFractionDigits: 1 })}%
-              </p>
-              <p className="text-xs text-slate-500 mt-1">QFTD por cada 100 clics (este mes)</p>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
