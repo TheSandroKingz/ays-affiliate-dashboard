@@ -40,15 +40,16 @@ export async function POST(request: NextRequest) {
   if (id.includes("@")) {
     email = id;
   } else {
-    const { data: aff } = await supabaseAdmin
+    // .limit(1) (no maybeSingle): si por caja de mayúsculas el ilike emparejara
+    // varias filas, tomamos una en vez de petar (maybeSingle da error con >1).
+    const { data: affs } = await supabaseAdmin
       .from("affiliates")
       .select("user_id")
       .ilike("display_name", id.replace(/[%_]/g, "\\$&"))
-      .maybeSingle();
-    if (aff?.user_id) {
-      const { data: u } = await supabaseAdmin.auth.admin.getUserById(
-        aff.user_id
-      );
+      .limit(1);
+    const affUserId = affs?.[0]?.user_id;
+    if (affUserId) {
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(affUserId);
       email = u?.user?.email ?? null;
     }
   }

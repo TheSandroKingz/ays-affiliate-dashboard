@@ -67,7 +67,7 @@ export default function ActividadPage() {
       nombre: string | null;
       ftd: number;
       clicks: number;
-      pct: number;
+      pct: number | null;
     }[];
     jugadoresCompartidos: { player_id: string; afiliados: string[] }[];
     hayAlerta: boolean;
@@ -280,8 +280,15 @@ export default function ActividadPage() {
               >
                 <span className="font-medium">{c.nombre ?? "—"}</span>
                 <span className="text-amber-200">
-                  <b>{c.ftd}</b> FTD / {c.clicks} clics ·{" "}
-                  <b>{c.pct.toLocaleString("es-ES", { maximumFractionDigits: 0 })}%</b>
+                  <b>{c.ftd}</b> FTD / {c.clicks} clics
+                  {c.pct !== null ? (
+                    <>
+                      {" "}
+                      · <b>{c.pct.toLocaleString("es-ES", { maximumFractionDigits: 0 })}%</b>
+                    </>
+                  ) : (
+                    <> · <b>sin clics ⚠️</b></>
+                  )}
                 </span>
               </div>
             ))}

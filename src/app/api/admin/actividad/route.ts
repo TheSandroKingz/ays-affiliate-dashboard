@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
   // Un QFTD/FTD contado va como counted; los QFTD son event_type "commission".
   const esFtdOQftd = (t: string) => t === "ftd" || t === "commission";
-  // Resumen de anomalías (de los últimos 100 eventos).
+  // Resumen de anomalías (de los últimos 300 eventos).
   const sinPlayerId = rows.filter(
     (r) => esFtdOQftd(r.event_type) && r.counted && !r.player_id
   ).length;

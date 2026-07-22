@@ -89,7 +89,7 @@ export type Fraude = {
     nombre: string | null;
     ftd: number;
     clicks: number;
-    pct: number;
+    pct: number | null;
   }[];
   jugadoresCompartidos: { player_id: string; afiliados: string[] }[];
   hayAlerta: boolean;
@@ -154,16 +154,20 @@ export async function deteccionFraude(): Promise<Fraude> {
     const conversionAnomala = [...agg.entries()]
       .filter(([uid, v]) => {
         if (uid === ADMIN_USER_ID || esCuentaPropia(uid)) return false;
-        // Umbral prudente: al menos 3 FTD y una tasa clic→FTD ≥ 30% (el tráfico
-        // real convierte muy por debajo; esto solo salta con algo muy raro).
-        return v.ftd >= 3 && v.clicks > 0 && v.ftd / v.clicks >= 0.3;
+        if (v.ftd < 3) return false;
+        // (a) FTD SIN ningún clic registrado: sus depósitos no vienen de su
+        //     enlace /go → patrón de autodepósito más claro. (b) Conversión
+        //     clic→FTD altísima (≥50%; el tráfico real convierte mucho menos).
+        //     Umbral alto (50%) para no dar falsas alarmas con afiliados
+        //     pequeños de confianza (Mariam/Jeffer) que comparten en grupos.
+        return v.clicks === 0 || v.ftd / v.clicks >= 0.5;
       })
       .map(([uid, v]) => ({
         user_id: uid,
         nombre: nombres.get(uid) ?? null,
         ftd: v.ftd,
         clicks: v.clicks,
-        pct: (v.ftd / v.clicks) * 100,
+        pct: v.clicks > 0 ? (v.ftd / v.clicks) * 100 : null,
       }));
 
     return {
