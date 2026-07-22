@@ -4,11 +4,10 @@ import { useState } from "react";
 import { Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Image from "next/image";
-import DashboardProvider, { useProfile } from "@/components/DashboardProvider";
+import DashboardProvider from "@/components/DashboardProvider";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { ready } = useProfile();
 
   return (
     <div className="flex min-h-screen bg-black">
@@ -31,7 +30,11 @@ function Shell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
 
-        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{ready ? children : null}</main>
+        {/* Montamos la página YA (no esperamos al guardián): su carga de datos
+            corre EN PARALELO con la comprobación de acceso, y cada página muestra
+            su propio skeleton. El guardián sigue redirigiendo (login/pendiente) y
+            RLS protege los datos, así que es seguro. */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{children}</main>
       </div>
     </div>
   );
