@@ -46,11 +46,14 @@ export default function NotificationBell() {
       ]);
       setPendingList(Array.isArray(p?.pending) ? p.pending : []);
       const all: Ev[] = Array.isArray(a?.events) ? a.events : [];
+      // Los QFTD (que pagan) son event_type "commission"; los "ftd" antiguos
+      // también cuentan. El badge avisa de QFTD contados en las últimas 24h.
+      const esQftd = (e: Ev) => e.event_type === "commission" || e.event_type === "ftd";
       setFtdRecientes(
         all
           .filter(
             (e) =>
-              e.event_type === "ftd" &&
+              esQftd(e) &&
               e.counted &&
               Date.now() - t(e.created_at) < 24 * 60 * 60 * 1000
           )
@@ -58,10 +61,7 @@ export default function NotificationBell() {
       );
       setEventos(
         all
-          .filter(
-            (e) =>
-              e.counted && (e.event_type === "ftd" || e.event_type === "registration")
-          )
+          .filter((e) => e.counted && (esQftd(e) || e.event_type === "registration"))
           .slice(0, 6)
       );
     }
@@ -156,13 +156,18 @@ export default function NotificationBell() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5"
               >
-                {e.event_type === "ftd" ? (
-                  <Coins size={16} className="text-sky-400 shrink-0" />
-                ) : (
+                {e.event_type === "registration" ? (
                   <UserPlus size={16} className="text-amber-400 shrink-0" />
+                ) : (
+                  <Coins size={16} className="text-sky-400 shrink-0" />
                 )}
                 <span className="flex-1 min-w-0 truncate">
-                  {e.event_type === "ftd" ? "FTD" : "Registro"} ·{" "}
+                  {e.event_type === "registration"
+                    ? "Registro"
+                    : e.event_type === "commission"
+                    ? "QFTD"
+                    : "FTD"}{" "}
+                  ·{" "}
                   <span className="text-white">{e.name ?? e.tracking_code ?? "—"}</span>
                 </span>
                 <span className="text-xs text-slate-500 shrink-0">{cuando(e.created_at)}</span>
