@@ -17,6 +17,8 @@ export default function AccountPage() {
     "personal" | "cobro" | "logros" | "seguridad" | "privacidad"
   >("personal");
   const [logroStats, setLogroStats] = useState<LogroStats | null>(null);
+  const [notifFtd, setNotifFtd] = useState(true);
+  const [notifRegistro, setNotifRegistro] = useState(true);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -81,10 +83,40 @@ export default function AccountPage() {
       }
       setLogroStats(calcularStatsLogros(filasRes.data ?? []));
 
+      // Preferencias de notificaciones (blindado; por defecto ambas activadas).
+      try {
+        const { data: prefs } = await supabase
+          .from("affiliates")
+          .select("notif_ftd, notif_registro")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (prefs) {
+          setNotifFtd(prefs.notif_ftd ?? true);
+          setNotifRegistro(prefs.notif_registro ?? true);
+        }
+      } catch {
+        /* columnas no disponibles aún */
+      }
+
       setLoading(false);
     }
     loadData();
   }, []);
+
+  // Guarda una preferencia de notificación (optimista, blindado).
+  async function guardarNotif(campo: "notif_ftd" | "notif_registro", valor: boolean) {
+    if (campo === "notif_ftd") setNotifFtd(valor);
+    else setNotifRegistro(valor);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    await supabase
+      .from("affiliates")
+      .update({ [campo]: valor })
+      .eq("user_id", session.user.id)
+      .then(() => {}, () => {});
+  }
 
   // Fecha de nacimiento inicial desde el perfil compartido (sin consulta extra).
   useEffect(() => {
@@ -385,6 +417,35 @@ export default function AccountPage() {
           <div className="border-t border-white/10 pt-4 mt-1">
             <p className="text-sm font-medium text-slate-200 mb-2">Notificaciones</p>
             <PushToggle />
+            <div className="mt-3">
+              <p className="text-xs text-slate-400 mb-2">Avísame de:</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { campo: "notif_ftd" as const, label: "Nuevos FTD 🎉", val: notifFtd },
+                  { campo: "notif_registro" as const, label: "Nuevos registros 👀", val: notifRegistro },
+                ].map((o) => (
+                  <button
+                    key={o.campo}
+                    type="button"
+                    onClick={() => guardarNotif(o.campo, !o.val)}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    <span>{o.label}</span>
+                    <span
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+                        o.val ? "bg-emerald-500" : "bg-white/20"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                          o.val ? "translate-x-5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
