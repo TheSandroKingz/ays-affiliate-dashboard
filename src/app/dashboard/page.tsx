@@ -376,7 +376,7 @@ export default function DashboardPage() {
     return count;
   }, [rawDaily]);
 
-  // Histórico para logros y récord: total de FTD y mejor mes.
+  // Histórico para el récord: total de FTD y mejor mes.
   const hist = useMemo(() => {
     let total = 0;
     const porMes = new Map<string, number>();

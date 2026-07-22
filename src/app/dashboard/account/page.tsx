@@ -8,16 +8,14 @@ import { traducirError } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
-import { LOGROS, calcularStatsLogros, progresoLogro, type LogroStats } from "@/lib/logros";
 import { useProfile } from "@/components/DashboardProvider";
 import { TONOS, getTono, setTono, reproducirSonido, type TonoNotif } from "@/lib/sonido";
 
 export default function AccountPage() {
   const { birthdate: perfilBirthdate } = useProfile();
   const [activeTab, setActiveTab] = useState<
-    "personal" | "cobro" | "logros" | "seguridad" | "privacidad"
+    "personal" | "cobro" | "seguridad" | "privacidad"
   >("personal");
-  const [logroStats, setLogroStats] = useState<LogroStats | null>(null);
   const [notifFtd, setNotifFtd] = useState(true);
   const [notifRegistro, setNotifRegistro] = useState(true);
   const [tono, setTonoState] = useState<TonoNotif>("off");
@@ -62,21 +60,14 @@ export default function AccountPage() {
 
       // Dos consultas en paralelo (la fecha de nacimiento ya viene del perfil
       // compartido, así no repetimos la misma fila de affiliates).
-      // Dos consultas en paralelo. Las preferencias de notificaciones
-      // (notif_ftd/notif_registro) van en el MISMO select del perfil para no
-      // hacer un tercer viaje a la misma fila. Si el select fallara (columnas
-      // aún sin crear), reintentamos sin ellas para no romper la página.
-      let [perfilRes, filasRes] = await Promise.all([
-        supabase
-          .from("affiliates")
-          .select("avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20, notif_ftd, notif_registro")
-          .eq("user_id", user.id)
-          .single(),
-        supabase
-          .from("affiliate_daily_stats")
-          .select("date, ftd, registrations, clicks")
-          .eq("user_id", user.id),
-      ]);
+      // Las preferencias de notificaciones (notif_ftd/notif_registro) van en el
+      // MISMO select del perfil. Si el select fallara (columnas aún sin crear),
+      // reintentamos sin ellas para no romper la página.
+      let perfilRes = await supabase
+        .from("affiliates")
+        .select("avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20, notif_ftd, notif_registro")
+        .eq("user_id", user.id)
+        .single();
       if (perfilRes.error) {
         perfilRes = await supabase
           .from("affiliates")
@@ -96,7 +87,6 @@ export default function AccountPage() {
         setNotifFtd((data.notif_ftd as boolean) ?? true);
         setNotifRegistro((data.notif_registro as boolean) ?? true);
       }
-      setLogroStats(calcularStatsLogros(filasRes.data ?? []));
 
       setLoading(false);
     }
@@ -307,7 +297,6 @@ export default function AccountPage() {
   const tabs = [
     { key: "personal", label: "Información Personal" },
     { key: "cobro", label: "Datos de cobro" },
-    { key: "logros", label: "Logros" },
     { key: "seguridad", label: "Seguridad" },
     { key: "privacidad", label: "Ajustes de Privacidad" },
   ] as const;
@@ -526,78 +515,6 @@ export default function AccountPage() {
           >
             {savingWallets ? "Guardando..." : "Guardar"}
           </button>
-        </div>
-      )}
-
-      {activeTab === "logros" && (
-        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 sm:p-6">
-          {(() => {
-            const stats = logroStats ?? {
-              totalFtd: 0, totalRegistros: 0, totalClicks: 0, maxRacha: 0,
-              mejorMes: 0, mejorDia: 0, diasConFtd: 0, mesesConFtd: 0, conversion: 0,
-            };
-            const hechos = LOGROS.filter((l) => progresoLogro(l, stats).hecho).length;
-            const pctTotal = Math.round((hechos / LOGROS.length) * 100);
-            return (
-              <>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold text-white">Logros</p>
-                  <p className="text-sm text-slate-300">
-                    <b className="text-white">{hechos}</b> / {LOGROS.length}
-                  </p>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mb-5">
-                  <div
-                    className="h-full rounded-full bg-emerald-500 transition-all"
-                    style={{ width: `${pctTotal}%` }}
-                  />
-                </div>
-                <div className="flex flex-col gap-2.5">
-                  {LOGROS.map((l) => {
-                    const p = progresoLogro(l, stats);
-                    return (
-                      <div
-                        key={l.id}
-                        className={`flex items-center gap-3 rounded-xl border p-3 transition ${
-                          p.hecho
-                            ? "border-amber-400/50 bg-amber-500/10 shadow-[0_0_14px_rgba(245,158,11,0.25)]"
-                            : "border-white/10 bg-black/30"
-                        }`}
-                      >
-                        <span
-                          className={`flex items-center justify-center w-11 h-11 rounded-lg text-2xl shrink-0 ${
-                            p.hecho ? "bg-amber-500/15" : "bg-white/5 grayscale opacity-40"
-                          }`}
-                          aria-hidden
-                        >
-                          {l.emoji}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`text-sm font-semibold truncate ${p.hecho ? "text-amber-200" : "text-white"}`}>
-                              {l.nombre} {p.hecho && <span className="text-emerald-400">✓</span>}
-                            </span>
-                            <span className="text-xs text-slate-400 shrink-0">
-                              {p.valor.toLocaleString("es-ES")}
-                              {p.sufijo}/{p.meta.toLocaleString("es-ES")}
-                              {p.sufijo}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 mb-1.5 truncate">{l.desc}</p>
-                          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${p.hecho ? "bg-amber-400" : "bg-emerald-500"}`}
-                              style={{ width: `${p.pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
         </div>
       )}
 
