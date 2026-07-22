@@ -178,9 +178,10 @@ export async function GET(request: Request) {
     status: estado,
   });
 
-  // Avisos push (sin retrasar la respuesta).
+  // Avisos push (sin retrasar la respuesta). Pasamos el importe acreditado para
+  // que el aviso diga cuánto se gana (afiliado) / cuánto te llevas (admin).
   if (estado === "counted" && target) {
-    after(() => notificarEvento(target.user_id, "ftd"));
+    after(() => notificarEvento(target.user_id, "ftd", comisionPagada));
   }
   if (estado === "held") {
     after(() =>

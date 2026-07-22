@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { ADMIN_USER_ID } from "./adminAuth";
+import { esCuentaPropia } from "./adminId";
 
 // Notificaciones push (Web Push / PWA). Enviamos avisos al móvil de un usuario
 // (afiliado o admin) cuando ocurre algo (registro, FTD). BLINDADO: cualquier
@@ -91,15 +92,38 @@ async function quiereNotif(userId: string, tipo: TipoNotif): Promise<boolean> {
   }
 }
 
+// Formatea un importe para el aviso: "+85 €".
+const fmtMonto = (n: number) =>
+  `+${Math.round(n).toLocaleString("de-DE")} €`;
+
+// CPA de España del admin (para calcular tu margen por un FTD de un afiliado).
+// Blindado: null si no se puede leer (entonces el aviso va sin importe).
+async function adminCpaSpain(): Promise<number | null> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("affiliates")
+      .select("cpa_spain")
+      .eq("user_id", ADMIN_USER_ID)
+      .maybeSingle();
+    const v = Number(data?.cpa_spain);
+    return Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 // Notifica un evento (registro o FTD): avisa al afiliado y al admin, pero SOLO a
 // quien haya activado ese tipo en sus preferencias. Si el evento es del propio
-// admin (su tráfico), solo al admin. BLINDADO.
+// admin (su tráfico), solo al admin. Para FTD, si se pasa `monto` (el CPA
+// acreditado al afiliado), el aviso muestra la cantidad ganada. BLINDADO.
 export async function notificarEvento(
   userId: string | null | undefined,
-  tipo: TipoNotif
+  tipo: TipoNotif,
+  monto?: number
 ): Promise<void> {
   if (!userId) return;
   const esFtd = tipo === "ftd";
+  const hayMonto = esFtd && typeof monto === "number" && monto > 0;
   try {
     // Las dos preferencias son independientes → en paralelo (un viaje, no dos).
     const [quiereAfiliado, quiereAdmin] = await Promise.all([
@@ -126,6 +150,19 @@ export async function notificarEvento(
       /* nombre por defecto */
     }
 
+    // Lo que TÚ (admin) te llevas de este FTD: si es una cuenta propia
+    // (Mongolitos) te llevas el importe entero; si es un afiliado normal, tu
+    // margen = tu CPA − lo que le pagas a él (el `monto`).
+    let montoAdmin: number | null = null;
+    if (hayMonto && quiereAdmin) {
+      if (esCuentaPropia(userId)) {
+        montoAdmin = monto!;
+      } else {
+        const cpa = await adminCpaSpain();
+        montoAdmin = cpa != null ? Math.max(0, cpa - monto!) : null;
+      }
+    }
+
     const tareas: Promise<void>[] = [];
     if (userId !== ADMIN_USER_ID) {
       if (quiereAfiliado) {
@@ -133,7 +170,9 @@ export async function notificarEvento(
           enviarPush(userId, {
             title: esFtd ? "¡Nuevo FTD! 🎉" : "Nuevo registro 👀",
             body: esFtd
-              ? "Un jugador ha hecho su primer depósito con tu enlace."
+              ? hayMonto
+                ? `Has ganado ${fmtMonto(monto!)} 🤑`
+                : "Un jugador ha hecho su primer depósito con tu enlace."
               : "Alguien se ha registrado con tu enlace.",
             url: "/dashboard",
           })
@@ -144,7 +183,9 @@ export async function notificarEvento(
           enviarPush(ADMIN_USER_ID, {
             title: esFtd ? `💰 Nuevo FTD de ${nombre}` : `Nuevo registro de ${nombre}`,
             body: esFtd
-              ? "Un afiliado ha generado un FTD."
+              ? montoAdmin != null
+                ? `Te llevas ${fmtMonto(montoAdmin)} 🤑`
+                : "Un afiliado ha generado un FTD."
               : "Un afiliado ha generado un registro.",
             url: "/admin/actividad",
           })
@@ -156,7 +197,9 @@ export async function notificarEvento(
         enviarPush(ADMIN_USER_ID, {
           title: esFtd ? "¡Nuevo FTD! 🎉" : "Nuevo registro 👀",
           body: esFtd
-            ? "Tu enlace ha generado un FTD."
+            ? hayMonto
+              ? `Tu enlace ha generado ${fmtMonto(monto!)} 🤑`
+              : "Tu enlace ha generado un FTD."
             : "Tu enlace ha generado un registro.",
           url: "/admin/actividad",
         })
