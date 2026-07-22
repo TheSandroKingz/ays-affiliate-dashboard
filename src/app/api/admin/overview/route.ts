@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   // Una única consulta: todo el histórico. Los periodos se filtran en memoria.
   // La comprobación de seguridad va EN PARALELO (no en serie) para no frenar.
-  const [dailyRes, pendRes, seguridad, freshbet] = await Promise.all([
+  const [dailyRes, pendRes, seguridad, freshbet, paisesRes] = await Promise.all([
     supabaseAdmin
       .from("affiliate_daily_stats")
       .select("user_id, date, commission, clicks, registrations, ftd")
@@ -42,7 +42,22 @@ export async function GET(request: Request) {
       .eq("approved", false),
     resumenSeguridad(),
     saludFreshbet(),
+    supabaseAdmin
+      .from("postback_events")
+      .select("isocountry")
+      .in("event_type", ["ftd", "commission"])
+      .eq("counted", true),
   ]);
+
+  // De dónde vienen los jugadores (países de los QFTD/FTD contados).
+  const paisesMap = new Map<string, number>();
+  for (const r of paisesRes.data ?? []) {
+    const c = (r.isocountry || "").toUpperCase() || "??";
+    paisesMap.set(c, (paisesMap.get(c) ?? 0) + 1);
+  }
+  const paises = [...paisesMap.entries()]
+    .map(([code, n]) => ({ code, n }))
+    .sort((a, b) => b.n - a.n);
   if (dailyRes.error) {
     return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
   }
@@ -102,12 +117,18 @@ export async function GET(request: Request) {
     struct
   ).totals.totalClean;
 
+  // Conversión global del negocio este mes (QFTD por clics).
+  const conversionGlobal =
+    mes.totals.clicks > 0 ? (mes.totals.ftd / mes.totals.clicks) * 100 : null;
+
   return NextResponse.json({
     adminCpa,
     seguridad,
     freshbet,
     afiliadoDelMes,
     lastMonthToDateClean,
+    paises,
+    conversionGlobal,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     lastMonthClean: mesPasado.totals.totalClean,
     allTime: {
