@@ -144,6 +144,18 @@ export function computeAdminStats(
   };
 
   // Serie diaria (actividad de la estructura + earnings del admin por día).
+  // % de override que se paga al padre POR CADA afiliado hijo (por su comisión).
+  // Se usa para restar el override día a día y que la suma de la serie cuadre
+  // EXACTA con totalClean (que también resta overridesPaid).
+  const overridePctByChild = new Map<string, number>();
+  for (const child of structure) {
+    if (!child.referred_by || child.referred_by === adminId) continue;
+    overridePctByChild.set(
+      child.user_id,
+      (percentById.get(child.referred_by) ?? 0) / 100
+    );
+  }
+
   const byDate = new Map<
     string,
     {
@@ -156,6 +168,7 @@ export function computeAdminStats(
       propiaClicks: number;
       propiaReg: number;
       propiaFtd: number;
+      overridesDay: number;
     }
   >();
   for (const d of daily) {
@@ -171,7 +184,11 @@ export function computeAdminStats(
         propiaClicks: 0,
         propiaReg: 0,
         propiaFtd: 0,
+        overridesDay: 0,
       };
+    // Override que el admin paga al padre por la comisión de este hijo hoy.
+    acc.overridesDay +=
+      (overridePctByChild.get(d.user_id) ?? 0) * Number(d.commission ?? 0);
     if (d.user_id === adminUserId) {
       acc.ownCom += Number(d.commission ?? 0);
     } else if (CUENTAS_PROPIAS.has(d.user_id)) {
@@ -197,7 +214,10 @@ export function computeAdminStats(
       registrations: v.structReg + v.propiaReg,
       ftd: v.structFtd + v.propiaFtd,
       earnings:
-        v.ownCom + (adminCpa * v.structFtd - v.structCom) + v.propiaCom,
+        v.ownCom +
+        (adminCpa * v.structFtd - v.structCom) +
+        v.propiaCom -
+        v.overridesDay,
     }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
