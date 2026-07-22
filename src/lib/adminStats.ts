@@ -211,7 +211,6 @@ export function computeAdminStats(
   const dailySeries = Array.from(byDate.entries())
     .map(([date, v]) => ({
       date,
-      commission: v.structCom,
       clicks: v.structClicks + v.propiaClicks,
       registrations: v.structReg + v.propiaReg,
       ftd: v.structFtd + v.propiaFtd,

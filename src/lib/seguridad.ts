@@ -107,6 +107,9 @@ export async function deteccionFraude(): Promise<Fraude> {
         .format(new Date())
         .slice(0, 7) + "-01";
 
+    // Acotamos a los últimos 90 días: así el limit(1000) no trunca en silencio
+    // (dentro de esa ventana sobra) y la colusión reciente es la que importa.
+    const hace90 = new Date(Date.now() - 90 * 86400000).toISOString();
     const [evRes, dailyRes, affRes] = await Promise.all([
       supabaseAdmin
         .from("postback_events")
@@ -114,6 +117,7 @@ export async function deteccionFraude(): Promise<Fraude> {
         .in("event_type", ["ftd", "commission"])
         .not("player_id", "is", null)
         .not("matched_user_id", "is", null)
+        .gte("created_at", hace90)
         .order("created_at", { ascending: false })
         .limit(1000),
       supabaseAdmin

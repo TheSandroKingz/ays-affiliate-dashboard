@@ -28,15 +28,16 @@ export async function POST(request: NextRequest) {
   if (id.includes("@")) {
     email = id;
   } else {
-    const { data: aff } = await supabaseAdmin
+    // .limit(1) (no maybeSingle): si por caja de mayúsculas el ilike emparejara
+    // varias filas, tomamos una en vez de petar (igual que en /api/login).
+    const { data: affs } = await supabaseAdmin
       .from("affiliates")
       .select("user_id")
       .ilike("display_name", id.replace(/[%_]/g, "\\$&"))
-      .maybeSingle();
-    if (aff?.user_id) {
-      const { data: u } = await supabaseAdmin.auth.admin.getUserById(
-        aff.user_id
-      );
+      .limit(1);
+    const affUserId = affs?.[0]?.user_id;
+    if (affUserId) {
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(affUserId);
       email = u?.user?.email ?? null;
     }
   }
@@ -48,7 +49,11 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
-    const origin = new URL(request.url).origin;
+    // La cabecera Origin (que pone el navegador) es el dominio PÚBLICO real; el
+    // origin de request.url puede ser el host interno tras el proxy de Vercel,
+    // y el enlace del email apuntaría a un dominio equivocado.
+    const origin =
+      request.headers.get("origin") || new URL(request.url).origin;
     await authClient.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/reset-password`,
     });

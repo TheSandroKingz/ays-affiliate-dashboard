@@ -101,9 +101,13 @@ export async function notificarEvento(
   if (!userId) return;
   const esFtd = tipo === "ftd";
   try {
-    const quiereAfiliado =
-      userId !== ADMIN_USER_ID ? await quiereNotif(userId, tipo) : false;
-    const quiereAdmin = await quiereNotif(ADMIN_USER_ID, tipo);
+    // Las dos preferencias son independientes → en paralelo (un viaje, no dos).
+    const [quiereAfiliado, quiereAdmin] = await Promise.all([
+      userId !== ADMIN_USER_ID
+        ? quiereNotif(userId, tipo)
+        : Promise.resolve(false),
+      quiereNotif(ADMIN_USER_ID, tipo),
+    ]);
     if (userId === ADMIN_USER_ID) {
       if (!quiereAdmin) return;
     } else if (!quiereAfiliado && !quiereAdmin) {

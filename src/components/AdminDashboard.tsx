@@ -15,7 +15,6 @@ import { reproducirSonido } from "@/lib/sonido";
 
 type DailyRow = {
   date: string;
-  commission: number;
   clicks: number;
   registrations: number;
   ftd: number;
