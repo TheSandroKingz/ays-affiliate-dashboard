@@ -70,7 +70,7 @@ export default function AccountPage() {
           .single(),
         supabase
           .from("affiliate_daily_stats")
-          .select("date, ftd, registrations")
+          .select("date, ftd, registrations, clicks")
           .eq("user_id", user.id),
       ]);
 
@@ -534,7 +534,10 @@ export default function AccountPage() {
       {activeTab === "logros" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 sm:p-6">
           {(() => {
-            const stats = logroStats ?? { totalFtd: 0, totalRegistros: 0, maxRacha: 0, mejorMes: 0 };
+            const stats = logroStats ?? {
+              totalFtd: 0, totalRegistros: 0, totalClicks: 0, maxRacha: 0,
+              mejorMes: 0, mejorDia: 0, diasConFtd: 0, mesesConFtd: 0, conversion: 0,
+            };
             const hechos = LOGROS.filter((l) => progresoLogro(l, stats).hecho).length;
             const pctTotal = Math.round((hechos / LOGROS.length) * 100);
             return (
@@ -577,7 +580,9 @@ export default function AccountPage() {
                               {l.nombre} {p.hecho && <span className="text-emerald-400">✓</span>}
                             </span>
                             <span className="text-xs text-slate-400 shrink-0">
-                              {p.valor}/{p.meta}
+                              {p.valor}
+                              {p.sufijo}/{p.meta}
+                              {p.sufijo}
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 mb-1.5 truncate">{l.desc}</p>
