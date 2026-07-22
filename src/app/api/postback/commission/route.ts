@@ -64,10 +64,14 @@ export async function GET(request: Request) {
   let comisionPagada = 0;
 
   if (target && playerid) {
-    // Salvaguarda 3: sin depósito previo de este jugador = ruido de test → fuera.
+    // Salvaguarda 3: si NO hay depósito previo de este jugador, no contamos
+    // AUTOMÁTICAMENTE (podría ser ruido de test), pero tampoco lo perdemos: lo
+    // dejamos RETENIDO para que el admin lo revise. Así un QFTD real cuyo
+    // depósito no quedó registrado NUNCA se pierde (lo apruebas de un clic), y un
+    // test se descarta igual. Nunca se cuenta un falso ni se pierde un real.
     const hayDeposito = await depositoPrevio(playerid);
     if (!hayDeposito) {
-      estado = "no_match";
+      estado = "held";
     } else {
       const eventKey = `qftd:${playerid}`;
       const contar = await reclamarEvento(eventKey);
