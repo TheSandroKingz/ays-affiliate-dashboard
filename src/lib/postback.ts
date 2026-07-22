@@ -88,7 +88,8 @@ export type EstadoEvento =
   | "held"
   | "discarded"
   | "resolved" // FTD retenido aprobado a mano por el admin (dinero sí sumado)
-  | "deposit"; // primer depósito recibido, aún NO cualificado (no suma dinero)
+  | "deposit" // primer depósito recibido, aún NO cualificado (no suma dinero)
+  | "reversed"; // FreshBet quitó la comisión → se restó también al afiliado
 
 // ¿Este jugador YA tiene un FTD CONTADO? Salvaguarda extra anti-doble-pago,
 // independiente del candado `postback_dedup`: si por lo que sea el candado no
@@ -128,6 +129,37 @@ export async function depositoPrevio(playerId: string): Promise<boolean> {
     return (count ?? 0) > 0;
   } catch {
     return false;
+  }
+}
+
+// Busca el QFTD/FTD ya CONTADO de un jugador (para revertirlo si FreshBet quita
+// la comisión). Devuelve al afiliado, cuánto se le acreditó y en qué fecha, o
+// null si no hay nada contado. BLINDADO.
+export async function buscarQftdContado(
+  playerId: string
+): Promise<{ userId: string; commission: number; date: string } | null> {
+  if (!playerId) return null;
+  try {
+    const { data } = await supabaseAdmin
+      .from("postback_events")
+      .select("matched_user_id, commission, created_at")
+      .in("event_type", ["ftd", "commission"])
+      .eq("counted", true)
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data || !data.matched_user_id) return null;
+    const date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date(data.created_at as string));
+    return {
+      userId: data.matched_user_id as string,
+      commission: Number(data.commission ?? 0),
+      date,
+    };
+  } catch {
+    return null;
   }
 }
 

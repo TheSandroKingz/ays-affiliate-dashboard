@@ -7,6 +7,7 @@ import {
   registrarEvento,
   ftdYaContado,
   depositoPrevio,
+  buscarQftdContado,
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
@@ -35,10 +36,67 @@ export async function GET(request: Request) {
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
   const playerid = getPlayerId(url);
+  const importe = Number(
+    (url.searchParams.get("commissionamount") ?? "").replace(",", ".")
+  );
 
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
   }).format(new Date());
+
+  // REVERSIÓN: si FreshBet manda una comisión NEGATIVA, te la está QUITANDO
+  // (fraude/chargeback). Si ese QFTD estaba contado, se lo restamos también al
+  // afiliado para quedar espejo con FreshBet. Candado para no revertir dos veces.
+  if (Number.isFinite(importe) && importe < 0 && playerid) {
+    let estadoRev: EstadoEvento = "no_match";
+    const revKey = `qftdrev:${playerid}`;
+    const nuevo = await reclamarEvento(revKey);
+    if (nuevo) {
+      const contado = await buscarQftdContado(playerid);
+      if (contado) {
+        const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+          p_user_id: contado.userId,
+          p_date: contado.date,
+          p_registrations: 0,
+          p_ftd: -1,
+          p_commission: -contado.commission,
+        });
+        if (error) {
+          await liberarEvento(revKey);
+          estadoRev = "error";
+        } else {
+          estadoRev = "reversed";
+        }
+      } else {
+        estadoRev = "no_match"; // no había nada contado que revertir
+      }
+    } else {
+      estadoRev = "duplicate"; // reversión ya aplicada
+    }
+
+    await registrarEvento({
+      event_type: "commission",
+      raw_query: queryLimpia(url),
+      tracking_code: trackingcode,
+      afp,
+      player_id: playerid,
+      isocountry,
+      matched_user_id: null,
+      commission: Number.isFinite(importe) ? importe : 0,
+      status: estadoRev,
+    });
+
+    if (estadoRev === "reversed") {
+      after(() =>
+        enviarPush(ADMIN_USER_ID, {
+          title: "↩️ Comisión revertida",
+          body: "FreshBet quitó una comisión y se ha restado también al afiliado.",
+          url: "/admin/actividad",
+        })
+      );
+    }
+    return NextResponse.json({ ok: true, reversed: estadoRev === "reversed" });
+  }
 
   // Atribución al afiliado (por trackingcode y, si no, por afp).
   let target: { user_id: string; cpa_spain: number | null; cpa_other: number | null } | null = null;
