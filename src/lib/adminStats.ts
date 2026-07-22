@@ -3,6 +3,8 @@
 // de fechas) y /api/admin/overview (varios periodos con UNA sola consulta),
 // sin duplicar la lógica de dinero (menos riesgo de descuadre).
 
+import { CUENTAS_PROPIAS } from "./adminId";
+
 export type DailyRow = {
   user_id: string;
   date: string;
@@ -76,6 +78,23 @@ export function computeAdminStats(
     .map((a) => {
       const s = byUser.get(a.user_id) ?? empty();
       const overrideEarned = overrideEarnedById.get(a.user_id) ?? 0;
+      // Cuenta propia del admin (p. ej. Mongolitos): NO se le paga (le pago = 0)
+      // porque el dinero es del propio admin. Su margen es ENTERO (adminCpa × FTD)
+      // y suma a tu balance. Su comisión (lo que ve en SU panel) va aparte, en
+      // affiliate_daily_stats; aquí no cuenta como "pagado a afiliados".
+      if (CUENTAS_PROPIAS.has(a.user_id)) {
+        return {
+          user_id: a.user_id,
+          display_name: a.display_name,
+          commission: 0, // no se cuenta como pagado
+          overrideEarned: 0,
+          owed: 0, // le pago 0
+          clicks: s.clicks,
+          registrations: s.registrations,
+          ftd: s.ftd,
+          margin: adminCpa * s.ftd, // margen entero
+        };
+      }
       const owed = s.commission + overrideEarned;
       const margin = adminCpa * s.ftd - s.commission;
       return {
@@ -147,6 +166,12 @@ export function computeAdminStats(
       };
     if (d.user_id === adminUserId) {
       acc.ownCom += Number(d.commission ?? 0);
+    } else if (CUENTAS_PROPIAS.has(d.user_id)) {
+      // Cuenta propia: su actividad cuenta, pero su comisión NO se resta (su
+      // margen entero = adminCpa × FTD es ganancia del admin).
+      acc.structClicks += Number(d.clicks ?? 0);
+      acc.structReg += Number(d.registrations ?? 0);
+      acc.structFtd += Number(d.ftd ?? 0);
     } else {
       acc.structCom += Number(d.commission ?? 0);
       acc.structClicks += Number(d.clicks ?? 0);
