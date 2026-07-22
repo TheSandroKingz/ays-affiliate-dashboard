@@ -34,8 +34,10 @@ export function computeAdminStats(
   structure: StructRow[]
 ) {
   const percentById = new Map<string, number>();
+  const byId = new Map<string, StructRow>();
   for (const a of structure) {
     percentById.set(a.id, Number(a.subaffiliate_percent ?? 0));
+    byId.set(a.id, a);
   }
 
   // ---- 1) Link propio del admin ----
@@ -63,7 +65,7 @@ export function computeAdminStats(
   const overrideEarnedById = new Map<string, number>();
   for (const child of structure) {
     if (!child.referred_by || child.referred_by === adminId) continue;
-    const parent = structure.find((p) => p.id === child.referred_by);
+    const parent = byId.get(child.referred_by);
     if (!parent) continue;
     const parentPct = percentById.get(child.referred_by) ?? 0;
     const childCommission = byUser.get(child.user_id)?.commission ?? 0;

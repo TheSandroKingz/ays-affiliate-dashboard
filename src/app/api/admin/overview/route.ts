@@ -4,71 +4,17 @@ import { getAdminUser } from "@/lib/adminAuth";
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
 import { resumenSeguridad, saludFreshbet } from "@/lib/seguridad";
 
-// Vista consolidada del INICIO del admin: mes en curso + mes pasado + histórico
-// + solicitudes pendientes, todo con UNA sola consulta a affiliate_daily_stats
-// (antes eran 3 llamadas separadas). Más rápido y menos carga.
+// Vista consolidada del INICIO del admin: mes en curso + mes pasado (para la
+// comparativa "a estas alturas") + seguridad + solicitudes pendientes. La
+// consulta de datos va ACOTADA a esos 2 meses (no todo el histórico), y todo lo
+// independiente va en paralelo. Menos descarga y menos round-trips.
 export async function GET(request: Request) {
   const user = await getAdminUser(request);
   if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { data: me } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, cpa_spain")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const adminCpa = Number(me?.cpa_spain ?? 0);
-
-  const { data: structure, error: sErr } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, user_id, display_name, referred_by, subaffiliate_percent")
-    .neq("user_id", user.id);
-  if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
-
-  const structIds = (structure ?? []).map((s) => s.user_id);
-  const idsToLoad = [user.id, ...structIds];
-
-  // Una única consulta: todo el histórico. Los periodos se filtran en memoria.
-  // La comprobación de seguridad va EN PARALELO (no en serie) para no frenar.
-  const [dailyRes, pendRes, seguridad, freshbet, paisesRes] = await Promise.all([
-    supabaseAdmin
-      .from("affiliate_daily_stats")
-      .select("user_id, date, commission, clicks, registrations, ftd")
-      .in("user_id", idsToLoad),
-    supabaseAdmin
-      .from("affiliates")
-      .select("user_id", { count: "exact", head: true })
-      .eq("approved", false),
-    resumenSeguridad(),
-    saludFreshbet(),
-    supabaseAdmin
-      .from("postback_events")
-      .select("isocountry")
-      .in("event_type", ["ftd", "commission"])
-      .eq("counted", true),
-  ]);
-
-  // De dónde vienen los jugadores (países de los QFTD/FTD contados).
-  const paisesMap = new Map<string, number>();
-  for (const r of paisesRes.data ?? []) {
-    const c = (r.isocountry || "").toUpperCase() || "??";
-    paisesMap.set(c, (paisesMap.get(c) ?? 0) + 1);
-  }
-  const paises = [...paisesMap.entries()]
-    .map(([code, n]) => ({ code, n }))
-    .sort((a, b) => b.n - a.n);
-  if (dailyRes.error) {
-    return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
-  }
-
-  const all = (dailyRes.data ?? []).map((d) => ({
-    ...d,
-    date: String(d.date).slice(0, 10),
-  })) as DailyRow[];
-  const struct = (structure ?? []) as StructRow[];
-
-  // Rangos (zona Madrid).
+  // Rangos (zona Madrid). Se calculan ya para acotar la consulta a 2 meses.
   const hoy = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
   }).format(new Date());
@@ -79,28 +25,76 @@ export async function GET(request: Request) {
   const finMesPasado = finPrev.toISOString().slice(0, 10);
   const inicioMesPasado = finMesPasado.slice(0, 7) + "-01";
 
+  // La estructura debe resolverse antes de la consulta diaria (define idsToLoad).
+  const { data: structure, error: sErr } = await supabaseAdmin
+    .from("affiliates")
+    .select("id, user_id, display_name, referred_by, subaffiliate_percent")
+    .neq("user_id", user.id);
+  if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
+
+  const structIds = (structure ?? []).map((s) => s.user_id);
+  const idsToLoad = [user.id, ...structIds];
+
+  // Todo lo demás en paralelo. La consulta diaria viene ACOTADA por fecha (mes
+  // pasado en adelante); antes traía TODO el histórico en cada carga.
+  const [meRes, dailyRes, pendRes, seguridad, freshbet, paisesRes] =
+    await Promise.all([
+      supabaseAdmin
+        .from("affiliates")
+        .select("id, cpa_spain")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, date, commission, clicks, registrations, ftd")
+        .in("user_id", idsToLoad)
+        .gte("date", inicioMesPasado),
+      supabaseAdmin
+        .from("affiliates")
+        .select("user_id", { count: "exact", head: true })
+        .eq("approved", false),
+      resumenSeguridad(),
+      saludFreshbet(),
+      supabaseAdmin
+        .from("postback_events")
+        .select("isocountry")
+        .in("event_type", ["ftd", "commission"])
+        .eq("counted", true),
+    ]);
+
+  const adminCpa = Number(meRes.data?.cpa_spain ?? 0);
+  const meId = meRes.data?.id;
+
+  // De dónde vienen los jugadores (países de los QFTD/FTD contados).
+  const paisesMap = new Map<string, number>();
+  for (const r of paisesRes.data ?? []) {
+    const c = (r.isocountry || "").toUpperCase() || "??";
+    paisesMap.set(c, (paisesMap.get(c) ?? 0) + 1);
+  }
+  const paises = [...paisesMap.entries()]
+    .map(([code, n]) => ({ code, n }))
+    .sort((a, b) => b.n - a.n);
+
+  if (dailyRes.error) {
+    return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
+  }
+
+  const all = (dailyRes.data ?? []).map((d) => ({
+    ...d,
+    date: String(d.date).slice(0, 10),
+  })) as DailyRow[];
+  const struct = (structure ?? []) as StructRow[];
+
   const enRango = (a: string, b: string) =>
     all.filter((d) => d.date >= a && d.date <= b);
 
   const mes = computeAdminStats(
     enRango(inicioMes, hoy),
     user.id,
-    me?.id,
+    meId,
     adminCpa,
     struct
   );
-  const mesPasado = computeAdminStats(
-    enRango(inicioMesPasado, finMesPasado),
-    user.id,
-    me?.id,
-    adminCpa,
-    struct
-  );
-  const historico = computeAdminStats(all, user.id, me?.id, adminCpa, struct);
-
-  // Afiliado del mes: el que más FTD te ha generado este mes.
-  const top = [...mes.stats].filter((s) => s.ftd > 0).sort((a, b) => b.ftd - a.ftd)[0];
-  const afiliadoDelMes = top ? { nombre: top.display_name, ftd: top.ftd } : null;
 
   // Comparativa "a estas alturas": beneficio limpio del mes pasado hasta el
   // MISMO día del mes (para comparar con el actual de forma justa).
@@ -112,30 +106,18 @@ export async function GET(request: Request) {
   const lastMonthToDateClean = computeAdminStats(
     enRango(inicioMesPasado, lastMonthSameDay),
     user.id,
-    me?.id,
+    meId,
     adminCpa,
     struct
   ).totals.totalClean;
-
-  // Conversión global del negocio este mes (QFTD por clics).
-  const conversionGlobal =
-    mes.totals.clicks > 0 ? (mes.totals.ftd / mes.totals.clicks) * 100 : null;
 
   return NextResponse.json({
     adminCpa,
     seguridad,
     freshbet,
-    afiliadoDelMes,
     lastMonthToDateClean,
     paises,
-    conversionGlobal,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
-    lastMonthClean: mesPasado.totals.totalClean,
-    allTime: {
-      ftd: historico.totals.ftd,
-      structurePaid: historico.totals.structurePaid,
-      totalClean: historico.totals.totalClean,
-    },
     pending: pendRes.count ?? 0,
   });
 }
