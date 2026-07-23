@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   getPlayerId,
   reclamarEvento,
-  liberarEvento,
   registrarEvento,
   ftdYaContado,
   depositoPrevio,
@@ -62,7 +61,11 @@ export async function GET(request: Request) {
           p_commission: -contado.commission,
         });
         if (error) {
-          await liberarEvento(revKey);
+          // NO soltamos el candado: el RPC pudo haber CONFIRMADO en Postgres
+          // aunque devolviera error (timeout tras commit). Si lo soltáramos, un
+          // reintento de FreshBet restaría OTRA VEZ (doble reversión silenciosa).
+          // Lo dejamos reclamado → el reintento cae en "duplicate". Se avisa para
+          // revisar a mano. Mismo criterio que el resolver.
           estadoRev = "error";
         } else {
           estadoRev = "reversed";
@@ -91,6 +94,15 @@ export async function GET(request: Request) {
         enviarPush(ADMIN_USER_ID, {
           title: "↩️ Comisión revertida",
           body: "FreshBet quitó una comisión y se ha restado también al afiliado.",
+          url: "/admin/actividad",
+        })
+      );
+    }
+    if (estadoRev === "error") {
+      after(() =>
+        enviarPush(ADMIN_USER_ID, {
+          title: "⚠️ Error al revertir una comisión",
+          body: "Una reversión dio error de red. Puede haberse aplicado o no — revisa el balance del afiliado a mano.",
           url: "/admin/actividad",
         })
       );
@@ -152,7 +164,14 @@ export async function GET(request: Request) {
             p_commission: commission,
           });
           if (error) {
-            await liberarEvento(eventKey);
+            // NO soltamos el candado: el RPC pudo haber CONFIRMADO en Postgres
+            // aunque devolviera error (timeout/gateway tras el commit). Si lo
+            // soltáramos, el reintento de FreshBet contaría el QFTD OTRA VEZ y
+            // habría DOBLE PAGO silencioso (el evento anterior queda counted=false,
+            // así que ftdYaContado no lo ve). Dejándolo reclamado, el reintento
+            // cae en "duplicate". En el peor caso queda un QFTD sin sumar
+            // (infrapago recuperable), NUNCA un doble pago. Se avisa para revisar
+            // a mano. Mismo criterio que el resolver de retenidos.
             estado = "error";
           } else {
             estado = "counted";
@@ -188,6 +207,15 @@ export async function GET(request: Request) {
       enviarPush(ADMIN_USER_ID, {
         title: "⚠️ QFTD retenido",
         body: "Un QFTD quedó sin contar por sospecha de doble pago. Revísalo en Actividad.",
+        url: "/admin/actividad",
+      })
+    );
+  }
+  if (estado === "error" && target) {
+    after(() =>
+      enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ Error al contar un QFTD",
+        body: "Un QFTD dio error de red al sumar. Puede haberse sumado o no — revisa el balance del afiliado a mano (no habrá doble pago).",
         url: "/admin/actividad",
       })
     );

@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   getPlayerId,
   reclamarEvento,
-  liberarEvento,
   registrarEvento,
   queryLimpia,
   type EstadoEvento,
@@ -49,8 +48,9 @@ export async function GET(request: Request) {
   }
 
   // Idempotencia: solo dentro de la rama con afiliado emparejado (para no quemar
-  // el token en una entrega no atribuida). Reclamamos, contamos, y si el conteo
-  // falla, liberamos para que un reintento de freshbet lo cuente.
+  // el token en una entrega no atribuida). Si el RPC da error NO soltamos el
+  // candado (pudo confirmar aunque devolviera error → un reintento duplicaría el
+  // registro). En el peor caso se pierde un registro (no es dinero).
   let duplicado = false;
   let estado: EstadoEvento = "no_match";
   if (targetUserId) {
@@ -66,7 +66,8 @@ export async function GET(request: Request) {
         p_commission: 0,
       });
       if (error) {
-        await liberarEvento(eventKey);
+        // NO soltamos el candado (ver comentario arriba): evita duplicar el
+        // registro si el RPC confirmó pero devolvió error.
         estado = "error";
       } else {
         estado = "counted";

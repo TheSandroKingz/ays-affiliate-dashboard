@@ -204,7 +204,10 @@ export default function AdminDashboard() {
   if (loadError) return <LoadError onRetry={() => load()} />;
 
   const sinActividad =
-    totals.totalClean === 0 && totals.clicks === 0 && totals.ftd === 0;
+    totals.totalClean === 0 &&
+    totals.clicks === 0 &&
+    totals.ftd === 0 &&
+    totals.registrations === 0;
 
   // Crecimiento: lo que llevas ganado HOY vs lo de AYER (de la serie diaria).
   const fechaMadrid = (d: Date) =>
@@ -234,7 +237,11 @@ export default function AdminDashboard() {
   const conActividad = daily.filter(
     (d) => (d.earnings ?? 0) !== 0 || (d.ftd ?? 0) > 0
   );
-  const primeraFecha = conActividad[0]?.date ?? null;
+  // Fecha más temprana con actividad SIN depender del orden del array (si el
+  // API devolviera los días desordenados, tomar [0] daría un ritmo inflado).
+  const primeraFecha = conActividad.length
+    ? conActividad.reduce((min, d) => (d.date < min ? d.date : min), conActividad[0].date)
+    : null;
   const diasTrab = primeraFecha
     ? Math.round((Date.parse(hoyIso) - Date.parse(primeraFecha)) / 86400000) + 1
     : 0;
