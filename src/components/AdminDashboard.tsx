@@ -227,6 +227,27 @@ export default function AdminDashboard() {
       ? ((totals.totalClean - lastMonthToDate) / lastMonthToDate) * 100
       : null;
 
+  // Proyección de cierre de mes (al ritmo actual), con tu beneficio limpio.
+  const [pY, pM] = hoyIso.split("-").map(Number);
+  const diaMesHoy = Number(hoyIso.slice(8, 10));
+  const diasMes = new Date(pY, pM, 0).getDate();
+  const conActividad = daily.filter(
+    (d) => (d.earnings ?? 0) !== 0 || (d.ftd ?? 0) > 0
+  );
+  const primeraFecha = conActividad[0]?.date ?? null;
+  const diasTrab = primeraFecha
+    ? Math.round((Date.parse(hoyIso) - Date.parse(primeraFecha)) / 86400000) + 1
+    : 0;
+  const ritmoDiaAdmin = diasTrab > 0 ? totals.totalClean / diasTrab : 0;
+  const proyeccionAdmin =
+    Math.round((totals.totalClean + ritmoDiaAdmin * (diasMes - diaMesHoy)) / 10) *
+    10;
+  const mostrarProyeccionAdmin =
+    totals.totalClean > 0 &&
+    diasTrab > 0 &&
+    diaMesHoy < diasMes &&
+    proyeccionAdmin > 0;
+
   return (
     <div className="flex flex-col gap-6">
       {celebrar && (
@@ -459,6 +480,15 @@ export default function AdminDashboard() {
               {eur(Math.abs(totals.totalClean - lastMonthToDate))}
             </span>{" "}
             <span className="text-slate-500">que el mes pasado a estas alturas</span>
+          </div>
+        )}
+        {mostrarProyeccionAdmin && (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5">
+            <span className="text-base">📈</span>
+            <span className="text-sm text-slate-300">
+              A este ritmo cerrarás el mes en{" "}
+              <b className="text-emerald-300">{eur(proyeccionAdmin)}</b>
+            </span>
           </div>
         )}
       </div>
