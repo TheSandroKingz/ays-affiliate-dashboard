@@ -10,6 +10,7 @@ import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
 import { useProfile } from "@/components/DashboardProvider";
 import { TONOS, getTono, setTono, reproducirSonido, type TonoNotif } from "@/lib/sonido";
+import { contieneEmoji } from "@/lib/texto";
 
 export default function AccountPage() {
   const { birthdate: perfilBirthdate } = useProfile();
@@ -178,6 +179,13 @@ export default function AccountPage() {
     // Validación de formato de email en cliente (no hay <form> que la dispare).
     if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       setMessage("El correo no tiene un formato válido.");
+      setSaving(false);
+      return;
+    }
+
+    // El nombre no puede llevar emojis (afea la web y rompe iniciales/avatar).
+    if (contieneEmoji(firstName)) {
+      setMessage("El nombre no puede tener emojis.");
       setSaving(false);
       return;
     }

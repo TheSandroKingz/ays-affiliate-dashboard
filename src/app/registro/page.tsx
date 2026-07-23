@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { traducirError } from '@/lib/authErrors'
+import { contieneEmoji } from '@/lib/texto'
 
 export default function RegistroPage() {
   const router = useRouter()
@@ -48,6 +49,12 @@ export default function RegistroPage() {
         setError('Debes ser mayor de edad (18+) para registrarte.')
         return
       }
+    }
+
+    // El nombre no puede llevar emojis.
+    if (contieneEmoji(nombre)) {
+      setError('El nombre no puede tener emojis.')
+      return
     }
 
     setLoading(true)

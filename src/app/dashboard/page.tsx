@@ -611,11 +611,13 @@ export default function DashboardPage() {
           </div>
         )}
         {mostrarProyeccion && (
-          <p className="mt-1 text-[11px] text-slate-500">
-            A este ritmo cerrarás el mes en{" "}
-            <span className="text-slate-300 font-medium">{eur(proyeccion)}</span>{" "}
-            aproximadamente
-          </p>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5">
+            <span className="text-base">📈</span>
+            <span className="text-sm text-slate-300">
+              A este ritmo cerrarás el mes en{" "}
+              <b className="text-emerald-300">{eur(proyeccion)}</b>
+            </span>
+          </div>
         )}
       </div>
 

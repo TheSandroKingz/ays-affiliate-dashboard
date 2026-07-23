@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { enviarPush } from '@/lib/push'
 import { ADMIN_USER_ID } from '@/lib/adminAuth'
+import { contieneEmoji } from '@/lib/texto'
 
 // Enlace de promoción por defecto para nuevas cuentas.
 // Cuentas concretas (p. ej. Jeffer) se personalizan a mano en la BD.
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
   if (nombre.length < 2 || nombre.length > 40) {
     return NextResponse.json(
       { error: 'El nombre de usuario debe tener entre 2 y 40 caracteres.' },
+      { status: 400 }
+    )
+  }
+
+  // Sin emojis en el nombre.
+  if (contieneEmoji(nombre)) {
+    return NextResponse.json(
+      { error: 'El nombre de usuario no puede tener emojis.' },
       { status: 400 }
     )
   }
