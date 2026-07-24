@@ -39,11 +39,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supaOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL;
   return (
     <html
       lang="es"
       className={`${geistSans.variable} h-full antialiased`}
     >
+      <head>
+        {/* Preparar la conexión con Supabase antes de pedir datos: la primera
+            consulta (y el refresco de sesión) salen más rápidas en móvil. */}
+        {supaOrigin && (
+          <>
+            <link rel="preconnect" href={supaOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={supaOrigin} />
+          </>
+        )}
+      </head>
       <body className="min-h-full flex flex-col">{children}<SpeedInsights /></body>
     </html>
   );
