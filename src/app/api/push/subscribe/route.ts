@@ -16,8 +16,24 @@ export async function POST(request: Request) {
   const endpoint: string | undefined = sub?.endpoint;
   const p256dh: string | undefined = sub?.keys?.p256dh;
   const auth: string | undefined = sub?.keys?.auth;
+  const previousEndpoint: string | undefined = body?.previousEndpoint;
   if (!endpoint || !p256dh || !auth) {
     return NextResponse.json({ error: "Suscripción inválida" }, { status: 400 });
+  }
+
+  // iPhone rota el endpoint: borramos el ANTERIOR de este mismo dispositivo (si
+  // lo hay) para no dejar suscripciones fantasma que aceptan pero no entregan.
+  // Solo toca las de ESTE usuario, así que no afecta al otro dispositivo.
+  if (previousEndpoint && previousEndpoint !== endpoint) {
+    await supabaseAdmin
+      .from("push_subscriptions")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("endpoint", previousEndpoint)
+      .then(
+        () => {},
+        () => {}
+      );
   }
 
   const { error } = await supabaseAdmin

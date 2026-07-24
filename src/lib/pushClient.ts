@@ -63,11 +63,35 @@ export async function activarPush(): Promise<boolean> {
 
   const headers = await authHeader();
   if (!headers) return false;
+  // iPhone rota el "endpoint" cada cierto tiempo y crea uno nuevo dejando el
+  // viejo colgado (Apple lo acepta pero no lo entrega → ese móvil se pierde
+  // avisos). Guardamos el último endpoint de ESTE dispositivo y le decimos al
+  // servidor que borre el anterior, para que cada móvil tenga UNA sola
+  // suscripción fresca (no fantasmas).
+  let previousEndpoint: string | null = null;
+  try {
+    previousEndpoint = localStorage.getItem("lastPushEndpoint");
+  } catch {
+    /* nada */
+  }
   const res = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
-    body: JSON.stringify({ subscription: sub.toJSON() }),
+    body: JSON.stringify({
+      subscription: sub.toJSON(),
+      previousEndpoint:
+        previousEndpoint && previousEndpoint !== sub.endpoint
+          ? previousEndpoint
+          : undefined,
+    }),
   });
+  if (res.ok) {
+    try {
+      localStorage.setItem("lastPushEndpoint", sub.endpoint);
+    } catch {
+      /* nada */
+    }
+  }
   return res.ok;
 }
 
@@ -107,10 +131,14 @@ export async function reactivarSiConcedido(): Promise<void> {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
-    const key = "pushSincronizado:" + session.user.id;
-    if (sessionStorage.getItem(key) === "1") return;
+    // Re-sincroniza al abrir la app si hace más de 6h de la última vez (en vez
+    // de solo una vez por sesión): así, si iPhone rotó el endpoint, la
+    // suscripción guardada se refresca y el móvil no deja de recibir avisos.
+    const key = "pushSync:" + session.user.id;
+    const last = Number(localStorage.getItem(key) || 0);
+    if (Date.now() - last < 6 * 60 * 60 * 1000) return;
     await activarPush();
-    sessionStorage.setItem(key, "1");
+    localStorage.setItem(key, String(Date.now()));
   } catch {
     /* silencioso */
   }
