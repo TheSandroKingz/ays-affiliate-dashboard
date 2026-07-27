@@ -97,9 +97,7 @@ export async function GET(request: Request) {
     day: "numeric",
     month: "long",
   }).format(new Date());
-  const textoIA = await generarMensajeDiario(
-    `${fecha}, ${hora === 14 ? "de tarde" : "de noche"}`
-  );
+  const textoIA = await generarMensajeDiario(`${fecha}, de noche`);
 
   // Vídeo/foto opcional que el dueño dejó con /diario.
   const { data: diario } = await supabaseAdmin
