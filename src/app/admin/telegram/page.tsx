@@ -21,6 +21,30 @@ export default function TelegramPage() {
   const [recon, setRecon] = useState<string | null>(null);
   const [probandoDiario, setProbandoDiario] = useState(false);
   const [testDiario, setTestDiario] = useState<string | null>(null);
+  const [reiniciando, setReiniciando] = useState(false);
+  const [reinicio, setReinicio] = useState<string | null>(null);
+
+  async function reiniciarMemoria() {
+    if (!confirm("¿Borrar la memoria de todas las conversaciones? (no borra contactos)")) return;
+    setReiniciando(true);
+    setReinicio(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/reset-memory", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      setReinicio(b.ok ? "✅ Memoria borrada. El bot empieza de cero." : "⚠️ " + (b.error || "No se pudo."));
+    } catch {
+      setReinicio("⚠️ No se pudo (mira tu conexión).");
+    } finally {
+      setReiniciando(false);
+    }
+  }
 
   async function probarDiario() {
     setProbandoDiario(true);
@@ -209,6 +233,19 @@ export default function TelegramPage() {
           </button>
         </div>
         {diag && <p className="text-sm text-slate-200">{diag}</p>}
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 mt-1">
+          <span className="text-sm text-slate-300">
+            🧠 Memoria del bot (si sigue con el tono viejo)
+          </span>
+          <button
+            onClick={reiniciarMemoria}
+            disabled={reiniciando}
+            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+          >
+            {reiniciando ? "Borrando…" : "Reiniciar memoria"}
+          </button>
+        </div>
+        {reinicio && <p className="text-sm text-slate-200">{reinicio}</p>}
         <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 mt-1">
           <span className="text-sm text-slate-300">
             🔌 Conexión del bot (webhook)
