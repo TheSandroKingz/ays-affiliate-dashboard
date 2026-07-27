@@ -37,6 +37,33 @@ export default function TelegramPage() {
   const [recon, setRecon] = useState<string | null>(null);
   const [probandoDiario, setProbandoDiario] = useState(false);
   const [testDiario, setTestDiario] = useState<string | null>(null);
+  const [enviandoAhora, setEnviandoAhora] = useState(false);
+  const [resAhora, setResAhora] = useState<string | null>(null);
+
+  async function enviarDiarioAhora() {
+    if (!confirm("¿Enviar el mensaje diario AHORA a todos los jugadores?")) return;
+    setEnviandoAhora(true);
+    setResAhora(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/cron/telegram-daily?force=1", {
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      if (b.enviado) {
+        setResAhora(`✅ Enviado a ${b.enviados} de ${b.total}.`);
+      } else {
+        setResAhora("⚠️ " + (b.motivo || b.error || "No se envió."));
+      }
+    } catch {
+      setResAhora("⚠️ No se pudo (mira tu conexión).");
+    } finally {
+      setEnviandoAhora(false);
+    }
+  }
   const [reiniciando, setReiniciando] = useState(false);
   const [reinicio, setReinicio] = useState<string | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
@@ -358,6 +385,17 @@ export default function TelegramPage() {
             </button>
           </div>
           {testDiario && <p className="text-sm text-slate-200">{testDiario}</p>}
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <span className="text-sm text-slate-300">📤 Enviar ahora a todos</span>
+            <button
+              onClick={enviarDiarioAhora}
+              disabled={enviandoAhora}
+              className="shrink-0 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+            >
+              {enviandoAhora ? "Enviando…" : "Enviar diario ahora"}
+            </button>
+          </div>
+          {resAhora && <p className="text-sm text-slate-200">{resAhora}</p>}
         </div>
       </div>
 

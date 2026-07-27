@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAdminUser } from "@/lib/adminAuth";
 import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 
@@ -73,18 +74,23 @@ async function reactivarDormidos(): Promise<number[]> {
 }
 
 export async function GET(request: Request) {
+  // Lo llama Vercel (cron, con CRON_SECRET) o el dueño desde el panel (admin).
   const authHeader = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const esCron =
+    !!process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const admin = esCron ? true : !!(await getAdminUser(request));
+  if (!esCron && !admin) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   if (!telegramConfigurado()) {
     return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
   }
 
-  // Solo actuamos a las 20:00 hora de Madrid (el resto de disparos UTC caen en
-  // otra hora local y no hacen nada).
+  // El dueño puede forzar el envío ya (botón del panel). El cron solo actúa a
+  // las 20:00 de Madrid (los otros disparos UTC caen en otra hora y no hacen nada).
+  const force = !esCron && new URL(request.url).searchParams.get("force") === "1";
   const hora = horaMadrid();
-  if (hora !== 20) {
+  if (!force && hora !== 20) {
     return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, fuera de 20` });
   }
 
