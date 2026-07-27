@@ -45,7 +45,7 @@ async function reactivarDormidos() {
         const nombre = c.first_name ? ` ${c.first_name}` : "";
         const r = await tgApi("sendMessage", {
           chat_id: c.chat_id,
-          text: `¡Klk manito${nombre}! 👋 Hace días que no te veo activo por aquí, ¿todo bien? Dale que hay movidas 🔥`,
+          text: `¡Hey${nombre}! 👋 Hace días que no te veo por aquí, ¿todo bien? Dale que hay movidas 🔥`,
           parse_mode: "HTML",
           reply_markup: botonJugar(),
         });
