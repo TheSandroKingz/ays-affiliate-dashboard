@@ -43,13 +43,15 @@ function conPromo(system: string, promo: string): string {
 // más listas cambia a "claude-opus-4-8" (cuesta bastante más).
 const MODELO = "claude-haiku-4-5";
 
-// ⚠️ EDITA AQUÍ los datos de tu casino (nombre, promos reales, cómo depositar,
-// enlace). Rellénalos con lo tuyo; si dejas algo vacío, el bot dirá que lo
-// confirma con el equipo en vez de inventárselo.
-const CASINO = `- Casino: (pon aquí el nombre)
-- Promos reales ahora mismo: (pon aquí los bonos/promos que quieras que mencione)
-- Cómo depositar/retirar: (pon aquí el método, ej. lo que uséis)
-- Enlace para registrarse y depositar (compártelo cuando alguien quiera jugar o entrar): ${ENLACE_JUGAR}`;
+// ⚠️ EDITA AQUÍ los datos de tu casino. Lo que ponga "SIN CONFIGURAR" el bot NO
+// lo dirá (dirá que lo confirma con el equipo); NUNCA soltará estos textos tal
+// cual. Sustituye "SIN CONFIGURAR" por lo tuyo cuando lo tengas.
+const CASINO = `- Nombre del casino: SIN CONFIGURAR
+- Cómo depositar/retirar: SIN CONFIGURAR
+- Promos: usa SOLO la sección PROMO ACTIVA (si no hay, no menciones promos concretas)
+- Enlace para registrarse y depositar (compártelo cuando quieran jugar/entrar): ${ENLACE_JUGAR}
+
+IMPORTANTE: si un dato pone "SIN CONFIGURAR", NO te lo inventes y NO escribas ese texto; simplemente no des ese dato y di con naturalidad que se lo confirmas en un momento. Nunca escribas "SIN CONFIGURAR" ni "(pon aquí...)" en tus respuestas.`;
 
 // Personalidad del bot: colega y cercano, enfocado en que vuelvan a jugar, y
 // natural (sin decir que es un bot). Se mantienen las líneas rojas de honestidad.
