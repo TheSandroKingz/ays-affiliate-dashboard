@@ -4,11 +4,33 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ENLACE_JUGAR } from "@/lib/telegram";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
 export function iaConfigurada(): boolean {
   return !!KEY;
+}
+
+// Promo activa que el dueño puso en el panel (bono/recarga real). El bot la
+// menciona. Vacío = no hay promo especial. BLINDADO.
+async function getPromo(): Promise<string> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("telegram_config")
+      .select("promo")
+      .eq("id", 1)
+      .maybeSingle();
+    return (data?.promo ?? "").trim();
+  } catch {
+    return "";
+  }
+}
+
+// Añade la promo activa al final del prompt (si la hay).
+function conPromo(system: string, promo: string): string {
+  if (!promo) return system;
+  return `${system}\n\nPROMO ACTIVA AHORA (real, del casino; menciónala con ganas cuando venga a cuento, no te inventes otras): ${promo}`;
 }
 
 // Barato y rápido, ideal para chat de soporte de alto volumen. Para respuestas
@@ -39,7 +61,9 @@ ESTILO:
 - Usa con naturalidad expresiones como: "klk", "klk manito", "manito", "ya tú sabe" (o "ya tú chabe"), "activo/activos", "bakano", "dale". Mételas cuando peguen, de forma natural, sin forzarlas ni poner varias amontonadas en la misma frase. El resto, español normal.
 
 TU ENFOQUE (que entren y depositen):
+- TRATO VIP: son tu gente, ya juegan contigo. Hazles sentir especiales y cercanos ("eres de los míos", "a ti te aviso primero", "tú ya eres de casa"). Eso hace que vuelvan.
 - Tu gancho principal es que depositen 20€ y entren a jugar (es el ticket de entrada). Sé DIRECTO y sin rodeos: diles claramente que metan los 20€ ya y le den al botón para entrar. En casi cada respuesta. "Mete 20€ y entra ya, manito 🔥", "con 20 pavos estás dentro, dale".
+- Si hay una promo de recarga/bono activa, aprovéchala para que suban un poco el depósito ("con 50 aprovechas mejor la promo"), pero solo si esa promo es real (mira PROMO ACTIVA). No inventes promos.
 - SIEMPRE, aunque estés resolviendo una duda o ayudando con algo, remata pidiéndoles directo que depositen los 20€ y entren. Ayudas y empujas a la vez, en el mismo mensaje.
 - Cuando pregunten cómo ganar dinero, cómo sacar dinero o algo así: síguele el rollo con energía, empújale directo a meter los 20€ y dile que entre por el enlace a jugar (comparte el enlace en el mensaje). El botón para entrar ya sale debajo, pero tú también menciónalo.
 - Insiste con energía, pero sin acosar: si alguien dice claramente que no puede, que no tiene dinero, o que no quiere ahora, respétalo al momento y no sigas presionando.
@@ -71,6 +95,7 @@ ESTILO:
 - Español cercano con flow y buena vibra. Usa con naturalidad expresiones como "klk", "manito", "ya tú sabe", "activos", "bakano", "dale", sin amontonarlas ni forzar. El resto español normal.
 - 1 a 3 líneas, con energía y algún emoji (🔥🎰💪👑). Que enganche.
 - Cambia el saludo y la idea cada día, que no suene repetido.
+- Trátalos como VIP/cercanos, son tu gente ("a ti te aviso primero", "eres de los míos").
 - OBLIGATORIO en cada mensaje: di CLARAMENTE que metan 20€ y entren a jugar hoy (es el ticket de entrada), e invítalos a darle al botón. No puede faltar la frase de los 20€. Sin rodeos, directo.
 
 NO HAGAS:
@@ -85,10 +110,11 @@ export async function generarMensajeDiario(contexto: string): Promise<string | n
   if (!KEY) return null;
   try {
     const client = new Anthropic({ apiKey: KEY });
+    const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
       max_tokens: 250,
-      system: SYSTEM_DIARIO,
+      system: conPromo(SYSTEM_DIARIO, promo),
       messages: [
         {
           role: "user",
@@ -121,10 +147,11 @@ export async function responderIA(
     );
     while (previos.length && previos[0].role !== "user") previos.shift();
 
+    const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
       max_tokens: 400,
-      system: SYSTEM,
+      system: conPromo(SYSTEM, promo),
       messages: [...previos, { role: "user", content: mensaje }],
     });
     const txt = res.content

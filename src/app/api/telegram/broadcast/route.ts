@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     diarioRes,
     botRes,
     iaHoyRes,
+    configRes,
   ] = await Promise.all([
     cuenta(filtroBase().eq("opted_out", false).eq("silenced", false)),
     cuenta(filtroBase()),
@@ -43,38 +44,50 @@ export async function GET(request: Request) {
       .eq("id", 1)
       .maybeSingle(),
     // Depósitos/comisiones atribuidos al bot (afp=bot) ya contados.
+    // limit alto: sin él PostgREST corta en 1000 y las cifras se quedarían cortas.
     supabaseAdmin
       .from("postback_events")
       .select("commission, created_at")
       .eq("counted", true)
       .in("event_type", ["ftd", "commission"])
-      .ilike("afp", "bot%"),
+      .ilike("afp", "bot%")
+      .limit(100000),
     supabaseAdmin
       .from("telegram_ai_daily")
       .select("count")
       .eq("day", hoyKey)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("telegram_config")
+      .select("promo")
+      .eq("id", 1)
       .maybeSingle(),
   ]);
   const diario = diarioRes.data;
 
   // Depósitos y € del bot por ventana (hoy=24h, 7d, 30d, total).
   const now = Date.now();
-  const d1 = now - 864e5,
-    d7 = now - 7 * 864e5,
+  const d7 = now - 7 * 864e5,
     d30 = now - 30 * 864e5;
   const b = {
     depTot: 0, depHoy: 0, dep7: 0, dep30: 0,
     eurTot: 0, eurHoy: 0, eur7: 0, eur30: 0,
   };
   for (const r of botRes.data ?? []) {
-    const t = new Date(r.created_at as string).getTime();
     const c = Number(r.commission ?? 0);
     b.depTot++; b.eurTot += c;
+    const t = new Date(r.created_at as string).getTime();
+    if (Number.isNaN(t)) continue; // fecha inválida: cuenta en total, no en ventanas
     if (t >= d30) { b.dep30++; b.eur30 += c; }
     if (t >= d7) { b.dep7++; b.eur7 += c; }
-    if (t >= d1) { b.depHoy++; b.eurHoy += c; }
+    // "Hoy" = día natural de Madrid (igual que 'IA hoy'), no 24h rodadas.
+    const rowDay = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date(t));
+    if (rowDay === hoyKey) { b.depHoy++; b.eurHoy += c; }
   }
   const iaHoy = iaHoyRes.data?.count ?? 0;
+  const promo = configRes.data?.promo ?? "";
 
   return NextResponse.json({
     contactos: activos,
@@ -89,6 +102,7 @@ export async function GET(request: Request) {
       iaHoy,
       bot: b,
     },
+    promo,
     diario: diario
       ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }
       : null,
@@ -108,6 +122,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const texto = String(body?.texto ?? "").trim();
   const foto = body?.foto ? String(body.foto).trim() : "";
+  const soloActivos = !!body?.soloActivos; // solo a quien escribió en 7 días
   if (!texto && !foto) {
     return NextResponse.json({ error: "El mensaje está vacío." }, { status: 400 });
   }
@@ -115,11 +130,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Mensaje demasiado largo (máx 4000)." }, { status: 400 });
   }
 
-  const { data: contactos } = await supabaseAdmin
+  let q = supabaseAdmin
     .from("telegram_contacts")
     .select("chat_id")
     .eq("opted_out", false)
     .eq("silenced", false);
+  if (soloActivos) {
+    q = q.gte("last_msg_at", new Date(Date.now() - 7 * 864e5).toISOString());
+  }
+  const { data: contactos } = await q;
   const ids = (contactos ?? []).map((c) => c.chat_id as number);
 
   let enviados = 0;

@@ -35,6 +35,10 @@ export default function TelegramPage() {
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState("");
+  const [soloActivos, setSoloActivos] = useState(false);
+  const [promo, setPromo] = useState("");
+  const [promoGuardada, setPromoGuardada] = useState(true);
+  const [guardandoPromo, setGuardandoPromo] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
   const [probando, setProbando] = useState(false);
@@ -237,12 +241,35 @@ export default function TelegramPage() {
       setConfigurado(res.configurado !== false);
       setDiario(res.diario ?? null);
       setStats(res.stats ?? null);
+      setPromo(res.promo ?? "");
+      setPromoGuardada(true);
     }
   }, [router]);
 
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  async function guardarPromo() {
+    setGuardandoPromo(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({ promo }),
+      });
+      if (r.ok) setPromoGuardada(true);
+    } finally {
+      setGuardandoPromo(false);
+    }
+  }
 
   async function enviar() {
     if (!texto.trim() && !foto.trim()) return;
@@ -265,7 +292,11 @@ export default function TelegramPage() {
           "Content-Type": "application/json",
           Authorization: "Bearer " + session.access_token,
         },
-        body: JSON.stringify({ texto, foto: foto.trim() || undefined }),
+        body: JSON.stringify({
+          texto,
+          foto: foto.trim() || undefined,
+          soloActivos,
+        }),
       });
       const b = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -307,67 +338,86 @@ export default function TelegramPage() {
       </div>
 
       {stats && (
-        <div className="flex flex-col gap-2">
-          {/* € generado por el bot (hoy / 7d / 30d / total) */}
-          <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-3">
-            <div className="text-[11px] text-emerald-200/80 mb-2">
-              💰 € generado por el bot
+        <div className="flex flex-col gap-3">
+          {/* Tarjeta principal: € generado por el bot */}
+          <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-4">
+            <div className="text-xs text-emerald-200/80">
+              💰 Generado por el bot
             </div>
-            <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-4xl font-bold text-emerald-300">
+                {Math.round(stats.bot.eurTot)} €
+              </span>
+              <span className="text-sm text-slate-400">
+                · {stats.bot.depTot} depósitos
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
               {[
-                { l: "Hoy", v: stats.bot.eurHoy },
-                { l: "7 días", v: stats.bot.eur7 },
-                { l: "30 días", v: stats.bot.eur30 },
-                { l: "Total", v: stats.bot.eurTot },
+                { l: "Hoy", e: stats.bot.eurHoy, d: stats.bot.depHoy },
+                { l: "7 días", e: stats.bot.eur7, d: stats.bot.dep7 },
+                { l: "30 días", e: stats.bot.eur30, d: stats.bot.dep30 },
               ].map((s) => (
-                <div key={s.l}>
-                  <div className="text-lg font-bold text-emerald-300">
-                    {Math.round(s.v)} €
+                <div
+                  key={s.l}
+                  className="rounded-xl bg-black/20 px-2 py-2 text-center"
+                >
+                  <div className="text-base font-semibold text-emerald-200">
+                    {Math.round(s.e)} €
                   </div>
-                  <div className="text-[10px] text-slate-400">{s.l}</div>
+                  <div className="text-[10px] text-slate-400">
+                    {s.d} dep · {s.l}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-          {/* Depósitos del bot (hoy / 7d / 30d / total) */}
-          <div className="grid grid-cols-4 gap-2 text-center">
+
+          {/* Comunidad: chips que se adaptan al móvil */}
+          <div className="flex flex-wrap gap-2">
             {[
-              { l: "Depós. hoy", v: stats.bot.depHoy },
-              { l: "Depós. 7d", v: stats.bot.dep7 },
-              { l: "Depós. 30d", v: stats.bot.dep30 },
-              { l: "Depós. total", v: stats.bot.depTot },
-            ].map((s) => (
-              <div
-                key={s.l}
-                className="rounded-xl border border-white/15 bg-white/5 px-2 py-2"
-              >
-                <div className="text-lg font-semibold text-white">{s.v}</div>
-                <div className="text-[10px] text-slate-400">{s.l}</div>
-              </div>
-            ))}
-          </div>
-          {/* Comunidad */}
-          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
-            {[
-              { l: "Activos", v: stats.activos },
-              { l: "Escrib. 24h", v: stats.escribieron24h },
-              { l: "Nuevos 24h", v: stats.nuevos24h },
+              { l: "activos", v: stats.activos },
+              { l: "escribieron 24h", v: stats.escribieron24h },
+              { l: "nuevos 24h", v: stats.nuevos24h },
               { l: "IA hoy", v: stats.iaHoy },
-              { l: "Silenciados", v: stats.silenciados },
-              { l: "Bajas", v: stats.bajas },
-              { l: "Total", v: stats.total },
+              { l: "silenciados", v: stats.silenciados },
+              { l: "bajas", v: stats.bajas },
+              { l: "total", v: stats.total },
             ].map((s) => (
-              <div
+              <span
                 key={s.l}
-                className="rounded-xl border border-white/15 bg-white/5 px-2 py-2"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-300"
               >
-                <div className="text-lg font-semibold text-white">{s.v}</div>
-                <div className="text-[10px] text-slate-400">{s.l}</div>
-              </div>
+                <b className="text-white text-sm">{s.v}</b> {s.l}
+              </span>
             ))}
           </div>
         </div>
       )}
+
+      {/* Promo activa que el bot menciona */}
+      <div className="bg-white/5 border border-white/15 rounded-xl p-4 flex flex-col gap-2">
+        <label className="text-sm font-medium text-slate-200">
+          🎁 Promo activa (el bot la menciona)
+        </label>
+        <textarea
+          value={promo}
+          onChange={(e) => {
+            setPromo(e.target.value);
+            setPromoGuardada(false);
+          }}
+          rows={2}
+          placeholder="Ej: Hoy recarga del 50% metiendo 20€ o más 🔥 (déjalo vacío si no hay promo)"
+          className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400/60"
+        />
+        <button
+          onClick={guardarPromo}
+          disabled={guardandoPromo || promoGuardada}
+          className="self-start bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition"
+        >
+          {guardandoPromo ? "Guardando…" : promoGuardada ? "Guardada" : "Guardar promo"}
+        </button>
+      </div>
 
       <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
@@ -477,6 +527,15 @@ export default function TelegramPage() {
             className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400/60"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={soloActivos}
+            onChange={(e) => setSoloActivos(e.target.checked)}
+            className="h-4 w-4 accent-emerald-500"
+          />
+          Enviar solo a los activos (escribieron en 7 días)
+        </label>
         <button
           onClick={enviar}
           disabled={enviando || (!texto.trim() && !foto.trim())}

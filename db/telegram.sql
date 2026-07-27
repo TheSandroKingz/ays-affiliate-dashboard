@@ -76,6 +76,15 @@ create table if not exists public.telegram_ai_daily (
 );
 alter table public.telegram_ai_daily enable row level security;
 
+-- Config del bot: la "promo activa" que el bot menciona (bonos/recargas reales).
+create table if not exists public.telegram_config (
+  id         smallint    primary key default 1,
+  promo      text,
+  updated_at timestamptz not null default now(),
+  constraint telegram_config_singleton check (id = 1)
+);
+alter table public.telegram_config enable row level security;
+
 -- Vídeo/foto de bienvenida opcional (se envía con /start). Si no hay, solo texto.
 create table if not exists public.telegram_welcome (
   id         smallint    primary key default 1,
