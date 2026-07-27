@@ -26,6 +26,13 @@ alter table public.telegram_contacts
 alter table public.telegram_contacts
   add column if not exists last_poke_at timestamptz;
 
+-- Límite anti-spam de la IA (para no quemar el saldo de Claude): contamos los
+-- mensajes por ventana de 1 minuto y por usuario.
+alter table public.telegram_contacts
+  add column if not exists ai_window_start timestamptz;
+alter table public.telegram_contacts
+  add column if not exists ai_count integer not null default 0;
+
 alter table public.telegram_contacts enable row level security;
 -- Sin políticas = inaccesible para anon/authenticated. Solo el service role.
 

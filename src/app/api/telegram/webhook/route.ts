@@ -18,7 +18,8 @@ type Turno = { role: "user" | "assistant"; content: string };
 const BIENVENIDA =
   "¡Hey, bienvenido! 👋🔥\n\n" +
   "Aquí te voy pasando las <b>movidas, promos y jugadas</b> para que estés al día. 🎰\n\n" +
-  "Cualquier duda me escribes por aquí y te ayudo al momento. ¡Dale que esto se pone bueno! 💪";
+  "Cualquier duda me escribes por aquí y te ayudo al momento. ¡Dale que esto se pone bueno! 💪\n\n" +
+  "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
 
 export async function POST(request: Request) {
   // Verificación del secreto del webhook.
@@ -173,19 +174,35 @@ export async function POST(request: Request) {
 
     // ── Un JUGADOR escribe → la IA le responde sola + copia al dueño ─────────
     if (!esDueno) {
-      // Recuperamos el historial para dar contexto a la IA.
+      // Recuperamos el historial (para contexto) y el contador anti-spam.
       const { data: contacto } = await supabaseAdmin
         .from("telegram_contacts")
-        .select("history")
+        .select("history, ai_window_start, ai_count")
         .eq("chat_id", chatId)
         .maybeSingle();
       const historial: Turno[] = Array.isArray(contacto?.history)
         ? (contacto!.history as Turno[])
         : [];
 
-      // La IA responde (solo a texto; una foto sin texto se la pasamos al dueño).
+      // Límite: máx 8 respuestas de IA por minuto por usuario (protege el saldo
+      // de Claude de que alguien spamee el bot).
+      const LIMITE_IA = 8;
+      const ahoraMs = Date.now();
+      const winMs = contacto?.ai_window_start
+        ? new Date(contacto.ai_window_start).getTime()
+        : 0;
+      let aiCount = contacto?.ai_count ?? 0;
+      let aiWindow = contacto?.ai_window_start ?? null;
+      if (ahoraMs - winMs > 60_000) {
+        aiCount = 0;
+        aiWindow = new Date().toISOString();
+      }
+      aiCount += 1;
+      const limitado = aiCount > LIMITE_IA;
+
+      // La IA responde (solo a texto, si no está limitado por spam).
       let respuesta: string | null = null;
-      if (text && iaConfigurada()) {
+      if (text && iaConfigurada() && !limitado) {
         respuesta = await responderIA(historial, text);
       }
 
@@ -204,6 +221,8 @@ export async function POST(request: Request) {
           username: from.username ?? null,
           last_msg_at: new Date().toISOString(),
           history: nuevoHistorial,
+          ai_window_start: aiWindow,
+          ai_count: aiCount,
         },
         { onConflict: "chat_id" }
       );
@@ -215,8 +234,8 @@ export async function POST(request: Request) {
           reply_markup: botonSoloJugar(),
           parse_mode: undefined,
         });
-      } else if (text) {
-        // Si la IA falla, no dejamos al jugador sin nada.
+      } else if (text && !limitado) {
+        // Si la IA falla (no por spam), no dejamos al jugador sin nada.
         await tgEnviar(chatId, "¡Dale! 🔥 Mete 20€ y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });

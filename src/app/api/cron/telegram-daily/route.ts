@@ -54,6 +54,7 @@ async function reactivarDormidos(): Promise<number[]> {
         }
       })
     );
+    if (i + 25 < dormidos.length) await new Promise((r) => setTimeout(r, 1000));
   }
   if (picados.length) {
     await supabaseAdmin
@@ -123,7 +124,12 @@ export async function GET(request: Request) {
     .map((c) => c.chat_id as number)
     .filter((id) => !yaPicados.has(id));
 
-  const caption = texto || undefined;
+  // El texto de la IA; 1 de cada 4 veces le añadimos el aviso de baja discreto.
+  const caption = texto
+    ? Math.random() < 0.25
+      ? `${texto}\n\n/stop para salir`
+      : texto
+    : undefined;
   const boton = botonJugar();
   // Sin parse_mode: el texto lo escribe la IA y podría llevar un "<" que Telegram
   // rechazaría como HTML mal formado (y no se enviaría nada). Va en texto plano.
@@ -162,6 +168,8 @@ export async function GET(request: Request) {
         }
       })
     );
+    // Pausa entre tandas para que Telegram no nos frene en listas grandes.
+    if (i + 25 < ids.length) await new Promise((r) => setTimeout(r, 1000));
   }
 
   if (bloqueados.length) {

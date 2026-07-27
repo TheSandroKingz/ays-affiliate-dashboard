@@ -85,6 +85,8 @@ export async function POST(request: Request) {
         }
       })
     );
+    // Pausa entre tandas para que Telegram no nos frene en listas grandes.
+    if (i + 25 < ids.length) await new Promise((r) => setTimeout(r, 1000));
   }
 
   if (bloqueados.length) {
