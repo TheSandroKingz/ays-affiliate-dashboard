@@ -23,6 +23,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Falta TELEGRAM_WEBHOOK_SECRET." }, { status: 500 });
   }
 
+  // Primero comprobamos que el token del bot es válido.
+  const me = await tgApi("getMe", {});
+  if (!me?.ok) {
+    return NextResponse.json({
+      ok: false,
+      error:
+        "El token del bot no vale (" +
+        (me?.description || "Telegram no reconoce el bot") +
+        "). Revisa TELEGRAM_BOT_TOKEN en Vercel: pégalo entero, sin espacios ni saltos de línea, y vuelve a hacer Redeploy.",
+    });
+  }
+
   const host =
     request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
   const url = `https://${host}/api/telegram/webhook`;
@@ -33,9 +45,11 @@ export async function POST(request: Request) {
     allowed_updates: ["message"],
   });
   const info = await tgApi("getWebhookInfo", {});
+  const bot = (me.result as { username?: string } | undefined)?.username ?? null;
   return NextResponse.json({
     ok: !!r?.ok,
     url,
+    bot,
     error: r?.description ?? null,
     info: info?.result ?? null,
   });
