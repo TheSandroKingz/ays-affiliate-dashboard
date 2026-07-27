@@ -16,6 +16,10 @@ export async function GET(request: Request) {
       .select("chat_id", { count: "exact", head: true });
   }
 
+  const hoyKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+
   const [
     activos,
     total,
@@ -25,6 +29,7 @@ export async function GET(request: Request) {
     escribieron24h,
     diarioRes,
     botRes,
+    iaHoyRes,
   ] = await Promise.all([
     cuenta(filtroBase().eq("opted_out", false).eq("silenced", false)),
     cuenta(filtroBase()),
@@ -37,18 +42,39 @@ export async function GET(request: Request) {
       .select("media_type, enabled")
       .eq("id", 1)
       .maybeSingle(),
-    // Depósitos/comisiones atribuidos al bot (afp=bot) ya contados: nº y € total.
+    // Depósitos/comisiones atribuidos al bot (afp=bot) ya contados.
     supabaseAdmin
       .from("postback_events")
-      .select("commission")
+      .select("commission, created_at")
       .eq("counted", true)
       .in("event_type", ["ftd", "commission"])
       .ilike("afp", "bot%"),
+    supabaseAdmin
+      .from("telegram_ai_daily")
+      .select("count")
+      .eq("day", hoyKey)
+      .maybeSingle(),
   ]);
   const diario = diarioRes.data;
-  const filasBot = botRes.data ?? [];
-  const depositosBot = filasBot.length;
-  const eurBot = filasBot.reduce((s, r) => s + Number(r.commission ?? 0), 0);
+
+  // Depósitos y € del bot por ventana (hoy=24h, 7d, 30d, total).
+  const now = Date.now();
+  const d1 = now - 864e5,
+    d7 = now - 7 * 864e5,
+    d30 = now - 30 * 864e5;
+  const b = {
+    depTot: 0, depHoy: 0, dep7: 0, dep30: 0,
+    eurTot: 0, eurHoy: 0, eur7: 0, eur30: 0,
+  };
+  for (const r of botRes.data ?? []) {
+    const t = new Date(r.created_at as string).getTime();
+    const c = Number(r.commission ?? 0);
+    b.depTot++; b.eurTot += c;
+    if (t >= d30) { b.dep30++; b.eur30 += c; }
+    if (t >= d7) { b.dep7++; b.eur7 += c; }
+    if (t >= d1) { b.depHoy++; b.eurHoy += c; }
+  }
+  const iaHoy = iaHoyRes.data?.count ?? 0;
 
   return NextResponse.json({
     contactos: activos,
@@ -60,8 +86,8 @@ export async function GET(request: Request) {
       silenciados,
       nuevos24h,
       escribieron24h,
-      depositosBot,
-      eurBot,
+      iaHoy,
+      bot: b,
     },
     diario: diario
       ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }

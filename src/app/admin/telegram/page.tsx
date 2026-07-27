@@ -27,8 +27,11 @@ export default function TelegramPage() {
     silenciados: number;
     nuevos24h: number;
     escribieron24h: number;
-    depositosBot: number;
-    eurBot: number;
+    iaHoy: number;
+    bot: {
+      depTot: number; depHoy: number; dep7: number; dep30: number;
+      eurTot: number; eurHoy: number; eur7: number; eur30: number;
+    };
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState("");
@@ -305,34 +308,58 @@ export default function TelegramPage() {
 
       {stats && (
         <div className="flex flex-col gap-2">
-          {/* Dinero/resultados del bot */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* € generado por el bot (hoy / 7d / 30d / total) */}
+          <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-3">
+            <div className="text-[11px] text-emerald-200/80 mb-2">
+              💰 € generado por el bot
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {[
+                { l: "Hoy", v: stats.bot.eurHoy },
+                { l: "7 días", v: stats.bot.eur7 },
+                { l: "30 días", v: stats.bot.eur30 },
+                { l: "Total", v: stats.bot.eurTot },
+              ].map((s) => (
+                <div key={s.l}>
+                  <div className="text-lg font-bold text-emerald-300">
+                    {Math.round(s.v)} €
+                  </div>
+                  <div className="text-[10px] text-slate-400">{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Depósitos del bot (hoy / 7d / 30d / total) */}
+          <div className="grid grid-cols-4 gap-2 text-center">
             {[
-              { l: "€ generado por el bot", v: `${Math.round(stats.eurBot)} €` },
-              { l: "Depósitos del bot", v: stats.depositosBot },
+              { l: "Depós. hoy", v: stats.bot.depHoy },
+              { l: "Depós. 7d", v: stats.bot.dep7 },
+              { l: "Depós. 30d", v: stats.bot.dep30 },
+              { l: "Depós. total", v: stats.bot.depTot },
             ].map((s) => (
               <div
                 key={s.l}
-                className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center"
+                className="rounded-xl border border-white/15 bg-white/5 px-2 py-2"
               >
-                <div className="text-xl font-bold text-emerald-300">{s.v}</div>
-                <div className="text-[11px] text-slate-400">{s.l}</div>
+                <div className="text-lg font-semibold text-white">{s.v}</div>
+                <div className="text-[10px] text-slate-400">{s.l}</div>
               </div>
             ))}
           </div>
           {/* Comunidad */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
             {[
               { l: "Activos", v: stats.activos },
-              { l: "Escribieron 24h", v: stats.escribieron24h },
+              { l: "Escrib. 24h", v: stats.escribieron24h },
               { l: "Nuevos 24h", v: stats.nuevos24h },
+              { l: "IA hoy", v: stats.iaHoy },
               { l: "Silenciados", v: stats.silenciados },
               { l: "Bajas", v: stats.bajas },
               { l: "Total", v: stats.total },
             ].map((s) => (
               <div
                 key={s.l}
-                className="rounded-xl border border-white/15 bg-white/5 px-2 py-2 text-center"
+                className="rounded-xl border border-white/15 bg-white/5 px-2 py-2"
               >
                 <div className="text-lg font-semibold text-white">{s.v}</div>
                 <div className="text-[10px] text-slate-400">{s.l}</div>
