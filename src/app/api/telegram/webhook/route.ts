@@ -16,9 +16,9 @@ type Turno = { role: "user" | "assistant"; content: string };
 
 // ⚠️ EDITA AQUÍ el mensaje de bienvenida (el "gancho" que ve al unirse):
 const BIENVENIDA =
-  "¡Bienvenido! 🎰🔥\n\n" +
-  "Aquí te iré pasando <b>bonos, tips y jugadas</b> para que le saques más partido. " +
-  "Cualquier duda, escríbeme por aquí y te ayudo. 😉";
+  "¡Klk manito! 👋🔥\n\n" +
+  "Ya tú sabe que aquí te voy pasando las <b>movidas, promos y jugadas</b> pa' que estés siempre activo. 🎰\n\n" +
+  "Cualquier duda me escribes por aquí mismo y te resuelvo al momento, tranqui. ¡Dale que esto es una lokera! 💪";
 
 export async function POST(request: Request) {
   // Verificación del secreto del webhook.
