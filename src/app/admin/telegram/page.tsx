@@ -10,6 +10,7 @@ export default function TelegramPage() {
   const router = useRouter();
   const [contactos, setContactos] = useState<number | null>(null);
   const [configurado, setConfigurado] = useState(true);
+  const [diario, setDiario] = useState<{ activo: boolean; tipo: string | null } | null>(null);
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -93,6 +94,7 @@ export default function TelegramPage() {
     if (res) {
       setContactos(Number(res.contactos ?? 0));
       setConfigurado(res.configurado !== false);
+      setDiario(res.diario ?? null);
     }
   }, [router]);
 
@@ -189,6 +191,20 @@ export default function TelegramPage() {
           </button>
         </div>
         {recon && <p className="text-sm text-slate-200">{recon}</p>}
+        <div className="border-t border-white/10 pt-2 mt-1 text-sm text-slate-300">
+          📅 Mensaje diario automático:{" "}
+          {diario === null ? (
+            <span className="text-slate-400">sin configurar</span>
+          ) : diario.activo ? (
+            <span className="text-emerald-300">✅ activo ({diario.tipo})</span>
+          ) : (
+            <span className="text-amber-300">⏸️ pausado</span>
+          )}
+          <p className="text-[11px] text-slate-500 mt-1">
+            Para ponerlo/cambiarlo: mándale al bot <b>/diario</b> con un vídeo o
+            foto (escribe <b>/diario</b> en el pie). Pausar: <b>/diario off</b>.
+          </p>
+        </div>
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 flex flex-col gap-4">

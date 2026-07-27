@@ -68,6 +68,71 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── El DUEÑO configura el MENSAJE DIARIO automático ─────────────────────
+    // Mandas "/diario" junto a un vídeo/foto (en el pie) y se guarda; cada
+    // mañana el cron lo reenvía a todos. "/diario off" lo pausa, "/diario on"
+    // lo reactiva, "/diario <texto>" guarda solo texto.
+    const cmdDiario = (text || (msg.caption ?? "")).trim();
+    if (esDueno && cmdDiario.toLowerCase().startsWith("/diario")) {
+      const resto = cmdDiario.replace(/^\/diario\s*/i, "").trim();
+      if (/^off$/i.test(resto)) {
+        await supabaseAdmin
+          .from("telegram_daily")
+          .upsert({ id: 1, enabled: false, updated_at: new Date().toISOString() });
+        await tgEnviar(chatId, "⏸️ Mensaje diario pausado. /diario on para reactivarlo.");
+        return NextResponse.json({ ok: true });
+      }
+      if (/^on$/i.test(resto)) {
+        await supabaseAdmin
+          .from("telegram_daily")
+          .upsert({ id: 1, enabled: true, updated_at: new Date().toISOString() });
+        await tgEnviar(chatId, "▶️ Mensaje diario reactivado.");
+        return NextResponse.json({ ok: true });
+      }
+      // Extraemos el archivo (si lo trae) y su tipo.
+      const photos = msg.photo as Array<{ file_id: string }> | undefined;
+      const media: { media_type: string; file_id: string } | null = msg.video
+        ? { media_type: "video", file_id: msg.video.file_id }
+        : msg.animation
+        ? { media_type: "animation", file_id: msg.animation.file_id }
+        : photos?.length
+        ? { media_type: "photo", file_id: photos[photos.length - 1].file_id }
+        : msg.document
+        ? { media_type: "document", file_id: msg.document.file_id }
+        : null;
+
+      if (media) {
+        await supabaseAdmin.from("telegram_daily").upsert({
+          id: 1,
+          media_type: media.media_type,
+          file_id: media.file_id,
+          caption: resto || null,
+          enabled: true,
+          updated_at: new Date().toISOString(),
+        });
+        await tgEnviar(
+          chatId,
+          "✅ Guardado como mensaje diario. Se enviará cada mañana a todos.\n\nCuando cambie, mándame otro /diario con el nuevo vídeo. Para pausar: /diario off."
+        );
+      } else if (resto) {
+        await supabaseAdmin.from("telegram_daily").upsert({
+          id: 1,
+          media_type: "text",
+          file_id: null,
+          caption: resto,
+          enabled: true,
+          updated_at: new Date().toISOString(),
+        });
+        await tgEnviar(chatId, "✅ Guardado (texto) como mensaje diario.");
+      } else {
+        await tgEnviar(
+          chatId,
+          "Mándame /diario junto con el vídeo o foto (escribe /diario en el pie de la imagen), o /diario seguido de un texto."
+        );
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // ── El DUEÑO responde a una duda reenviada → mandarla al jugador ─────────
     // Usamos copyMessage: copia TU respuesta tal cual (texto, foto, vídeo, gif…)
     // al jugador. Así puedes contestar con lo que quieras, no solo texto.

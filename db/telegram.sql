@@ -24,3 +24,19 @@ alter table public.telegram_contacts
 
 alter table public.telegram_contacts enable row level security;
 -- Sin políticas = inaccesible para anon/authenticated. Solo el service role.
+
+-- ============================================================================
+-- Mensaje diario automático. El dueño manda al bot "/diario" con un vídeo/foto
+-- (o texto) y se guarda aquí; cada mañana el cron lo reenvía a todos. Una sola
+-- fila (id=1). El file_id es el id del archivo en Telegram, se reutiliza.
+-- ============================================================================
+create table if not exists public.telegram_daily (
+  id         smallint     primary key default 1,
+  media_type text,                                  -- video|photo|animation|document|text
+  file_id    text,                                  -- id del archivo en Telegram
+  caption    text,                                  -- texto que acompaña
+  enabled    boolean      not null default true,
+  updated_at timestamptz  not null default now(),
+  constraint telegram_daily_singleton check (id = 1)
+);
+alter table public.telegram_daily enable row level security;

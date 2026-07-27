@@ -11,7 +11,18 @@ export async function GET(request: Request) {
     .from("telegram_contacts")
     .select("chat_id", { count: "exact", head: true })
     .eq("opted_out", false);
-  return NextResponse.json({ contactos: count ?? 0, configurado: telegramConfigurado() });
+  const { data: diario } = await supabaseAdmin
+    .from("telegram_daily")
+    .select("media_type, enabled")
+    .eq("id", 1)
+    .maybeSingle();
+  return NextResponse.json({
+    contactos: count ?? 0,
+    configurado: telegramConfigurado(),
+    diario: diario
+      ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }
+      : null,
+  });
 }
 
 export async function POST(request: Request) {
