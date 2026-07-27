@@ -334,7 +334,7 @@ export async function POST(request: Request) {
         });
       } else if (text && !limitado) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada.
-        await tgEnviar(chatId, "¡Dale! 🔥 Mete 20€ y entra a jugar 👇", {
+        await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });
       }
