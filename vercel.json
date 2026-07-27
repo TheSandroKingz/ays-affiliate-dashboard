@@ -9,14 +9,6 @@
       "schedule": "30 3 * * *"
     },
     {
-      "path": "/api/cron/telegram-daily?h=12",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/telegram-daily?h=13",
-      "schedule": "0 13 * * *"
-    },
-    {
       "path": "/api/cron/telegram-daily?h=18",
       "schedule": "0 18 * * *"
     },

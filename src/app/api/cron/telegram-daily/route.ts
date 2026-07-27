@@ -80,16 +80,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
   }
 
-  // Solo actuamos a las 14:00 y 20:00 hora de Madrid (el resto de disparos UTC
-  // caen en otra hora local y no hacen nada).
+  // Solo actuamos a las 20:00 hora de Madrid (el resto de disparos UTC caen en
+  // otra hora local y no hacen nada).
   const hora = horaMadrid();
-  if (hora !== 14 && hora !== 20) {
-    return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, fuera de 14/20` });
+  if (hora !== 20) {
+    return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, fuera de 20` });
   }
 
-  // A mediodía (14:00) reactivamos dormidos.
-  let reactivados = 0;
-  if (hora === 14) reactivados = await reactivarDormidos();
+  // Aprovechamos el envío diario para reactivar a los dormidos (1 vez/día).
+  const reactivados = await reactivarDormidos();
 
   // La IA genera el texto del día (distinto cada vez).
   const fecha = new Intl.DateTimeFormat("es-ES", {

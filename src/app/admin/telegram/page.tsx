@@ -232,7 +232,7 @@ export default function TelegramPage() {
             <span className="text-amber-300">⏸️ pausado</span>
           )}
           <p className="text-[11px] text-slate-500 mt-1">
-            Sale a las <b>14:00</b> y <b>20:00</b> (hora española). La IA escribe
+            Sale a las <b>20:00</b> (hora española). La IA escribe
             un texto distinto cada día. Para poner/cambiar el vídeo: mándale al
             bot <b>/diario</b> con el vídeo (escribe <b>/diario</b> en el pie).
             Pausar el vídeo: <b>/diario off</b>.
