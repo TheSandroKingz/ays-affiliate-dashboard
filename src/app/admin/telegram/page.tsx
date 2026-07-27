@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
-import { Send, RefreshCw } from "lucide-react";
+import { Send, RefreshCw, ChevronLeft } from "lucide-react";
 
 type Jugador = {
   chat_id: number;
@@ -319,6 +319,12 @@ export default function TelegramPage() {
 
   return (
     <main className="flex flex-col gap-5 max-w-3xl">
+      <button
+        onClick={() => router.back()}
+        className="self-start inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition"
+      >
+        <ChevronLeft size={16} /> Volver
+      </button>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">Telegram</h1>
@@ -383,23 +389,44 @@ export default function TelegramPage() {
             </div>
           </div>
 
-          {/* Comunidad: chips que se adaptan al móvil */}
-          <div className="flex flex-wrap gap-2">
+          {/* Comunidad + actividad: dos tarjetas limpias (etiqueta → valor) */}
+          <div className="grid sm:grid-cols-2 gap-3">
             {[
-              { l: "activos", v: stats.activos },
-              { l: "escribieron 24h", v: stats.escribieron24h },
-              { l: "nuevos 24h", v: stats.nuevos24h },
-              { l: "IA hoy", v: stats.iaHoy },
-              { l: "silenciados", v: stats.silenciados },
-              { l: "bajas", v: stats.bajas },
-              { l: "total", v: stats.total },
-            ].map((s) => (
-              <span
-                key={s.l}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-300"
+              {
+                t: "👥 Comunidad",
+                rows: [
+                  ["Total", stats.total],
+                  ["Activos", stats.activos],
+                  ["Silenciados", stats.silenciados],
+                  ["Bajas", stats.bajas],
+                ] as [string, number][],
+              },
+              {
+                t: "⚡ Actividad (24h)",
+                rows: [
+                  ["Escribieron", stats.escribieron24h],
+                  ["Nuevos", stats.nuevos24h],
+                  ["Respuestas IA hoy", stats.iaHoy],
+                ] as [string, number][],
+              },
+            ].map((card) => (
+              <div
+                key={card.t}
+                className="rounded-2xl border border-white/15 bg-white/5 p-4"
               >
-                <b className="text-white text-sm">{s.v}</b> {s.l}
-              </span>
+                <div className="text-xs text-slate-400 mb-3">{card.t}</div>
+                <div className="flex flex-col gap-2">
+                  {card.rows.map(([l, v]) => (
+                    <div
+                      key={l}
+                      className="flex items-center justify-between text-sm border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
+                    >
+                      <span className="text-slate-400">{l}</span>
+                      <span className="text-white font-semibold">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
