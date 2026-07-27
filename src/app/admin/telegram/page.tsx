@@ -26,6 +26,7 @@ export default function TelegramPage() {
     bajas: number;
     nuevos24h: number;
     escribieron24h: number;
+    depositosBot: number;
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState("");
@@ -301,8 +302,9 @@ export default function TelegramPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {[
+            { l: "Depósitos del bot", v: stats.depositosBot, hi: true },
             { l: "Escribieron (24h)", v: stats.escribieron24h },
             { l: "Nuevos (24h)", v: stats.nuevos24h },
             { l: "Bajas totales", v: stats.bajas },
@@ -310,9 +312,19 @@ export default function TelegramPage() {
           ].map((s) => (
             <div
               key={s.l}
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center"
+              className={`rounded-xl border px-3 py-2 text-center ${
+                s.hi
+                  ? "border-emerald-400/40 bg-emerald-500/10"
+                  : "border-white/15 bg-white/5"
+              }`}
             >
-              <div className="text-lg font-semibold text-white">{s.v}</div>
+              <div
+                className={`text-lg font-semibold ${
+                  s.hi ? "text-emerald-300" : "text-white"
+                }`}
+              >
+                {s.v}
+              </div>
               <div className="text-[11px] text-slate-400">{s.l}</div>
             </div>
           ))}

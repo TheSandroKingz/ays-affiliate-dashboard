@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       .select("chat_id", { count: "exact", head: true });
   }
 
-  const [activos, total, bajas, nuevos24h, escribieron24h, diarioRes] =
+  const [activos, total, bajas, nuevos24h, escribieron24h, diarioRes, depoBotRes] =
     await Promise.all([
       cuenta(filtroBase().eq("opted_out", false).eq("silenced", false)),
       cuenta(filtroBase()),
@@ -28,13 +28,21 @@ export async function GET(request: Request) {
         .select("media_type, enabled")
         .eq("id", 1)
         .maybeSingle(),
+      // Depósitos atribuidos al bot: postbacks con afp=bot ya contados.
+      supabaseAdmin
+        .from("postback_events")
+        .select("id", { count: "exact", head: true })
+        .eq("counted", true)
+        .in("event_type", ["ftd", "commission"])
+        .ilike("afp", "bot%")
+        .then((r) => r.count ?? 0),
     ]);
   const diario = diarioRes.data;
 
   return NextResponse.json({
     contactos: activos,
     configurado: telegramConfigurado(),
-    stats: { activos, total, bajas, nuevos24h, escribieron24h },
+    stats: { activos, total, bajas, nuevos24h, escribieron24h, depositosBot: depoBotRes },
     diario: diario
       ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }
       : null,
