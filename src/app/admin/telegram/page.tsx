@@ -14,6 +14,41 @@ export default function TelegramPage() {
   const [foto, setFoto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
+  const [probando, setProbando] = useState(false);
+  const [diag, setDiag] = useState<string | null>(null);
+
+  async function probarBot() {
+    setProbando(true);
+    setDiag(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/diag", {
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      if (b.ok) {
+        setDiag("✅ El bot con IA funciona. Respuesta de prueba: “" + (b.respuesta_prueba || "") + "”");
+      } else if (!b.clave_presente) {
+        setDiag("❌ Falta la clave de Claude (ANTHROPIC_API_KEY) en Vercel, o no se hizo Redeploy.");
+      } else {
+        setDiag(
+          "❌ La clave está (" +
+            (b.clave_empieza_por || "") +
+            ") pero Claude da error" +
+            (b.status ? " " + b.status : "") +
+            ": " +
+            (b.mensaje_error || "desconocido")
+        );
+      }
+    } catch {
+      setDiag("⚠️ No se pudo comprobar (mira tu conexión).");
+    } finally {
+      setProbando(false);
+    }
+  }
 
   const cargar = useCallback(async () => {
     const {
@@ -98,6 +133,22 @@ export default function TelegramPage() {
       <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-slate-300">
         📇 Contactos activos:{" "}
         <b className="text-white">{contactos === null ? "…" : contactos}</b>
+      </div>
+
+      <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-slate-300">
+            🤖 Respuestas automáticas con IA
+          </span>
+          <button
+            onClick={probarBot}
+            disabled={probando}
+            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+          >
+            {probando ? "Probando…" : "Probar bot"}
+          </button>
+        </div>
+        {diag && <p className="text-sm text-slate-200">{diag}</p>}
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 flex flex-col gap-4">

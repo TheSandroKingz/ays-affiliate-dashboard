@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAdminUser } from "@/lib/adminAuth";
 
 // Diagnóstico rápido del auto-responder: dime si la clave de Claude está y si
-// una llamada de prueba funciona. Protegido con el mismo secreto del webhook,
-// así puedes abrirlo en el navegador:
-//   https://TU-DOMINIO/api/telegram/diag?s=EL_SECRETO
+// una llamada de prueba funciona. Lo usa el botón "Probar bot" del panel admin
+// (con tu sesión). También puedes abrirlo con ?s=EL_SECRETO en el navegador.
 export async function GET(request: Request) {
   const s = new URL(request.url).searchParams.get("s");
-  if (!process.env.TELEGRAM_WEBHOOK_SECRET || s !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+  const admin = await getAdminUser(request);
+  const secretoOk =
+    !!process.env.TELEGRAM_WEBHOOK_SECRET &&
+    s === process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!admin && !secretoOk) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
 
