@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { tgEnviar, tgApi, OWNER_CHAT_ID } from "@/lib/telegram";
+import { responderIA, iaConfigurada } from "@/lib/telegramAI";
+
+type Turno = { role: "user" | "assistant"; content: string };
 
 // Webhook del bot de Telegram: Telegram nos manda aquí cada mensaje.
 //  - /start      → guardamos al jugador y le damos la bienvenida (el gancho).
@@ -88,26 +91,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Un JUGADOR escribe (texto o foto/vídeo) → reenviar al dueño ──────────
+    // ── Un JUGADOR escribe → la IA le responde sola + copia al dueño ─────────
     if (!esDueno) {
-      // Marca actividad + asegura que está dado de alta.
+      // Recuperamos el historial para dar contexto a la IA.
+      const { data: contacto } = await supabaseAdmin
+        .from("telegram_contacts")
+        .select("history")
+        .eq("chat_id", chatId)
+        .maybeSingle();
+      const historial: Turno[] = Array.isArray(contacto?.history)
+        ? (contacto!.history as Turno[])
+        : [];
+
+      // La IA responde (solo a texto; una foto sin texto se la pasamos al dueño).
+      let respuesta: string | null = null;
+      if (text && iaConfigurada()) {
+        respuesta = await responderIA(historial, text);
+      }
+
+      // Guardamos actividad + alta + últimos turnos (máx 12 = 6 idas y vueltas).
+      const nuevoHistorial: Turno[] = respuesta
+        ? [
+            ...historial,
+            { role: "user" as const, content: text },
+            { role: "assistant" as const, content: respuesta },
+          ].slice(-12)
+        : historial;
       await supabaseAdmin.from("telegram_contacts").upsert(
         {
           chat_id: chatId,
           first_name: from.first_name ?? null,
           username: from.username ?? null,
           last_msg_at: new Date().toISOString(),
+          history: nuevoHistorial,
         },
         { onConflict: "chat_id" }
       );
+
+      // Le mandamos la respuesta al jugador.
+      if (respuesta) await tgEnviar(chatId, respuesta);
+
+      // Copia al dueño para que veas la conversación y puedas intervenir.
       if (OWNER_CHAT_ID) {
         const quien =
           (from.first_name ?? "Jugador") +
           (from.username ? ` (@${from.username})` : "");
-        // Cabecera con el id (para que puedas responder) + su mensaje.
+        const cuerpo = text
+          ? ` pregunta:\n${text}` +
+            (respuesta ? `\n\n🤖 <i>Respondí:</i>\n${respuesta}` : "")
+          : " te ha enviado algo:";
         await tgEnviar(
           OWNER_CHAT_ID,
-          `💬 <b>${quien}</b>${text ? " pregunta:\n" + text : " te ha enviado algo:"}\n\n<i>↩️ Responde a este mensaje para contestarle · id:${chatId}</i>`
+          `💬 <b>${quien}</b>${cuerpo}\n\n<i>↩️ Responde a este mensaje para escribirle tú · id:${chatId}</i>`
         );
         // Si trae foto/vídeo/etc (mensaje sin texto), lo copiamos también.
         if (!text) {
