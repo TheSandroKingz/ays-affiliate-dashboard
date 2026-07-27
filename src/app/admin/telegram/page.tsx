@@ -276,7 +276,9 @@ export default function TelegramPage() {
     if (!texto.trim() && !foto.trim()) return;
     if (
       !confirm(
-        `¿Enviar este mensaje a ${contactos ?? 0} contacto(s) de Telegram?`
+        soloActivos
+          ? "¿Enviar este mensaje SOLO a los jugadores activos (7 días)?"
+          : `¿Enviar este mensaje a ${contactos ?? 0} contacto(s) de Telegram?`
       )
     )
       return;

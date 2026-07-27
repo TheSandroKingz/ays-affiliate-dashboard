@@ -325,9 +325,10 @@ export async function POST(request: Request) {
       // El botón del enlace solo sale cuando la respuesta invita a jugar/entrar
       // /depositar (si no, cansa verlo en cada mensajito).
       if (respuesta) {
-        const invita = /jug|entra|deposit|\b20\b|enlace|link|registr|apuest/i.test(
-          respuesta
-        );
+        const invita =
+          /jug|entra|deposit|recarg|vuelve|\b20\b|enlace|link|registr|apuest/i.test(
+            respuesta
+          );
         await tgEnviar(chatId, respuesta, {
           parse_mode: undefined,
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
