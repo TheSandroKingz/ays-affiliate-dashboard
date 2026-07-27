@@ -62,7 +62,7 @@ async function reactivarDormidos(): Promise<number[]> {
         const nombre = c.first_name ? ` ${c.first_name}` : "";
         const r = await tgApi("sendMessage", {
           chat_id: c.chat_id,
-          text: `¡Hey${nombre}! 👋 Hace días que no te veo por aquí, ¿todo bien? Dale que hay movidas 🔥`,
+          text: `¡Hey${nombre}! 👋 Hace días que no te veo por aquí, ¿todo bien? Dale que hay cosas buenas 🔥`,
           reply_markup: botonJugar(),
         });
         if (r?.ok) picados.push(c.chat_id as number);
