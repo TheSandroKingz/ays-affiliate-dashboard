@@ -19,6 +19,37 @@ export default function TelegramPage() {
   const [diag, setDiag] = useState<string | null>(null);
   const [reconectando, setReconectando] = useState(false);
   const [recon, setRecon] = useState<string | null>(null);
+  const [probandoDiario, setProbandoDiario] = useState(false);
+  const [testDiario, setTestDiario] = useState<string | null>(null);
+
+  async function probarDiario() {
+    setProbandoDiario(true);
+    setTestDiario(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/test-daily", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      if (b.ok) {
+        setTestDiario(
+          "✅ Te lo he enviado por Telegram (solo a ti)" +
+            (b.con_video ? " con el vídeo" : " (sin vídeo)") +
+            ". Míralo en tu chat con el bot."
+        );
+      } else {
+        setTestDiario("⚠️ " + (b.error || "No se pudo enviar."));
+      }
+    } catch {
+      setTestDiario("⚠️ No se pudo probar (mira tu conexión).");
+    } finally {
+      setProbandoDiario(false);
+    }
+  }
 
   async function reconectar() {
     setReconectando(true);
@@ -201,9 +232,22 @@ export default function TelegramPage() {
             <span className="text-amber-300">⏸️ pausado</span>
           )}
           <p className="text-[11px] text-slate-500 mt-1">
-            Para ponerlo/cambiarlo: mándale al bot <b>/diario</b> con un vídeo o
-            foto (escribe <b>/diario</b> en el pie). Pausar: <b>/diario off</b>.
+            Sale a las <b>14:00</b> y <b>20:00</b> (hora española). La IA escribe
+            un texto distinto cada día. Para poner/cambiar el vídeo: mándale al
+            bot <b>/diario</b> con el vídeo (escribe <b>/diario</b> en el pie).
+            Pausar el vídeo: <b>/diario off</b>.
           </p>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <span className="text-sm text-slate-300">🧪 Ver un ejemplo</span>
+            <button
+              onClick={probarDiario}
+              disabled={probandoDiario}
+              className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+            >
+              {probandoDiario ? "Enviando…" : "Probar envío diario"}
+            </button>
+          </div>
+          {testDiario && <p className="text-sm text-slate-200">{testDiario}</p>}
         </div>
       </div>
 
