@@ -19,6 +19,21 @@ function horaMadrid(): number {
   );
 }
 
+// ¿Hoy es finde (vie/sáb/dom) o día de cobro (día 1 o del 28 en adelante)?
+// Son los momentos con más dinero → mandamos un empujón extra a mediodía.
+function esFindeOCobro(): boolean {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid",
+    weekday: "short",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const wd = p.find((x) => x.type === "weekday")?.value ?? "";
+  const day = Number(p.find((x) => x.type === "day")?.value ?? "0");
+  const finde = wd === "Fri" || wd === "Sat" || wd === "Sun";
+  const cobro = day === 1 || day >= 28;
+  return finde || cobro;
+}
+
 // Escribe a los jugadores que llevan días sin actividad (máx 1 vez por semana).
 // Devuelve los chat_id a los que sí escribió, para NO doblarles el envío diario.
 async function reactivarDormidos(): Promise<number[]> {
@@ -86,12 +101,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
   }
 
-  // El dueño puede forzar el envío ya (botón del panel). El cron solo actúa a
-  // las 20:00 de Madrid (los otros disparos UTC caen en otra hora y no hacen nada).
+  // Envíos: el fijo de las 20:00 (siempre) y un extra a las 13:00 SOLO los
+  // findes y días de cobro. El dueño también puede forzar el envío ya.
   const force = !esCron && new URL(request.url).searchParams.get("force") === "1";
   const hora = horaMadrid();
-  if (!force && hora !== 20) {
-    return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, fuera de 20` });
+  const esExtra = hora === 13 && esFindeOCobro();
+  if (!force && hora !== 20 && !esExtra) {
+    return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, sin envío` });
   }
 
   // Limpieza: borramos los update_id anti-duplicados de más de 1 día.
@@ -101,19 +117,21 @@ export async function GET(request: Request) {
     .lt("created_at", new Date(Date.now() - 864e5).toISOString())
     .then(() => {}, () => {});
 
-  // Aprovechamos el envío diario para reactivar a los dormidos (1 vez/día).
-  // A esos NO les mandamos también el envío general (evita doble mensaje).
-  const picados = await reactivarDormidos();
+  // Reactivamos dormidos solo en el envío de la noche (1 vez/día), no en el extra.
+  const picados = hora === 20 || force ? await reactivarDormidos() : [];
   const reactivados = picados.length;
 
-  // La IA genera el texto del día (distinto cada vez).
+  // La IA genera el texto del día (distinto cada vez). En finde/cobro, aprovecha.
   const fecha = new Intl.DateTimeFormat("es-ES", {
     timeZone: "Europe/Madrid",
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date());
-  const textoIA = await generarMensajeDiario(`${fecha}, de noche`);
+  const contexto = esExtra
+    ? `${fecha}. Es finde o día de cobro: la gente tiene dinero, anímalos con fuerza a aprovechar y entrar hoy`
+    : `${fecha}, de noche`;
+  const textoIA = await generarMensajeDiario(contexto);
 
   // Vídeo/foto opcional que el dueño dejó con /diario.
   const { data: diario } = await supabaseAdmin

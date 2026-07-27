@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
-import { Send } from "lucide-react";
+import { Send, RefreshCw } from "lucide-react";
 
 type Jugador = {
   chat_id: number;
@@ -39,6 +39,7 @@ export default function TelegramPage() {
   const [promo, setPromo] = useState("");
   const [promoGuardada, setPromoGuardada] = useState(true);
   const [guardandoPromo, setGuardandoPromo] = useState(false);
+  const [refrescando, setRefrescando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
   const [probando, setProbando] = useState(false);
@@ -317,12 +318,26 @@ export default function TelegramPage() {
   }
 
   return (
-    <main className="flex flex-col gap-5 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-semibold text-white">Telegram</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Manda un mensaje a todos los jugadores que se han unido al bot.
-        </p>
+    <main className="flex flex-col gap-5 max-w-3xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">Telegram</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Manda un mensaje a todos los jugadores que se han unido al bot.
+          </p>
+        </div>
+        <button
+          onClick={async () => {
+            setRefrescando(true);
+            await cargar();
+            setRefrescando(false);
+          }}
+          disabled={refrescando}
+          className="shrink-0 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+        >
+          <RefreshCw size={15} className={refrescando ? "animate-spin" : ""} />
+          Actualizar
+        </button>
       </div>
 
       {!configurado && (
@@ -331,11 +346,6 @@ export default function TelegramPage() {
           <span className="font-mono">TELEGRAM_BOT_TOKEN</span> en Vercel).
         </div>
       )}
-
-      <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-slate-300">
-        📇 Contactos activos:{" "}
-        <b className="text-white">{contactos === null ? "…" : contactos}</b>
-      </div>
 
       {stats && (
         <div className="flex flex-col gap-3">
