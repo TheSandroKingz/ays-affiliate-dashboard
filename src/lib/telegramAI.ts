@@ -13,17 +13,23 @@ export function iaConfigurada(): boolean {
 }
 
 // Promo activa que el dueño puso en el panel (bono/recarga real). El bot la
-// menciona. Vacío = no hay promo especial. BLINDADO.
+// menciona. Cacheada 30s en memoria para no leer la BD en cada mensaje.
+// BLINDADO: ante fallo devuelve lo último cacheado (o vacío).
+let promoCache: { v: string; exp: number } | null = null;
 async function getPromo(): Promise<string> {
+  const now = Date.now();
+  if (promoCache && promoCache.exp > now) return promoCache.v;
   try {
     const { data } = await supabaseAdmin
       .from("telegram_config")
       .select("promo")
       .eq("id", 1)
       .maybeSingle();
-    return (data?.promo ?? "").trim();
+    const v = (data?.promo ?? "").trim();
+    promoCache = { v, exp: now + 30_000 };
+    return v;
   } catch {
-    return "";
+    return promoCache?.v ?? "";
   }
 }
 

@@ -43,13 +43,13 @@ export async function GET(request: Request) {
       .select("media_type, enabled")
       .eq("id", 1)
       .maybeSingle(),
-    // Depósitos/comisiones atribuidos al bot (afp=bot) ya contados.
+    // QFTD atribuidos al bot (afp=bot) ya contados = lo que paga el CPA.
     // limit alto: sin él PostgREST corta en 1000 y las cifras se quedarían cortas.
     supabaseAdmin
       .from("postback_events")
       .select("commission, created_at")
       .eq("counted", true)
-      .in("event_type", ["ftd", "commission"])
+      .eq("event_type", "commission")
       .ilike("afp", "bot%")
       .limit(100000),
     supabaseAdmin
