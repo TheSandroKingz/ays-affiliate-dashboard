@@ -16,33 +16,53 @@ export async function GET(request: Request) {
       .select("chat_id", { count: "exact", head: true });
   }
 
-  const [activos, total, bajas, nuevos24h, escribieron24h, diarioRes, depoBotRes] =
-    await Promise.all([
-      cuenta(filtroBase().eq("opted_out", false).eq("silenced", false)),
-      cuenta(filtroBase()),
-      cuenta(filtroBase().eq("opted_out", true)),
-      cuenta(filtroBase().gte("joined_at", hace24h)),
-      cuenta(filtroBase().gte("last_msg_at", hace24h)),
-      supabaseAdmin
-        .from("telegram_daily")
-        .select("media_type, enabled")
-        .eq("id", 1)
-        .maybeSingle(),
-      // Depósitos atribuidos al bot: postbacks con afp=bot ya contados.
-      supabaseAdmin
-        .from("postback_events")
-        .select("id", { count: "exact", head: true })
-        .eq("counted", true)
-        .in("event_type", ["ftd", "commission"])
-        .ilike("afp", "bot%")
-        .then((r) => r.count ?? 0),
-    ]);
+  const [
+    activos,
+    total,
+    bajas,
+    silenciados,
+    nuevos24h,
+    escribieron24h,
+    diarioRes,
+    botRes,
+  ] = await Promise.all([
+    cuenta(filtroBase().eq("opted_out", false).eq("silenced", false)),
+    cuenta(filtroBase()),
+    cuenta(filtroBase().eq("opted_out", true)),
+    cuenta(filtroBase().eq("silenced", true)),
+    cuenta(filtroBase().gte("joined_at", hace24h)),
+    cuenta(filtroBase().gte("last_msg_at", hace24h)),
+    supabaseAdmin
+      .from("telegram_daily")
+      .select("media_type, enabled")
+      .eq("id", 1)
+      .maybeSingle(),
+    // Depósitos/comisiones atribuidos al bot (afp=bot) ya contados: nº y € total.
+    supabaseAdmin
+      .from("postback_events")
+      .select("commission")
+      .eq("counted", true)
+      .in("event_type", ["ftd", "commission"])
+      .ilike("afp", "bot%"),
+  ]);
   const diario = diarioRes.data;
+  const filasBot = botRes.data ?? [];
+  const depositosBot = filasBot.length;
+  const eurBot = filasBot.reduce((s, r) => s + Number(r.commission ?? 0), 0);
 
   return NextResponse.json({
     contactos: activos,
     configurado: telegramConfigurado(),
-    stats: { activos, total, bajas, nuevos24h, escribieron24h, depositosBot: depoBotRes },
+    stats: {
+      activos,
+      total,
+      bajas,
+      silenciados,
+      nuevos24h,
+      escribieron24h,
+      depositosBot,
+      eurBot,
+    },
     diario: diario
       ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }
       : null,

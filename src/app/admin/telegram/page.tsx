@@ -24,9 +24,11 @@ export default function TelegramPage() {
     activos: number;
     total: number;
     bajas: number;
+    silenciados: number;
     nuevos24h: number;
     escribieron24h: number;
     depositosBot: number;
+    eurBot: number;
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState("");
@@ -302,32 +304,41 @@ export default function TelegramPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {[
-            { l: "Depósitos del bot", v: stats.depositosBot, hi: true },
-            { l: "Escribieron (24h)", v: stats.escribieron24h },
-            { l: "Nuevos (24h)", v: stats.nuevos24h },
-            { l: "Bajas totales", v: stats.bajas },
-            { l: "Total histórico", v: stats.total },
-          ].map((s) => (
-            <div
-              key={s.l}
-              className={`rounded-xl border px-3 py-2 text-center ${
-                s.hi
-                  ? "border-emerald-400/40 bg-emerald-500/10"
-                  : "border-white/15 bg-white/5"
-              }`}
-            >
+        <div className="flex flex-col gap-2">
+          {/* Dinero/resultados del bot */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { l: "€ generado por el bot", v: `${Math.round(stats.eurBot)} €` },
+              { l: "Depósitos del bot", v: stats.depositosBot },
+            ].map((s) => (
               <div
-                className={`text-lg font-semibold ${
-                  s.hi ? "text-emerald-300" : "text-white"
-                }`}
+                key={s.l}
+                className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center"
               >
-                {s.v}
+                <div className="text-xl font-bold text-emerald-300">{s.v}</div>
+                <div className="text-[11px] text-slate-400">{s.l}</div>
               </div>
-              <div className="text-[11px] text-slate-400">{s.l}</div>
-            </div>
-          ))}
+            ))}
+          </div>
+          {/* Comunidad */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {[
+              { l: "Activos", v: stats.activos },
+              { l: "Escribieron 24h", v: stats.escribieron24h },
+              { l: "Nuevos 24h", v: stats.nuevos24h },
+              { l: "Silenciados", v: stats.silenciados },
+              { l: "Bajas", v: stats.bajas },
+              { l: "Total", v: stats.total },
+            ].map((s) => (
+              <div
+                key={s.l}
+                className="rounded-xl border border-white/15 bg-white/5 px-2 py-2 text-center"
+              >
+                <div className="text-lg font-semibold text-white">{s.v}</div>
+                <div className="text-[10px] text-slate-400">{s.l}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
