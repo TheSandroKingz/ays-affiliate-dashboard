@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   const [activos, total, bajas, nuevos24h, escribieron24h, diarioRes] =
     await Promise.all([
-      cuenta(filtroBase().eq("opted_out", false)),
+      cuenta(filtroBase().eq("opted_out", false).eq("silenced", false)),
       cuenta(filtroBase()),
       cuenta(filtroBase().eq("opted_out", true)),
       cuenta(filtroBase().gte("joined_at", hace24h)),
@@ -64,7 +64,8 @@ export async function POST(request: Request) {
   const { data: contactos } = await supabaseAdmin
     .from("telegram_contacts")
     .select("chat_id")
-    .eq("opted_out", false);
+    .eq("opted_out", false)
+    .eq("silenced", false);
   const ids = (contactos ?? []).map((c) => c.chat_id as number);
 
   let enviados = 0;

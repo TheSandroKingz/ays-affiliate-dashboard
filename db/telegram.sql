@@ -33,6 +33,11 @@ alter table public.telegram_contacts
 alter table public.telegram_contacts
   add column if not exists ai_count integer not null default 0;
 
+-- Silenciado por el dueño: el bot lo ignora del todo (ni responde, ni reenvía,
+-- ni le manda envíos). Para cortar a un pesado desde el panel.
+alter table public.telegram_contacts
+  add column if not exists silenced boolean not null default false;
+
 alter table public.telegram_contacts enable row level security;
 -- Sin políticas = inaccesible para anon/authenticated. Solo el service role.
 
@@ -70,3 +75,14 @@ create table if not exists public.telegram_ai_daily (
   count integer not null default 0
 );
 alter table public.telegram_ai_daily enable row level security;
+
+-- Vídeo/foto de bienvenida opcional (se envía con /start). Si no hay, solo texto.
+create table if not exists public.telegram_welcome (
+  id         smallint    primary key default 1,
+  media_type text,
+  file_id    text,
+  enabled    boolean     not null default true,
+  updated_at timestamptz not null default now(),
+  constraint telegram_welcome_singleton check (id = 1)
+);
+alter table public.telegram_welcome enable row level security;

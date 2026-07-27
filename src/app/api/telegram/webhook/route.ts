@@ -88,7 +88,26 @@ export async function POST(request: Request) {
           { onConflict: "chat_id" }
         );
       }
-      await tgEnviar(chatId, BIENVENIDA, { reply_markup: botonJugar() });
+      // Bienvenida: con vídeo/foto si el dueño lo puso (/bienvenida), si no texto.
+      const { data: bienv } = await supabaseAdmin
+        .from("telegram_welcome")
+        .select("media_type, file_id, enabled")
+        .eq("id", 1)
+        .maybeSingle();
+      const boton = botonJugar();
+      if (bienv && bienv.enabled && bienv.file_id) {
+        const m = bienv.media_type;
+        const metodo =
+          m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";
+        const params: Record<string, unknown> = { chat_id: chatId, caption: BIENVENIDA, parse_mode: "HTML", reply_markup: boton };
+        if (m === "video") params.video = bienv.file_id;
+        else if (m === "animation") params.animation = bienv.file_id;
+        else if (m === "photo") params.photo = bienv.file_id;
+        else if (m === "document") params.document = bienv.file_id;
+        await tgApi(metodo, params);
+      } else {
+        await tgEnviar(chatId, BIENVENIDA, { reply_markup: boton });
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -167,6 +186,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── El DUEÑO configura el VÍDEO DE BIENVENIDA ───────────────────────────
+    // "/bienvenida" con un vídeo/foto en el pie → se envía con cada /start.
+    const cmdBienv = (text || (msg.caption ?? "")).trim();
+    if (esDueno && cmdBienv.toLowerCase().startsWith("/bienvenida")) {
+      const resto = cmdBienv.replace(/^\/bienvenida\s*/i, "").trim();
+      if (/^off$/i.test(resto)) {
+        await supabaseAdmin
+          .from("telegram_welcome")
+          .upsert({ id: 1, enabled: false, updated_at: new Date().toISOString() });
+        await tgEnviar(chatId, "⏸️ Vídeo de bienvenida quitado (la bienvenida volverá a ir en solo texto).");
+        return NextResponse.json({ ok: true });
+      }
+      const photosB = msg.photo as Array<{ file_id: string }> | undefined;
+      const mediaB: { media_type: string; file_id: string } | null = msg.video
+        ? { media_type: "video", file_id: msg.video.file_id }
+        : msg.animation
+        ? { media_type: "animation", file_id: msg.animation.file_id }
+        : photosB?.length
+        ? { media_type: "photo", file_id: photosB[photosB.length - 1].file_id }
+        : msg.document
+        ? { media_type: "document", file_id: msg.document.file_id }
+        : null;
+      if (mediaB) {
+        await supabaseAdmin.from("telegram_welcome").upsert({
+          id: 1,
+          media_type: mediaB.media_type,
+          file_id: mediaB.file_id,
+          enabled: true,
+          updated_at: new Date().toISOString(),
+        });
+        await tgEnviar(chatId, "✅ Guardado como vídeo de bienvenida. Los nuevos lo verán al darle /start. Para quitarlo: /bienvenida off.");
+      } else {
+        await tgEnviar(chatId, "Mándame /bienvenida junto con el vídeo o foto (escribe /bienvenida en el pie de la imagen).");
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // ── El DUEÑO responde a una duda reenviada → mandarla al jugador ─────────
     // Usamos copyMessage: copia TU respuesta tal cual (texto, foto, vídeo, gif…)
     // al jugador. Así puedes contestar con lo que quieras, no solo texto.
@@ -195,9 +251,11 @@ export async function POST(request: Request) {
       // Recuperamos el historial (para contexto) y el contador anti-spam.
       const { data: contacto } = await supabaseAdmin
         .from("telegram_contacts")
-        .select("history, ai_window_start, ai_count")
+        .select("history, ai_window_start, ai_count, silenced")
         .eq("chat_id", chatId)
         .maybeSingle();
+      // Silenciado por el dueño: el bot lo ignora del todo.
+      if (contacto?.silenced) return NextResponse.json({ ok: true });
       const historial: Turno[] = Array.isArray(contacto?.history)
         ? (contacto!.history as Turno[])
         : [];
@@ -219,8 +277,8 @@ export async function POST(request: Request) {
       const limitado = aiCount > LIMITE_IA;
 
       // La IA responde (solo a texto, si no está limitado por spam ni por el
-      // tope global diario que blinda el saldo de Claude).
-      const TOPE_DIA = 800;
+      // tope global diario, que es solo un freno anti-ataque, muy alto).
+      const TOPE_DIA = 5000;
       let respuesta: string | null = null;
       if (text && iaConfigurada() && !limitado) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
@@ -263,12 +321,16 @@ export async function POST(request: Request) {
         { onConflict: "chat_id" }
       );
 
-      // Respuesta al jugador con el botón del enlace debajo. Texto plano
-      // (sin HTML): la IA podría meter un "<" y Telegram lo rechazaría.
+      // Respuesta al jugador. Texto plano (sin HTML): la IA podría meter un "<".
+      // El botón del enlace solo sale cuando la respuesta invita a jugar/entrar
+      // /depositar (si no, cansa verlo en cada mensajito).
       if (respuesta) {
+        const invita = /jug|entra|deposit|\b20\b|enlace|link|registr|apuest/i.test(
+          respuesta
+        );
         await tgEnviar(chatId, respuesta, {
-          reply_markup: botonSoloJugar(),
           parse_mode: undefined,
+          ...(invita ? { reply_markup: botonSoloJugar() } : {}),
         });
       } else if (text && !limitado) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada.

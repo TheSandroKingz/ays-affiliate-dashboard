@@ -6,6 +6,15 @@ import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { Send } from "lucide-react";
 
+type Jugador = {
+  chat_id: number;
+  first_name: string | null;
+  username: string | null;
+  last_msg_at: string | null;
+  opted_out: boolean;
+  silenced: boolean;
+};
+
 export default function TelegramPage() {
   const router = useRouter();
   const [contactos, setContactos] = useState<number | null>(null);
@@ -30,6 +39,43 @@ export default function TelegramPage() {
   const [testDiario, setTestDiario] = useState<string | null>(null);
   const [reiniciando, setReiniciando] = useState(false);
   const [reinicio, setReinicio] = useState<string | null>(null);
+  const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
+  const [cargandoJug, setCargandoJug] = useState(false);
+
+  async function cargarJugadores() {
+    setCargandoJug(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/contacts", {
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      setJugadores(b.jugadores ?? []);
+    } finally {
+      setCargandoJug(false);
+    }
+  }
+
+  async function toggleSilencio(chatId: number, silenced: boolean) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch("/api/telegram/contacts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + session.access_token,
+      },
+      body: JSON.stringify({ chat_id: chatId, silenced }),
+    });
+    setJugadores((js) =>
+      (js ?? []).map((j) => (j.chat_id === chatId ? { ...j, silenced } : j))
+    );
+  }
 
   async function reiniciarMemoria() {
     if (!confirm("¿Borrar la memoria de todas las conversaciones? (no borra contactos)")) return;
@@ -354,9 +400,66 @@ export default function TelegramPage() {
         {resultado && <p className="text-sm text-slate-200">{resultado}</p>}
       </div>
 
+      <div className="bg-white/5 border border-white/15 rounded-xl p-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-slate-200">
+            👥 Jugadores {jugadores ? `(${jugadores.length})` : ""}
+          </span>
+          <button
+            onClick={cargarJugadores}
+            disabled={cargandoJug}
+            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+          >
+            {cargandoJug ? "Cargando…" : jugadores ? "Actualizar" : "Ver jugadores"}
+          </button>
+        </div>
+        {jugadores && jugadores.length === 0 && (
+          <p className="text-sm text-slate-400">Aún no hay jugadores.</p>
+        )}
+        {jugadores && jugadores.length > 0 && (
+          <div className="flex flex-col divide-y divide-white/10">
+            {jugadores.map((j) => (
+              <div
+                key={j.chat_id}
+                className="flex items-center justify-between gap-3 py-2"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm text-white truncate">
+                    {j.first_name || "Jugador"}{" "}
+                    {j.username ? `(@${j.username})` : ""}
+                    {j.silenced && (
+                      <span className="text-amber-300"> · silenciado</span>
+                    )}
+                    {j.opted_out && (
+                      <span className="text-slate-500"> · baja</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {j.last_msg_at
+                      ? new Date(j.last_msg_at).toLocaleString("es-ES")
+                      : "sin actividad"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleSilencio(j.chat_id, !j.silenced)}
+                  className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                    j.silenced
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  }`}
+                >
+                  {j.silenced ? "Reactivar" : "Silenciar"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <p className="text-xs text-slate-500">
-        Consejo: no envíes demasiado seguido (juego responsable y para que
-        Telegram no bloquee el bot). Cada jugador puede darse de baja con /stop.
+        Consejo: no envíes demasiado seguido (para que Telegram no bloquee el
+        bot). Cada jugador puede darse de baja con /stop, y tú puedes silenciar a
+        un pesado arriba.
       </p>
     </main>
   );

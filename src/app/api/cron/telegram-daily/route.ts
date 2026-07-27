@@ -25,7 +25,8 @@ async function reactivarDormidos(): Promise<number[]> {
   const { data } = await supabaseAdmin
     .from("telegram_contacts")
     .select("chat_id, first_name, last_msg_at, last_poke_at")
-    .eq("opted_out", false);
+    .eq("opted_out", false)
+    .eq("silenced", false);
 
   const dormidos = (data ?? []).filter((c) => {
     const inactivo =
@@ -125,7 +126,8 @@ export async function GET(request: Request) {
   const { data: contactos } = await supabaseAdmin
     .from("telegram_contacts")
     .select("chat_id")
-    .eq("opted_out", false);
+    .eq("opted_out", false)
+    .eq("silenced", false);
   const yaPicados = new Set(picados);
   const ids = (contactos ?? [])
     .map((c) => c.chat_id as number)
