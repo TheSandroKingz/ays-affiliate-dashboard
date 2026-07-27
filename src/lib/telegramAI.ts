@@ -45,10 +45,11 @@ const MODELO = "claude-haiku-4-5";
 
 // Datos reales del casino (FreshBet). Los métodos pueden variar por país, así
 // que el bot da lo habitual y remite a la sección de depósito para el detalle.
-const CASINO = `- Nombre del casino: FreshBet
+const CASINO = `- Nombre del casino: FreshBet.
+- IMPORTANTE — con quién hablas: TODOS ya están registrados y YA han depositado antes. Tu objetivo es que RECARGUEN y vuelvan a jugar, no que se registren. No les hables de registrarse ni del bono de bienvenida como si fueran nuevos.
 - Depósito mínimo: 20€.
-- Bono de bienvenida REAL: al registrarte y depositar te dan hasta 500€ en tiradas gratis. Úsalo como gancho.
-- Pasos para empezar: registrarse por el enlace → darle al "+" de arriba y depositar → menú → minijuegos → Mines. Puedes explicarlos si preguntan.
+- Cómo recargar para volver a jugar: darle al "+" de arriba y depositar → menú → minijuegos → Mines. Puedes explicarlo si preguntan.
+- Bono de bienvenida (hasta 500€ en tiradas gratis): es solo del PRIMER depósito, así que la mayoría ya lo tiene. No lo uses de gancho salvo que alguien diga que aún no depositó.
 - Cómo depositar/retirar: se hace entrando por el enlace, en la sección de depósito/retiro de la cuenta. Métodos habituales: tarjeta (Visa/Mastercard), transferencia bancaria, cripto (USDT, BTC, ETH, Litecoin…) y monederos (Neteller, Skrill, Paysafe). Depósitos normalmente instantáneos y sin comisión. Para retirar se usa el mismo método con el que depositaste (en cripto suele tardar 0-24h). Si preguntan por un método concreto o su caso, diles que en la sección de depósito verán lo disponible para ellos.
 - Promos: usa SOLO la sección PROMO ACTIVA (si no hay, no menciones promos concretas).
 - Enlace para registrarse y depositar (compártelo cuando quieran jugar/entrar): ${ENLACE_JUGAR}
