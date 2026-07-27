@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { tgApi, telegramConfigurado } from "@/lib/telegram";
+import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
 
 // Cron diario: reenvía a todos los jugadores activos el "mensaje diario" que el
 // dueño guardó con /diario (un vídeo/foto/texto). El contenido lo pone el dueño;
@@ -31,19 +31,21 @@ export async function GET(request: Request) {
   const ids = (contactos ?? []).map((c) => c.chat_id as number);
 
   const caption = diario.caption || undefined;
-  // Elegimos el método de Telegram según el tipo de archivo.
+  const boton = botonJugar();
+  // Elegimos el método de Telegram según el tipo de archivo. Todos llevan el
+  // botón "JUGAR AQUÍ" que abre el enlace de depósito.
   function payload(chatId: number): { metodo: string; params: Record<string, unknown> } {
     switch (diario!.media_type) {
       case "video":
-        return { metodo: "sendVideo", params: { chat_id: chatId, video: diario!.file_id, caption, parse_mode: "HTML" } };
+        return { metodo: "sendVideo", params: { chat_id: chatId, video: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
       case "animation":
-        return { metodo: "sendAnimation", params: { chat_id: chatId, animation: diario!.file_id, caption, parse_mode: "HTML" } };
+        return { metodo: "sendAnimation", params: { chat_id: chatId, animation: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
       case "photo":
-        return { metodo: "sendPhoto", params: { chat_id: chatId, photo: diario!.file_id, caption, parse_mode: "HTML" } };
+        return { metodo: "sendPhoto", params: { chat_id: chatId, photo: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
       case "document":
-        return { metodo: "sendDocument", params: { chat_id: chatId, document: diario!.file_id, caption, parse_mode: "HTML" } };
+        return { metodo: "sendDocument", params: { chat_id: chatId, document: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
       default:
-        return { metodo: "sendMessage", params: { chat_id: chatId, text: caption, parse_mode: "HTML", disable_web_page_preview: true } };
+        return { metodo: "sendMessage", params: { chat_id: chatId, text: caption, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: boton } };
     }
   }
 

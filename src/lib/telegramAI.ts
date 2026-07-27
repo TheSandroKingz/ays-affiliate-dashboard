@@ -3,6 +3,7 @@
 // código. BLINDADO: cualquier fallo devuelve null y el flujo sigue (nunca rompe).
 
 import Anthropic from "@anthropic-ai/sdk";
+import { ENLACE_JUGAR } from "@/lib/telegram";
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -20,7 +21,7 @@ const MODELO = "claude-haiku-4-5";
 const CASINO = `- Casino: (pon aquí el nombre)
 - Promos reales ahora mismo: (pon aquí los bonos/promos que quieras que mencione)
 - Cómo depositar/retirar: (pon aquí el método, ej. lo que uséis)
-- Enlace para registrarse y depositar (compártelo cuando alguien quiera jugar o entrar): https://go.affision.com/visit/?bta=44878&nci=5520`;
+- Enlace para registrarse y depositar (compártelo cuando alguien quiera jugar o entrar): ${ENLACE_JUGAR}`;
 
 // Personalidad del bot: colega y cercano, enfocado en que vuelvan a jugar, y
 // natural (sin decir que es un bot). Se mantienen las líneas rojas de honestidad.

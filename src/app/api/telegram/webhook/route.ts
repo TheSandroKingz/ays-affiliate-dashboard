@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { tgEnviar, tgApi, OWNER_CHAT_ID } from "@/lib/telegram";
+import { tgEnviar, tgApi, OWNER_CHAT_ID, botonJugar } from "@/lib/telegram";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
           { onConflict: "chat_id" }
         );
       }
-      await tgEnviar(chatId, BIENVENIDA);
+      await tgEnviar(chatId, BIENVENIDA, { reply_markup: botonJugar() });
       return NextResponse.json({ ok: true });
     }
 

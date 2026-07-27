@@ -5,6 +5,15 @@
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 
+// Enlace de registro/depósito (afiliado). Fuente única: cámbialo aquí si cambia.
+export const ENLACE_JUGAR =
+  "https://go.affision.com/visit/?bta=44878&nci=5520";
+
+// Botón inline "JUGAR AQUÍ" que abre el enlace. Se añade como reply_markup.
+export function botonJugar() {
+  return { inline_keyboard: [[{ text: "🎰 JUGAR AQUÍ", url: ENLACE_JUGAR }]] };
+}
+
 export function telegramConfigurado(): boolean {
   return !!TOKEN;
 }

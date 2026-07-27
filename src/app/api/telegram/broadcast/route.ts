@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
-import { tgApi, telegramConfigurado } from "@/lib/telegram";
+import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
 
 // GET: nº de contactos activos (para el panel). POST: envía un mensaje a todos.
 export async function GET(request: Request) {
@@ -66,12 +66,14 @@ export async function POST(request: Request) {
               photo: foto,
               caption: texto || undefined,
               parse_mode: "HTML",
+              reply_markup: botonJugar(),
             })
           : await tgApi("sendMessage", {
               chat_id: chatId,
               text: texto,
               parse_mode: "HTML",
               disable_web_page_preview: true,
+              reply_markup: botonJugar(),
             });
         if (r?.ok) enviados++;
         else {
