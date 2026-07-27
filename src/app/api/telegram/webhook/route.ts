@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { tgEnviar, OWNER_CHAT_ID } from "@/lib/telegram";
+import { tgEnviar, tgApi, OWNER_CHAT_ID } from "@/lib/telegram";
 
 // Webhook del bot de Telegram: Telegram nos manda aquí cada mensaje.
 //  - /start      → guardamos al jugador y le damos la bienvenida (el gancho).
@@ -66,19 +66,30 @@ export async function POST(request: Request) {
     }
 
     // ── El DUEÑO responde a una duda reenviada → mandarla al jugador ─────────
+    // Usamos copyMessage: copia TU respuesta tal cual (texto, foto, vídeo, gif…)
+    // al jugador. Así puedes contestar con lo que quieras, no solo texto.
     if (esDueno && msg.reply_to_message?.text) {
       const m = msg.reply_to_message.text.match(/id:(\d+)/);
-      if (m && text) {
-        await tgEnviar(Number(m[1]), text);
-        await tgEnviar(chatId, "✅ Enviado.");
+      if (m) {
+        const r = await tgApi("copyMessage", {
+          chat_id: Number(m[1]),
+          from_chat_id: chatId,
+          message_id: msg.message_id,
+        });
+        await tgEnviar(
+          chatId,
+          r?.ok
+            ? "✅ Enviado."
+            : "⚠️ No se pudo enviar (puede que el jugador bloqueara el bot)."
+        );
       } else {
-        await tgEnviar(chatId, "No pude identificar a quién responder (falta el id).");
+        await tgEnviar(chatId, "No pude identificar a quién responder.");
       }
       return NextResponse.json({ ok: true });
     }
 
-    // ── Un JUGADOR escribe una duda → reenviar al dueño ──────────────────────
-    if (!esDueno && text) {
+    // ── Un JUGADOR escribe (texto o foto/vídeo) → reenviar al dueño ──────────
+    if (!esDueno) {
       // Marca actividad + asegura que está dado de alta.
       await supabaseAdmin.from("telegram_contacts").upsert(
         {
@@ -93,10 +104,19 @@ export async function POST(request: Request) {
         const quien =
           (from.first_name ?? "Jugador") +
           (from.username ? ` (@${from.username})` : "");
+        // Cabecera con el id (para que puedas responder) + su mensaje.
         await tgEnviar(
           OWNER_CHAT_ID,
-          `💬 <b>${quien}</b> pregunta:\n${text}\n\n<i>↩️ Responde a este mensaje para contestarle · id:${chatId}</i>`
+          `💬 <b>${quien}</b>${text ? " pregunta:\n" + text : " te ha enviado algo:"}\n\n<i>↩️ Responde a este mensaje para contestarle · id:${chatId}</i>`
         );
+        // Si trae foto/vídeo/etc (mensaje sin texto), lo copiamos también.
+        if (!text) {
+          await tgApi("copyMessage", {
+            chat_id: OWNER_CHAT_ID,
+            from_chat_id: chatId,
+            message_id: msg.message_id,
+          });
+        }
       }
       return NextResponse.json({ ok: true });
     }
