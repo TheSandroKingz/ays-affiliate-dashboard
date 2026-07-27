@@ -31,13 +31,14 @@ export async function POST(request: Request) {
   const tieneMedia = !!(diario && diario.enabled && diario.file_id);
 
   const boton = botonJugar();
-  const cap = `🧪 <i>PRUEBA (solo la ves tú)</i>\n\n${texto}`;
+  // Texto plano (la IA puede meter un "<" que rompería el HTML).
+  const cap = `🧪 PRUEBA (solo la ves tú)\n\n${texto}`;
   let r;
   if (tieneMedia) {
     const m = diario!.media_type;
     const metodo =
       m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";
-    const params: Record<string, unknown> = { chat_id: OWNER_CHAT_ID, caption: cap, parse_mode: "HTML", reply_markup: boton };
+    const params: Record<string, unknown> = { chat_id: OWNER_CHAT_ID, caption: cap, reply_markup: boton };
     if (m === "video") params.video = diario!.file_id;
     else if (m === "animation") params.animation = diario!.file_id;
     else if (m === "photo") params.photo = diario!.file_id;
@@ -47,7 +48,6 @@ export async function POST(request: Request) {
     r = await tgApi("sendMessage", {
       chat_id: OWNER_CHAT_ID,
       text: cap,
-      parse_mode: "HTML",
       disable_web_page_preview: true,
       reply_markup: boton,
     });

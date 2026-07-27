@@ -4,10 +4,9 @@ import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 
 // Cron del mensaje diario. Vercel (plan gratis) solo dispara 1 vez/día por cron
-// y solo en UTC, así que lo llamamos a varias horas UTC (12,13,19,20) y aquí
-// decidimos por la HORA DE MADRID: solo enviamos a las 14:00 y 21:00. Así se
-// ajusta solo a verano/invierno (cambio de hora) sin tocar nada.
-// A las 14:00 además reactivamos a los jugadores dormidos.
+// y solo en UTC, así que lo llamamos a 18 y 19 UTC y aquí decidimos por la HORA
+// DE MADRID: solo enviamos a las 20:00. Así se ajusta solo a verano/invierno
+// (cambio de hora). Además reactivamos a los dormidos (sin doblar mensaje).
 
 function horaMadrid(): number {
   return Number(
@@ -20,7 +19,8 @@ function horaMadrid(): number {
 }
 
 // Escribe a los jugadores que llevan días sin actividad (máx 1 vez por semana).
-async function reactivarDormidos() {
+// Devuelve los chat_id a los que sí escribió, para NO doblarles el envío diario.
+async function reactivarDormidos(): Promise<number[]> {
   const ahora = Date.now();
   const { data } = await supabaseAdmin
     .from("telegram_contacts")
@@ -34,7 +34,7 @@ async function reactivarDormidos() {
       !c.last_poke_at || new Date(c.last_poke_at).getTime() < ahora - 7 * 864e5;
     return inactivo && pokeOk;
   });
-  if (!dormidos.length) return 0;
+  if (!dormidos.length) return [];
 
   const picados: number[] = [];
   const bloqueados: number[] = [];
@@ -46,7 +46,6 @@ async function reactivarDormidos() {
         const r = await tgApi("sendMessage", {
           chat_id: c.chat_id,
           text: `¡Hey${nombre}! 👋 Hace días que no te veo por aquí, ¿todo bien? Dale que hay movidas 🔥`,
-          parse_mode: "HTML",
           reply_markup: botonJugar(),
         });
         if (r?.ok) picados.push(c.chat_id as number);
@@ -68,7 +67,7 @@ async function reactivarDormidos() {
       .update({ opted_out: true })
       .in("chat_id", bloqueados);
   }
-  return picados.length;
+  return picados;
 }
 
 export async function GET(request: Request) {
@@ -88,7 +87,9 @@ export async function GET(request: Request) {
   }
 
   // Aprovechamos el envío diario para reactivar a los dormidos (1 vez/día).
-  const reactivados = await reactivarDormidos();
+  // A esos NO les mandamos también el envío general (evita doble mensaje).
+  const picados = await reactivarDormidos();
+  const reactivados = picados.length;
 
   // La IA genera el texto del día (distinto cada vez).
   const fecha = new Intl.DateTimeFormat("es-ES", {
@@ -117,25 +118,29 @@ export async function GET(request: Request) {
     .from("telegram_contacts")
     .select("chat_id")
     .eq("opted_out", false);
-  const ids = (contactos ?? []).map((c) => c.chat_id as number);
+  const yaPicados = new Set(picados);
+  const ids = (contactos ?? [])
+    .map((c) => c.chat_id as number)
+    .filter((id) => !yaPicados.has(id));
 
   const caption = texto || undefined;
   const boton = botonJugar();
-  // Si hay vídeo/foto, lo mandamos con el texto de la IA de pie. Si no, solo texto.
+  // Sin parse_mode: el texto lo escribe la IA y podría llevar un "<" que Telegram
+  // rechazaría como HTML mal formado (y no se enviaría nada). Va en texto plano.
   function payload(chatId: number): { metodo: string; params: Record<string, unknown> } {
     if (tieneMedia) {
       switch (diario!.media_type) {
         case "video":
-          return { metodo: "sendVideo", params: { chat_id: chatId, video: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+          return { metodo: "sendVideo", params: { chat_id: chatId, video: diario!.file_id, caption, reply_markup: boton } };
         case "animation":
-          return { metodo: "sendAnimation", params: { chat_id: chatId, animation: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+          return { metodo: "sendAnimation", params: { chat_id: chatId, animation: diario!.file_id, caption, reply_markup: boton } };
         case "photo":
-          return { metodo: "sendPhoto", params: { chat_id: chatId, photo: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+          return { metodo: "sendPhoto", params: { chat_id: chatId, photo: diario!.file_id, caption, reply_markup: boton } };
         case "document":
-          return { metodo: "sendDocument", params: { chat_id: chatId, document: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+          return { metodo: "sendDocument", params: { chat_id: chatId, document: diario!.file_id, caption, reply_markup: boton } };
       }
     }
-    return { metodo: "sendMessage", params: { chat_id: chatId, text: caption, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: boton } };
+    return { metodo: "sendMessage", params: { chat_id: chatId, text: caption, disable_web_page_preview: true, reply_markup: boton } };
   }
 
   let enviados = 0;

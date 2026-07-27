@@ -208,9 +208,19 @@ export async function POST(request: Request) {
         { onConflict: "chat_id" }
       );
 
-      // Le mandamos la respuesta al jugador, con el botón del enlace debajo.
-      if (respuesta)
-        await tgEnviar(chatId, respuesta, { reply_markup: botonSoloJugar() });
+      // Respuesta al jugador con el botón del enlace debajo. Texto plano
+      // (sin HTML): la IA podría meter un "<" y Telegram lo rechazaría.
+      if (respuesta) {
+        await tgEnviar(chatId, respuesta, {
+          reply_markup: botonSoloJugar(),
+          parse_mode: undefined,
+        });
+      } else if (text) {
+        // Si la IA falla, no dejamos al jugador sin nada.
+        await tgEnviar(chatId, "¡Dale! 🔥 Mete 20€ y entra a jugar 👇", {
+          reply_markup: botonSoloJugar(),
+        });
+      }
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
       if (OWNER_CHAT_ID) {
