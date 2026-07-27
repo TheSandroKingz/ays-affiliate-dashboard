@@ -22,6 +22,10 @@ create index if not exists idx_telegram_contacts_activos
 alter table public.telegram_contacts
   add column if not exists history jsonb not null default '[]'::jsonb;
 
+-- Última vez que el bot "picó" a un dormido (para no repetir cada día).
+alter table public.telegram_contacts
+  add column if not exists last_poke_at timestamptz;
+
 alter table public.telegram_contacts enable row level security;
 -- Sin políticas = inaccesible para anon/authenticated. Solo el service role.
 

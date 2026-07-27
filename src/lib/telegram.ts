@@ -9,9 +9,15 @@ export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 export const ENLACE_JUGAR =
   "https://go.affision.com/visit/?bta=44878&nci=5520";
 
-// Botón inline "JUGAR AQUÍ" que abre el enlace. Se añade como reply_markup.
+// Botones inline: "JUGAR AQUÍ" (abre el enlace) y "❓ AYUDA" (el bot invita a
+// escribir su duda y la IA responde). Se añaden como reply_markup.
 export function botonJugar() {
-  return { inline_keyboard: [[{ text: "🎰 JUGAR AQUÍ", url: ENLACE_JUGAR }]] };
+  return {
+    inline_keyboard: [
+      [{ text: "🎰 JUGAR AQUÍ", url: ENLACE_JUGAR }],
+      [{ text: "❓ AYUDA", callback_data: "ayuda" }],
+    ],
+  };
 }
 
 export function telegramConfigurado(): boolean {

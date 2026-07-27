@@ -31,6 +31,21 @@ export async function POST(request: Request) {
   }
 
   const update = await request.json().catch(() => null);
+
+  // ── Toque en un botón inline (ej. "❓ AYUDA") ────────────────────────────
+  const cb = update?.callback_query;
+  if (cb) {
+    await tgApi("answerCallbackQuery", { callback_query_id: cb.id });
+    const cid = cb.message?.chat?.id;
+    if (cid && cb.data === "ayuda") {
+      await tgEnviar(
+        cid,
+        "¡Klk! 👋 Escríbeme aquí mismo tu duda y te ayudo al momento, manito. 🔥"
+      );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   const msg = update?.message;
   // Solo mensajes normales (ignoramos edits, canales, etc.).
   if (!msg || !msg.chat) return NextResponse.json({ ok: true });
