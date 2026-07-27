@@ -3,6 +3,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 
+// Los envíos en masa pueden tardar; damos margen para que no se corten.
+export const maxDuration = 60;
+
 // GET: nº de contactos activos (para el panel). POST: envía un mensaje a todos.
 export async function GET(request: Request) {
   const user = await getAdminUser(request);

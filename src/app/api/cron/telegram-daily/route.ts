@@ -4,6 +4,9 @@ import { getAdminUser } from "@/lib/adminAuth";
 import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 
+// Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
+export const maxDuration = 60;
+
 // Cron del mensaje diario. Vercel (plan gratis) solo dispara 1 vez/día por cron
 // y solo en UTC, así que lo llamamos a 18 y 19 UTC y aquí decidimos por la HORA
 // DE MADRID: solo enviamos a las 20:00. Así se ajusta solo a verano/invierno
