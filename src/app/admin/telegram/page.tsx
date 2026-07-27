@@ -16,6 +16,33 @@ export default function TelegramPage() {
   const [resultado, setResultado] = useState<string | null>(null);
   const [probando, setProbando] = useState(false);
   const [diag, setDiag] = useState<string | null>(null);
+  const [reconectando, setReconectando] = useState(false);
+  const [recon, setRecon] = useState<string | null>(null);
+
+  async function reconectar() {
+    setReconectando(true);
+    setRecon(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/setup", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      if (b.ok) {
+        setRecon("✅ Bot reconectado a esta web. Prueba a escribirle otra vez.");
+      } else {
+        setRecon("⚠️ No se pudo reconectar: " + (b.error || "error desconocido"));
+      }
+    } catch {
+      setRecon("⚠️ No se pudo reconectar (mira tu conexión).");
+    } finally {
+      setReconectando(false);
+    }
+  }
 
   async function probarBot() {
     setProbando(true);
@@ -149,6 +176,19 @@ export default function TelegramPage() {
           </button>
         </div>
         {diag && <p className="text-sm text-slate-200">{diag}</p>}
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 mt-1">
+          <span className="text-sm text-slate-300">
+            🔌 Conexión del bot (webhook)
+          </span>
+          <button
+            onClick={reconectar}
+            disabled={reconectando}
+            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+          >
+            {reconectando ? "Reconectando…" : "Reconectar bot"}
+          </button>
+        </div>
+        {recon && <p className="text-sm text-slate-200">{recon}</p>}
       </div>
 
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 flex flex-col gap-4">
