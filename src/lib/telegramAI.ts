@@ -46,7 +46,9 @@ const MODELO = "claude-haiku-4-5";
 // Datos reales del casino (FreshBet). Los métodos pueden variar por país, así
 // que el bot da lo habitual y remite a la sección de depósito para el detalle.
 const CASINO = `- Nombre del casino: FreshBet
-- Depósito mínimo: 20€ (por eso el gancho de los 20€).
+- Depósito mínimo: 20€.
+- Bono de bienvenida REAL: al registrarte y depositar te dan hasta 500€ en tiradas gratis. Úsalo como gancho.
+- Pasos para empezar: registrarse por el enlace → darle al "+" de arriba y depositar → menú → minijuegos → Mines. Puedes explicarlos si preguntan.
 - Cómo depositar/retirar: se hace entrando por el enlace, en la sección de depósito/retiro de la cuenta. Métodos habituales: tarjeta (Visa/Mastercard), transferencia bancaria, cripto (USDT, BTC, ETH, Litecoin…) y monederos (Neteller, Skrill, Paysafe). Depósitos normalmente instantáneos y sin comisión. Para retirar se usa el mismo método con el que depositaste (en cripto suele tardar 0-24h). Si preguntan por un método concreto o su caso, diles que en la sección de depósito verán lo disponible para ellos.
 - Promos: usa SOLO la sección PROMO ACTIVA (si no hay, no menciones promos concretas).
 - Enlace para registrarse y depositar (compártelo cuando quieran jugar/entrar): ${ENLACE_JUGAR}
