@@ -11,6 +11,13 @@ export default function TelegramPage() {
   const [contactos, setContactos] = useState<number | null>(null);
   const [configurado, setConfigurado] = useState(true);
   const [diario, setDiario] = useState<{ activo: boolean; tipo: string | null } | null>(null);
+  const [stats, setStats] = useState<{
+    activos: number;
+    total: number;
+    bajas: number;
+    nuevos24h: number;
+    escribieron24h: number;
+  } | null>(null);
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -150,6 +157,7 @@ export default function TelegramPage() {
       setContactos(Number(res.contactos ?? 0));
       setConfigurado(res.configurado !== false);
       setDiario(res.diario ?? null);
+      setStats(res.stats ?? null);
     }
   }, [router]);
 
@@ -218,6 +226,25 @@ export default function TelegramPage() {
         📇 Contactos activos:{" "}
         <b className="text-white">{contactos === null ? "…" : contactos}</b>
       </div>
+
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { l: "Escribieron (24h)", v: stats.escribieron24h },
+            { l: "Nuevos (24h)", v: stats.nuevos24h },
+            { l: "Bajas totales", v: stats.bajas },
+            { l: "Total histórico", v: stats.total },
+          ].map((s) => (
+            <div
+              key={s.l}
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center"
+            >
+              <div className="text-lg font-semibold text-white">{s.v}</div>
+              <div className="text-[11px] text-slate-400">{s.l}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">

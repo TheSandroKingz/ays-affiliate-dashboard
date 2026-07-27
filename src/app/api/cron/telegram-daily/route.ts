@@ -87,6 +87,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, fuera de 20` });
   }
 
+  // Limpieza: borramos los update_id anti-duplicados de más de 1 día.
+  await supabaseAdmin
+    .from("telegram_updates")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 864e5).toISOString())
+    .then(() => {}, () => {});
+
   // Aprovechamos el envío diario para reactivar a los dormidos (1 vez/día).
   // A esos NO les mandamos también el envío general (evita doble mensaje).
   const picados = await reactivarDormidos();

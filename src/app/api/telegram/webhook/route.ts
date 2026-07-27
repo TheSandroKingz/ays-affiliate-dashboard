@@ -33,6 +33,18 @@ export async function POST(request: Request) {
 
   const update = await request.json().catch(() => null);
 
+  // ── Anti-duplicados: si Telegram reintenta el mismo update, lo ignoramos ──
+  const updateId = update?.update_id;
+  if (typeof updateId === "number") {
+    const { data: ins, error } = await supabaseAdmin
+      .from("telegram_updates")
+      .upsert({ update_id: updateId }, { onConflict: "update_id", ignoreDuplicates: true })
+      .select("update_id");
+    if (!error && ins && ins.length === 0) {
+      return NextResponse.json({ ok: true }); // ya procesado antes
+    }
+  }
+
   // ── Toque en un botón inline (ej. "❓ AYUDA") ────────────────────────────
   const cb = update?.callback_query;
   if (cb) {

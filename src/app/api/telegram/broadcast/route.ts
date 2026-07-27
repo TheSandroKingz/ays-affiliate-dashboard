@@ -7,18 +7,34 @@ import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
 export async function GET(request: Request) {
   const user = await getAdminUser(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const { count } = await supabaseAdmin
-    .from("telegram_contacts")
-    .select("chat_id", { count: "exact", head: true })
-    .eq("opted_out", false);
-  const { data: diario } = await supabaseAdmin
-    .from("telegram_daily")
-    .select("media_type, enabled")
-    .eq("id", 1)
-    .maybeSingle();
+  const hace24h = new Date(Date.now() - 864e5).toISOString();
+  const cuenta = (q: ReturnType<typeof filtroBase>) =>
+    q.then((r) => r.count ?? 0);
+  function filtroBase() {
+    return supabaseAdmin
+      .from("telegram_contacts")
+      .select("chat_id", { count: "exact", head: true });
+  }
+
+  const [activos, total, bajas, nuevos24h, escribieron24h, diarioRes] =
+    await Promise.all([
+      cuenta(filtroBase().eq("opted_out", false)),
+      cuenta(filtroBase()),
+      cuenta(filtroBase().eq("opted_out", true)),
+      cuenta(filtroBase().gte("joined_at", hace24h)),
+      cuenta(filtroBase().gte("last_msg_at", hace24h)),
+      supabaseAdmin
+        .from("telegram_daily")
+        .select("media_type, enabled")
+        .eq("id", 1)
+        .maybeSingle(),
+    ]);
+  const diario = diarioRes.data;
+
   return NextResponse.json({
-    contactos: count ?? 0,
+    contactos: activos,
     configurado: telegramConfigurado(),
+    stats: { activos, total, bajas, nuevos24h, escribieron24h },
     diario: diario
       ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }
       : null,

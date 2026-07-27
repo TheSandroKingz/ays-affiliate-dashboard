@@ -51,3 +51,14 @@ create table if not exists public.telegram_daily (
   constraint telegram_daily_singleton check (id = 1)
 );
 alter table public.telegram_daily enable row level security;
+
+-- ============================================================================
+-- Anti-duplicados: Telegram reintenta un update si tardamos en responder. Aquí
+-- guardamos los update_id ya procesados para no procesarlos dos veces (evita
+-- respuestas dobles y gasto doble de IA). El cron diario limpia los viejos.
+-- ============================================================================
+create table if not exists public.telegram_updates (
+  update_id  bigint      primary key,
+  created_at timestamptz not null default now()
+);
+alter table public.telegram_updates enable row level security;
