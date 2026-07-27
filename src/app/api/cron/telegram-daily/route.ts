@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
+import { generarMensajeDiario } from "@/lib/telegramAI";
 
 // Cron del mensaje diario. Vercel (plan gratis) solo dispara 1 vez/día por cron
 // y solo en UTC, así que lo llamamos a varias horas UTC (12,13,19,20) y aquí
@@ -90,14 +91,29 @@ export async function GET(request: Request) {
   let reactivados = 0;
   if (hora === 14) reactivados = await reactivarDormidos();
 
+  // La IA genera el texto del día (distinto cada vez).
+  const fecha = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+  const textoIA = await generarMensajeDiario(
+    `${fecha}, ${hora === 14 ? "de tarde" : "de noche"}`
+  );
+
+  // Vídeo/foto opcional que el dueño dejó con /diario.
   const { data: diario } = await supabaseAdmin
     .from("telegram_daily")
-    .select("media_type, file_id, caption, enabled")
+    .select("media_type, file_id, enabled")
     .eq("id", 1)
     .maybeSingle();
+  const tieneMedia = !!(diario && diario.enabled && diario.file_id);
 
-  if (!diario || !diario.enabled || (!diario.file_id && !diario.caption)) {
-    return NextResponse.json({ ok: true, enviado: false, reactivados, motivo: "sin mensaje diario activo" });
+  // Texto = el que genera la IA (sin necesidad de que tú lo escribas).
+  const texto = textoIA;
+  if (!tieneMedia && !texto) {
+    return NextResponse.json({ ok: true, enviado: false, reactivados, motivo: "sin texto (IA) ni video" });
   }
 
   const { data: contactos } = await supabaseAdmin
@@ -106,22 +122,23 @@ export async function GET(request: Request) {
     .eq("opted_out", false);
   const ids = (contactos ?? []).map((c) => c.chat_id as number);
 
-  const caption = diario.caption || undefined;
+  const caption = texto || undefined;
   const boton = botonJugar();
-  // Método de Telegram según el tipo de archivo. Todos con el botón "JUGAR AQUÍ".
+  // Si hay vídeo/foto, lo mandamos con el texto de la IA de pie. Si no, solo texto.
   function payload(chatId: number): { metodo: string; params: Record<string, unknown> } {
-    switch (diario!.media_type) {
-      case "video":
-        return { metodo: "sendVideo", params: { chat_id: chatId, video: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
-      case "animation":
-        return { metodo: "sendAnimation", params: { chat_id: chatId, animation: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
-      case "photo":
-        return { metodo: "sendPhoto", params: { chat_id: chatId, photo: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
-      case "document":
-        return { metodo: "sendDocument", params: { chat_id: chatId, document: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
-      default:
-        return { metodo: "sendMessage", params: { chat_id: chatId, text: caption, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: boton } };
+    if (tieneMedia) {
+      switch (diario!.media_type) {
+        case "video":
+          return { metodo: "sendVideo", params: { chat_id: chatId, video: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+        case "animation":
+          return { metodo: "sendAnimation", params: { chat_id: chatId, animation: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+        case "photo":
+          return { metodo: "sendPhoto", params: { chat_id: chatId, photo: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+        case "document":
+          return { metodo: "sendDocument", params: { chat_id: chatId, document: diario!.file_id, caption, parse_mode: "HTML", reply_markup: boton } };
+      }
     }
+    return { metodo: "sendMessage", params: { chat_id: chatId, text: caption, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: boton } };
   }
 
   let enviados = 0;

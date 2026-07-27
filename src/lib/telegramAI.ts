@@ -61,6 +61,49 @@ Si no sabes algo, mejor decir que lo consultas con el equipo que inventártelo.`
 
 type Turno = { role: "user" | "assistant"; content: string };
 
+// Personalidad para el MENSAJE DIARIO que la IA genera sola cada día.
+const SYSTEM_DIARIO = `Eres Sandro. Escribe UN mensaje corto para mandar HOY a todos tus jugadores por Telegram: un buenos días / gancho con buena vibra para que les entren ganas de entrar a jugar.
+
+ESTILO (dominicano, tu voz):
+- Español dominicano con flow: "klk", "klk manito", "ya tú sabe", "activo/activos", "ahoora", "esto es una lokera", "manito", "dale". Úsalas natural, no todas de golpe.
+- 1 a 3 líneas, con energía y algún emoji (🔥🎰💪👑). Que enganche.
+- Cambia el saludo y la idea cada día, que no suene repetido.
+- Puedes invitarles a darle al botón y entrar a jugar.
+
+NO HAGAS:
+- No digas que hay patrones, trucos, sistemas ni horas que hagan ganar más, ni prometas ganancias. Solo buena vibra y ganas de jugar.
+- No te inventes promos concretas, códigos ni cantidades.
+- Nada de sermones ni avisos.
+
+Devuelve SOLO el mensaje, sin comillas ni explicaciones.`;
+
+// Genera el mensaje del día (distinto cada vez). null si no hay clave / falla.
+export async function generarMensajeDiario(contexto: string): Promise<string | null> {
+  if (!KEY) return null;
+  try {
+    const client = new Anthropic({ apiKey: KEY });
+    const res = await client.messages.create({
+      model: MODELO,
+      max_tokens: 250,
+      system: SYSTEM_DIARIO,
+      messages: [
+        {
+          role: "user",
+          content: `Escribe el mensaje de hoy: ${contexto}. Que sea distinto a otros días.`,
+        },
+      ],
+    });
+    const txt = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    return txt || null;
+  } catch {
+    return null;
+  }
+}
+
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
 export async function responderIA(
   historial: Turno[],
