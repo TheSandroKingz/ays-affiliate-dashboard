@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { tgEnviar, tgApi, OWNER_CHAT_ID, botonJugar } from "@/lib/telegram";
+import { tgEnviar, tgApi, OWNER_CHAT_ID, botonJugar, botonSoloJugar } from "@/lib/telegram";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -208,8 +208,9 @@ export async function POST(request: Request) {
         { onConflict: "chat_id" }
       );
 
-      // Le mandamos la respuesta al jugador.
-      if (respuesta) await tgEnviar(chatId, respuesta);
+      // Le mandamos la respuesta al jugador, con el botón del enlace debajo.
+      if (respuesta)
+        await tgEnviar(chatId, respuesta, { reply_markup: botonSoloJugar() });
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
       if (OWNER_CHAT_ID) {

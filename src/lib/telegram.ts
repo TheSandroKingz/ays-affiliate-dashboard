@@ -9,15 +9,24 @@ export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 export const ENLACE_JUGAR =
   "https://go.affision.com/visit/?bta=44878&nci=5520";
 
-// Botones inline: "JUGAR AQUÍ" (abre el enlace) y "❓ AYUDA" (el bot invita a
-// escribir su duda y la IA responde). Se añaden como reply_markup.
+// Texto del botón de jugar (llamativo — Telegram no deja cambiar color/tamaño,
+// solo el texto y los emojis).
+const TEXTO_JUGAR = "🔥🎰 JUGAR AHORA 🎰🔥";
+
+// Botones inline: jugar (abre el enlace) y "❓ AYUDA" (el bot invita a escribir
+// su duda y la IA responde). Se añaden como reply_markup.
 export function botonJugar() {
   return {
     inline_keyboard: [
-      [{ text: "🎰 JUGAR AQUÍ", url: ENLACE_JUGAR }],
+      [{ text: TEXTO_JUGAR, url: ENLACE_JUGAR }],
       [{ text: "❓ AYUDA", callback_data: "ayuda" }],
     ],
   };
+}
+
+// Solo el botón del enlace (para las respuestas del chat, sin el de AYUDA).
+export function botonSoloJugar() {
+  return { inline_keyboard: [[{ text: TEXTO_JUGAR, url: ENLACE_JUGAR }]] };
 }
 
 export function telegramConfigurado(): boolean {
