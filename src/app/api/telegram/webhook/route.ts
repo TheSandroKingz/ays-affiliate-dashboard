@@ -14,6 +14,12 @@ type Turno = { role: "user" | "assistant"; content: string };
 // Seguridad: Telegram manda una cabecera secreta (secret_token) que ponemos al
 // registrar el webhook; si no coincide, ignoramos (que nadie falsee updates).
 
+// Escapa los caracteres que Telegram interpreta como HTML, para meter texto de
+// usuarios (nombres, mensajes) dentro de un mensaje con formato sin romperlo.
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 // ⚠️ EDITA AQUÍ el mensaje de bienvenida (el "gancho" que ve al unirse):
 const BIENVENIDA =
   "¡Hey, bienvenido! 👋🔥\n\n" +
@@ -165,7 +171,7 @@ export async function POST(request: Request) {
     // Usamos copyMessage: copia TU respuesta tal cual (texto, foto, vídeo, gif…)
     // al jugador. Así puedes contestar con lo que quieras, no solo texto.
     if (esDueno && msg.reply_to_message?.text) {
-      const m = msg.reply_to_message.text.match(/id:(\d+)/);
+      const m = msg.reply_to_message.text.match(/\[uid:(\d+)\]/);
       if (m) {
         const r = await tgApi("copyMessage", {
           chat_id: Number(m[1]),
@@ -212,10 +218,28 @@ export async function POST(request: Request) {
       aiCount += 1;
       const limitado = aiCount > LIMITE_IA;
 
-      // La IA responde (solo a texto, si no está limitado por spam).
+      // La IA responde (solo a texto, si no está limitado por spam ni por el
+      // tope global diario que blinda el saldo de Claude).
+      const TOPE_DIA = 800;
       let respuesta: string | null = null;
       if (text && iaConfigurada() && !limitado) {
-        respuesta = await responderIA(historial, text);
+        const hoy = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Europe/Madrid",
+        }).format(new Date());
+        const { data: usoDia } = await supabaseAdmin
+          .from("telegram_ai_daily")
+          .select("count")
+          .eq("day", hoy)
+          .maybeSingle();
+        const usoActual = usoDia?.count ?? 0;
+        if (usoActual < TOPE_DIA) {
+          respuesta = await responderIA(historial, text);
+          if (respuesta) {
+            await supabaseAdmin
+              .from("telegram_ai_daily")
+              .upsert({ day: hoy, count: usoActual + 1 });
+          }
+        }
       }
 
       // Guardamos actividad + alta + últimos turnos (máx 12 = 6 idas y vueltas).
@@ -255,16 +279,17 @@ export async function POST(request: Request) {
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
       if (OWNER_CHAT_ID) {
-        const quien =
+        const quien = esc(
           (from.first_name ?? "Jugador") +
-          (from.username ? ` (@${from.username})` : "");
+            (from.username ? ` (@${from.username})` : "")
+        );
         const cuerpo = text
-          ? ` pregunta:\n${text}` +
-            (respuesta ? `\n\n🤖 <i>Respondí:</i>\n${respuesta}` : "")
+          ? ` pregunta:\n${esc(text)}` +
+            (respuesta ? `\n\n🤖 <i>Respondí:</i>\n${esc(respuesta)}` : "")
           : " te ha enviado algo:";
         await tgEnviar(
           OWNER_CHAT_ID,
-          `💬 <b>${quien}</b>${cuerpo}\n\n<i>↩️ Responde a este mensaje para escribirle tú · id:${chatId}</i>`
+          `💬 <b>${quien}</b>${cuerpo}\n\n<i>↩️ Responde a este mensaje para escribirle tú</i> [uid:${chatId}]`
         );
         // Si trae foto/vídeo/etc (mensaje sin texto), lo copiamos también.
         if (!text) {

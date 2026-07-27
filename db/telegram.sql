@@ -62,3 +62,11 @@ create table if not exists public.telegram_updates (
   created_at timestamptz not null default now()
 );
 alter table public.telegram_updates enable row level security;
+
+-- Tope global de llamadas a la IA por día (blinda el saldo de Claude). Una fila
+-- por día con el contador.
+create table if not exists public.telegram_ai_daily (
+  day   date    primary key,
+  count integer not null default 0
+);
+alter table public.telegram_ai_daily enable row level security;
