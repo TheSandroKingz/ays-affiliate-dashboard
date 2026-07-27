@@ -2,6 +2,8 @@
 // El token vive SOLO en la variable de entorno TELEGRAM_BOT_TOKEN (Vercel),
 // nunca en el código. BLINDADO: cualquier fallo se traga (no rompe el flujo).
 
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 
@@ -28,6 +30,24 @@ export function botonJugar() {
 // Solo el botón del enlace (para las respuestas del chat, sin el de AYUDA).
 export function botonSoloJugar() {
   return { inline_keyboard: [[{ text: TEXTO_JUGAR, url: ENLACE_JUGAR }]] };
+}
+
+// Guarda un message_id para borrarlo luego (limpieza automática de chats).
+// NO se usa con la bienvenida (esa se deja intacta). BLINDADO.
+export async function guardarMsg(
+  chatId: number | string,
+  messageId?: number | null
+): Promise<void> {
+  if (!messageId) return;
+  await supabaseAdmin
+    .from("telegram_sent")
+    .insert({ chat_id: Number(chatId), message_id: messageId })
+    .then(() => {}, () => {});
+}
+
+// Extrae el message_id de la respuesta de tgApi/tgEnviar (o null).
+export function midDe(r: { ok?: boolean; result?: unknown } | null): number | null {
+  return (r?.result as { message_id?: number } | undefined)?.message_id ?? null;
 }
 
 export function telegramConfigurado(): boolean {

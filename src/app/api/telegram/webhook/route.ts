@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { tgEnviar, tgApi, OWNER_CHAT_ID, botonJugar, botonSoloJugar } from "@/lib/telegram";
+import {
+  tgEnviar,
+  tgApi,
+  OWNER_CHAT_ID,
+  botonJugar,
+  botonSoloJugar,
+  guardarMsg,
+  midDe,
+} from "@/lib/telegram";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -324,20 +332,24 @@ export async function POST(request: Request) {
       // Respuesta al jugador. Texto plano (sin HTML): la IA podría meter un "<".
       // El botón del enlace solo sale cuando la respuesta invita a jugar/entrar
       // /depositar (si no, cansa verlo en cada mensajito).
+      // Guardamos el mensaje del jugador para la limpieza automática de chats.
+      await guardarMsg(chatId, msg.message_id);
       if (respuesta) {
         const invita =
           /jug|entra|deposit|recarg|vuelve|\b20\b|enlace|link|registr|apuest/i.test(
             respuesta
           );
-        await tgEnviar(chatId, respuesta, {
+        const rEnv = await tgEnviar(chatId, respuesta, {
           parse_mode: undefined,
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
         });
+        await guardarMsg(chatId, midDe(rEnv));
       } else if (text && !limitado) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada.
-        await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
+        const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });
+        await guardarMsg(chatId, midDe(rEnv));
       }
 
       // Copia al dueño para que veas la conversación y puedas intervenir.

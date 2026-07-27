@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
-import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
+import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 
 // GET: nº de contactos activos (para el panel). POST: envía un mensaje a todos.
 export async function GET(request: Request) {
@@ -165,8 +165,10 @@ export async function POST(request: Request) {
               disable_web_page_preview: true,
               reply_markup: botonJugar(),
             });
-        if (r?.ok) enviados++;
-        else {
+        if (r?.ok) {
+          enviados++;
+          await guardarMsg(chatId, midDe(r));
+        } else {
           fallos++;
           // 403 = el usuario bloqueó el bot → lo damos de baja para no reintentar.
           if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {

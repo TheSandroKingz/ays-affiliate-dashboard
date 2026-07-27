@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
-import { tgApi, telegramConfigurado, botonJugar } from "@/lib/telegram";
+import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 
 // Cron del mensaje diario. Vercel (plan gratis) solo dispara 1 vez/día por cron
@@ -65,8 +65,10 @@ async function reactivarDormidos(): Promise<number[]> {
           text: `¡Hey${nombre}! 👋 Hace días que no te veo por aquí, ¿todo bien? Dale que hay cosas buenas 🔥`,
           reply_markup: botonJugar(),
         });
-        if (r?.ok) picados.push(c.chat_id as number);
-        else if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
+        if (r?.ok) {
+          picados.push(c.chat_id as number);
+          await guardarMsg(c.chat_id as number, midDe(r));
+        } else if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
           bloqueados.push(c.chat_id as number);
         }
       })
@@ -99,6 +101,30 @@ export async function GET(request: Request) {
   }
   if (!telegramConfigurado()) {
     return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
+  }
+
+  // LIMPIEZA de chats: borra los mensajes de más de 40h (Telegram solo permite
+  // borrar hasta 48h). La bienvenida no se guarda, así que NUNCA se borra.
+  // Corre en cada disparo del cron, aunque no toque enviar.
+  {
+    const cutoff = new Date(Date.now() - 40 * 3600 * 1000).toISOString();
+    const { data: viejos } = await supabaseAdmin
+      .from("telegram_sent")
+      .select("chat_id, message_id")
+      .lt("created_at", cutoff)
+      .limit(2000);
+    if (viejos?.length) {
+      for (let i = 0; i < viejos.length; i += 25) {
+        const tanda = viejos.slice(i, i + 25);
+        await Promise.all(
+          tanda.map((m) =>
+            tgApi("deleteMessage", { chat_id: m.chat_id, message_id: m.message_id })
+          )
+        );
+        if (i + 25 < viejos.length) await new Promise((r) => setTimeout(r, 1000));
+      }
+      await supabaseAdmin.from("telegram_sent").delete().lt("created_at", cutoff);
+    }
   }
 
   // Envíos: el fijo de las 20:00 (siempre) y un extra a las 13:00 SOLO los
@@ -192,8 +218,10 @@ export async function GET(request: Request) {
       tanda.map(async (chatId) => {
         const { metodo, params } = payload(chatId);
         const r = await tgApi(metodo, params);
-        if (r?.ok) enviados++;
-        else {
+        if (r?.ok) {
+          enviados++;
+          await guardarMsg(chatId, midDe(r));
+        } else {
           fallos++;
           if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
             bloqueados.push(chatId);

@@ -85,6 +85,18 @@ create table if not exists public.telegram_config (
 );
 alter table public.telegram_config enable row level security;
 
+-- Limpieza automática de chats: guardamos los message_id enviados/recibidos para
+-- borrarlos luego (Telegram solo deja borrar mensajes de menos de 48h).
+create table if not exists public.telegram_sent (
+  chat_id    bigint      not null,
+  message_id bigint      not null,
+  created_at timestamptz not null default now(),
+  primary key (chat_id, message_id)
+);
+create index if not exists idx_telegram_sent_created
+  on public.telegram_sent (created_at);
+alter table public.telegram_sent enable row level security;
+
 -- Vídeo/foto de bienvenida opcional (se envía con /start). Si no hay, solo texto.
 create table if not exists public.telegram_welcome (
   id         smallint    primary key default 1,
