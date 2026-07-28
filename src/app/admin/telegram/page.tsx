@@ -80,7 +80,9 @@ export default function TelegramPage() {
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
   const [cargandoJug, setCargandoJug] = useState(false);
   const [chatAbierto, setChatAbierto] = useState<number | null>(null);
-  const [chatMsgs, setChatMsgs] = useState<{ role: string; content: string }[]>([]);
+  const [chatMsgs, setChatMsgs] = useState<
+    { role: string; content: string; created_at?: string }[]
+  >([]);
   const [cargandoChat, setCargandoChat] = useState(false);
 
   async function verChat(chatId: number) {
@@ -670,7 +672,7 @@ export default function TelegramPage() {
                   </div>
                 </div>
                 {chatAbierto === j.chat_id && (
-                  <div className="mt-2 rounded-lg bg-black/25 p-3 flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                  <div className="mt-2 rounded-xl bg-black/30 p-3 flex flex-col gap-2 max-h-96 overflow-y-auto">
                     {cargandoChat ? (
                       <p className="text-xs text-slate-400">Cargando…</p>
                     ) : chatMsgs.length === 0 ? (
@@ -678,20 +680,39 @@ export default function TelegramPage() {
                         Sin conversación guardada (o aún no ha escrito).
                       </p>
                     ) : (
-                      chatMsgs.map((m, i) => (
-                        <div key={i} className="text-xs leading-snug">
-                          <b
-                            className={
-                              m.role === "assistant"
-                                ? "text-emerald-300"
-                                : "text-sky-300"
-                            }
+                      chatMsgs.map((m, i) => {
+                        const bot = m.role === "assistant";
+                        return (
+                          <div
+                            key={i}
+                            className={`flex ${bot ? "justify-end" : "justify-start"}`}
                           >
-                            {m.role === "assistant" ? "Bot" : "Jugador"}:
-                          </b>{" "}
-                          <span className="text-slate-200">{m.content}</span>
-                        </div>
-                      ))
+                            <div
+                              className={`max-w-[78%] rounded-2xl px-3 py-1.5 text-xs leading-snug ${
+                                bot
+                                  ? "bg-emerald-600 text-white rounded-br-sm"
+                                  : "bg-white/15 text-slate-100 rounded-bl-sm"
+                              }`}
+                            >
+                              {m.content}
+                              {m.created_at && (
+                                <div
+                                  className={`text-[9px] mt-0.5 ${
+                                    bot ? "text-emerald-100/70" : "text-slate-400"
+                                  }`}
+                                >
+                                  {new Date(m.created_at).toLocaleString("es-ES", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 )}

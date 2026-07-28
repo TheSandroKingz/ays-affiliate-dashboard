@@ -352,6 +352,15 @@ export async function POST(request: Request) {
         await guardarMsg(chatId, midDe(rEnv));
       }
 
+      // Historial completo para verlo en el panel (estilo chat).
+      await supabaseAdmin
+        .from("telegram_messages")
+        .insert([
+          { chat_id: chatId, role: "user", content: text || "(envió una foto/archivo)" },
+          ...(respuesta ? [{ chat_id: chatId, role: "assistant", content: respuesta }] : []),
+        ])
+        .then(() => {}, () => {});
+
       // Copia al dueño para que veas la conversación y puedas intervenir.
       if (OWNER_CHAT_ID) {
         const quien = esc(

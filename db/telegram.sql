@@ -97,6 +97,19 @@ create index if not exists idx_telegram_sent_created
   on public.telegram_sent (created_at);
 alter table public.telegram_sent enable row level security;
 
+-- Historial COMPLETO de conversaciones (para verlas en el panel estilo chat).
+-- role: 'user' = jugador, 'assistant' = bot. No se borra con la limpieza de 48h.
+create table if not exists public.telegram_messages (
+  id         bigint generated always as identity primary key,
+  chat_id    bigint      not null,
+  role       text        not null,
+  content    text        not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_telegram_messages_chat
+  on public.telegram_messages (chat_id, created_at);
+alter table public.telegram_messages enable row level security;
+
 -- Vídeo/foto de bienvenida opcional (se envía con /start). Si no hay, solo texto.
 create table if not exists public.telegram_welcome (
   id         smallint    primary key default 1,

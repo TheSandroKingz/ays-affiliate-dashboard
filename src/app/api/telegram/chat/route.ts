@@ -9,10 +9,10 @@ export async function GET(request: Request) {
   const chatId = Number(new URL(request.url).searchParams.get("chat_id"));
   if (!chatId) return NextResponse.json({ error: "Falta chat_id." }, { status: 400 });
   const { data } = await supabaseAdmin
-    .from("telegram_contacts")
-    .select("history")
+    .from("telegram_messages")
+    .select("role, content, created_at")
     .eq("chat_id", chatId)
-    .maybeSingle();
-  const history = Array.isArray(data?.history) ? data.history : [];
-  return NextResponse.json({ history });
+    .order("created_at", { ascending: true })
+    .limit(500);
+  return NextResponse.json({ history: data ?? [] });
 }
