@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 
@@ -10,10 +11,36 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const newEmail = body.newEmail;
+  const currentPassword = body.currentPassword;
 
   // Validación de formato de email en el servidor.
   if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(newEmail))) {
     return NextResponse.json({ error: "Correo no válido" }, { status: 400 });
+  }
+
+  // RE-AUTENTICACIÓN: exigimos la contraseña ACTUAL antes de cambiar el correo.
+  // Sin esto, un token robado bastaría para cambiar el email y luego resetear la
+  // contraseña = toma de cuenta total. Verificamos con un cliente anónimo.
+  if (!currentPassword || !user.email) {
+    return NextResponse.json(
+      { error: "Falta la contraseña actual" },
+      { status: 400 }
+    );
+  }
+  const authClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+  const { error: pwErr } = await authClient.auth.signInWithPassword({
+    email: user.email,
+    password: String(currentPassword),
+  });
+  if (pwErr) {
+    return NextResponse.json(
+      { error: "Contraseña actual incorrecta" },
+      { status: 401 }
+    );
   }
 
   // Siempre sobre la PROPIA cuenta del token (ignoramos cualquier userId del body).

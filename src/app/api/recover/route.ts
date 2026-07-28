@@ -49,15 +49,13 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
-    // Dominio para el enlace de reseteo. PREFERIMOS una URL fija de servidor
-    // (NEXT_PUBLIC_SITE_URL): la cabecera Origin la controla el atacante (curl),
-    // y sin allowlist estricta en Supabase podría desviar el enlace a otro
-    // dominio y robar el token. Si no está la env, caemos al Origin (Supabase
-    // rechaza redirectTo fuera de su allowlist, que es la protección real).
+    // Dominio para el enlace de reseteo. SIEMPRE fijo de servidor: NUNCA el
+    // header Origin ni request.url (los controla el atacante con curl y podría
+    // desviar el enlace con el token a otro dominio = robo de cuenta). Si la env
+    // no está, usamos el dominio de producción hardcodeado.
     const origin =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      request.headers.get("origin") ||
-      new URL(request.url).origin;
+      "https://ays-affiliate-dashboard.vercel.app";
     await authClient.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/reset-password`,
     });

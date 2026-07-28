@@ -4,14 +4,11 @@ import { getAdminUser } from "@/lib/adminAuth";
 
 // Diagnóstico rápido del auto-responder: dime si la clave de Claude está y si
 // una llamada de prueba funciona. Lo usa el botón "Probar bot" del panel admin
-// (con tu sesión). También puedes abrirlo con ?s=EL_SECRETO en el navegador.
+// (con tu sesión). SOLO con sesión de admin: NO se acepta el secreto por la URL
+// (metería el secreto del webhook en logs/historial = riesgo de suplantación).
 export async function GET(request: Request) {
-  const s = new URL(request.url).searchParams.get("s");
   const admin = await getAdminUser(request);
-  const secretoOk =
-    !!process.env.TELEGRAM_WEBHOOK_SECRET &&
-    s === process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!admin && !secretoOk) {
+  if (!admin) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
 

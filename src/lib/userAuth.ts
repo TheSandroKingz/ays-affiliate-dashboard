@@ -11,7 +11,7 @@ export async function getApprovedUser(request: Request) {
   if (error || !data.user) return null;
 
   let aff: { approved?: boolean; active?: boolean } | null = null;
-  let qErr: unknown = null;
+  let qErr: { code?: string } | null = null;
   {
     const r = await supabaseAdmin
       .from("affiliates")
@@ -20,8 +20,10 @@ export async function getApprovedUser(request: Request) {
       .maybeSingle();
     aff = r.data;
     qErr = r.error;
-    // Por si la columna 'active' aún no existe: reintenta sin ella.
-    if (qErr) {
+    // SOLO si el error es "columna 'active' no existe" (42703) reintentamos sin
+    // ella. Ante CUALQUIER otro error NO hacemos fail-open: denegamos, para no
+    // dar acceso a una cuenta desactivada por un fallo transitorio de la query.
+    if (qErr && qErr.code === "42703") {
       const r2 = await supabaseAdmin
         .from("affiliates")
         .select("approved")

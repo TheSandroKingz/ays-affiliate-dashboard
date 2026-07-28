@@ -36,6 +36,18 @@ export async function POST(request: Request) {
       );
   }
 
+  // Seguridad: si este endpoint ya está registrado a OTRO usuario, no lo
+  // reasignamos (evita que alguien que conozca un endpoint ajeno secuestre las
+  // notificaciones de otro). Solo se puede crear el propio o refrescar el suyo.
+  const { data: existente } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("user_id")
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (existente && existente.user_id !== user.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
   const { error } = await supabaseAdmin
     .from("push_subscriptions")
     .upsert(

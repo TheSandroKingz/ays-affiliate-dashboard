@@ -207,16 +207,35 @@ export default function AccountPage() {
     }
 
     let emailError = false;
+    let emailMsg = "";
     if (!error && emailChanged) {
-      const res = await fetch("/api/account/update-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({ userId: user.id, newEmail: cleanEmail }),
-      });
-      if (!res.ok) emailError = true;
+      // Por seguridad pedimos la contraseña actual solo al cambiar el correo
+      // (evita que un token robado cambie el email y secuestre la cuenta).
+      const currentPassword = window.prompt(
+        "Por seguridad, escribe tu contraseña actual para cambiar el correo:"
+      );
+      if (!currentPassword) {
+        emailError = true;
+        emailMsg =
+          "Tu usuario se guardó, pero el correo no se cambió (falta la contraseña).";
+      } else {
+        const res = await fetch("/api/account/update-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.access_token,
+          },
+          body: JSON.stringify({ newEmail: cleanEmail, currentPassword }),
+        });
+        if (!res.ok) {
+          emailError = true;
+          const j = await res.json().catch(() => ({}));
+          emailMsg =
+            j?.error === "Contraseña actual incorrecta"
+              ? "Tu usuario se guardó, pero el correo no se cambió: contraseña incorrecta."
+              : "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo.";
+        }
+      }
     }
 
     setSaving(false);
@@ -229,7 +248,8 @@ export default function AccountPage() {
     } else if (emailError) {
       // El nombre SÍ se guardó; solo falló el correo. No mentimos con "todo ok".
       setMessage(
-        "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo."
+        emailMsg ||
+          "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo."
       );
     } else {
       setMessage("Guardado correctamente");

@@ -231,7 +231,10 @@ export async function responderIA(
 
     const promo = await getPromo();
     // Nombre de pila de quien escribe (para dirigirse a él/ella y saber el género).
-    const nom = (nombre ?? "").trim();
+    // SANITIZADO: quitamos comillas/saltos y limitamos longitud para que un nombre
+    // de perfil malicioso no pueda cerrar el string y colar instrucciones (prompt
+    // injection) en el canal SYSTEM.
+    const nom = (nombre ?? "").replace(/[\n\r"'`]/g, " ").trim().slice(0, 40);
     const sysNombre = nom
       ? `${conPromo(SYSTEM, promo)}\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". Fíjate en el nombre (y en cómo se expresa) para saber si es CHICO o CHICA y tratarle bien: si es nombre claramente de chica trátala en femenino, si es de chico en masculino. Si el nombre no deja claro el género, ve en NEUTRO (nunca en masculino por defecto). Puedes usar su nombre para dirigirte a ella/él.`
       : conPromo(SYSTEM, promo);
