@@ -418,7 +418,7 @@ export async function POST(request: Request) {
         .eq("chat_id", chatId)
         .gt("created_at", desde)
         .order("created_at", { ascending: false })
-        .limit(24);
+        .limit(40);
       const historial: Turno[] = ((prev ?? []) as { role: string; content: string }[])
         .reverse()
         .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
