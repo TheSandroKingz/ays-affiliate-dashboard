@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 const geistSans = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -55,7 +56,7 @@ export default function RootLayout({
           </>
         )}
       </head>
-      <body className="min-h-full flex flex-col">{children}<SpeedInsights /></body>
+      <body className="min-h-full flex flex-col"><AnimatedBackground />{children}<SpeedInsights /></body>
     </html>
   );
 }

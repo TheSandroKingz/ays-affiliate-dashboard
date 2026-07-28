@@ -75,22 +75,22 @@ label,
   border-radius: 9999px;
   /* SIN filter:blur (el degradado ya es suave). El blur pesado + fondo fijo
      provocaba "marcos grises" al hacer scroll en el móvil (iOS). */
-  opacity: 0.6;
+  opacity: 0.9;
   transform: translateZ(0);
 }
 .ab-blob-1 {
-  width: 60vmax; height: 60vmax; left: -12vmax; top: -18vmax;
-  background: radial-gradient(circle, rgba(16,185,129,0.6) 0%, transparent 70%);
+  width: 65vmax; height: 65vmax; left: -8vmax; top: -12vmax;
+  background: radial-gradient(circle, rgba(16,185,129,0.85) 0%, transparent 68%);
   animation: ab-move-1 20s ease-in-out infinite;
 }
 .ab-blob-2 {
-  width: 48vmax; height: 48vmax; right: -12vmax; top: 8vmax;
-  background: radial-gradient(circle, rgba(5,150,105,0.55) 0%, transparent 70%);
+  width: 52vmax; height: 52vmax; right: -8vmax; top: 6vmax;
+  background: radial-gradient(circle, rgba(20,184,166,0.8) 0%, transparent 68%);
   animation: ab-move-2 24s ease-in-out infinite;
 }
 .ab-blob-3 {
-  width: 44vmax; height: 44vmax; left: 18vmax; bottom: -18vmax;
-  background: radial-gradient(circle, rgba(52,211,153,0.5) 0%, transparent 70%);
+  width: 48vmax; height: 48vmax; left: 15vmax; bottom: -12vmax;
+  background: radial-gradient(circle, rgba(52,211,153,0.75) 0%, transparent 68%);
   animation: ab-move-3 28s ease-in-out infinite;
 }
 @keyframes ab-move-1 {

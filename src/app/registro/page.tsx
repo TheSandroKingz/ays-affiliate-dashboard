@@ -7,7 +7,6 @@ import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { traducirError, validarPassword } from '@/lib/authErrors'
 import { contieneEmoji } from '@/lib/texto'
-import AnimatedBackground from '@/components/AnimatedBackground'
 
 export default function RegistroPage() {
   const router = useRouter()
@@ -121,7 +120,6 @@ export default function RegistroPage() {
 
   return (
     <main className="relative min-h-screen flex items-start md:items-center justify-center px-4 pt-16 md:pt-0">
-      <AnimatedBackground />
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex justify-center">
           <Image src="/logo.png" alt="A&S Afiliados" width={170} height={177} className="max-w-full h-auto" priority />

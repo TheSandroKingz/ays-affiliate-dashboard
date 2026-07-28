@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { traducirError } from '@/lib/authErrors'
-import AnimatedBackground from '@/components/AnimatedBackground'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -51,7 +50,6 @@ export default function LoginPage() {
   }
   return (
     <main className="relative min-h-screen flex items-start md:items-center justify-center px-4 pt-16 md:pt-0">
-      <AnimatedBackground />
       <div className="w-full max-w-md">
         <div className="animate-in text-center mb-12 flex justify-center">
           <Image src="/logo-login.png" alt="A&S Afiliados" width={340} height={243} className="max-w-full h-auto animate-flotar" priority />
