@@ -68,6 +68,24 @@ label,
   animation: flotar 5s ease-in-out infinite;
 }
 
+/* Aparecer al hacer scroll (reveal): los bloques entran suavemente cuando
+   asoman en pantalla. La clase .reveal-visible la pone RevealObserver (JS). */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
 /* Toast de celebración (¡nuevo FTD!). */
 @keyframes celebra-pop {
   0%   { opacity: 0; transform: translateY(20px) scale(0.8); }
