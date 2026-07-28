@@ -22,7 +22,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-col flex-1 min-w-0">
-        <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden sticky top-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>
+        <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden sticky top-0 z-30 bg-gradient-to-b from-[#05080b] via-[#05080b]/80 to-transparent backdrop-blur-sm items-center px-4 py-3 pb-5 -mb-2`}>
           <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" className="text-white p-2 -ml-2">
             <Menu size={24} />
           </button>

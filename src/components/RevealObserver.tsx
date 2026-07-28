@@ -48,10 +48,20 @@ export default function RevealObserver() {
     })
     mo.observe(document.body, { childList: true, subtree: true })
 
+    // RED DE SEGURIDAD: si por lo que sea algún bloque no se "revela" (no llegó a
+    // asomar, un fallo del observer, etc.), a los 2,5s mostramos TODO igualmente.
+    // Nunca dejamos contenido invisible.
+    const safety = setTimeout(() => {
+      document
+        .querySelectorAll('.reveal:not(.reveal-visible)')
+        .forEach((el) => el.classList.add('reveal-visible'))
+    }, 2500)
+
     return () => {
       io.disconnect()
       mo.disconnect()
       clearTimeout(t)
+      clearTimeout(safety)
     }
   }, [])
 
