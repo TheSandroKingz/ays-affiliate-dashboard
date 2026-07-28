@@ -83,6 +83,23 @@ create table if not exists public.telegram_ai_daily (
 );
 alter table public.telegram_ai_daily enable row level security;
 
+-- Incremento ATÓMICO del contador diario de IA. El webhook lo llama para
+-- "reservar" un hueco: suma 1 y devuelve el nuevo total en una sola operación,
+-- de modo que ráfagas concurrentes no pierdan incrementos (el read-modify-write
+-- anterior sí los perdía y el tope no frenaba). SECURITY DEFINER: la ejecuta el
+-- service role igualmente, pero lo dejamos explícito.
+create or replace function public.increment_ai_daily(p_day date)
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.telegram_ai_daily (day, count)
+  values (p_day, 1)
+  on conflict (day) do update set count = telegram_ai_daily.count + 1
+  returning count;
+$$;
+
 -- Config del bot: la "promo activa" que el bot menciona (bonos/recargas reales).
 create table if not exists public.telegram_config (
   id         smallint    primary key default 1,

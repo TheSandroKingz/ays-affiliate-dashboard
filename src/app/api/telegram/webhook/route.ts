@@ -443,13 +443,18 @@ export async function POST(request: Request) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
         }).format(new Date());
-        const { data: usoDia } = await supabaseAdmin
-          .from("telegram_ai_daily")
-          .select("count")
-          .eq("day", hoy)
-          .maybeSingle();
-        const usoActual = usoDia?.count ?? 0;
-        if (usoActual < TOPE_DIA) {
+        // Reservamos un hueco del tope diario de forma ATÓMICA (INSERT ... ON
+        // CONFLICT ... count+1 RETURNING). Así, aunque lleguen muchos mensajes a
+        // la vez, el contador no pierde incrementos y el tope SÍ frena el gasto.
+        const { data: usoActual } = await supabaseAdmin.rpc(
+          "increment_ai_daily",
+          { p_day: hoy }
+        );
+        // Si la función aún no existe (SQL sin aplicar), usoActual = null → no
+        // bloqueamos (el bot sigue), pero el tope no protegerá hasta aplicar SQL.
+        const dentroTope =
+          typeof usoActual !== "number" || usoActual <= TOPE_DIA;
+        if (dentroTope) {
           // Si mandó una foto, la descargamos y se la pasamos a la IA con visión
           // (la mira de verdad: saldo de bono en rojo, Mines, error, etc.).
           const fotos = msg.photo as Array<{ file_id: string }> | undefined;
@@ -463,11 +468,6 @@ export async function POST(request: Request) {
             imagen,
             from.first_name ?? null
           );
-          if (respuesta) {
-            await supabaseAdmin
-              .from("telegram_ai_daily")
-              .upsert({ day: hoy, count: usoActual + 1 });
-          }
         }
       }
 

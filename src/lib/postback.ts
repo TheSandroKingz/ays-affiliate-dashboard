@@ -137,12 +137,12 @@ export async function depositoPrevio(playerId: string): Promise<boolean> {
 // null si no hay nada contado. BLINDADO.
 export async function buscarQftdContado(
   playerId: string
-): Promise<{ userId: string; commission: number; date: string } | null> {
+): Promise<{ id: number; userId: string; commission: number; date: string } | null> {
   if (!playerId) return null;
   try {
     const { data } = await supabaseAdmin
       .from("postback_events")
-      .select("matched_user_id, commission, created_at")
+      .select("id, matched_user_id, commission, created_at")
       .in("event_type", ["ftd", "commission"])
       .eq("counted", true)
       .eq("player_id", playerId)
@@ -154,6 +154,7 @@ export async function buscarQftdContado(
       timeZone: "Europe/Madrid",
     }).format(new Date(data.created_at as string));
     return {
+      id: data.id as number,
       userId: data.matched_user_id as string,
       commission: Number(data.commission ?? 0),
       date,

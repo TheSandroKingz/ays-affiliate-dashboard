@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   getPlayerId,
   reclamarEvento,
+  liberarEvento,
   registrarEvento,
   ftdYaContado,
   depositoPrevio,
@@ -69,6 +70,18 @@ export async function GET(request: Request) {
           estadoRev = "error";
         } else {
           estadoRev = "reversed";
+          // SEGUNDO GUARDIA (independiente del candado): marcamos el evento
+          // contado de ORIGEN como no-contado, para que un reintento de la
+          // reversión NO lo vuelva a encontrar y reste el CPA otra vez (evita el
+          // doble descuento si el candado fallara). Además liberamos el candado
+          // del QFTD por si el jugador RECUALIFICA de verdad más adelante (así el
+          // nuevo QFTD legítimo vuelve a contar en vez de caer como duplicado).
+          await supabaseAdmin
+            .from("postback_events")
+            .update({ counted: false })
+            .eq("id", contado.id)
+            .then(() => {}, () => {});
+          await liberarEvento(`qftd:${playerid}`);
         }
       } else {
         estadoRev = "no_match"; // no había nada contado que revertir
