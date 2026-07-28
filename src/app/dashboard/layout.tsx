@@ -10,10 +10,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    // Fondo sólido oscuro SOLO en el dashboard: tapa el fondo animado (que se
-    // queda para login/registro) para que detrás de los datos quede limpio y no
-    // se vean las líneas cruzando las tarjetas al bajar.
-    <div className="flex min-h-screen bg-[#080b0f]">
+    <div className="flex min-h-screen bg-black">
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-40 md:hidden"
