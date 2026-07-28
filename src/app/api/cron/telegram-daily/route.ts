@@ -120,7 +120,7 @@ export async function GET(request: Request) {
       .select("chat_id, message_id, created_at")
       .lt("created_at", cutoff)
       .order("created_at", { ascending: true })
-      .limit(2000);
+      .limit(500); // tope bajo: la limpieza NO debe comerse el tiempo del envío
     if (viejos?.length) {
       for (let i = 0; i < viejos.length; i += 25) {
         const tanda = viejos.slice(i, i + 25);
@@ -129,7 +129,9 @@ export async function GET(request: Request) {
             tgApi("deleteMessage", { chat_id: m.chat_id, message_id: m.message_id })
           )
         );
-        if (i + 25 < viejos.length) await new Promise((r) => setTimeout(r, 1000));
+        // Pausa corta entre tandas (antes 1s × 80 tandas ≈ 80s > límite de 60s,
+        // y el diario no se enviaba). Ahora máx ~6s de limpieza.
+        if (i + 25 < viejos.length) await new Promise((r) => setTimeout(r, 250));
       }
       const ultimo = viejos[viejos.length - 1].created_at as string;
       await supabaseAdmin

@@ -367,8 +367,12 @@ export async function POST(request: Request) {
       let videoEnviado = false;
       // Detecta que piden el patrón/método O que piden VER el vídeo o están
       // esperándolo (para no dejarlos colgados esperando: se lo mandamos).
+      // Detecta que piden EL PATRÓN o piden VER el vídeo de forma clara. Ojo:
+      // exigimos que "vídeo" vaya junto a una palabra de petición para NO
+      // dispararse con quejas ("problema con el sistema de pago", "no me llega el
+      // vídeo") ni silenciar a la IA cuando la persona necesita ayuda.
       const pidePatron =
-        /patr[oó]n|cuadrad|cuadro|m[eé]todo|truco|sistema|c[oó]mo (le das|lo hac|juega)|v[ií]deos?|ens[eé][ñn]a|mu[eé]stra|ver el|quiero ver|esperando el/i.test(
+        /patr[oó]n|cuadrad|cuadro|\btruco|c[oó]mo (le das|lo hac|juega)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
           textoJ
         );
       if (pidePatron && !limitado) {
