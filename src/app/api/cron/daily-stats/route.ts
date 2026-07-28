@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { compararSecreto } from "@/lib/secreto";
 import { saludFreshbet } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
@@ -7,10 +8,7 @@ import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminSta
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
-  if (
-    !process.env.CRON_SECRET ||
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  if (!compararSecreto(authHeader?.replace("Bearer ", ""), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 

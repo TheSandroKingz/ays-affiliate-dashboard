@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
+import { compararSecreto } from "@/lib/secreto";
 import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 
@@ -96,8 +97,10 @@ async function reactivarDormidos(): Promise<number[]> {
 export async function GET(request: Request) {
   // Lo llama Vercel (cron, con CRON_SECRET) o el dueño desde el panel (admin).
   const authHeader = request.headers.get("authorization");
-  const esCron =
-    !!process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const esCron = compararSecreto(
+    authHeader?.replace("Bearer ", ""),
+    process.env.CRON_SECRET
+  );
   const admin = esCron ? true : !!(await getAdminUser(request));
   if (!esCron && !admin) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });

@@ -307,7 +307,11 @@ export async function POST(request: Request) {
     const refDueno =
       msg.reply_to_message?.text || msg.reply_to_message?.caption;
     if (esDueno && refDueno) {
-      const m = refDueno.match(/\[uid:(\d+)\]/);
+      // SEGURIDAD: cogemos el ÚLTIMO [uid:N] (el que añade el servidor va SIEMPRE
+      // al final). Así, si un jugador mete un "[uid:otro]" en su texto para
+      // desviar tu respuesta a otra persona, no cuela.
+      const marcadores = [...refDueno.matchAll(/\[uid:(\d+)\]/g)];
+      const m = marcadores[marcadores.length - 1];
       if (m) {
         const destino = Number(m[1]);
         const r = await tgApi("copyMessage", {
@@ -375,7 +379,14 @@ export async function POST(request: Request) {
         /patr[oó]n|cuadrad|cuadro|\btruco|c[oó]mo (le das|lo hac|juega)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
           textoJ
         );
-      if (pidePatron && !limitado) {
+      // Si es una QUEJA/problema (aunque mencione "cuadro" o "patrón"), NO
+      // mandamos el vídeo ni callamos a la IA: la persona necesita AYUDA. Así
+      // "problema con el cuadro de pagos" o "no me sale el patrón" van a la IA.
+      const esQueja =
+        /problema|no me (sal|va|funciona|lleg|deja|carga)|no funciona|error|fall|reclamaci|estafa|no puedo|pago|cobr|retir/i.test(
+          textoJ
+        );
+      if (pidePatron && !esQueja && !limitado) {
         // El vídeo del patrón: primero el /diario; si no hay, el de bienvenida.
         let dv:
           | { media_type: string | null; file_id: string | null; enabled: boolean | null }

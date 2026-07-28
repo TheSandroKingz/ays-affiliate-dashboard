@@ -71,10 +71,9 @@ export async function POST(request: NextRequest) {
     const dentroVentana =
       Date.now() - new Date(intento.primer).getTime() < VENTANA_MS;
     if (dentroVentana && (intento.fallos ?? 0) >= LIMITE) {
-      return NextResponse.json(
-        { error: "Cuenta bloqueada temporalmente por seguridad. Espera unos minutos." },
-        { status: 429 }
-      );
+      // Mismo mensaje/estado genérico que una contraseña incorrecta: así el
+      // bloqueo no revela que esa cuenta existe (evita enumeración de usuarios).
+      return generico();
     }
   }
 

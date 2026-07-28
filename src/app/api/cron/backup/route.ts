@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { compararSecreto } from "@/lib/secreto";
 
 // Copia de seguridad automática (cron diario): guarda una "foto" de las tablas
 // de datos en `data_snapshots`. Permite restaurar si un día se corrompe o se
@@ -7,10 +8,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // (No sustituye a una copia EXTERNA; ver scripts/backup.mjs para eso.)
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
-  if (
-    !process.env.CRON_SECRET ||
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  if (!compararSecreto(authHeader?.replace("Bearer ", ""), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
