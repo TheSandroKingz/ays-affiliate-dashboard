@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     if (cid && cb.data === "ayuda") {
       await tgEnviar(
         cid,
-        "¡Klk! 👋 Escríbeme aquí mismo tu duda y te ayudo al momento, manito. 🔥"
+        "¡Klk! 👋 Escríbeme aquí mismo tu duda y te ayudo al momento. 🔥"
       );
     }
     return NextResponse.json({ ok: true });
