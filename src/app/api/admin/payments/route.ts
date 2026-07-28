@@ -21,6 +21,48 @@ export async function POST(request: Request) {
     );
   }
 
+  // Tope de seguridad ante un typo (8500 en vez de 85): un pago enorme inflaría
+  // el "pagado" y ocultaría el pendiente real. Ajustable si algún día hace falta.
+  if (amt > 50000) {
+    return NextResponse.json(
+      { error: "Importe demasiado alto. Revísalo." },
+      { status: 400 }
+    );
+  }
+
+  // El destinatario debe ser un afiliado real (evita grabar un pago contra un
+  // user_id equivocado que descuadre su historial).
+  const { data: af } = await supabaseAdmin
+    .from("affiliates")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!af) {
+    return NextResponse.json(
+      { error: "Ese afiliado no existe." },
+      { status: 400 }
+    );
+  }
+
+  const hoy = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+
+  // Anti-duplicado: si ya hay un pago IDÉNTICO (mismo afiliado, importe y día) en
+  // el último minuto, es un doble envío (doble clic / reintento) → no lo grabamos
+  // dos veces (inflaría "pagado" y le pagarías de menos).
+  const hace1min = new Date(Date.now() - 60_000).toISOString();
+  const { data: dup } = await supabaseAdmin
+    .from("payments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("amount", amt)
+    .gte("created_at", hace1min)
+    .limit(1);
+  if (dup && dup.length) {
+    return NextResponse.json({ ok: true, duplicado: true });
+  }
+
   const { error } = await supabaseAdmin.from("payments").insert({
     user_id: userId,
     amount: amt,
@@ -29,9 +71,7 @@ export async function POST(request: Request) {
     // mensual de saldos. Con la hora UTC un pago de madrugada del día 1 caía en
     // el mes anterior y dejaba el pendiente inflado. La hora exacta queda en
     // created_at.
-    date: new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Madrid",
-    }).format(new Date()),
+    date: hoy,
   });
 
   if (error) {
