@@ -13,6 +13,9 @@ import { responderIA, iaConfigurada } from "@/lib/telegramAI";
 
 type Turno = { role: "user" | "assistant"; content: string };
 
+// Margen de tiempo (el dueño puede lanzar un envío a todos con /todos).
+export const maxDuration = 60;
+
 // Webhook del bot de Telegram: Telegram nos manda aquí cada mensaje.
 //  - /start      → guardamos al jugador y le damos la bienvenida (el gancho).
 //  - /stop       → se da de baja (no recibe más mensajes en masa).
@@ -228,6 +231,72 @@ export async function POST(request: Request) {
       } else {
         await tgEnviar(chatId, "Mándame /bienvenida junto con el vídeo o foto (escribe /bienvenida en el pie de la imagen).");
       }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── El DUEÑO envía algo a TODOS ya: "/todos" con un vídeo/foto en el pie ─
+    // (desde la galería, sin URL). También "/todos <texto>" para solo texto.
+    const cmdTodos = (text || (msg.caption ?? "")).trim();
+    if (esDueno && cmdTodos.toLowerCase().startsWith("/todos")) {
+      const resto = cmdTodos.replace(/^\/todos\s*/i, "").trim();
+      const phT = msg.photo as Array<{ file_id: string }> | undefined;
+      const med: { t: string; id: string } | null = msg.video
+        ? { t: "video", id: msg.video.file_id }
+        : msg.animation
+        ? { t: "animation", id: msg.animation.file_id }
+        : phT?.length
+        ? { t: "photo", id: phT[phT.length - 1].file_id }
+        : msg.document
+        ? { t: "document", id: msg.document.file_id }
+        : null;
+      if (!med && !resto) {
+        await tgEnviar(
+          chatId,
+          "Mándame /todos con un vídeo o foto en el pie (desde la galería), o /todos seguido de un texto, y lo envío a todos."
+        );
+        return NextResponse.json({ ok: true });
+      }
+      const { data: cs } = await supabaseAdmin
+        .from("telegram_contacts")
+        .select("chat_id")
+        .eq("opted_out", false)
+        .eq("silenced", false);
+      const ids = (cs ?? []).map((c) => c.chat_id as number);
+      const boton = botonJugar();
+      let env = 0;
+      const bloq: number[] = [];
+      for (let i = 0; i < ids.length; i += 25) {
+        const tanda = ids.slice(i, i + 25);
+        await Promise.all(
+          tanda.map(async (cid) => {
+            const p: Record<string, unknown> = med
+              ? { chat_id: cid, caption: resto || undefined, reply_markup: boton }
+              : { chat_id: cid, text: resto, reply_markup: boton, disable_web_page_preview: true };
+            if (med?.t === "video") p.video = med.id;
+            else if (med?.t === "animation") p.animation = med.id;
+            else if (med?.t === "photo") p.photo = med.id;
+            else if (med?.t === "document") p.document = med.id;
+            const metodo = med
+              ? med.t === "video" ? "sendVideo" : med.t === "animation" ? "sendAnimation" : med.t === "photo" ? "sendPhoto" : "sendDocument"
+              : "sendMessage";
+            const r = await tgApi(metodo, p);
+            if (r?.ok) {
+              env++;
+              await guardarMsg(cid, midDe(r));
+            } else if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
+              bloq.push(cid);
+            }
+          })
+        );
+        if (i + 25 < ids.length) await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (bloq.length) {
+        await supabaseAdmin
+          .from("telegram_contacts")
+          .update({ opted_out: true })
+          .in("chat_id", bloq);
+      }
+      await tgEnviar(chatId, `✅ Enviado a ${env} de ${ids.length}.`);
       return NextResponse.json({ ok: true });
     }
 

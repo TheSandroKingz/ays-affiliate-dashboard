@@ -596,6 +596,11 @@ export default function TelegramPage() {
             placeholder="https://…/imagen.jpg"
             className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400/60"
           />
+          <p className="text-[11px] text-slate-500 mt-1">
+            ¿Vídeo o foto desde tu <b>galería</b>? No uses esta URL — mándaselo al
+            bot: <b>/todos</b> con el vídeo (en el pie) para enviarlo a todos
+            ahora, o <b>/diario</b> para el envío diario.
+          </p>
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
           <input
