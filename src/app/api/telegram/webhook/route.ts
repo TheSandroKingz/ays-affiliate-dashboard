@@ -321,10 +321,13 @@ export async function POST(request: Request) {
         });
         // Guardamos tu respuesta en la memoria del jugador (como "assistant"),
         // para que el bot NO te contradiga luego y siga el hilo de lo que dijiste.
-        if (r?.ok && text) {
+        // Si respondes con foto/vídeo (sin texto), guardamos su pie o un aviso.
+        if (r?.ok) {
+          const contenidoDueno =
+            text || msg.caption || "(el dueño le envió una imagen/vídeo)";
           await supabaseAdmin
             .from("telegram_messages")
-            .insert({ chat_id: destino, role: "assistant", content: text })
+            .insert({ chat_id: destino, role: "assistant", content: contenidoDueno })
             .then(() => {}, () => {});
         }
         await tgEnviar(
@@ -580,7 +583,9 @@ export async function POST(request: Request) {
       }
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
-      if (OWNER_CHAT_ID) {
+      // Si el jugador está LIMITADO (spam, >8/min), no te reenviamos cada mensaje
+      // a Telegram: así nadie puede inundarte escribiendo muy rápido.
+      if (OWNER_CHAT_ID && !limitado) {
         const quien = esc(
           (from.first_name ?? "Jugador") +
             (from.username ? ` (@${from.username})` : "")
