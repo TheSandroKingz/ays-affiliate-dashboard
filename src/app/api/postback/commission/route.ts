@@ -49,11 +49,15 @@ export async function GET(request: Request) {
   // afiliado para quedar espejo con FreshBet. Candado para no revertir dos veces.
   if (Number.isFinite(importe) && importe < 0 && playerid) {
     let estadoRev: EstadoEvento = "no_match";
-    const revKey = `qftdrev:${playerid}`;
-    const nuevo = await reclamarEvento(revKey);
-    if (nuevo) {
-      const contado = await buscarQftdContado(playerid);
-      if (contado) {
+    // Buscamos PRIMERO el QFTD contado a revertir, y el candado va por EVENTO
+    // (qftdrev:<id>), no por jugador-de-por-vida. Así, si el jugador recualifica
+    // (nuevo evento contado) y FreshBet lo revierte otra vez, esa 2ª reversión
+    // legítima también se aplica en vez de perderse como "duplicado".
+    const contado = await buscarQftdContado(playerid);
+    if (contado) {
+      const revKey = `qftdrev:${contado.id}`;
+      const nuevo = await reclamarEvento(revKey);
+      if (nuevo) {
         const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
           p_user_id: contado.userId,
           p_date: contado.date,
@@ -84,10 +88,10 @@ export async function GET(request: Request) {
           await liberarEvento(`qftd:${playerid}`);
         }
       } else {
-        estadoRev = "no_match"; // no había nada contado que revertir
+        estadoRev = "duplicate"; // ese evento ya se revirtió
       }
     } else {
-      estadoRev = "duplicate"; // reversión ya aplicada
+      estadoRev = "no_match"; // no había nada contado que revertir
     }
 
     await registrarEvento({
@@ -129,7 +133,7 @@ export async function GET(request: Request) {
     const { data } = await supabaseAdmin
       .from("affiliates")
       .select("user_id, cpa_spain, cpa_other")
-      .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
+      .ilike("freshaffs_tracking_code", trackingcode.replace(/[\\%_*]/g, "\\$&"))
       .limit(1);
     target = data?.[0] ?? null;
   }

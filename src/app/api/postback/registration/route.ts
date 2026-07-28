@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     const { data } = await supabaseAdmin
       .from("affiliates")
       .select("user_id")
-      .ilike("freshaffs_tracking_code", trackingcode.replace(/[%_]/g, "\\$&"))
+      .ilike("freshaffs_tracking_code", trackingcode.replace(/[\\%_*]/g, "\\$&"))
       .limit(1);
     targetUserId = data?.[0]?.user_id ?? null;
   }

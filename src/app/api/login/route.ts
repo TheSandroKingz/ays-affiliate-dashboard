@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const { data: affs } = await supabaseAdmin
       .from("affiliates")
       .select("user_id")
-      .ilike("display_name", id.replace(/[%_]/g, "\\$&"))
+      .ilike("display_name", id.replace(/[\\%_*]/g, "\\$&"))
       .limit(1);
     const affUserId = affs?.[0]?.user_id;
     if (affUserId) {

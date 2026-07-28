@@ -24,7 +24,7 @@ async function getAffiliate(code: string): Promise<CacheEntry> {
   const { data } = await supabaseAdmin
     .from("affiliates")
     .select("user_id, promo_link")
-    .ilike("freshaffs_tracking_code", code.replace(/[%_]/g, "\\$&"))
+    .ilike("freshaffs_tracking_code", code.replace(/[\\%_*]/g, "\\$&"))
     .limit(1);
   const aff = data?.[0];
   const value: CacheEntry =
