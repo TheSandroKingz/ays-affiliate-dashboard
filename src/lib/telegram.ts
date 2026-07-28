@@ -72,6 +72,40 @@ export async function tgApi(
   }
 }
 
+// Descarga un archivo de Telegram (foto/documento) por su file_id y lo devuelve
+// en base64 para pasárselo a la IA con visión. null si falla o es muy grande.
+// BLINDADO: cualquier fallo devuelve null y el flujo sigue con solo texto.
+export async function descargarFoto(
+  fileId: string
+): Promise<{ base64: string; mediaType: string } | null> {
+  if (!TOKEN || !fileId) return null;
+  try {
+    const info = await tgApi("getFile", { file_id: fileId });
+    const filePath = (info?.result as { file_path?: string } | undefined)
+      ?.file_path;
+    if (!filePath) return null;
+    const res = await fetch(
+      `https://api.telegram.org/file/bot${TOKEN}/${filePath}`
+    );
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    // Tope de seguridad (~4MB) para no petar memoria ni la API de la IA.
+    if (buf.length > 4_000_000) return null;
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    const mediaType =
+      ext === "png"
+        ? "image/png"
+        : ext === "webp"
+        ? "image/webp"
+        : ext === "gif"
+        ? "image/gif"
+        : "image/jpeg";
+    return { base64: buf.toString("base64"), mediaType };
+  } catch {
+    return null;
+  }
+}
+
 // Envía un mensaje de texto a un chat. `reply_markup` opcional (botones).
 export async function tgEnviar(
   chatId: number | string,

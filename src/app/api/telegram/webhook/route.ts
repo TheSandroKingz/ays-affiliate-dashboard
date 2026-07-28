@@ -8,6 +8,7 @@ import {
   botonSoloJugar,
   guardarMsg,
   midDe,
+  descargarFoto,
 } from "@/lib/telegram";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
 
@@ -414,7 +415,14 @@ export async function POST(request: Request) {
           .maybeSingle();
         const usoActual = usoDia?.count ?? 0;
         if (usoActual < TOPE_DIA) {
-          respuesta = await responderIA(historial, entrada);
+          // Si mandó una foto, la descargamos y se la pasamos a la IA con visión
+          // (la mira de verdad: saldo de bono en rojo, Mines, error, etc.).
+          const fotos = msg.photo as Array<{ file_id: string }> | undefined;
+          const imagen =
+            fotos && fotos.length
+              ? await descargarFoto(fotos[fotos.length - 1].file_id)
+              : null;
+          respuesta = await responderIA(historial, entrada, imagen);
           if (respuesta) {
             await supabaseAdmin
               .from("telegram_ai_daily")

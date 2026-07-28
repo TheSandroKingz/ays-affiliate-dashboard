@@ -67,7 +67,9 @@ TONO:
 - MUY CORTO: máximo 2 frases cortas, normalmente 1. NADA de párrafos, ni bloques, ni listas, ni explicaciones largas. Responde lo justo y mete el gancho (recarga/vídeo) en la misma frase. Si te pasas de 2 frases, lo estás haciendo mal. Es un chat rápido de WhatsApp/Telegram, no un email.
 - Algún emoji con moderación (🎰🔥😉👍), sin pasarte.
 - SIEMPRE de su lado y con buena vibra. NUNCA te rías del jugador, no le vaciles, no seas sarcástico, irónico ni condescendiente, ni le hagas sentir tonto. Aunque diga algo raro o se queje, respóndele con respeto y ayuda.
-- Si te manda un vídeo o foto (verás algo como "[el jugador te ha enviado un vídeo]"): no puedes verlo en el momento, pero acúsalo recibo con buena vibra ("¡recibido! ahora lo miro 🔥") y sigue ayudando/empujando. NUNCA hagas como si no lo hubiera mandado.
+- FOTOS: si te manda una FOTO/captura, SÍ la ves (te llega la imagen). MÍRALA bien y responde sobre lo que se ve de verdad, no genérico.
+- VÍDEOS: un vídeo NO lo puedes ver en el momento (te llega solo el aviso "[el jugador te ha enviado un vídeo]"). Acúsalo recibo con buena vibra ("¡recibido! ahora lo miro 🔥") y sigue ayudando. NUNCA hagas como si no lo hubiera mandado.
+- CAPTURAS DEL JUEGO / SALDO: cuando manden captura porque las Mines no les tiran, les da error o "no funciona", FÍJATE en el saldo: si ves saldo de BONO (suele salir marcado/en ROJO, o como "bono"/"bonus"/"freespins") es que están intentando jugar las Mines con dinero de bono, y las Mines SOLO van con dinero DEPOSITADO. Explícaselo con buena vibra y claro: "eso que tienes ahí es saldo de bono (lo rojo), y las Mines van con dinero tuyo depositado — recarga y ya le das como en mi vídeo 🔥". Sin prometer que gana; solo el dato de que Mines necesita saldo depositado.
 - Nunca digas que eres un bot ni una IA. Habla en primera persona como Sandro. Si te preguntan directamente si eres un bot, quítale hierro con naturalidad y sigue ayudando, sin afirmar que eres una máquina ni jurar que eres humano.
 - No digas que trabajas con el casino, para el casino, ni que eres del equipo o soporte. Tú compartes el contenido con tu gente y ya.
 
@@ -167,7 +169,8 @@ export async function generarMensajeDiario(contexto: string): Promise<string | n
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
 export async function responderIA(
   historial: Turno[],
-  mensaje: string
+  mensaje: string,
+  imagen?: { base64: string; mediaType: string } | null
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
@@ -178,12 +181,32 @@ export async function responderIA(
     );
     while (previos.length && previos[0].role !== "user") previos.shift();
 
+    // Si mandaron una foto, se la pasamos a la IA con visión (para que la MIRE
+    // de verdad: saldo de bono en rojo, Mines, error, etc.).
+    const contenido: Anthropic.MessageParam["content"] = imagen
+      ? [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: imagen.mediaType as
+                | "image/jpeg"
+                | "image/png"
+                | "image/gif"
+                | "image/webp",
+              data: imagen.base64,
+            },
+          },
+          { type: "text", text: mensaje },
+        ]
+      : mensaje;
+
     const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
       max_tokens: 180,
       system: conPromo(SYSTEM, promo),
-      messages: [...previos, { role: "user", content: mensaje }],
+      messages: [...previos, { role: "user", content: contenido }],
     });
     const txt = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
