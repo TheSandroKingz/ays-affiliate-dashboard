@@ -427,7 +427,12 @@ export async function POST(request: Request) {
             fotos && fotos.length
               ? await descargarFoto(fotos[fotos.length - 1].file_id)
               : null;
-          respuesta = await responderIA(historial, entrada, imagen);
+          respuesta = await responderIA(
+            historial,
+            entrada,
+            imagen,
+            from.first_name ?? null
+          );
           if (respuesta) {
             await supabaseAdmin
               .from("telegram_ai_daily")
