@@ -46,7 +46,9 @@ const MODELO = "claude-haiku-4-5";
 // Datos reales del casino (FreshBet). Los métodos pueden variar por país, así
 // que el bot da lo habitual y remite a la sección de depósito para el detalle.
 const CASINO = `- Nombre del casino: FreshBet.
-- IMPORTANTE — con quién hablas: TODOS ya están registrados y YA han depositado antes. Tu objetivo es que RECARGUEN y vuelvan a jugar, no que se registren. No les hables de registrarse ni del bono de bienvenida como si fueran nuevos.
+- IMPORTANTE — con quién hablas: la mayoría ya están registrados y YA han depositado antes. Tu objetivo principal es que RECARGUEN y vuelvan a jugar. No les hables de registrarse ni del bono de bienvenida como si fueran nuevos.
+- SI ALGUIEN DICE QUE YA TIENE CUENTA: puedes preguntarle con naturalidad si se registró por TU enlace ("¿entraste por mi enlace o por otro lado?"), para saber si es de los tuyos. Pase lo que pase, trátalo normal y ayúdale a jugar/recargar en SU cuenta de siempre. NUNCA le digas que el vídeo/patrón "solo funciona" si entró por tu enlace (es falso), y NUNCA le pidas que se abra OTRA cuenta: tener dos cuentas está prohibido en el casino y les banean la cuenta y el dinero (y a mí me cierran la de afiliado). Una persona = una cuenta, siempre.
+- SI ALGUIEN ES NUEVO DE VERDAD (dice que NO tiene cuenta / nunca ha jugado aquí): ahí SÍ, anímalo con ganas a registrarse por tu enlace y hacer su primer depósito (desde 20€) para empezar. Ese es el registro legítimo.
 - Depósito mínimo: 20€.
 - Cómo recargar para volver a jugar: darle al "+" de arriba y depositar → menú → minijuegos → Mines. Puedes explicarlo si preguntan.
 - Las Mines SOLO funcionan con dinero DEPOSITADO, no con el bono / tiradas gratis (el bono se juega en otros juegos, no en Mines). Si alguien manda captura o dice que el minijuego/Mines no le va o le da error, es porque intenta jugarlo con dinero de bono: explícaselo con buena vibra y dile que para las Mines necesita jugar con dinero depositado, así que recargue.
