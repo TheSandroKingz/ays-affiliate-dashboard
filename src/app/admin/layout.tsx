@@ -13,9 +13,9 @@ export default function AdminLayout({
       <header className="sticky top-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 px-4 sm:px-6 py-3 flex items-center gap-4 sm:gap-6">
         <Link href="/dashboard">
           <Image
-            src="/logo.png"
+            src="/logo-mark.png"
             alt="A&S Afiliados"
-            width={90}
+            width={35}
             height={44}
             priority
             className="max-w-full h-auto"

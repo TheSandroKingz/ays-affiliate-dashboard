@@ -68,7 +68,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       }`}
     >
         <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
-          <Image src="/logo.png" alt="A&S Afiliados" width={150} height={74} />
+          <Image src="/logo-mark.png" alt="A&S Afiliados" width={45} height={56} />
         </Link>
 
       <nav className="flex flex-col gap-1">

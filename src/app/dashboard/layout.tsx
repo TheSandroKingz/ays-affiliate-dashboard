@@ -26,7 +26,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <Menu size={24} />
           </button>
           <span className="flex-1 flex justify-center pr-6">
-            <Image src="/logo.png" alt="A&S Afiliados" width={120} height={59} priority />
+            <Image src="/logo-mark.png" alt="A&S Afiliados" width={35} height={44} priority />
           </span>
         </div>
 
