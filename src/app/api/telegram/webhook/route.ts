@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true }); // 200 silencioso, no procesamos
   }
 
+  try {
   const update = await request.json().catch(() => null);
 
   // ── Anti-duplicados: si Telegram reintenta el mismo update, lo ignoramos ──
@@ -82,7 +83,6 @@ export async function POST(request: Request) {
   const from = msg.from ?? {};
   const esDueno = OWNER_CHAT_ID && String(chatId) === String(OWNER_CHAT_ID);
 
-  try {
     // ── /start : alta del jugador + bienvenida ──────────────────────────────
     if (text === "/start" || text.startsWith("/start ")) {
       if (!esDueno) {
