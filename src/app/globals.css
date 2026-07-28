@@ -23,7 +23,10 @@ html {
 }
 
 body {
-  background: var(--background);
+  /* Transparente a propósito: el fondo animado (AnimatedBackground, fixed) va
+     detrás y el body no debe taparlo. La base oscura la pone el html y el propio
+     fondo animado. */
+  background: transparent;
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
@@ -75,23 +78,23 @@ label,
   border-radius: 9999px;
   /* SIN filter:blur (el degradado ya es suave). El blur pesado + fondo fijo
      provocaba "marcos grises" al hacer scroll en el móvil (iOS). */
-  opacity: 0.9;
+  opacity: 0.85;
   transform: translateZ(0);
 }
 .ab-blob-1 {
-  width: 65vmax; height: 65vmax; left: -8vmax; top: -12vmax;
-  background: radial-gradient(circle, rgba(16,185,129,0.85) 0%, transparent 68%);
-  animation: ab-move-1 20s ease-in-out infinite;
+  width: 62vmax; height: 62vmax; left: -10vmax; top: -14vmax;
+  background: radial-gradient(circle, rgba(16,185,129,0.85) 0%, transparent 66%);
+  animation: ab-move-1 22s ease-in-out infinite;
 }
 .ab-blob-2 {
-  width: 52vmax; height: 52vmax; right: -8vmax; top: 6vmax;
-  background: radial-gradient(circle, rgba(20,184,166,0.8) 0%, transparent 68%);
-  animation: ab-move-2 24s ease-in-out infinite;
+  width: 52vmax; height: 52vmax; right: -10vmax; top: 4vmax;
+  background: radial-gradient(circle, rgba(45,212,191,0.7) 0%, transparent 66%);
+  animation: ab-move-2 27s ease-in-out infinite;
 }
 .ab-blob-3 {
-  width: 48vmax; height: 48vmax; left: 15vmax; bottom: -12vmax;
-  background: radial-gradient(circle, rgba(52,211,153,0.75) 0%, transparent 68%);
-  animation: ab-move-3 28s ease-in-out infinite;
+  width: 48vmax; height: 48vmax; left: 20vmax; bottom: -16vmax;
+  background: radial-gradient(circle, rgba(52,211,153,0.62) 0%, transparent 66%);
+  animation: ab-move-3 31s ease-in-out infinite;
 }
 @keyframes ab-move-1 {
   0%, 100% { transform: translate(0, 0) scale(1); }

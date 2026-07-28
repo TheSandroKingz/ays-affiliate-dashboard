@@ -104,8 +104,12 @@ export default function AnimatedBackground() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#04070a]"
-      style={{ transform: 'translateZ(0)' }}
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      style={{
+        transform: 'translateZ(0)',
+        background:
+          'radial-gradient(120% 80% at 50% -10%, #0b1a17 0%, transparent 55%), #05080b',
+      }}
     >
       {/* Aurora: manchas verdes grandes que se mueven lento (CSS). */}
       <div className="ab-blob ab-blob-1" />
@@ -118,7 +122,7 @@ export default function AnimatedBackground() {
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 50% 35%, transparent 45%, rgba(0,0,0,0.55) 100%)',
+            'radial-gradient(circle at 50% 32%, transparent 42%, rgba(0,0,0,0.6) 100%)',
         }}
       />
     </div>
