@@ -10,7 +10,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    // Panel con fondo sólido oscuro: tapa el fondo animado (que se queda marcado
+    // en el login) para que detrás del balance/datos quede LIMPIO y legible.
+    <div className="flex min-h-screen bg-[#070a0d]">
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-40 md:hidden"

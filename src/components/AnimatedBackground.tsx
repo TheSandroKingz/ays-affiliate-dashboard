@@ -24,7 +24,7 @@ export default function AnimatedBackground() {
     type P = { x: number; y: number; vx: number; vy: number }
     let parts: P[] = []
 
-    const count = () => (window.innerWidth < 640 ? 20 : 42)
+    const count = () => (window.innerWidth < 640 ? 34 : 70)
 
     function resize() {
       w = window.innerWidth
@@ -62,7 +62,7 @@ export default function AnimatedBackground() {
           const dy = parts[i].y - parts[j].y
           const d = Math.hypot(dx, dy)
           if (d < DIST) {
-            const a = (1 - d / DIST) * 0.16
+            const a = (1 - d / DIST) * 0.4
             ctx!.strokeStyle = `rgba(52,211,153,${a})`
             ctx!.lineWidth = 1
             ctx!.beginPath()
@@ -72,10 +72,10 @@ export default function AnimatedBackground() {
           }
         }
       }
-      ctx!.fillStyle = 'rgba(52,211,153,0.4)'
+      ctx!.fillStyle = 'rgba(52,211,153,0.85)'
       for (const p of parts) {
         ctx!.beginPath()
-        ctx!.arc(p.x, p.y, 1.5, 0, Math.PI * 2)
+        ctx!.arc(p.x, p.y, 1.9, 0, Math.PI * 2)
         ctx!.fill()
       }
       raf = requestAnimationFrame(draw)
@@ -117,13 +117,12 @@ export default function AnimatedBackground() {
       <div className="ab-blob ab-blob-3" />
       {/* Red de partículas. */}
       <canvas ref={ref} className="absolute inset-0" />
-      {/* Capa oscura por encima del verde: lo mantiene SUAVE y hace que el
-          contenido (balance, textos, la hora) se lea bien y no canse. */}
+      {/* Viñeta suave para dar profundidad. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 50% 28%, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.78) 100%)',
+            'radial-gradient(circle at 50% 32%, transparent 42%, rgba(0,0,0,0.6) 100%)',
         }}
       />
     </div>
