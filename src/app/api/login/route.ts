@@ -55,6 +55,29 @@ export async function POST(request: NextRequest) {
   }
   if (!email) return generico();
 
+  // Bloqueo POR CUENTA (además del por IP): freno anti-fuerza-bruta que funciona
+  // aunque el atacante cambie de IP. Tras 8 fallos en 15 min, la cuenta queda
+  // bloqueada el resto de la ventana. BLINDADO: si la tabla/función aún no
+  // existe (SQL sin aplicar), no bloquea (el login sigue funcionando).
+  const LIMITE = 8;
+  const VENTANA_MS = 15 * 60 * 1000;
+  const claveCuenta = `login:${email.toLowerCase()}`;
+  const { data: intento } = await supabaseAdmin
+    .from("login_intentos")
+    .select("fallos, primer")
+    .eq("k", claveCuenta)
+    .maybeSingle();
+  if (intento) {
+    const dentroVentana =
+      Date.now() - new Date(intento.primer).getTime() < VENTANA_MS;
+    if (dentroVentana && (intento.fallos ?? 0) >= LIMITE) {
+      return NextResponse.json(
+        { error: "Cuenta bloqueada temporalmente por seguridad. Espera unos minutos." },
+        { status: 429 }
+      );
+    }
+  }
+
   // Cliente anónimo efímero (valida la contraseña; no persiste sesión).
   const authClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,7 +88,20 @@ export async function POST(request: NextRequest) {
     email,
     password,
   });
-  if (error || !data.session) return generico();
+  if (error || !data.session) {
+    // Cuenta el fallo (atómico, compartido entre servidores).
+    await supabaseAdmin
+      .rpc("login_fallo", { p_key: claveCuenta, p_ventana_ms: VENTANA_MS })
+      .then(() => {}, () => {});
+    return generico();
+  }
+
+  // Éxito: limpiamos el contador de fallos de esta cuenta.
+  await supabaseAdmin
+    .from("login_intentos")
+    .delete()
+    .eq("k", claveCuenta)
+    .then(() => {}, () => {});
 
   return NextResponse.json({
     access_token: data.session.access_token,
