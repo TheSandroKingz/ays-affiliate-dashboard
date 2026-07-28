@@ -79,6 +79,32 @@ export default function TelegramPage() {
   const [reinicio, setReinicio] = useState<string | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
   const [cargandoJug, setCargandoJug] = useState(false);
+  const [chatAbierto, setChatAbierto] = useState<number | null>(null);
+  const [chatMsgs, setChatMsgs] = useState<{ role: string; content: string }[]>([]);
+  const [cargandoChat, setCargandoChat] = useState(false);
+
+  async function verChat(chatId: number) {
+    if (chatAbierto === chatId) {
+      setChatAbierto(null);
+      return;
+    }
+    setChatAbierto(chatId);
+    setChatMsgs([]);
+    setCargandoChat(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/telegram/chat?chat_id=" + chatId, {
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const b = await r.json().catch(() => ({}));
+      setChatMsgs(Array.isArray(b.history) ? b.history : []);
+    } finally {
+      setCargandoChat(false);
+    }
+  }
 
   async function cargarJugadores() {
     setCargandoJug(true);
@@ -605,37 +631,70 @@ export default function TelegramPage() {
         {jugadores && jugadores.length > 0 && (
           <div className="flex flex-col divide-y divide-white/10">
             {jugadores.map((j) => (
-              <div
-                key={j.chat_id}
-                className="flex items-center justify-between gap-3 py-2"
-              >
-                <div className="min-w-0">
-                  <div className="text-sm text-white truncate">
-                    {j.first_name || "Jugador"}{" "}
-                    {j.username ? `(@${j.username})` : ""}
-                    {j.silenced && (
-                      <span className="text-amber-300"> · silenciado</span>
-                    )}
-                    {j.opted_out && (
-                      <span className="text-slate-500"> · baja</span>
-                    )}
+              <div key={j.chat_id} className="py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm text-white truncate">
+                      {j.first_name || "Jugador"}{" "}
+                      {j.username ? `(@${j.username})` : ""}
+                      {j.silenced && (
+                        <span className="text-amber-300"> · silenciado</span>
+                      )}
+                      {j.opted_out && (
+                        <span className="text-slate-500"> · baja</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {j.last_msg_at
+                        ? new Date(j.last_msg_at).toLocaleString("es-ES")
+                        : "sin actividad"}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-500">
-                    {j.last_msg_at
-                      ? new Date(j.last_msg_at).toLocaleString("es-ES")
-                      : "sin actividad"}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => verChat(j.chat_id)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
+                    >
+                      {chatAbierto === j.chat_id ? "Cerrar" : "Chat"}
+                    </button>
+                    <button
+                      onClick={() => toggleSilencio(j.chat_id, !j.silenced)}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                        j.silenced
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          : "bg-white/10 hover:bg-white/20 text-white"
+                      }`}
+                    >
+                      {j.silenced ? "Reactivar" : "Silenciar"}
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => toggleSilencio(j.chat_id, !j.silenced)}
-                  className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
-                    j.silenced
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                      : "bg-white/10 hover:bg-white/20 text-white"
-                  }`}
-                >
-                  {j.silenced ? "Reactivar" : "Silenciar"}
-                </button>
+                {chatAbierto === j.chat_id && (
+                  <div className="mt-2 rounded-lg bg-black/25 p-3 flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                    {cargandoChat ? (
+                      <p className="text-xs text-slate-400">Cargando…</p>
+                    ) : chatMsgs.length === 0 ? (
+                      <p className="text-xs text-slate-400">
+                        Sin conversación guardada (o aún no ha escrito).
+                      </p>
+                    ) : (
+                      chatMsgs.map((m, i) => (
+                        <div key={i} className="text-xs leading-snug">
+                          <b
+                            className={
+                              m.role === "assistant"
+                                ? "text-emerald-300"
+                                : "text-sky-300"
+                            }
+                          >
+                            {m.role === "assistant" ? "Bot" : "Jugador"}:
+                          </b>{" "}
+                          <span className="text-slate-200">{m.content}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
