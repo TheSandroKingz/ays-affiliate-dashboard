@@ -405,6 +405,11 @@ export async function POST(request: Request) {
       const TOPE_DIA = 5000;
       let respuesta: string | null = null;
       if (entrada && iaConfigurada() && !limitado && !videoEnviado) {
+        // "Escribiendo…" al instante para que se vea movimiento mientras la IA
+        // piensa (Telegram lo muestra ~5s). No bloquea si falla.
+        tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(
+          () => {}
+        );
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
         }).format(new Date());
