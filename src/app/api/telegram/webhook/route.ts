@@ -358,10 +358,16 @@ export async function POST(request: Request) {
 
       // ¿Pide el patrón/vídeo? Si hay vídeo guardado, se lo mandamos como "así
       // es como lo hago yo" (tu contenido/estilo). Sin decir que gana.
+      // Texto del jugador INCLUYENDO el pie de foto/vídeo: en Telegram el texto
+      // que acompaña a una imagen va en msg.caption, no en msg.text. Sin esto el
+      // bot ignoraba lo que la gente escribe junto a la foto (y lo perdía de la
+      // memoria). Así lee la imagen Y lo que dice sobre ella.
+      const textoJ = text || (msg.caption ?? "").trim();
+
       let videoEnviado = false;
       const pidePatron =
         /patr[oó]n|cuadrad|cuadro|m[eé]todo|truco|sistema|c[oó]mo (le das|lo hac|juega)/i.test(
-          text
+          textoJ
         );
       if (pidePatron && !limitado) {
         const { data: dv } = await supabaseAdmin
@@ -394,7 +400,7 @@ export async function POST(request: Request) {
       // constancia para que el bot lo tenga en cuenta (no puede verlo, pero sabe
       // que lo ha mandado y no responde como si no hubiera pasado nada).
       const entrada =
-        text ||
+        textoJ ||
         (msg.video || msg.animation
           ? "[el jugador te ha enviado un vídeo]"
           : msg.photo
