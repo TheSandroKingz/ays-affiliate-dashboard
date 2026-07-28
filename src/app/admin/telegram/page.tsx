@@ -277,6 +277,8 @@ export default function TelegramPage() {
 
   useEffect(() => {
     cargar();
+    cargarJugadores(); // carga la lista de chats al entrar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargar]);
 
   async function guardarPromo() {
@@ -346,6 +348,8 @@ export default function TelegramPage() {
       setEnviando(false);
     }
   }
+
+  const chatSel = jugadores?.find((j) => j.chat_id === chatAbierto) ?? null;
 
   return (
     <main className="flex flex-col gap-5 max-w-3xl">
@@ -617,62 +621,100 @@ export default function TelegramPage() {
       <div className="bg-white/5 border border-white/15 rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-medium text-slate-200">
-            👥 Jugadores {jugadores ? `(${jugadores.length})` : ""}
+            💬 Chats {jugadores ? `(${jugadores.length})` : ""}
           </span>
           <button
             onClick={cargarJugadores}
             disabled={cargandoJug}
             className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
           >
-            {cargandoJug ? "Cargando…" : jugadores ? "Actualizar" : "Ver jugadores"}
+            {cargandoJug ? "Cargando…" : jugadores ? "Actualizar" : "Ver chats"}
           </button>
         </div>
+
         {jugadores && jugadores.length === 0 && (
           <p className="text-sm text-slate-400">Aún no hay jugadores.</p>
         )}
+
         {jugadores && jugadores.length > 0 && (
-          <div className="flex flex-col divide-y divide-white/10">
-            {jugadores.map((j) => (
-              <div key={j.chat_id} className="py-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm text-white truncate">
-                      {j.first_name || "Jugador"}{" "}
-                      {j.username ? `(@${j.username})` : ""}
-                      {j.silenced && (
-                        <span className="text-amber-300"> · silenciado</span>
-                      )}
-                      {j.opted_out && (
-                        <span className="text-slate-500"> · baja</span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      {j.last_msg_at
-                        ? new Date(j.last_msg_at).toLocaleString("es-ES")
-                        : "sin actividad"}
-                    </div>
+          <div className="flex rounded-xl overflow-hidden border border-white/10 h-[70vh] sm:h-[520px]">
+            {/* Lista de chats (izquierda) */}
+            <div
+              className={`${
+                chatAbierto ? "hidden sm:flex" : "flex"
+              } flex-col w-full sm:w-64 sm:border-r border-white/10 overflow-y-auto bg-black/20`}
+            >
+              {jugadores.map((j) => (
+                <button
+                  key={j.chat_id}
+                  onClick={() => verChat(j.chat_id)}
+                  className={`text-left px-3 py-2.5 border-b border-white/5 hover:bg-white/5 transition ${
+                    chatAbierto === j.chat_id ? "bg-white/10" : ""
+                  }`}
+                >
+                  <div className="text-sm text-white truncate">
+                    {j.first_name || "Jugador"}{" "}
+                    {j.username ? `(@${j.username})` : ""}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => verChat(j.chat_id)}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
-                    >
-                      {chatAbierto === j.chat_id ? "Cerrar" : "Chat"}
-                    </button>
-                    <button
-                      onClick={() => toggleSilencio(j.chat_id, !j.silenced)}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${
-                        j.silenced
-                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                          : "bg-white/10 hover:bg-white/20 text-white"
-                      }`}
-                    >
-                      {j.silenced ? "Reactivar" : "Silenciar"}
-                    </button>
+                  <div className="text-[11px] text-slate-500 truncate">
+                    {j.silenced && (
+                      <span className="text-amber-300">silenciado · </span>
+                    )}
+                    {j.opted_out && <span>baja · </span>}
+                    {j.last_msg_at
+                      ? new Date(j.last_msg_at).toLocaleString("es-ES", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "sin actividad"}
                   </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Conversación (derecha) */}
+            <div
+              className={`${
+                chatAbierto ? "flex" : "hidden sm:flex"
+              } flex-col flex-1 min-w-0 bg-black/30`}
+            >
+              {chatAbierto === null ? (
+                <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+                  Elige un chat de la lista 👈
                 </div>
-                {chatAbierto === j.chat_id && (
-                  <div className="mt-2 rounded-xl bg-black/30 p-3 flex flex-col gap-2 max-h-96 overflow-y-auto">
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-white/10 bg-black/40">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <button
+                        onClick={() => setChatAbierto(null)}
+                        className="sm:hidden text-slate-300 hover:text-white shrink-0"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <span className="text-sm text-white truncate">
+                        {chatSel?.first_name || "Jugador"}{" "}
+                        {chatSel?.username ? `(@${chatSel.username})` : ""}
+                      </span>
+                    </div>
+                    {chatSel && (
+                      <button
+                        onClick={() =>
+                          toggleSilencio(chatSel.chat_id, !chatSel.silenced)
+                        }
+                        className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg transition ${
+                          chatSel.silenced
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            : "bg-white/10 hover:bg-white/20 text-white"
+                        }`}
+                      >
+                        {chatSel.silenced ? "Reactivar" : "Silenciar"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
                     {cargandoChat ? (
                       <p className="text-xs text-slate-400">Cargando…</p>
                     ) : chatMsgs.length === 0 ? (
@@ -685,10 +727,12 @@ export default function TelegramPage() {
                         return (
                           <div
                             key={i}
-                            className={`flex ${bot ? "justify-end" : "justify-start"}`}
+                            className={`flex ${
+                              bot ? "justify-end" : "justify-start"
+                            }`}
                           >
                             <div
-                              className={`max-w-[78%] rounded-2xl px-3 py-1.5 text-xs leading-snug ${
+                              className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-xs leading-snug ${
                                 bot
                                   ? "bg-emerald-600 text-white rounded-br-sm"
                                   : "bg-white/15 text-slate-100 rounded-bl-sm"
@@ -698,15 +742,20 @@ export default function TelegramPage() {
                               {m.created_at && (
                                 <div
                                   className={`text-[9px] mt-0.5 ${
-                                    bot ? "text-emerald-100/70" : "text-slate-400"
+                                    bot
+                                      ? "text-emerald-100/70"
+                                      : "text-slate-400"
                                   }`}
                                 >
-                                  {new Date(m.created_at).toLocaleString("es-ES", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                                  {new Date(m.created_at).toLocaleString(
+                                    "es-ES",
+                                    {
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -715,9 +764,9 @@ export default function TelegramPage() {
                       })
                     )}
                   </div>
-                )}
-              </div>
-            ))}
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
