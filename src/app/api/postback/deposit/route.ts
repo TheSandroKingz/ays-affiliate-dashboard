@@ -52,5 +52,12 @@ export async function GET(request: Request) {
     status: "deposit", // recarga recibida, no suma dinero (el CPA va por el QFTD)
   });
 
-  return NextResponse.json({ ok: true, matched: !!matchedUserId, counted: false });
+  // Devolvemos lo recibido para poder VERIFICAR de un vistazo (que el macro del
+  // importe y el afp llegan bien). No suma nada; es solo confirmación.
+  return NextResponse.json({
+    ok: true,
+    recibido: { afp, importe: monto, player_id: playerid, pais: isocountry },
+    matched: !!matchedUserId,
+    counted: false,
+  });
 }
