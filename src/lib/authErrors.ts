@@ -23,3 +23,26 @@ export function traducirError(mensaje: string | undefined | null): string {
 
   return "Ha ocurrido un error. Inténtalo de nuevo.";
 }
+
+// Contraseñas triviales más habituales (bloqueadas para frenar la fuerza bruta).
+const PW_COMUNES = new Set([
+  "12345678", "123456789", "1234567890", "password", "contrasena",
+  "contraseña", "qwerty123", "11111111", "00000000", "abcd1234",
+  "iloveyou", "password1", "12341234", "qwertyuiop", "1q2w3e4r",
+]);
+
+// Valida la fortaleza de una contraseña (mínimo razonable, sin ser molesto).
+// Devuelve un mensaje de error, o null si es válida.
+export function validarPassword(
+  pw: string,
+  usuario?: string | null
+): string | null {
+  if (!pw || pw.length < 8)
+    return "La contraseña debe tener al menos 8 caracteres.";
+  if (/^(.)\1+$/.test(pw)) return "La contraseña es demasiado simple.";
+  if (PW_COMUNES.has(pw.toLowerCase()))
+    return "Esa contraseña es demasiado común. Elige otra más segura.";
+  if (usuario && pw.toLowerCase() === usuario.toLowerCase().trim())
+    return "La contraseña no puede ser igual a tu usuario.";
+  return null;
+}

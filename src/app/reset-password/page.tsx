@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
-import { traducirError } from '@/lib/authErrors'
+import { traducirError, validarPassword } from '@/lib/authErrors'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -49,8 +49,9 @@ export default function ResetPasswordPage() {
       setError('Las contraseñas no coinciden')
       return
     }
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
+    const pwErr = validarPassword(password)
+    if (pwErr) {
+      setError(pwErr)
       return
     }
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
-import { traducirError } from '@/lib/authErrors'
+import { traducirError, validarPassword } from '@/lib/authErrors'
 import { contieneEmoji } from '@/lib/texto'
 
 export default function RegistroPage() {
@@ -54,6 +54,13 @@ export default function RegistroPage() {
     // El nombre no puede llevar emojis.
     if (contieneEmoji(nombre)) {
       setError('El nombre no puede tener emojis.')
+      return
+    }
+
+    // Contraseña con una fortaleza mínima razonable.
+    const pwErr = validarPassword(password, nombre)
+    if (pwErr) {
+      setError(pwErr)
       return
     }
 
@@ -180,7 +187,7 @@ export default function RegistroPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={8}
               autoComplete="new-password"
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Mínimo 6 caracteres"
