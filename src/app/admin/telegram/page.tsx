@@ -278,7 +278,6 @@ export default function TelegramPage() {
   useEffect(() => {
     cargar();
     cargarJugadores(); // carga la lista de chats al entrar
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargar]);
 
   async function guardarPromo() {
