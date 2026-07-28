@@ -307,11 +307,20 @@ export async function POST(request: Request) {
     if (esDueno && msg.reply_to_message?.text) {
       const m = msg.reply_to_message.text.match(/\[uid:(\d+)\]/);
       if (m) {
+        const destino = Number(m[1]);
         const r = await tgApi("copyMessage", {
-          chat_id: Number(m[1]),
+          chat_id: destino,
           from_chat_id: chatId,
           message_id: msg.message_id,
         });
+        // Guardamos tu respuesta en la memoria del jugador (como "assistant"),
+        // para que el bot NO te contradiga luego y siga el hilo de lo que dijiste.
+        if (r?.ok && text) {
+          await supabaseAdmin
+            .from("telegram_messages")
+            .insert({ chat_id: destino, role: "assistant", content: text })
+            .then(() => {}, () => {});
+        }
         await tgEnviar(
           chatId,
           r?.ok

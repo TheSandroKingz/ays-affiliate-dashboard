@@ -188,25 +188,45 @@ export async function responderIA(
     );
     while (previos.length && previos[0].role !== "user") previos.shift();
 
-    // Si mandaron una foto, se la pasamos a la IA con visión (para que la MIRE
-    // de verdad: saldo de bono en rojo, Mines, error, etc.).
-    const contenido: Anthropic.MessageParam["content"] = imagen
-      ? [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: imagen.mediaType as
-                | "image/jpeg"
-                | "image/png"
-                | "image/gif"
-                | "image/webp",
-              data: imagen.base64,
+    // La API exige que los turnos ALTERNEN user/assistant. El transcript puede
+    // traer dos "user" seguidos (mensajes muy seguidos, media sin texto, o un
+    // turno en que la IA no respondió). Colapsamos turnos consecutivos del mismo
+    // rol en uno (juntando el texto) para no romper la llamada.
+    const secuencia: Turno[] = [
+      ...previos,
+      { role: "user", content: mensaje || "(vacío)" },
+    ];
+    const fusion: Turno[] = [];
+    for (const t of secuencia) {
+      const ult = fusion[fusion.length - 1];
+      if (ult && ult.role === t.role) ult.content += `\n${t.content}`;
+      else fusion.push({ role: t.role, content: t.content });
+    }
+
+    // La imagen (si hay) se adjunta al ÚLTIMO turno del usuario (el mensaje actual).
+    const messages: Anthropic.MessageParam[] = fusion.map((t, i) => {
+      if (i === fusion.length - 1 && t.role === "user" && imagen) {
+        return {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: imagen.mediaType as
+                  | "image/jpeg"
+                  | "image/png"
+                  | "image/gif"
+                  | "image/webp",
+                data: imagen.base64,
+              },
             },
-          },
-          { type: "text", text: mensaje },
-        ]
-      : mensaje;
+            { type: "text", text: t.content },
+          ],
+        };
+      }
+      return { role: t.role, content: t.content };
+    });
 
     const promo = await getPromo();
     // Nombre de pila de quien escribe (para dirigirse a él/ella y saber el género).
@@ -218,7 +238,7 @@ export async function responderIA(
       model: MODELO,
       max_tokens: 180,
       system: sysNombre,
-      messages: [...previos, { role: "user", content: contenido }],
+      messages,
     });
     const txt = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
