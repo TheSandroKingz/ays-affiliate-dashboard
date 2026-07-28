@@ -120,7 +120,7 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="relative min-h-screen flex items-start md:items-center justify-center bg-black px-4 pt-16 md:pt-0">
+    <main className="relative min-h-screen flex items-start md:items-center justify-center px-4 pt-16 md:pt-0">
       <AnimatedBackground />
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex justify-center">

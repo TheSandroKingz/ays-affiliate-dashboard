@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from 'react'
 
-// Fondo animado sutil: una red de partículas verdes que flotan y se conectan
-// (estilo "flock"). Ligero, optimizado para móvil y respeta "reducir movimiento".
-// Va detrás de todo (fixed, -z-10, sin capturar clics). Reutilizable en varias
-// páginas (login, registro, etc.).
+// Fondo animado premium: base oscura + "aurora" de manchas verdes que se mueven
+// lento + una red de partículas que flotan y se conectan. Va detrás de todo
+// (fixed) y respeta "reducir movimiento". Para que se vea, la página NO debe
+// tener un fondo opaco por encima (usa bg transparente en el <main>).
 export default function AnimatedBackground() {
   const ref = useRef<HTMLCanvasElement>(null)
 
@@ -24,10 +24,7 @@ export default function AnimatedBackground() {
     type P = { x: number; y: number; vx: number; vy: number }
     let parts: P[] = []
 
-    function count() {
-      const mobile = window.innerWidth < 640
-      return mobile ? 22 : 46
-    }
+    const count = () => (window.innerWidth < 640 ? 34 : 70)
 
     function resize() {
       w = window.innerWidth
@@ -40,18 +37,17 @@ export default function AnimatedBackground() {
     }
 
     function seed() {
-      const n = count()
-      parts = Array.from({ length: n }, () => ({
+      parts = Array.from({ length: count() }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.28,
-        vy: (Math.random() - 0.5) * 0.28,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
       }))
     }
 
     function draw() {
       ctx!.clearRect(0, 0, w, h)
-      const DIST = w < 640 ? 110 : 140
+      const DIST = w < 640 ? 120 : 155
       for (const p of parts) {
         p.x += p.vx
         p.y += p.vy
@@ -60,15 +56,14 @@ export default function AnimatedBackground() {
         if (p.y < 0) p.y = h
         if (p.y > h) p.y = 0
       }
-      // Líneas entre partículas cercanas.
       for (let i = 0; i < parts.length; i++) {
         for (let j = i + 1; j < parts.length; j++) {
           const dx = parts[i].x - parts[j].x
           const dy = parts[i].y - parts[j].y
           const d = Math.hypot(dx, dy)
           if (d < DIST) {
-            const a = (1 - d / DIST) * 0.22
-            ctx!.strokeStyle = `rgba(16,185,129,${a})`
+            const a = (1 - d / DIST) * 0.4
+            ctx!.strokeStyle = `rgba(52,211,153,${a})`
             ctx!.lineWidth = 1
             ctx!.beginPath()
             ctx!.moveTo(parts[i].x, parts[i].y)
@@ -77,11 +72,10 @@ export default function AnimatedBackground() {
           }
         }
       }
-      // Puntos.
-      ctx!.fillStyle = 'rgba(16,185,129,0.55)'
+      ctx!.fillStyle = 'rgba(52,211,153,0.85)'
       for (const p of parts) {
         ctx!.beginPath()
-        ctx!.arc(p.x, p.y, 1.6, 0, Math.PI * 2)
+        ctx!.arc(p.x, p.y, 1.9, 0, Math.PI * 2)
         ctx!.fill()
       }
       raf = requestAnimationFrame(draw)
@@ -89,12 +83,8 @@ export default function AnimatedBackground() {
 
     resize()
     seed()
-    if (reduce) {
-      draw()
-      cancelAnimationFrame(raf) // dibuja un frame estático, sin bucle
-    } else {
-      draw()
-    }
+    draw()
+    if (reduce) cancelAnimationFrame(raf) // un frame estático, sin bucle
 
     let t: ReturnType<typeof setTimeout>
     function onResize() {
@@ -105,7 +95,6 @@ export default function AnimatedBackground() {
       }, 200)
     }
     window.addEventListener('resize', onResize)
-
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
@@ -114,16 +103,24 @@ export default function AnimatedBackground() {
   }, [])
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      {/* Resplandor verde suave detrás de las partículas, da profundidad. */}
+    <div
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#04070a]"
+      style={{ transform: 'translateZ(0)' }}
+    >
+      {/* Aurora: manchas verdes grandes que se mueven lento (CSS). */}
+      <div className="ab-blob ab-blob-1" />
+      <div className="ab-blob ab-blob-2" />
+      <div className="ab-blob ab-blob-3" />
+      {/* Red de partículas. */}
+      <canvas ref={ref} className="absolute inset-0" />
+      {/* Viñeta suave para dar profundidad. */}
       <div
-        className="absolute left-1/2 top-1/3 h-[60vmax] w-[60vmax] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-[120px]"
+        className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle, rgba(16,185,129,0.35) 0%, rgba(16,185,129,0) 70%)',
+            'radial-gradient(circle at 50% 35%, transparent 45%, rgba(0,0,0,0.55) 100%)',
         }}
       />
-      <canvas ref={ref} className="absolute inset-0" />
     </div>
   )
 }

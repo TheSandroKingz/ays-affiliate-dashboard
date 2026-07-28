@@ -39,7 +39,7 @@ export default function PendientePage() {
   }
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center bg-black px-4">
+    <main className="relative min-h-screen flex items-center justify-center px-4">
       <AnimatedBackground />
       <div className="w-full max-w-md text-center">
         <div className="flex justify-center mb-8">

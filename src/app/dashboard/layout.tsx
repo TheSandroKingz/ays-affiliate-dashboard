@@ -6,12 +6,14 @@ import Sidebar from "@/components/Sidebar";
 import Image from "next/image";
 import DashboardProvider from "@/components/DashboardProvider";
 import RevealObserver from "@/components/RevealObserver";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-black">
+    <div className="relative flex min-h-screen">
+      <AnimatedBackground />
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-40 md:hidden"

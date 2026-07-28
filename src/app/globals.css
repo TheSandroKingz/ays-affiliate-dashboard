@@ -68,15 +68,52 @@ label,
   animation: flotar 5s ease-in-out infinite;
 }
 
+/* Aurora del fondo animado: manchas verdes grandes, borrosas, que se mueven
+   despacio. Dan sensación de "vivo" detrás del contenido. */
+.ab-blob {
+  position: absolute;
+  border-radius: 9999px;
+  /* SIN filter:blur (el degradado ya es suave). El blur pesado + fondo fijo
+     provocaba "marcos grises" al hacer scroll en el móvil (iOS). */
+  opacity: 0.6;
+  transform: translateZ(0);
+}
+.ab-blob-1 {
+  width: 60vmax; height: 60vmax; left: -12vmax; top: -18vmax;
+  background: radial-gradient(circle, rgba(16,185,129,0.6) 0%, transparent 70%);
+  animation: ab-move-1 20s ease-in-out infinite;
+}
+.ab-blob-2 {
+  width: 48vmax; height: 48vmax; right: -12vmax; top: 8vmax;
+  background: radial-gradient(circle, rgba(5,150,105,0.55) 0%, transparent 70%);
+  animation: ab-move-2 24s ease-in-out infinite;
+}
+.ab-blob-3 {
+  width: 44vmax; height: 44vmax; left: 18vmax; bottom: -18vmax;
+  background: radial-gradient(circle, rgba(52,211,153,0.5) 0%, transparent 70%);
+  animation: ab-move-3 28s ease-in-out infinite;
+}
+@keyframes ab-move-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(9vmax, 7vmax) scale(1.18); }
+}
+@keyframes ab-move-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-8vmax, 6vmax) scale(1.12); }
+}
+@keyframes ab-move-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(7vmax, -8vmax) scale(1.2); }
+}
+
 /* Aparecer al hacer scroll (reveal): los bloques entran suavemente cuando
    asoman en pantalla. La clase .reveal-visible la pone RevealObserver (JS). */
 .reveal {
   opacity: 0;
-  transform: translateY(22px);
+  transform: translateY(38px);
   transition:
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .reveal.reveal-visible {
   opacity: 1;
