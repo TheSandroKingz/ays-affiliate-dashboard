@@ -641,7 +641,7 @@ export default function TelegramPage() {
             <div
               className={`${
                 chatAbierto ? "hidden sm:flex" : "flex"
-              } flex-col w-full sm:w-64 sm:border-r border-white/10 overflow-y-auto bg-black/20`}
+              } flex-col w-full sm:w-64 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20`}
             >
               {jugadores.map((j) => (
                 <button
@@ -677,7 +677,7 @@ export default function TelegramPage() {
             <div
               className={`${
                 chatAbierto ? "flex" : "hidden sm:flex"
-              } flex-col flex-1 min-w-0 bg-black/30`}
+              } flex-col flex-1 min-w-0 min-h-0 bg-black/30`}
             >
               {chatAbierto === null ? (
                 <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
@@ -713,7 +713,7 @@ export default function TelegramPage() {
                       </button>
                     )}
                   </div>
-                  <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                  <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2">
                     {cargandoChat ? (
                       <p className="text-xs text-slate-400">Cargando…</p>
                     ) : chatMsgs.length === 0 ? (
