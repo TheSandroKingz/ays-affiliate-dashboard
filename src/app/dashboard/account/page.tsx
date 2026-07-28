@@ -297,6 +297,15 @@ export default function AccountPage() {
       setMessage("La billetera de Tron (TRC-20) no parece válida. Debe empezar por T.");
       return;
     }
+    // Por seguridad pedimos la contraseña actual para cambiar la billetera de
+    // cobro (evita que un token robado desvíe tus pagos a otra dirección).
+    const currentPassword = window.prompt(
+      "Por seguridad, escribe tu contraseña actual para cambiar la billetera de cobro:"
+    );
+    if (!currentPassword) {
+      setMessage("Cambio de billetera cancelado (falta la contraseña).");
+      return;
+    }
     setSavingWallets(true);
     const {
       data: { session },
@@ -311,10 +320,19 @@ export default function AccountPage() {
         "Content-Type": "application/json",
         Authorization: "Bearer " + session.access_token,
       },
-      body: JSON.stringify({ walletErc20: erc, walletTrc20: trc }),
+      body: JSON.stringify({ walletErc20: erc, walletTrc20: trc, currentPassword }),
     });
     setSavingWallets(false);
-    setMessage(res.ok ? "Guardado correctamente" : "Error al guardar");
+    if (res.ok) {
+      setMessage("Guardado correctamente");
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setMessage(
+        j?.error === "Contraseña actual incorrecta"
+          ? "Contraseña incorrecta. La billetera no se cambió."
+          : "Error al guardar"
+      );
+    }
   }
 
 
