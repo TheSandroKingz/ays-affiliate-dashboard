@@ -387,11 +387,23 @@ export async function POST(request: Request) {
         }
       }
 
-      // La IA responde (solo a texto, si no está limitado por spam ni por el
-      // tope global diario, que es solo un freno anti-ataque, muy alto).
+      // Texto para la IA: si el jugador manda solo un vídeo/foto, dejamos
+      // constancia para que el bot lo tenga en cuenta (no puede verlo, pero sabe
+      // que lo ha mandado y no responde como si no hubiera pasado nada).
+      const entrada =
+        text ||
+        (msg.video || msg.animation
+          ? "[el jugador te ha enviado un vídeo]"
+          : msg.photo
+          ? "[el jugador te ha enviado una foto]"
+          : msg.document
+          ? "[el jugador te ha enviado un archivo]"
+          : "");
+
+      // La IA responde (si no está limitada por spam ni por el tope global diario).
       const TOPE_DIA = 5000;
       let respuesta: string | null = null;
-      if (text && iaConfigurada() && !limitado && !videoEnviado) {
+      if (entrada && iaConfigurada() && !limitado && !videoEnviado) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
         }).format(new Date());
@@ -402,7 +414,7 @@ export async function POST(request: Request) {
           .maybeSingle();
         const usoActual = usoDia?.count ?? 0;
         if (usoActual < TOPE_DIA) {
-          respuesta = await responderIA(historial, text);
+          respuesta = await responderIA(historial, entrada);
           if (respuesta) {
             await supabaseAdmin
               .from("telegram_ai_daily")
@@ -415,7 +427,7 @@ export async function POST(request: Request) {
       const nuevoHistorial: Turno[] = respuesta
         ? [
             ...historial,
-            { role: "user" as const, content: text },
+            { role: "user" as const, content: entrada },
             { role: "assistant" as const, content: respuesta },
           ].slice(-12)
         : historial;
@@ -447,7 +459,7 @@ export async function POST(request: Request) {
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
         });
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (text && !limitado && !videoEnviado) {
+      } else if (entrada && !limitado && !videoEnviado) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada.
         const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
@@ -459,7 +471,7 @@ export async function POST(request: Request) {
       await supabaseAdmin
         .from("telegram_messages")
         .insert([
-          { chat_id: chatId, role: "user", content: text || "(envió una foto/archivo)" },
+          { chat_id: chatId, role: "user", content: entrada || "(envió algo)" },
           ...(respuesta
             ? [{ chat_id: chatId, role: "assistant", content: respuesta }]
             : videoEnviado
