@@ -34,7 +34,6 @@ export default function TelegramPage() {
     };
   } | null>(null);
   const [texto, setTexto] = useState("");
-  const [foto, setFoto] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
   const [promo, setPromo] = useState("");
   const [promoGuardada, setPromoGuardada] = useState(true);
@@ -302,7 +301,7 @@ export default function TelegramPage() {
   }
 
   async function enviar() {
-    if (!texto.trim() && !foto.trim()) return;
+    if (!texto.trim()) return;
     if (
       !confirm(
         soloActivos
@@ -326,7 +325,6 @@ export default function TelegramPage() {
         },
         body: JSON.stringify({
           texto,
-          foto: foto.trim() || undefined,
           soloActivos,
         }),
       });
@@ -340,7 +338,6 @@ export default function TelegramPage() {
           }.`
         );
         setTexto("");
-        setFoto("");
         cargar();
       }
     } finally {
@@ -586,22 +583,11 @@ export default function TelegramPage() {
             href&gt;)
           </p>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">
-            Foto (opcional) — URL de una imagen
-          </label>
-          <input
-            value={foto}
-            onChange={(e) => setFoto(e.target.value)}
-            placeholder="https://…/imagen.jpg"
-            className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400/60"
-          />
-          <p className="text-[11px] text-slate-500 mt-1">
-            ¿Vídeo o foto desde tu <b>galería</b>? No uses esta URL — mándaselo al
-            bot: <b>/todos</b> con el vídeo (en el pie) para enviarlo a todos
-            ahora, o <b>/diario</b> para el envío diario.
-          </p>
-        </div>
+        <p className="text-[11px] text-slate-500">
+          ¿Mandar un <b>vídeo o foto</b> desde la galería? Se hace desde el chat
+          del bot: <b>/todos</b> con el vídeo en el pie (lo envía ya a todos) o{" "}
+          <b>/diario</b> (envío diario). Aquí solo se manda texto.
+        </p>
         <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -613,7 +599,7 @@ export default function TelegramPage() {
         </label>
         <button
           onClick={enviar}
-          disabled={enviando || (!texto.trim() && !foto.trim())}
+          disabled={enviando || !texto.trim()}
           className="self-start inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition"
         >
           <Send size={16} />
