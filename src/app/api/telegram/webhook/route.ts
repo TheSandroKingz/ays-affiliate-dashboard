@@ -365,23 +365,39 @@ export async function POST(request: Request) {
       const textoJ = text || (msg.caption ?? "").trim();
 
       let videoEnviado = false;
+      // Detecta que piden el patrón/método O que piden VER el vídeo o están
+      // esperándolo (para no dejarlos colgados esperando: se lo mandamos).
       const pidePatron =
-        /patr[oó]n|cuadrad|cuadro|m[eé]todo|truco|sistema|c[oó]mo (le das|lo hac|juega)/i.test(
+        /patr[oó]n|cuadrad|cuadro|m[eé]todo|truco|sistema|c[oó]mo (le das|lo hac|juega)|v[ií]deos?|ens[eé][ñn]a|mu[eé]stra|ver el|quiero ver|esperando el/i.test(
           textoJ
         );
       if (pidePatron && !limitado) {
-        const { data: dv } = await supabaseAdmin
+        // El vídeo del patrón: primero el /diario; si no hay, el de bienvenida.
+        let dv:
+          | { media_type: string | null; file_id: string | null; enabled: boolean | null }
+          | null = null;
+        const { data: diarioV } = await supabaseAdmin
           .from("telegram_daily")
           .select("media_type, file_id, enabled")
           .eq("id", 1)
           .maybeSingle();
+        if (diarioV && diarioV.enabled && diarioV.file_id) dv = diarioV;
+        else {
+          const { data: bienvV } = await supabaseAdmin
+            .from("telegram_welcome")
+            .select("media_type, file_id, enabled")
+            .eq("id", 1)
+            .maybeSingle();
+          if (bienvV && bienvV.enabled && bienvV.file_id) dv = bienvV;
+        }
         if (dv && dv.enabled && dv.file_id) {
           const m = dv.media_type;
           const metodo =
             m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";
           const p: Record<string, unknown> = {
             chat_id: chatId,
-            caption: "Así es como le doy yo 🔥 dale y a jugar",
+            caption:
+              "Aquí tienes el vídeo 🔥 así le doy yo, míralo y dale — ya puedes jugar, no esperes a ninguno nuevo.",
             reply_markup: botonSoloJugar(),
           };
           if (m === "video") p.video = dv.file_id;
