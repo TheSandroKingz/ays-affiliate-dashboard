@@ -59,6 +59,15 @@ label,
   animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Flotar suave (para el logo del login): sube y baja despacio, premium. */
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-flotar {
+  animation: flotar 5s ease-in-out infinite;
+}
+
 /* Toast de celebración (¡nuevo FTD!). */
 @keyframes celebra-pop {
   0%   { opacity: 0; transform: translateY(20px) scale(0.8); }

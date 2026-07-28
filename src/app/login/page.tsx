@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { traducirError } from '@/lib/authErrors'
+import AnimatedBackground from '@/components/AnimatedBackground'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -49,12 +50,13 @@ export default function LoginPage() {
     router.push('/dashboard')
   }
   return (
-    <main className="min-h-screen flex items-start md:items-center justify-center bg-black px-4 pt-16 md:pt-0">
+    <main className="relative min-h-screen flex items-start md:items-center justify-center bg-black px-4 pt-16 md:pt-0">
+      <AnimatedBackground />
       <div className="w-full max-w-md">
-        <div className="text-center mb-12 flex justify-center">
-          <Image src="/logo-login.png" alt="A&S Afiliados" width={340} height={243} className="max-w-full h-auto" priority />
+        <div className="animate-in text-center mb-12 flex justify-center">
+          <Image src="/logo-login.png" alt="A&S Afiliados" width={340} height={243} className="max-w-full h-auto animate-flotar" priority />
         </div>
-        <div className="animate-in bg-white/10 backdrop-blur-lg border border-emerald-400/50 rounded-2xl p-8 shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
+        <div className="animate-in bg-white/10 backdrop-blur-lg border border-emerald-400/50 rounded-2xl p-8 shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]" style={{ animationDelay: '0.15s' }}>
           <h1 className="text-2xl font-semibold text-white text-center mb-6">Iniciar sesión</h1>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
