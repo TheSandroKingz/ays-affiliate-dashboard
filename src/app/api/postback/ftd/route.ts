@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { compararSecreto } from "@/lib/secreto";
+import { enviarPush } from "@/lib/push";
+import { ADMIN_USER_ID } from "@/lib/adminAuth";
 import { getPlayerId, getMonto, registrarEvento, queryLimpia } from "@/lib/postback";
 
 // Postback de FTD = CUALQUIER primer depósito (aunque no cualifique). FreshBet
@@ -51,6 +53,22 @@ export async function GET(request: Request) {
     amount: monto,
     status: "deposit", // depósito recibido, no cualificado → no suma dinero
   });
+
+  // Si el depósito viene del BOT (afp=bot), avisamos al dueño con un push. Este
+  // postback es solo de PRIMEROS depósitos (no de recargas), así que no llega
+  // aviso por "meter dinero de nuevo".
+  if (/^bot/i.test(afp)) {
+    after(() =>
+      enviarPush(ADMIN_USER_ID, {
+        title: "💰 ¡Depósito del bot!",
+        body:
+          monto > 0
+            ? `Alguien depositó ${monto}€ por el bot 🔥`
+            : "Alguien ha depositado por el bot 🔥",
+        url: "/admin/telegram",
+      })
+    );
+  }
 
   return NextResponse.json({ ok: true, matched: !!matchedUserId, counted: false });
 }
