@@ -326,17 +326,14 @@ export async function POST(request: Request) {
 
     // ── Un JUGADOR escribe → la IA le responde sola + copia al dueño ─────────
     if (!esDueno) {
-      // Recuperamos el historial (para contexto) y el contador anti-spam.
+      // Datos del contacto: contador anti-spam, silencio y corte de memoria.
       const { data: contacto } = await supabaseAdmin
         .from("telegram_contacts")
-        .select("history, ai_window_start, ai_count, silenced")
+        .select("ai_window_start, ai_count, silenced, memory_reset_at")
         .eq("chat_id", chatId)
         .maybeSingle();
       // Silenciado por el dueño: el bot lo ignora del todo.
       if (contacto?.silenced) return NextResponse.json({ ok: true });
-      const historial: Turno[] = Array.isArray(contacto?.history)
-        ? (contacto!.history as Turno[])
-        : [];
 
       // Límite: máx 8 respuestas de IA por minuto por usuario (protege el saldo
       // de Claude de que alguien spamee el bot).
@@ -401,6 +398,30 @@ export async function POST(request: Request) {
           ? "[el jugador te ha enviado un archivo]"
           : "");
 
+      // Contexto REAL de la conversación: lo leemos del transcript completo
+      // (telegram_messages), que solo AÑADE y nunca se pisa aunque lleguen dos
+      // mensajes casi a la vez → el bot no "olvida" lo que le acaban de decir.
+      // Respetamos el corte de "Reiniciar memoria" (memory_reset_at).
+      const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
+      const { data: prev } = await supabaseAdmin
+        .from("telegram_messages")
+        .select("role, content")
+        .eq("chat_id", chatId)
+        .gt("created_at", desde)
+        .order("created_at", { ascending: false })
+        .limit(24);
+      const historial: Turno[] = ((prev ?? []) as { role: string; content: string }[])
+        .reverse()
+        .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+      // Guardamos YA el mensaje del jugador (antes de responder): si manda otro
+      // mensaje seguido, ese contexto ya estará disponible para el segundo.
+      await supabaseAdmin
+        .from("telegram_messages")
+        .insert({ chat_id: chatId, role: "user", content: entrada || "(envió algo)" })
+        .then(() => {}, () => {});
+
       // La IA responde (si no está limitada por spam ni por el tope global diario).
       const TOPE_DIA = 5000;
       let respuesta: string | null = null;
@@ -441,21 +462,14 @@ export async function POST(request: Request) {
         }
       }
 
-      // Guardamos actividad + alta + últimos turnos (máx 12 = 6 idas y vueltas).
-      const nuevoHistorial: Turno[] = respuesta
-        ? [
-            ...historial,
-            { role: "user" as const, content: entrada },
-            { role: "assistant" as const, content: respuesta },
-          ].slice(-12)
-        : historial;
+      // Actualizamos actividad y contadores anti-spam (la memoria de la charla
+      // vive en telegram_messages, no aquí).
       await supabaseAdmin.from("telegram_contacts").upsert(
         {
           chat_id: chatId,
           first_name: from.first_name ?? null,
           username: from.username ?? null,
           last_msg_at: new Date().toISOString(),
-          history: nuevoHistorial,
           ai_window_start: aiWindow,
           ai_count: aiCount,
         },
@@ -485,18 +499,18 @@ export async function POST(request: Request) {
         await guardarMsg(chatId, midDe(rEnv));
       }
 
-      // Historial completo para verlo en el panel (estilo chat).
-      await supabaseAdmin
-        .from("telegram_messages")
-        .insert([
-          { chat_id: chatId, role: "user", content: entrada || "(envió algo)" },
-          ...(respuesta
-            ? [{ chat_id: chatId, role: "assistant", content: respuesta }]
-            : videoEnviado
-            ? [{ chat_id: chatId, role: "assistant", content: "(le envié el vídeo: así juego yo)" }]
-            : []),
-        ])
-        .then(() => {}, () => {});
+      // Guardamos la respuesta del bot en el transcript (el mensaje del jugador
+      // ya se guardó antes de responder, arriba).
+      if (respuesta || videoEnviado) {
+        await supabaseAdmin
+          .from("telegram_messages")
+          .insert({
+            chat_id: chatId,
+            role: "assistant",
+            content: respuesta || "(le envié el vídeo: así juego yo)",
+          })
+          .then(() => {}, () => {});
+      }
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
       if (OWNER_CHAT_ID) {

@@ -38,6 +38,13 @@ alter table public.telegram_contacts
 alter table public.telegram_contacts
   add column if not exists silenced boolean not null default false;
 
+-- Corte de memoria: al pulsar "Reiniciar memoria" se pone la fecha actual y el
+-- bot ignora como contexto los mensajes anteriores a ella. La memoria de la
+-- charla se lee del transcript (telegram_messages), que se conserva para el
+-- panel; esto solo mueve el punto desde el que el bot "recuerda".
+alter table public.telegram_contacts
+  add column if not exists memory_reset_at timestamptz;
+
 alter table public.telegram_contacts enable row level security;
 -- Sin políticas = inaccesible para anon/authenticated. Solo el service role.
 
