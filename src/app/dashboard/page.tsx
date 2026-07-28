@@ -634,7 +634,7 @@ export default function DashboardPage() {
       )}
 
 
-      <div className="reveal grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);
           return (
@@ -653,7 +653,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="reveal relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6">
+      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.2s" }}>
         <BalanceChart
           data={chartData}
           activeMetrics={activeMetrics}

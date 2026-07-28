@@ -23,10 +23,7 @@ html {
 }
 
 body {
-  /* Transparente a propósito: el fondo animado (AnimatedBackground, fixed) va
-     detrás y el body no debe taparlo. La base oscura la pone el html y el propio
-     fondo animado. */
-  background: transparent;
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
@@ -60,70 +57,6 @@ label,
 }
 .animate-in {
   animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Flotar suave (para el logo del login): sube y baja despacio, premium. */
-@keyframes flotar {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
-}
-.animate-flotar {
-  animation: flotar 5s ease-in-out infinite;
-}
-
-/* Aurora del fondo animado: manchas verdes grandes, borrosas, que se mueven
-   despacio. Dan sensación de "vivo" detrás del contenido. */
-.ab-blob {
-  position: absolute;
-  border-radius: 9999px;
-  /* SIN filter:blur (el degradado ya es suave). El blur pesado + fondo fijo
-     provocaba "marcos grises" al hacer scroll en el móvil (iOS). */
-  opacity: 0.85;
-  transform: translateZ(0);
-}
-.ab-blob-1 {
-  width: 62vmax; height: 62vmax; left: -10vmax; top: -14vmax;
-  background: radial-gradient(circle, rgba(16,185,129,0.85) 0%, transparent 66%);
-  animation: ab-move-1 22s ease-in-out infinite;
-}
-.ab-blob-2 {
-  width: 52vmax; height: 52vmax; right: -10vmax; top: 4vmax;
-  background: radial-gradient(circle, rgba(45,212,191,0.7) 0%, transparent 66%);
-  animation: ab-move-2 27s ease-in-out infinite;
-}
-.ab-blob-3 {
-  width: 48vmax; height: 48vmax; left: 20vmax; bottom: -16vmax;
-  background: radial-gradient(circle, rgba(52,211,153,0.62) 0%, transparent 66%);
-  animation: ab-move-3 31s ease-in-out infinite;
-}
-@keyframes ab-move-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(9vmax, 7vmax) scale(1.18); }
-}
-@keyframes ab-move-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-8vmax, 6vmax) scale(1.12); }
-}
-@keyframes ab-move-3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(7vmax, -8vmax) scale(1.2); }
-}
-
-/* Aparecer al hacer scroll (reveal): los bloques entran suavemente cuando
-   asoman en pantalla. La clase .reveal-visible la pone RevealObserver (JS). */
-.reveal {
-  opacity: 0;
-  transform: translateY(38px);
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.reveal.reveal-visible {
-  opacity: 1;
-  transform: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; transform: none; transition: none; }
 }
 
 /* Toast de celebración (¡nuevo FTD!). */

@@ -5,13 +5,12 @@ import { Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Image from "next/image";
 import DashboardProvider from "@/components/DashboardProvider";
-import RevealObserver from "@/components/RevealObserver";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="relative flex min-h-screen">
+    <div className="flex min-h-screen bg-black">
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-40 md:hidden"
@@ -22,7 +21,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-col flex-1 min-w-0">
-        <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden sticky top-0 z-30 bg-gradient-to-b from-[#05080b] via-[#05080b]/80 to-transparent backdrop-blur-sm items-center px-4 py-3 pb-5 -mb-2`}>
+        <div className={`${sidebarOpen ? "hidden" : "flex"} md:hidden sticky top-0 z-30 bg-black/80 backdrop-blur border-b border-white/10 items-center px-4 py-3`}>
           <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" className="text-white p-2 -ml-2">
             <Menu size={24} />
           </button>
@@ -35,10 +34,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             corre EN PARALELO con la comprobación de acceso, y cada página muestra
             su propio skeleton. El guardián sigue redirigiendo (login/pendiente) y
             RLS protege los datos, así que es seguro. */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">
-          <RevealObserver />
-          {children}
-        </main>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{children}</main>
       </div>
     </div>
   );

@@ -38,7 +38,7 @@ export default function PendientePage() {
   }
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center px-4">
+    <main className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md text-center">
         <div className="flex justify-center mb-8">
           <Image src="/logo.png" alt="A&S Afiliados" width={160} height={167} className="max-w-full h-auto" priority />
