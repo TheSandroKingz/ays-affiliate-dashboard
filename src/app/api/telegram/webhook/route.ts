@@ -424,11 +424,38 @@ export async function POST(request: Request) {
         .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
+      // Si el jugador manda una foto/vídeo, guardamos su file_id + tipo para
+      // poder MOSTRARLO en el visor de chats del panel (el socio ve la imagen).
+      const fotosMsg = msg.photo as Array<{ file_id: string }> | undefined;
+      const mediaFileId =
+        fotosMsg && fotosMsg.length
+          ? fotosMsg[fotosMsg.length - 1].file_id
+          : (msg.video?.file_id ??
+             msg.animation?.file_id ??
+             msg.document?.file_id ??
+             null);
+      const mediaTipo =
+        fotosMsg && fotosMsg.length
+          ? "photo"
+          : msg.video
+          ? "video"
+          : msg.animation
+          ? "animation"
+          : msg.document
+          ? "document"
+          : null;
+
       // Guardamos YA el mensaje del jugador (antes de responder): si manda otro
       // mensaje seguido, ese contexto ya estará disponible para el segundo.
       await supabaseAdmin
         .from("telegram_messages")
-        .insert({ chat_id: chatId, role: "user", content: entrada || "(envió algo)" })
+        .insert({
+          chat_id: chatId,
+          role: "user",
+          content: entrada || "(envió algo)",
+          file_id: mediaFileId,
+          media_type: mediaTipo,
+        })
         .then(() => {}, () => {});
 
       // La IA responde (si no está limitada por spam ni por el tope global diario).

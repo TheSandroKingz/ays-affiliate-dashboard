@@ -80,7 +80,12 @@ export default function TelegramPage() {
   const [cargandoJug, setCargandoJug] = useState(false);
   const [chatAbierto, setChatAbierto] = useState<number | null>(null);
   const [chatMsgs, setChatMsgs] = useState<
-    { role: string; content: string; created_at?: string }[]
+    {
+      role: string;
+      content: string;
+      created_at?: string;
+      media_url?: string | null;
+    }[]
   >([]);
   const [cargandoChat, setCargandoChat] = useState(false);
 
@@ -728,6 +733,15 @@ export default function TelegramPage() {
                                   : "bg-white/15 text-slate-100 rounded-bl-sm"
                               }`}
                             >
+                              {m.media_url && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={m.media_url}
+                                  alt="Imagen enviada"
+                                  className="mb-1 max-w-[200px] rounded-lg"
+                                  loading="lazy"
+                                />
+                              )}
                               {m.content}
                               {m.created_at && (
                                 <div

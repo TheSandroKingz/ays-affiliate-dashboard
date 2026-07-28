@@ -2,9 +2,25 @@
 // El token vive SOLO en la variable de entorno TELEGRAM_BOT_TOKEN (Vercel),
 // nunca en el código. BLINDADO: cualquier fallo se traga (no rompe el flujo).
 
+import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+
+// Firma HMAC para las URLs temporales de imágenes del chat (el navegador pide la
+// imagen en un <img> sin cabeceras; el servidor valida la firma). La clave vive
+// solo en el servidor. La usan /api/telegram/chat (firma) y /media (verifica).
+const MEDIA_KEY =
+  process.env.TELEGRAM_WEBHOOK_SECRET || process.env.POSTBACK_SECRET || "";
+export function firmarMedia(id: number, exp: number): string {
+  return crypto
+    .createHmac("sha256", MEDIA_KEY)
+    .update(`${id}.${exp}`)
+    .digest("hex");
+}
+export function mediaKeyConfigurada(): boolean {
+  return !!MEDIA_KEY;
+}
 export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 
 // Enlace de registro/depósito (afiliado). El "afp=bot" es el sub-id que vuelve

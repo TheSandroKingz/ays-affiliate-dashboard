@@ -134,6 +134,14 @@ create index if not exists idx_telegram_messages_chat
   on public.telegram_messages (chat_id, created_at);
 alter table public.telegram_messages enable row level security;
 
+-- Referencia al archivo de Telegram (foto/vídeo que envía el jugador) para poder
+-- MOSTRAR la imagen en el visor de chats del panel. Guardamos el file_id (que se
+-- reutiliza) y el tipo; el panel pide la imagen por una URL firmada temporal.
+alter table public.telegram_messages
+  add column if not exists file_id text;
+alter table public.telegram_messages
+  add column if not exists media_type text;
+
 -- Vídeo/foto de bienvenida opcional (se envía con /start). Si no hay, solo texto.
 create table if not exists public.telegram_welcome (
   id         smallint    primary key default 1,
