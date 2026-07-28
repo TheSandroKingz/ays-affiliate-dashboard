@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import AnimatedBackground from "@/components/AnimatedBackground";
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
@@ -50,6 +51,7 @@ export default function LoginPage() {
   }
   return (
     <main className="min-h-screen flex items-start md:items-center justify-center px-4 pt-16 md:pt-0">
+      <AnimatedBackground />
       <div className="w-full max-w-md">
         <div className="text-center mb-12 flex justify-center">
           <Image src="/logo-login.png" alt="A&S Afiliados" width={340} height={243} className="max-w-full h-auto logo-contorno" priority />

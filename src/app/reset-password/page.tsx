@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import AnimatedBackground from "@/components/AnimatedBackground";
 import { useRouter } from 'next/navigation'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
@@ -70,6 +71,7 @@ export default function ResetPasswordPage() {
 
   return (
     <main className="min-h-screen flex items-start md:items-center justify-center px-4 pt-16 md:pt-0">
+      <AnimatedBackground />
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex justify-center">
           <Image src="/logo.png" alt="A&S Afiliados" width={170} height={177} className="max-w-full h-auto logo-contorno" priority />

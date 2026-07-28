@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import AnimatedBackground from "@/components/AnimatedBackground";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
@@ -39,6 +40,7 @@ export default function PendientePage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
+      <AnimatedBackground />
       <div className="w-full max-w-md text-center">
         <div className="flex justify-center mb-8">
           <Image src="/logo.png" alt="A&S Afiliados" width={160} height={167} className="max-w-full h-auto logo-contorno" priority />
