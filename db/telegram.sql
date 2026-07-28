@@ -100,6 +100,36 @@ as $$
   returning count;
 $$;
 
+-- Rate-limit anti-spam POR USUARIO, ATÓMICO: incrementa el contador dentro de la
+-- ventana (1 min) o la reinicia si expiró, y devuelve los mensajes de la ventana.
+-- Evita que una ráfaga concurrente del mismo usuario se salte el tope (el
+-- read-modify-write anterior perdía incrementos). La fila del contacto ya existe
+-- (se crea con /start); si no, devuelve NULL y no se bloquea.
+create or replace function public.bump_ai_user(p_chat_id bigint, p_ventana_ms integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  n integer;
+begin
+  update public.telegram_contacts
+  set
+    ai_count = case
+      when ai_window_start is null
+        or now() - ai_window_start > (p_ventana_ms || ' milliseconds')::interval
+        then 1 else ai_count + 1 end,
+    ai_window_start = case
+      when ai_window_start is null
+        or now() - ai_window_start > (p_ventana_ms || ' milliseconds')::interval
+        then now() else ai_window_start end
+  where chat_id = p_chat_id
+  returning ai_count into n;
+  return n;
+end;
+$$;
+
 -- Config del bot: la "promo activa" que el bot menciona (bonos/recargas reales).
 create table if not exists public.telegram_config (
   id         smallint    primary key default 1,

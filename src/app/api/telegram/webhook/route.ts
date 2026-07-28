@@ -333,30 +333,24 @@ export async function POST(request: Request) {
 
     // ── Un JUGADOR escribe → la IA le responde sola + copia al dueño ─────────
     if (!esDueno) {
-      // Datos del contacto: contador anti-spam, silencio y corte de memoria.
+      // Datos del contacto: silencio y corte de memoria.
       const { data: contacto } = await supabaseAdmin
         .from("telegram_contacts")
-        .select("ai_window_start, ai_count, silenced, memory_reset_at")
+        .select("silenced, memory_reset_at")
         .eq("chat_id", chatId)
         .maybeSingle();
       // Silenciado por el dueño: el bot lo ignora del todo.
       if (contacto?.silenced) return NextResponse.json({ ok: true });
 
-      // Límite: máx 8 respuestas de IA por minuto por usuario (protege el saldo
-      // de Claude de que alguien spamee el bot).
+      // Límite: máx 8 mensajes de IA por minuto por usuario (protege el saldo de
+      // Claude). ATÓMICO en BD: una ráfaga concurrente del mismo usuario no puede
+      // saltárselo. Si la función aún no existe (SQL sin aplicar), no bloquea.
       const LIMITE_IA = 8;
-      const ahoraMs = Date.now();
-      const winMs = contacto?.ai_window_start
-        ? new Date(contacto.ai_window_start).getTime()
-        : 0;
-      let aiCount = contacto?.ai_count ?? 0;
-      let aiWindow = contacto?.ai_window_start ?? null;
-      if (ahoraMs - winMs > 60_000) {
-        aiCount = 0;
-        aiWindow = new Date().toISOString();
-      }
-      aiCount += 1;
-      const limitado = aiCount > LIMITE_IA;
+      const { data: nUsuario } = await supabaseAdmin.rpc("bump_ai_user", {
+        p_chat_id: chatId,
+        p_ventana_ms: 60_000,
+      });
+      const limitado = typeof nUsuario === "number" && nUsuario > LIMITE_IA;
 
       // ¿Pide el patrón/vídeo? Si hay vídeo guardado, se lo mandamos como "así
       // es como lo hago yo" (tu contenido/estilo). Sin decir que gana.
@@ -504,8 +498,6 @@ export async function POST(request: Request) {
           first_name: from.first_name ?? null,
           username: from.username ?? null,
           last_msg_at: new Date().toISOString(),
-          ai_window_start: aiWindow,
-          ai_count: aiCount,
         },
         { onConflict: "chat_id" }
       );
