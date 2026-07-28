@@ -130,6 +130,15 @@ begin
 end;
 $$;
 
+-- Idempotencia del envío diario: guardamos la "franja" ya enviada (día Madrid +
+-- noche/extra) para que un segundo disparo del cron (Vercel es at-least-once) no
+-- reenvíe el mensaje masivo por duplicado. El cron diario limpia las viejas.
+create table if not exists public.telegram_envio_diario (
+  clave      text        primary key,
+  created_at timestamptz not null default now()
+);
+alter table public.telegram_envio_diario enable row level security;
+
 -- Config del bot: la "promo activa" que el bot menciona (bonos/recargas reales).
 create table if not exists public.telegram_config (
   id         smallint    primary key default 1,

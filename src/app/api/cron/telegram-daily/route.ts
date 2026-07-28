@@ -111,10 +111,15 @@ export async function GET(request: Request) {
   // Corre en cada disparo del cron, aunque no toque enviar.
   {
     const cutoff = new Date(Date.now() - 40 * 3600 * 1000).toISOString();
+    // Los MÁS ANTIGUOS primero (asc): así, si hay más de 2000, borramos en BD
+    // solo hasta el último que procesamos, y los que sobran se limpian en la
+    // siguiente pasada (antes se borraban de BD sin borrarlos del chat = quedaban
+    // para siempre en Telegram).
     const { data: viejos } = await supabaseAdmin
       .from("telegram_sent")
-      .select("chat_id, message_id")
+      .select("chat_id, message_id, created_at")
       .lt("created_at", cutoff)
+      .order("created_at", { ascending: true })
       .limit(2000);
     if (viejos?.length) {
       for (let i = 0; i < viejos.length; i += 25) {
@@ -126,7 +131,11 @@ export async function GET(request: Request) {
         );
         if (i + 25 < viejos.length) await new Promise((r) => setTimeout(r, 1000));
       }
-      await supabaseAdmin.from("telegram_sent").delete().lt("created_at", cutoff);
+      const ultimo = viejos[viejos.length - 1].created_at as string;
+      await supabaseAdmin
+        .from("telegram_sent")
+        .delete()
+        .lte("created_at", ultimo);
     }
   }
 
@@ -139,11 +148,35 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, enviado: false, motivo: `hora Madrid ${hora}, sin envío` });
   }
 
+  // Idempotencia: los cron de Vercel pueden dispararse dos veces (at-least-once).
+  // Reservamos la franja del día (atómico) para no reenviar el masivo por
+  // duplicado. El envío MANUAL (force) no se frena. BLINDADO: si la tabla aún no
+  // existe, no bloquea (se envía igual).
+  if (!force) {
+    const diaMadrid = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date());
+    const clave = `${diaMadrid}-${esExtra ? "extra" : "noche"}`;
+    const { data: ins, error: insErr } = await supabaseAdmin
+      .from("telegram_envio_diario")
+      .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
+      .select("clave");
+    if (!insErr && ins && ins.length === 0) {
+      return NextResponse.json({ ok: true, enviado: false, motivo: "ya enviado esta franja" });
+    }
+  }
+
   // Limpieza: borramos los update_id anti-duplicados de más de 1 día.
   await supabaseAdmin
     .from("telegram_updates")
     .delete()
     .lt("created_at", new Date(Date.now() - 864e5).toISOString())
+    .then(() => {}, () => {});
+  // Y las claves de franja de envío de más de 3 días (ya no hacen falta).
+  await supabaseAdmin
+    .from("telegram_envio_diario")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 3 * 864e5).toISOString())
     .then(() => {}, () => {});
 
   // Reactivamos dormidos solo en el envío de la noche (1 vez/día), no en el extra.

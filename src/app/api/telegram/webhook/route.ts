@@ -302,8 +302,12 @@ export async function POST(request: Request) {
     // ── El DUEÑO responde a una duda reenviada → mandarla al jugador ─────────
     // Usamos copyMessage: copia TU respuesta tal cual (texto, foto, vídeo, gif…)
     // al jugador. Así puedes contestar con lo que quieras, no solo texto.
-    if (esDueno && msg.reply_to_message?.text) {
-      const m = msg.reply_to_message.text.match(/\[uid:(\d+)\]/);
+    // El marcador [uid:N] puede venir en el texto o en el PIE (caption) del
+    // mensaje al que respondes (si respondes a una foto/vídeo reenviado).
+    const refDueno =
+      msg.reply_to_message?.text || msg.reply_to_message?.caption;
+    if (esDueno && refDueno) {
+      const m = refDueno.match(/\[uid:(\d+)\]/);
       if (m) {
         const destino = Number(m[1]);
         const r = await tgApi("copyMessage", {
@@ -552,12 +556,15 @@ export async function POST(request: Request) {
           OWNER_CHAT_ID,
           `💬 <b>${quien}</b>${cuerpo}\n\n<i>↩️ Responde a este mensaje para escribirle tú</i> [uid:${chatId}]`
         );
-        // Si trae foto/vídeo/etc (mensaje sin texto), lo copiamos también.
+        // Si trae foto/vídeo/etc (mensaje sin texto), lo copiamos también, con el
+        // marcador [uid] en el pie: así puedes responder DIRECTAMENTE a esa foto
+        // y tu respuesta le llega al jugador (antes había que responder al texto).
         if (!text) {
           await tgApi("copyMessage", {
             chat_id: OWNER_CHAT_ID,
             from_chat_id: chatId,
             message_id: msg.message_id,
+            caption: `↩️ Responde para escribirle [uid:${chatId}]`,
           });
         }
       }
