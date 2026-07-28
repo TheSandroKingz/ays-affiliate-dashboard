@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { compararSecreto } from "@/lib/secreto";
 import {
   getPlayerId,
   reclamarEvento,
@@ -12,7 +13,7 @@ import { notificarEvento } from "@/lib/push";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const key = url.searchParams.get("key");
-  if (!process.env.POSTBACK_SECRET || key !== process.env.POSTBACK_SECRET) {
+  if (!compararSecreto(key, process.env.POSTBACK_SECRET)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 

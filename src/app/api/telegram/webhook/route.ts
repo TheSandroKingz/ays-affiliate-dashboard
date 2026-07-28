@@ -10,6 +10,7 @@ import {
   midDe,
   descargarFoto,
 } from "@/lib/telegram";
+import { compararSecreto } from "@/lib/secreto";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -40,12 +41,9 @@ const BIENVENIDA =
   "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
 
 export async function POST(request: Request) {
-  // Verificación del secreto del webhook.
+  // Verificación del secreto del webhook (comparación en tiempo constante).
   const secret = request.headers.get("x-telegram-bot-api-secret-token");
-  if (
-    !process.env.TELEGRAM_WEBHOOK_SECRET ||
-    secret !== process.env.TELEGRAM_WEBHOOK_SECRET
-  ) {
+  if (!compararSecreto(secret, process.env.TELEGRAM_WEBHOOK_SECRET)) {
     return NextResponse.json({ ok: true }); // 200 silencioso, no procesamos
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { compararSecreto } from "@/lib/secreto";
 import { getPlayerId, getMonto, registrarEvento, queryLimpia } from "@/lib/postback";
 
 // Postback de DEPÓSITO/RECARGA = salta en CADA depósito (no solo el primero).
@@ -11,7 +12,7 @@ import { getPlayerId, getMonto, registrarEvento, queryLimpia } from "@/lib/postb
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const key = url.searchParams.get("key");
-  if (!process.env.POSTBACK_SECRET || key !== process.env.POSTBACK_SECRET) {
+  if (!compararSecreto(key, process.env.POSTBACK_SECRET)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
