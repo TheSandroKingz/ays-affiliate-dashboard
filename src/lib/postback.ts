@@ -164,7 +164,7 @@ export async function buscarQftdContado(
 }
 
 export type EventoPostback = {
-  event_type: "registration" | "ftd" | "commission";
+  event_type: "registration" | "ftd" | "commission" | "redeposit";
   raw_query: string;
   tracking_code?: string;
   afp?: string;
