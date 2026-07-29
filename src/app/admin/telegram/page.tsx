@@ -408,30 +408,55 @@ export default function TelegramPage() {
             </div>
           </div>
 
-          {/* 2) Más específico: todos los detalles en TOTALES (no se reinician),
-              estilo "inicio" (número grande + borde de color arriba). */}
+          {/* 2) Más específico: en listas (etiqueta → valor), como estaba antes. */}
           <div>
             <div className="text-sm text-slate-300 font-medium mb-2">
               Más específico
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[
-                { l: "Primeros depósitos (FTD)", v: `${stats.bot.depTot}`, c: "#10b981" },
-                { l: "Dinero que metieron", v: `${Math.round(stats.recargas?.eurTot ?? 0)} €`, c: "#2dd4bf" },
-                { l: "Recargas", v: `${stats.recargas?.nTot ?? 0}`, c: "#3b82f6" },
-                { l: "Jugadores del bot", v: `${stats.total}`, c: "#8b5cf6" },
-                { l: "Activos", v: `${stats.activos}`, c: "#22c55e" },
-                { l: "Escribieron (24h)", v: `${stats.escribieron24h}`, c: "#f59e0b" },
-                { l: "Nuevos (24h)", v: `${stats.nuevos24h}`, c: "#ec4899" },
-                { l: "Respuestas IA hoy", v: `${stats.iaHoy}`, c: "#f43f5e" },
-              ].map((s) => (
+                {
+                  t: "💵 Depósitos del bot",
+                  rows: [
+                    ["Primeros depósitos (FTD)", stats.bot.depTot],
+                    ["Dinero que metieron", `${Math.round(stats.recargas?.eurTot ?? 0)} €`],
+                    ["Recargas", stats.recargas?.nTot ?? 0],
+                  ] as [string, string | number][],
+                },
+                {
+                  t: "👥 Comunidad",
+                  rows: [
+                    ["Total", stats.total],
+                    ["Activos", stats.activos],
+                    ["Silenciados", stats.silenciados],
+                    ["Bajas", stats.bajas],
+                  ] as [string, string | number][],
+                },
+                {
+                  t: "⚡ Actividad (24h)",
+                  rows: [
+                    ["Escribieron", stats.escribieron24h],
+                    ["Nuevos", stats.nuevos24h],
+                    ["Respuestas IA hoy", stats.iaHoy],
+                  ] as [string, string | number][],
+                },
+              ].map((card) => (
                 <div
-                  key={s.l}
-                  className="p-4 rounded-xl border border-white/10 bg-black/40 border-t-4"
-                  style={{ borderTopColor: s.c }}
+                  key={card.t}
+                  className="rounded-2xl border border-white/15 bg-white/5 p-4"
                 >
-                  <p className="text-xs text-slate-300 mb-1">{s.l}</p>
-                  <p className="text-2xl font-bold text-white">{s.v}</p>
+                  <div className="text-xs text-slate-400 mb-3">{card.t}</div>
+                  <div className="flex flex-col gap-2">
+                    {card.rows.map(([l, v]) => (
+                      <div
+                        key={l}
+                        className="flex items-center justify-between text-sm border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
+                      >
+                        <span className="text-slate-400">{l}</span>
+                        <span className="text-white font-semibold">{v}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
