@@ -401,7 +401,7 @@ export default function TelegramPage() {
               💰 Dinero que me ha generado el bot
             </div>
             <div className="mt-1 text-5xl font-extrabold text-emerald-300">
-              {Math.round(stats.bot.eurTot)} €
+              {Math.round(stats.bot.eurTot).toLocaleString("es-ES")} €
             </div>
             <div className="mt-1 text-xs text-slate-400">
               Total desde el primer día · nunca se reinicia
@@ -419,7 +419,7 @@ export default function TelegramPage() {
                   t: "💵 Depósitos del bot",
                   rows: [
                     ["Primeros depósitos (FTD)", stats.bot.depTot],
-                    ["Dinero que metieron", `${Math.round(stats.recargas?.eurTot ?? 0)} €`],
+                    ["Dinero que metieron", `${Math.round(stats.recargas?.eurTot ?? 0).toLocaleString("es-ES")} €`],
                     ["Recargas", stats.recargas?.nTot ?? 0],
                   ] as [string, string | number][],
                 },
@@ -484,7 +484,9 @@ export default function TelegramPage() {
                       {r.player ? ` · #${r.player}` : ""}
                     </span>
                     <span className="font-semibold text-teal-200">
-                      {r.importe > 0 ? `${Math.round(r.importe)} €` : "—"}
+                      {r.importe > 0
+                        ? `${Math.round(r.importe).toLocaleString("es-ES")} €`
+                        : "—"}
                     </span>
                   </div>
                 ))}
