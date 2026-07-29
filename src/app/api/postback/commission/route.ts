@@ -1,4 +1,4 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { compararSecreto } from "@/lib/secreto";
 import {
@@ -8,6 +8,7 @@ import {
   registrarEvento,
   ftdYaContado,
   buscarQftdContado,
+  montoConSigno,
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
@@ -19,12 +20,11 @@ import { ADMIN_USER_ID } from "@/lib/adminAuth";
 // aquí sumamos el FTD del afiliado y su CPA. El postback de "ftd" a secas es
 // cualquier primer depósito (no cualificado) y NO suma dinero.
 //
-// SALVAGUARDAS (imposible colar dinero falso):
+// SALVAGUARDAS (imposible colar dinero falso ni pagar dos veces):
 //  1) Debe emparejar con un afiliado (por trackingcode o afp).
 //  2) Debe traer player_id (userid), o no contamos.
-//  3) Debe existir un DEPÓSITO previo de ese jugador (postback de FTD). Así, los
-//     tests de FreshBet (jugador inventado, sin depósito) nunca cuentan.
-//  4) Candado por jugador + retención si ya estaba contado (anti-doble-pago).
+//  3) Candado por jugador (postback_dedup): el MISMO QFTD nunca cuenta dos veces.
+//  4) Si el jugador YA tenía un QFTD contado, se retiene (anti doble-pago).
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const key = url.searchParams.get("key");
@@ -36,9 +36,8 @@ export async function GET(request: Request) {
   const trackingcode = url.searchParams.get("trackingcode") ?? "";
   const isocountry = (url.searchParams.get("isocountry") ?? "").toUpperCase();
   const playerid = getPlayerId(url);
-  const importe = Number(
-    (url.searchParams.get("commissionamount") ?? "").replace(",", ".")
-  );
+  // Importe CON SIGNO y separadores robustos: si es negativo = reversión/chargeback.
+  const importe = montoConSigno(url.searchParams.get("commissionamount"));
 
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
@@ -106,23 +105,21 @@ export async function GET(request: Request) {
       status: estadoRev,
     });
 
+    // Avisos GARANTIZADOS (await, no best-effort): enviarPush es blindado y no
+    // rompe; esperarlo asegura que el aviso de reversión/error llegue de verdad.
     if (estadoRev === "reversed") {
-      after(() =>
-        enviarPush(ADMIN_USER_ID, {
-          title: "↩️ Comisión revertida",
-          body: "FreshBet quitó una comisión y se ha restado también al afiliado.",
-          url: "/admin/actividad",
-        })
-      );
+      await enviarPush(ADMIN_USER_ID, {
+        title: "↩️ Comisión revertida",
+        body: "FreshBet quitó una comisión y se ha restado también al afiliado.",
+        url: "/admin/actividad",
+      });
     }
     if (estadoRev === "error") {
-      after(() =>
-        enviarPush(ADMIN_USER_ID, {
-          title: "⚠️ Error al revertir una comisión",
-          body: "Una reversión dio error de red. Puede haberse aplicado o no — revisa el balance del afiliado a mano.",
-          url: "/admin/actividad",
-        })
-      );
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ Error al revertir una comisión",
+        body: "Una reversión dio error de red. Puede haberse aplicado o no — revisa el balance del afiliado a mano.",
+        url: "/admin/actividad",
+      });
     }
     return NextResponse.json({ ok: true, reversed: estadoRev === "reversed" });
   }
@@ -172,9 +169,12 @@ export async function GET(request: Request) {
         estado = "held";
         heldReason = "double_pay";
       } else {
+        // Otro país usa cpa_other; si no está puesto, cae a cpa_spain (el plan es
+        // el mismo importe por QFTD) para no contar el FTD pagando 0 y quemar el
+        // candado. País vacío = se trata como España.
         const esOtroPais = isocountry && isocountry !== "ES";
         const commission = Number(
-          (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
+          (esOtroPais ? target.cpa_other ?? target.cpa_spain : target.cpa_spain) ?? 0
         );
         const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
           p_user_id: target.user_id,
@@ -211,32 +211,30 @@ export async function GET(request: Request) {
     status: estado,
   });
 
-  // Avisos push (sin retrasar la respuesta). Pasamos el importe acreditado para
-  // que el aviso diga cuánto se gana (afiliado) / cuánto te llevas (admin).
+  // Avisos GARANTIZADOS (await, no best-effort). El RPC del dinero ya se hizo
+  // ARRIBA; esto solo manda el push, que es blindado. Esperarlo asegura que el
+  // aviso llegue (antes iba con after() y podía perderse según el hosting).
+  // Pasamos el importe acreditado para que el aviso diga cuánto se gana/llevas.
   if (estado === "counted" && target) {
-    after(() => notificarEvento(target.user_id, "ftd", comisionPagada));
+    await notificarEvento(target.user_id, "ftd", comisionPagada);
   }
   // Solo avisamos si es un POSIBLE DOBLE PAGO (jugador ya contado). Las
   // retenciones "sin depósito" son casi siempre pruebas de FreshBet o disparos
   // prematuros: se aparcan calladas (siguen visibles en Actividad por si acaso),
   // pero NO te bombardean con avisos cada vez que el manager hace un test.
   if (estado === "held" && heldReason === "double_pay") {
-    after(() =>
-      enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ Posible doble pago",
-        body: "Un QFTD de un jugador que ya estaba contado quedó retenido. Revísalo en Actividad.",
-        url: "/admin/actividad",
-      })
-    );
+    await enviarPush(ADMIN_USER_ID, {
+      title: "⚠️ Posible doble pago",
+      body: "Un QFTD de un jugador que ya estaba contado quedó retenido. Revísalo en Actividad.",
+      url: "/admin/actividad",
+    });
   }
   if (estado === "error" && target) {
-    after(() =>
-      enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ Error al contar un QFTD",
-        body: "Un QFTD dio error de red al sumar. Puede haberse sumado o no — revisa el balance del afiliado a mano (no habrá doble pago).",
-        url: "/admin/actividad",
-      })
-    );
+    await enviarPush(ADMIN_USER_ID, {
+      title: "⚠️ Error al contar un QFTD",
+      body: "Un QFTD dio error de red al sumar. Puede haberse sumado o no — revisa el balance del afiliado a mano (no habrá doble pago).",
+      url: "/admin/actividad",
+    });
   }
 
   return NextResponse.json({ ok: true, matched: !!target, duplicado });

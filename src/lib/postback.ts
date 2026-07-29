@@ -56,6 +56,28 @@ export function getMonto(url: URL): number {
   return 0;
 }
 
+// Parsea un importe que PUEDE ser negativo (comisión / reversión) con separadores
+// de miles robustos, CONSERVANDO el signo. A diferencia de getMonto (solo positivos
+// > 0, para stats), aquí el signo es CRÍTICO: una comisión negativa = chargeback y
+// dispara la reversión. Antes se hacía replace(",", ".") (solo la 1ª coma), así que
+// "-1,234.56" salía NaN y la reversión NO se aplicaba → el afiliado se quedaba el
+// dinero que FreshBet quitó. Devuelve NaN si no hay número.
+export function montoConSigno(raw: string | null): number {
+  if (!raw) return NaN;
+  const neg = raw.includes("-") || raw.includes("−"); // signo (incluye el menos unicode)
+  let s = raw.replace(/[^\d.,]/g, "");
+  if (!s) return NaN;
+  const ultimoSep = Math.max(s.lastIndexOf(","), s.lastIndexOf("."));
+  if (ultimoSep >= 0) {
+    const ent = s.slice(0, ultimoSep).replace(/[.,]/g, "");
+    const dec = s.slice(ultimoSep + 1).replace(/[.,]/g, "");
+    s = `${ent}.${dec}`;
+  }
+  const v = Number(s);
+  if (!Number.isFinite(v)) return NaN;
+  return neg ? -v : v;
+}
+
 // Intenta "reclamar" el evento (idempotencia). Devuelve true si se debe CONTAR
 // (es nuevo, o no hay id, o la tabla no existe todavía), false si es un
 // duplicado ya contado. IMPORTANTE: solo llamar cuando el evento SÍ se va a
