@@ -253,7 +253,7 @@ export async function responderIA(
     // injection) en el canal SYSTEM.
     const nom = (nombre ?? "").replace(/[\n\r"'`]/g, " ").trim().slice(0, 40);
     const sysNombre = nom
-      ? `${conPromo(SYSTEM, promo)}\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para saber el género y tratarle acorde: si es un nombre claramente de CHICA (p. ej. Saray, Sara, María, Laura, Ana, Carmen, Marta, Lucía…) trátala SIEMPRE en FEMENINO ("activa", "lista", "guapa", "bienvenida") y JAMÁS en masculino ni con "hermano/tío/chaval". Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO (nunca masculino por defecto). Puedes usar su nombre para dirigirte a ella/él.`
+      ? `${conPromo(SYSTEM, promo)}\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), en FEMENINO (y jamás "hermano/tío/chaval"). Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO. Puedes usar su nombre para dirigirte a ella/él.`
       : conPromo(SYSTEM, promo);
     const res = await client.messages.create({
       model: MODELO,
