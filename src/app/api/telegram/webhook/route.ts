@@ -547,15 +547,18 @@ export async function POST(request: Request) {
       );
 
       // Respuesta al jugador. Texto plano (sin HTML): la IA podría meter un "<".
-      // El botón del enlace solo sale cuando la respuesta invita a jugar/entrar
-      // /depositar (si no, cansa verlo en cada mensajito).
+      // El botón del enlace (= su enlace de afiliado) sale cuando hay intención de
+      // jugar/entrar/depositar, mirando TANTO la respuesta del bot COMO lo que
+      // escribió el jugador (patrón, vídeo, promo, cuánto…). Así el enlace aparece
+      // pronto y no solo cuando ya dicen que depositaron. Solo lo omitimos en
+      // mensajitos sin nada de eso (saludos sueltos, quejas puras).
+      const intencionJugar =
+        /jug|entra|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|min[ae]s?|casino|promo|bono|empez|quiero|gan[ao]|\b20\b|\b30\b|\b100\b|\b150\b/i;
       // Guardamos el mensaje del jugador para la limpieza automática de chats.
       await guardarMsg(chatId, msg.message_id);
       if (respuesta) {
         const invita =
-          /jug|entra|deposit|recarg|vuelve|\b20\b|\b30\b|\b100\b|\b150\b|enlace|link|registr|apuest/i.test(
-            respuesta
-          );
+          intencionJugar.test(respuesta) || intencionJugar.test(textoJ);
         const rEnv = await tgEnviar(chatId, respuesta, {
           parse_mode: undefined,
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
