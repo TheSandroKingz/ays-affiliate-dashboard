@@ -149,12 +149,8 @@ export async function GET(request: Request) {
   let duplicado = false;
   let estado: EstadoEvento = "no_match";
   let comisionPagada = 0;
-  // Por qué se retiene (si se retiene):
-  //  - "no_deposit" : comisión SIN depósito detrás. Casi siempre es una PRUEBA de
-  //    FreshBet o un disparo prematuro (llega la comisión antes que el FTD). NO se
-  //    avisa al dueño: se aparca calladamente y ya se revisa/descarta si hace falta.
-  //  - "double_pay" : el jugador YA tenía un QFTD contado (posible doble pago). ESO
-  //    sí se avisa, que es lo único de verdad delicado.
+  // Único motivo de retención que queda: "double_pay" = el jugador YA tenía un
+  // QFTD contado (posible doble pago). Es lo único delicado y lo único que avisa.
   let heldReason: "double_pay" | null = null;
 
   if (target && playerid) {

@@ -123,30 +123,6 @@ export async function ftdYaContado(playerId: string): Promise<boolean> {
   }
 }
 
-// ¿Existe un DEPÓSITO previo de este jugador? Un QFTD real SIEMPRE viene
-// precedido de un depósito. Como prueba vale CUALQUIERA de los dos postbacks de
-// dinero de FreshBet: el de FTD ("ftd") o el de depósito/recarga ("redeposit").
-// Antes solo miraba "ftd"; si ese postback deja de llegar o cambia (p. ej. al
-// reconfigurar los postbacks), TODOS los QFTD se retenían aunque el depósito sí
-// estuviera registrado por el otro postback. Con esto, basta con que uno de los
-// dos haya llegado. Sigue rechazando los tests de FreshBet (jugador inventado,
-// sin ningún depósito). Ante fallo devuelve false (preferimos retener a colar un
-// falso). BLINDADO.
-export async function depositoPrevio(playerId: string): Promise<boolean> {
-  if (!playerId) return false;
-  try {
-    const { count, error } = await supabaseAdmin
-      .from("postback_events")
-      .select("id", { count: "exact", head: true })
-      .in("event_type", ["ftd", "redeposit"])
-      .eq("player_id", playerId);
-    if (error) return false;
-    return (count ?? 0) > 0;
-  } catch {
-    return false;
-  }
-}
-
 // Busca el QFTD/FTD ya CONTADO de un jugador (para revertirlo si FreshBet quita
 // la comisión). Devuelve al afiliado, cuánto se le acreditó y en qué fecha, o
 // null si no hay nada contado. BLINDADO.
