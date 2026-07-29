@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     escribieron24h,
     diarioRes,
     botRes,
+    recRes,
     iaHoyRes,
     configRes,
   ] = await Promise.all([
@@ -53,6 +54,14 @@ export async function GET(request: Request) {
       .select("commission, created_at")
       .eq("counted", true)
       .eq("event_type", "commission")
+      .ilike("afp", "bot%")
+      .limit(100000),
+    // RECARGAS/depósitos atribuidos al bot (postback de depósito, afp=bot).
+    // Mide la labor del bot (recargas) aunque el CPA no las pague. limit alto.
+    supabaseAdmin
+      .from("postback_events")
+      .select("amount, created_at")
+      .eq("event_type", "redeposit")
       .ilike("afp", "bot%")
       .limit(100000),
     supabaseAdmin
@@ -89,6 +98,24 @@ export async function GET(request: Request) {
     }).format(new Date(t));
     if (rowDay === hoyKey) { b.depHoy++; b.eurHoy += c; }
   }
+  // Recargas/depósitos del bot por ventana (nº e importe).
+  const rec = {
+    nTot: 0, nHoy: 0, n7: 0, n30: 0,
+    eurTot: 0, eurHoy: 0, eur7: 0, eur30: 0,
+  };
+  for (const r of recRes.data ?? []) {
+    const amt = Number(r.amount ?? 0);
+    rec.nTot++; rec.eurTot += amt;
+    const t = new Date(r.created_at as string).getTime();
+    if (Number.isNaN(t)) continue;
+    if (t >= d30) { rec.n30++; rec.eur30 += amt; }
+    if (t >= d7) { rec.n7++; rec.eur7 += amt; }
+    const rowDay = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date(t));
+    if (rowDay === hoyKey) { rec.nHoy++; rec.eurHoy += amt; }
+  }
+
   const iaHoy = iaHoyRes.data?.count ?? 0;
   const promo = configRes.data?.promo ?? "";
 
@@ -104,6 +131,7 @@ export async function GET(request: Request) {
       escribieron24h,
       iaHoy,
       bot: b,
+      recargas: rec,
     },
     promo,
     diario: diario

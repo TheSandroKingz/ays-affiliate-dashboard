@@ -32,6 +32,10 @@ export default function TelegramPage() {
       depTot: number; depHoy: number; dep7: number; dep30: number;
       eurTot: number; eurHoy: number; eur7: number; eur30: number;
     };
+    recargas?: {
+      nTot: number; nHoy: number; n7: number; n30: number;
+      eurTot: number; eurHoy: number; eur7: number; eur30: number;
+    };
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
@@ -423,6 +427,47 @@ export default function TelegramPage() {
               ))}
             </div>
           </div>
+
+          {/* Recargas/depósitos que trae el bot (postback de depósito afp=bot).
+              Mide la labor del bot aunque el CPA no las pague. */}
+          {stats.recargas && (
+            <div className="rounded-2xl border border-teal-400/25 bg-gradient-to-br from-teal-500/15 to-teal-500/5 p-4">
+              <div className="text-xs text-teal-200/80">
+                🔄 Recargas que trae el bot
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-teal-200">
+                  {Math.round(stats.recargas.eurTot)} €
+                </span>
+                <span className="text-sm text-slate-400">
+                  · {stats.recargas.nTot} recargas
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {[
+                  { l: "Hoy", e: stats.recargas.eurHoy, d: stats.recargas.nHoy },
+                  { l: "7 días", e: stats.recargas.eur7, d: stats.recargas.n7 },
+                  { l: "30 días", e: stats.recargas.eur30, d: stats.recargas.n30 },
+                ].map((s) => (
+                  <div
+                    key={s.l}
+                    className="rounded-xl bg-black/20 px-2 py-2 text-center"
+                  >
+                    <div className="text-base font-semibold text-teal-200">
+                      {Math.round(s.e)} €
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {s.d} · {s.l}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-[10px] text-slate-500">
+                Solo mide (FreshBet no paga las recargas). Se llena a medida que
+                lleguen depósitos por el enlace del bot.
+              </div>
+            </div>
+          )}
 
           {/* Comunidad + actividad: dos tarjetas limpias (etiqueta → valor) */}
           <div className="grid sm:grid-cols-2 gap-3">
