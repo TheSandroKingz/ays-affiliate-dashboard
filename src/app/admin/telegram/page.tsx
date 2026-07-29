@@ -501,43 +501,24 @@ export default function TelegramPage() {
             </div>
           )}
 
-          {/* Comunidad + actividad: dos tarjetas limpias (etiqueta → valor) */}
-          <div className="grid sm:grid-cols-2 gap-3">
+          {/* Comunidad + actividad: tarjetas tipo "inicio" (número grande +
+              borde de color arriba). */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
-              {
-                t: "👥 Comunidad",
-                rows: [
-                  ["Total", stats.total],
-                  ["Activos", stats.activos],
-                  ["Silenciados", stats.silenciados],
-                  ["Bajas", stats.bajas],
-                ] as [string, number][],
-              },
-              {
-                t: "⚡ Actividad (24h)",
-                rows: [
-                  ["Escribieron", stats.escribieron24h],
-                  ["Nuevos", stats.nuevos24h],
-                  ["Respuestas IA hoy", stats.iaHoy],
-                ] as [string, number][],
-              },
-            ].map((card) => (
+              { l: "Jugadores totales", v: stats.total, c: "#10b981" },
+              { l: "Activos", v: stats.activos, c: "#2dd4bf" },
+              { l: "Escribieron (24h)", v: stats.escribieron24h, c: "#3b82f6" },
+              { l: "Nuevos (24h)", v: stats.nuevos24h, c: "#8b5cf6" },
+              { l: "Respuestas IA hoy", v: stats.iaHoy, c: "#f59e0b" },
+              { l: "Bajas", v: stats.bajas, c: "#f43f5e" },
+            ].map((s) => (
               <div
-                key={card.t}
-                className="rounded-2xl border border-white/15 bg-white/5 p-4"
+                key={s.l}
+                className="p-4 rounded-xl border border-white/10 bg-black/40 border-t-4"
+                style={{ borderTopColor: s.c }}
               >
-                <div className="text-xs text-slate-400 mb-3">{card.t}</div>
-                <div className="flex flex-col gap-2">
-                  {card.rows.map(([l, v]) => (
-                    <div
-                      key={l}
-                      className="flex items-center justify-between text-sm border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
-                    >
-                      <span className="text-slate-400">{l}</span>
-                      <span className="text-white font-semibold">{v}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm text-slate-300 mb-1">{s.l}</p>
+                <p className="text-2xl font-bold text-white">{s.v}</p>
               </div>
             ))}
           </div>
