@@ -395,133 +395,77 @@ export default function TelegramPage() {
 
       {stats && (
         <div className="flex flex-col gap-3">
-          {/* Tarjeta principal: € generado por el bot */}
-          <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-4">
-            <div className="text-xs text-emerald-200/80">
-              💰 Generado por el bot
+          {/* 1) Dinero que me ha generado el bot: TOTAL de siempre, no se reinicia. */}
+          <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
+            <div className="text-sm text-emerald-200/80">
+              💰 Dinero que me ha generado el bot
             </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-emerald-300">
-                {Math.round(stats.bot.eurTot)} €
-              </span>
-              <span className="text-sm text-slate-400">
-                · {stats.bot.depTot} depósitos
-              </span>
+            <div className="mt-1 text-5xl font-extrabold text-emerald-300">
+              {Math.round(stats.bot.eurTot)} €
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-1 text-xs text-slate-400">
+              Total desde el primer día · nunca se reinicia
+            </div>
+          </div>
+
+          {/* 2) Más específico: todos los detalles en TOTALES (no se reinician),
+              estilo "inicio" (número grande + borde de color arriba). */}
+          <div>
+            <div className="text-sm text-slate-300 font-medium mb-2">
+              Más específico
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { l: "Hoy", e: stats.bot.eurHoy, d: stats.bot.depHoy },
-                { l: "7 días", e: stats.bot.eur7, d: stats.bot.dep7 },
-                { l: "30 días", e: stats.bot.eur30, d: stats.bot.dep30 },
+                { l: "Primeros depósitos (FTD)", v: `${stats.bot.depTot}`, c: "#10b981" },
+                { l: "Dinero que metieron", v: `${Math.round(stats.recargas?.eurTot ?? 0)} €`, c: "#2dd4bf" },
+                { l: "Recargas", v: `${stats.recargas?.nTot ?? 0}`, c: "#3b82f6" },
+                { l: "Jugadores del bot", v: `${stats.total}`, c: "#8b5cf6" },
+                { l: "Activos", v: `${stats.activos}`, c: "#22c55e" },
+                { l: "Escribieron (24h)", v: `${stats.escribieron24h}`, c: "#f59e0b" },
+                { l: "Nuevos (24h)", v: `${stats.nuevos24h}`, c: "#ec4899" },
+                { l: "Respuestas IA hoy", v: `${stats.iaHoy}`, c: "#f43f5e" },
               ].map((s) => (
                 <div
                   key={s.l}
-                  className="rounded-xl bg-black/20 px-2 py-2 text-center"
+                  className="p-4 rounded-xl border border-white/10 bg-black/40 border-t-4"
+                  style={{ borderTopColor: s.c }}
                 >
-                  <div className="text-base font-semibold text-emerald-200">
-                    {Math.round(s.e)} €
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {s.d} dep · {s.l}
-                  </div>
+                  <p className="text-xs text-slate-300 mb-1">{s.l}</p>
+                  <p className="text-2xl font-bold text-white">{s.v}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Recargas/depósitos que trae el bot (postback de depósito afp=bot).
-              Mide la labor del bot aunque el CPA no las pague. */}
-          {stats.recargas && (
-            <div className="rounded-2xl border border-teal-400/25 bg-gradient-to-br from-teal-500/15 to-teal-500/5 p-4">
-              <div className="text-xs text-teal-200/80">
-                🔄 Recargas que trae el bot
+          {/* Últimas recargas: quién y cuánto metió (se llena con los depósitos). */}
+          {stats.recargasLista && stats.recargasLista.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <div className="text-sm text-slate-300 font-medium mb-2">
+                Últimas recargas
               </div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-teal-200">
-                  {Math.round(stats.recargas.eurTot)} €
-                </span>
-                <span className="text-sm text-slate-400">
-                  · {stats.recargas.nTot} recargas
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {[
-                  { l: "Hoy", e: stats.recargas.eurHoy, d: stats.recargas.nHoy },
-                  { l: "7 días", e: stats.recargas.eur7, d: stats.recargas.n7 },
-                  { l: "30 días", e: stats.recargas.eur30, d: stats.recargas.n30 },
-                ].map((s) => (
+              <div className="flex flex-col gap-1">
+                {stats.recargasLista.map((r, i) => (
                   <div
-                    key={s.l}
-                    className="rounded-xl bg-black/20 px-2 py-2 text-center"
+                    key={i}
+                    className="flex items-center justify-between text-xs border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
                   >
-                    <div className="text-base font-semibold text-teal-200">
-                      {Math.round(s.e)} €
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {s.d} · {s.l}
-                    </div>
+                    <span className="text-slate-400">
+                      {new Date(r.fecha).toLocaleString("es-ES", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      {r.player ? ` · #${r.player}` : ""}
+                    </span>
+                    <span className="font-semibold text-teal-200">
+                      {r.importe > 0 ? `${Math.round(r.importe)} €` : "—"}
+                    </span>
                   </div>
                 ))}
               </div>
-
-              {/* Lista de las últimas recargas: quién y cuánto metió. */}
-              {stats.recargasLista && stats.recargasLista.length > 0 && (
-                <div className="mt-3 border-t border-white/10 pt-2">
-                  <div className="text-[11px] text-teal-200/70 mb-1">
-                    Últimas recargas
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {stats.recargasLista.map((r, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <span className="text-slate-400">
-                          {new Date(r.fecha).toLocaleString("es-ES", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {r.player ? ` · #${r.player}` : ""}
-                        </span>
-                        <span className="font-semibold text-teal-200">
-                          {r.importe > 0 ? `${Math.round(r.importe)} €` : "—"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-2 text-[10px] text-slate-500">
-                Solo mide (FreshBet no paga las recargas). Se llena a medida que
-                lleguen depósitos por el enlace del bot.
-              </div>
             </div>
           )}
-
-          {/* Comunidad + actividad: tarjetas tipo "inicio" (número grande +
-              borde de color arriba). */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              { l: "Jugadores totales", v: stats.total, c: "#10b981" },
-              { l: "Activos", v: stats.activos, c: "#2dd4bf" },
-              { l: "Escribieron (24h)", v: stats.escribieron24h, c: "#3b82f6" },
-              { l: "Nuevos (24h)", v: stats.nuevos24h, c: "#8b5cf6" },
-              { l: "Respuestas IA hoy", v: stats.iaHoy, c: "#f59e0b" },
-              { l: "Bajas", v: stats.bajas, c: "#f43f5e" },
-            ].map((s) => (
-              <div
-                key={s.l}
-                className="p-4 rounded-xl border border-white/10 bg-black/40 border-t-4"
-                style={{ borderTopColor: s.c }}
-              >
-                <p className="text-sm text-slate-300 mb-1">{s.l}</p>
-                <p className="text-2xl font-bold text-white">{s.v}</p>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
