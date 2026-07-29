@@ -7,7 +7,6 @@ import {
   liberarEvento,
   registrarEvento,
   ftdYaContado,
-  depositoPrevio,
   buscarQftdContado,
   queryLimpia,
   type EstadoEvento,
@@ -156,58 +155,50 @@ export async function GET(request: Request) {
   //    avisa al dueño: se aparca calladamente y ya se revisa/descarta si hace falta.
   //  - "double_pay" : el jugador YA tenía un QFTD contado (posible doble pago). ESO
   //    sí se avisa, que es lo único de verdad delicado.
-  let heldReason: "no_deposit" | "double_pay" | null = null;
+  let heldReason: "double_pay" | null = null;
 
   if (target && playerid) {
-    // Salvaguarda 3: si NO hay depósito previo de este jugador, no contamos
-    // AUTOMÁTICAMENTE (podría ser ruido de test), pero tampoco lo perdemos: lo
-    // dejamos RETENIDO para que el admin lo revise. Así un QFTD real cuyo
-    // depósito no quedó registrado NUNCA se pierde (lo apruebas de un clic), y un
-    // test se descarta igual. Nunca se cuenta un falso ni se pierde un real.
-    const hayDeposito = await depositoPrevio(playerid);
-    if (!hayDeposito) {
-      estado = "held";
-      heldReason = "no_deposit";
-    } else {
-      const eventKey = `qftd:${playerid}`;
-      const contar = await reclamarEvento(eventKey);
-      duplicado = !contar;
-      if (contar) {
-        // Si este jugador YA tenía un FTD/QFTD contado, NO sumamos: retenido.
-        const yaContado = await ftdYaContado(playerid);
-        if (yaContado) {
-          estado = "held";
-          heldReason = "double_pay";
-        } else {
-          const esOtroPais = isocountry && isocountry !== "ES";
-          const commission = Number(
-            (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
-          );
-          const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
-            p_user_id: target.user_id,
-            p_date: today,
-            p_registrations: 0,
-            p_ftd: 1,
-            p_commission: commission,
-          });
-          if (error) {
-            // NO soltamos el candado: el RPC pudo haber CONFIRMADO en Postgres
-            // aunque devolviera error (timeout/gateway tras el commit). Si lo
-            // soltáramos, el reintento de FreshBet contaría el QFTD OTRA VEZ y
-            // habría DOBLE PAGO silencioso (el evento anterior queda counted=false,
-            // así que ftdYaContado no lo ve). Dejándolo reclamado, el reintento
-            // cae en "duplicate". En el peor caso queda un QFTD sin sumar
-            // (infrapago recuperable), NUNCA un doble pago. Se avisa para revisar
-            // a mano. Mismo criterio que el resolver de retenidos.
-            estado = "error";
-          } else {
-            estado = "counted";
-            comisionPagada = commission;
-          }
-        }
+    // Contamos el QFTD EN CUANTO FreshBet manda la comisión (es lo que paga).
+    // Ya NO exigimos un "depósito previo" registrado: eso retenía TODOS los QFTD
+    // reales cuando FreshBet mandaba la comisión antes (o sin) el aviso de depósito.
+    // PROTECCIONES QUE SE MANTIENEN — para que NADIE cuente ni cobre dos veces:
+    //  - Candado por jugador (reclamarEvento): el MISMO QFTD nunca cuenta 2 veces,
+    //    aunque FreshBet reintente el postback.
+    //  - ftdYaContado: si el jugador YA tenía un QFTD contado, NO se vuelve a sumar
+    //    (queda retenido para revisar) → cero doble pago.
+    const eventKey = `qftd:${playerid}`;
+    const contar = await reclamarEvento(eventKey);
+    duplicado = !contar;
+    if (contar) {
+      // Si este jugador YA tenía un FTD/QFTD contado, NO sumamos (evita doble pago).
+      const yaContado = await ftdYaContado(playerid);
+      if (yaContado) {
+        estado = "held";
+        heldReason = "double_pay";
       } else {
-        estado = "duplicate";
+        const esOtroPais = isocountry && isocountry !== "ES";
+        const commission = Number(
+          (esOtroPais ? target.cpa_other : target.cpa_spain) ?? 0
+        );
+        const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+          p_user_id: target.user_id,
+          p_date: today,
+          p_registrations: 0,
+          p_ftd: 1,
+          p_commission: commission,
+        });
+        if (error) {
+          // NO soltamos el candado: el RPC pudo haber CONFIRMADO en Postgres
+          // aunque devolviera error (timeout tras el commit). Dejándolo reclamado,
+          // el reintento de FreshBet cae en "duplicate" → nunca doble pago.
+          estado = "error";
+        } else {
+          estado = "counted";
+          comisionPagada = commission;
+        }
       }
+    } else {
+      estado = "duplicate";
     }
   }
 
