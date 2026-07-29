@@ -59,7 +59,8 @@ export async function GET(request: Request) {
         .from("postback_events")
         .select("isocountry")
         .in("event_type", ["ftd", "commission"])
-        .eq("counted", true),
+        .eq("counted", true)
+        .limit(100000), // sin límite se cortaría en 1000 y el histograma saldría corto
     ]);
 
   const adminCpa = Number(meRes.data?.cpa_spain ?? 0);

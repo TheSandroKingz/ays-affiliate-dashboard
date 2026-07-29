@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     // limit alto: sin él PostgREST corta en 1000 y las cifras se quedarían cortas.
     supabaseAdmin
       .from("postback_events")
-      .select("commission, created_at")
+      .select("commission")
       .eq("counted", true)
       .eq("event_type", "commission")
       .ilike("afp", "bot%")
@@ -78,43 +78,18 @@ export async function GET(request: Request) {
   ]);
   const diario = diarioRes.data;
 
-  // Depósitos y € del bot por ventana (hoy=24h, 7d, 30d, total).
-  const now = Date.now();
-  const d7 = now - 7 * 864e5,
-    d30 = now - 30 * 864e5;
-  const b = {
-    depTot: 0, depHoy: 0, dep7: 0, dep30: 0,
-    eurTot: 0, eurHoy: 0, eur7: 0, eur30: 0,
-  };
+  // El panel solo muestra TOTALES (no se reinician), así que sumamos sin más.
+  // Antes se calculaban ventanas hoy/7d/30d creando un Intl.DateTimeFormat por
+  // fila (carísimo); eran código muerto tras el rediseño del panel → fuera.
+  const b = { depTot: 0, eurTot: 0 };
   for (const r of botRes.data ?? []) {
-    const c = Number(r.commission ?? 0);
-    b.depTot++; b.eurTot += c;
-    const t = new Date(r.created_at as string).getTime();
-    if (Number.isNaN(t)) continue; // fecha inválida: cuenta en total, no en ventanas
-    if (t >= d30) { b.dep30++; b.eur30 += c; }
-    if (t >= d7) { b.dep7++; b.eur7 += c; }
-    // "Hoy" = día natural de Madrid (igual que 'IA hoy'), no 24h rodadas.
-    const rowDay = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Madrid",
-    }).format(new Date(t));
-    if (rowDay === hoyKey) { b.depHoy++; b.eurHoy += c; }
+    b.depTot++;
+    b.eurTot += Number(r.commission ?? 0);
   }
-  // Recargas/depósitos del bot por ventana (nº e importe).
-  const rec = {
-    nTot: 0, nHoy: 0, n7: 0, n30: 0,
-    eurTot: 0, eurHoy: 0, eur7: 0, eur30: 0,
-  };
+  const rec = { nTot: 0, eurTot: 0 };
   for (const r of recRes.data ?? []) {
-    const amt = Number(r.amount ?? 0);
-    rec.nTot++; rec.eurTot += amt;
-    const t = new Date(r.created_at as string).getTime();
-    if (Number.isNaN(t)) continue;
-    if (t >= d30) { rec.n30++; rec.eur30 += amt; }
-    if (t >= d7) { rec.n7++; rec.eur7 += amt; }
-    const rowDay = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Madrid",
-    }).format(new Date(t));
-    if (rowDay === hoyKey) { rec.nHoy++; rec.eurHoy += amt; }
+    rec.nTot++;
+    rec.eurTot += Number(r.amount ?? 0);
   }
 
   // Últimas recargas (para verlas una a una con su importe en el panel).

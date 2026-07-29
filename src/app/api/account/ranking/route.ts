@@ -39,7 +39,8 @@ export async function GET(request: Request) {
     .select("user_id, ftd")
     .in("user_id", ids)
     .gte("date", from)
-    .lte("date", hoy);
+    .lte("date", hoy)
+    .limit(100000); // sin límite se cortaría en 1000 y el puesto saldría mal al crecer
 
   const ftdByUser = new Map<string, number>();
   for (const d of daily ?? []) {

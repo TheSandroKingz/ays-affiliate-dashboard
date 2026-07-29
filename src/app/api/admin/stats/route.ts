@@ -39,6 +39,9 @@ export async function GET(request: Request) {
     .in("user_id", idsToLoad);
   if (from) q = q.gte("date", from);
   if (to) q = q.lte("date", to);
+  // Límite alto explícito: sin él PostgREST corta en 1000 y el atajo "Todo"
+  // (rangos amplios) truncaría el histórico y descuadraría "Le pago"/"Mi margen".
+  q = q.limit(100000);
   const { data: dailyRaw, error: dErr } = await q;
   if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
 

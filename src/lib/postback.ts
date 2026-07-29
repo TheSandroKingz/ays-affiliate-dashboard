@@ -39,7 +39,17 @@ export function getMonto(url: URL): number {
   for (const n of names) {
     const raw = url.searchParams.get(n);
     if (raw && raw.trim()) {
-      const v = Number(raw.trim().replace(",", "."));
+      // Normaliza importes con separadores de miles: quita todo lo que no sea
+      // dígito ni separador, elimina los separadores de miles (el último ',' o
+      // '.' es el decimal) y parsea. Así "1,234.56" y "1.234,56" → 1234.56.
+      let s = raw.trim().replace(/[^\d.,]/g, "");
+      const ultimoSep = Math.max(s.lastIndexOf(","), s.lastIndexOf("."));
+      if (ultimoSep >= 0) {
+        const ent = s.slice(0, ultimoSep).replace(/[.,]/g, "");
+        const dec = s.slice(ultimoSep + 1).replace(/[.,]/g, "");
+        s = `${ent}.${dec}`;
+      }
+      const v = Number(s);
       if (Number.isFinite(v) && v > 0) return v;
     }
   }

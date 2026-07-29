@@ -28,14 +28,8 @@ export default function TelegramPage() {
     nuevos24h: number;
     escribieron24h: number;
     iaHoy: number;
-    bot: {
-      depTot: number; depHoy: number; dep7: number; dep30: number;
-      eurTot: number; eurHoy: number; eur7: number; eur30: number;
-    };
-    recargas?: {
-      nTot: number; nHoy: number; n7: number; n30: number;
-      eurTot: number; eurHoy: number; eur7: number; eur30: number;
-    };
+    bot: { depTot: number; eurTot: number };
+    recargas?: { nTot: number; eurTot: number };
     recargasLista?: { importe: number; fecha: string; player: string | null }[];
   } | null>(null);
   const [texto, setTexto] = useState("");

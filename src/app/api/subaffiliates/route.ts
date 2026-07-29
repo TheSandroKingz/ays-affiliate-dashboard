@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     const { data: dailyData } = await supabaseAdmin
       .from("affiliate_daily_stats")
       .select("user_id, commission, date")
-      .in("user_id", userIds);
+      .in("user_id", userIds)
+      .limit(100000); // sin límite, PostgREST corta en 1000 y subestima al crecer
 
     const sumMes = new Map<string, number>();
     const sumHist = new Map<string, number>();

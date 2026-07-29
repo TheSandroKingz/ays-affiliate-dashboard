@@ -386,7 +386,7 @@ export async function POST(request: Request) {
       // mandamos el vídeo ni callamos a la IA: la persona necesita AYUDA. Así
       // "problema con el cuadro de pagos" o "no me sale el patrón" van a la IA.
       const esQueja =
-        /problema|no me (sal|va|funciona|lleg|deja|carga)|no funciona|error|fall|reclamaci|estafa|no puedo|pago|cobr|retir/i.test(
+        /problema|no me (sal|va|funciona|lleg|deja|carga)|no funciona|error|fall|reclamaci|estafa|no cobr|no me pag|no puedo (retir|cobrar|sacar|deposit|jugar|entrar)/i.test(
           textoJ
         );
       if (pidePatron && !esQueja && !limitado) {
@@ -590,8 +590,10 @@ export async function POST(request: Request) {
           (from.first_name ?? "Jugador") +
             (from.username ? ` (@${from.username})` : "")
         );
-        const cuerpo = text
-          ? ` pregunta:\n${esc(text)}` +
+        // Usamos textoJ (incluye el PIE de foto/vídeo): así ves lo que escribe
+        // el jugador junto a una captura, y lo que respondió la IA.
+        const cuerpo = textoJ
+          ? ` dice:\n${esc(textoJ)}` +
             (respuesta ? `\n\n🤖 <i>Respondí:</i>\n${esc(respuesta)}` : "")
           : " te ha enviado algo:";
         await tgEnviar(

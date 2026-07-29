@@ -41,6 +41,25 @@ export async function GET(request: Request) {
     matchedUserId = data?.[0]?.user_id ?? null;
   }
 
+  // Anti-duplicado por reintento: FreshBet reintenta el postback si tarda en
+  // responder. Si ya hay una recarga IDÉNTICA (mismo jugador + importe) en los
+  // últimos 2 min, es un reintento → no la contamos dos veces (inflaría las
+  // cifras). Dos depósitos reales idénticos en 2 min son muy improbables.
+  if (playerid) {
+    const hace2min = new Date(Date.now() - 120000).toISOString();
+    const { data: dup } = await supabaseAdmin
+      .from("postback_events")
+      .select("id")
+      .eq("event_type", "redeposit")
+      .eq("player_id", playerid)
+      .eq("amount", monto)
+      .gte("created_at", hace2min)
+      .limit(1);
+    if (dup && dup.length) {
+      return NextResponse.json({ ok: true, duplicado: true });
+    }
+  }
+
   await registrarEvento({
     event_type: "redeposit",
     raw_query: queryLimpia(url),
