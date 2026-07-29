@@ -553,7 +553,7 @@ export async function POST(request: Request) {
       // pronto y no solo cuando ya dicen que depositaron. Solo lo omitimos en
       // mensajitos sin nada de eso (saludos sueltos, quejas puras).
       const intencionJugar =
-        /jug|entra|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|min[ae]s?|casino|promo|bono|empez|quiero|gan[ao]|\b20\b|\b30\b|\b100\b|\b150\b/i;
+        /jug|entr|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|min[ae]s?|casino|promo|bono|empez|quiero|gan[ao]|d[oó]nde|m[aá]ndame|p[aá]same|\b20\b|\b30\b|\b100\b|\b150\b/i;
       // Guardamos el mensaje del jugador para la limpieza automática de chats.
       await guardarMsg(chatId, msg.message_id);
       if (respuesta) {
