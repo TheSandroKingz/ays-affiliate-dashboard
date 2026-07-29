@@ -150,6 +150,13 @@ export async function GET(request: Request) {
   let duplicado = false;
   let estado: EstadoEvento = "no_match";
   let comisionPagada = 0;
+  // Por qué se retiene (si se retiene):
+  //  - "no_deposit" : comisión SIN depósito detrás. Casi siempre es una PRUEBA de
+  //    FreshBet o un disparo prematuro (llega la comisión antes que el FTD). NO se
+  //    avisa al dueño: se aparca calladamente y ya se revisa/descarta si hace falta.
+  //  - "double_pay" : el jugador YA tenía un QFTD contado (posible doble pago). ESO
+  //    sí se avisa, que es lo único de verdad delicado.
+  let heldReason: "no_deposit" | "double_pay" | null = null;
 
   if (target && playerid) {
     // Salvaguarda 3: si NO hay depósito previo de este jugador, no contamos
@@ -160,6 +167,7 @@ export async function GET(request: Request) {
     const hayDeposito = await depositoPrevio(playerid);
     if (!hayDeposito) {
       estado = "held";
+      heldReason = "no_deposit";
     } else {
       const eventKey = `qftd:${playerid}`;
       const contar = await reclamarEvento(eventKey);
@@ -169,6 +177,7 @@ export async function GET(request: Request) {
         const yaContado = await ftdYaContado(playerid);
         if (yaContado) {
           estado = "held";
+          heldReason = "double_pay";
         } else {
           const esOtroPais = isocountry && isocountry !== "ES";
           const commission = Number(
@@ -220,11 +229,15 @@ export async function GET(request: Request) {
   if (estado === "counted" && target) {
     after(() => notificarEvento(target.user_id, "ftd", comisionPagada));
   }
-  if (estado === "held") {
+  // Solo avisamos si es un POSIBLE DOBLE PAGO (jugador ya contado). Las
+  // retenciones "sin depósito" son casi siempre pruebas de FreshBet o disparos
+  // prematuros: se aparcan calladas (siguen visibles en Actividad por si acaso),
+  // pero NO te bombardean con avisos cada vez que el manager hace un test.
+  if (estado === "held" && heldReason === "double_pay") {
     after(() =>
       enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ QFTD retenido",
-        body: "Un QFTD quedó sin contar por sospecha de doble pago. Revísalo en Actividad.",
+        title: "⚠️ Posible doble pago",
+        body: "Un QFTD de un jugador que ya estaba contado quedó retenido. Revísalo en Actividad.",
         url: "/admin/actividad",
       })
     );
