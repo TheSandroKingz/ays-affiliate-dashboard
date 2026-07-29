@@ -6,6 +6,7 @@ import {
   pushSoportado,
   activarPush,
   desactivarPush,
+  probarPush,
   registrarSW,
 } from "@/lib/pushClient";
 
@@ -17,6 +18,8 @@ export default function PushToggle() {
   const [activo, setActivo] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [denegado, setDenegado] = useState(false);
+  const [probando, setProbando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pushSoportado()) {
@@ -47,6 +50,7 @@ export default function PushToggle() {
 
   const toggle = async () => {
     setCargando(true);
+    setAviso(null);
     try {
       if (activo) {
         await desactivarPush();
@@ -58,6 +62,31 @@ export default function PushToggle() {
       }
     } finally {
       setCargando(false);
+    }
+  };
+
+  // Manda un aviso de prueba y comprueba si este dispositivo sigue suscrito.
+  const probar = async () => {
+    setProbando(true);
+    setAviso(null);
+    try {
+      // Refrescamos la suscripción antes de probar: iPhone rota el endpoint y el
+      // viejo queda muerto; así el aviso llega al que de verdad está activo.
+      if (Notification.permission === "granted") await activarPush();
+      const { ok, subs } = await probarPush();
+      if (!ok) {
+        setAviso("No se pudo enviar la prueba. Reintenta en un momento.");
+      } else if (subs === 0) {
+        setAviso(
+          "No tienes ningún dispositivo suscrito. Activa las notificaciones (el botón de arriba) y vuelve a probar."
+        );
+      } else {
+        setAviso(
+          `Prueba enviada a ${subs} dispositivo${subs === 1 ? "" : "s"} 🔔 Revisa tu móvil en unos segundos.`
+        );
+      }
+    } finally {
+      setProbando(false);
     }
   };
 
@@ -92,6 +121,16 @@ export default function PushToggle() {
           />
         </span>
       </button>
+      {activo && (
+        <button
+          onClick={probar}
+          disabled={probando}
+          className="self-start rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/10 disabled:opacity-60"
+        >
+          {probando ? "Enviando prueba..." : "🔔 Probar notificación"}
+        </button>
+      )}
+      {aviso && <p className="text-xs text-emerald-300/90">{aviso}</p>}
       {denegado && (
         <p className="text-xs text-amber-300/90">
           Has bloqueado las notificaciones. Actívalas en los ajustes del

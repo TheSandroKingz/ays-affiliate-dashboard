@@ -95,6 +95,21 @@ export async function activarPush(): Promise<boolean> {
   return res.ok;
 }
 
+// Manda una notificación de PRUEBA a este usuario (a todos sus dispositivos).
+// Devuelve cuántos dispositivos tiene suscritos: 0 = hay que reactivar.
+export async function probarPush(): Promise<{ ok: boolean; subs: number }> {
+  const headers = await authHeader();
+  if (!headers) return { ok: false, subs: 0 };
+  try {
+    const res = await fetch("/api/push/test", { method: "POST", headers });
+    if (!res.ok) return { ok: false, subs: 0 };
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, subs: Number(data?.subs ?? 0) };
+  } catch {
+    return { ok: false, subs: 0 };
+  }
+}
+
 // Desactiva las notificaciones en este dispositivo.
 export async function desactivarPush(): Promise<boolean> {
   if (!pushSoportado()) return false;
