@@ -36,6 +36,7 @@ export default function TelegramPage() {
       nTot: number; nHoy: number; n7: number; n30: number;
       eurTot: number; eurHoy: number; eur7: number; eur30: number;
     };
+    recargasLista?: { importe: number; fecha: string; player: string | null }[];
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
@@ -462,6 +463,37 @@ export default function TelegramPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Lista de las últimas recargas: quién y cuánto metió. */}
+              {stats.recargasLista && stats.recargasLista.length > 0 && (
+                <div className="mt-3 border-t border-white/10 pt-2">
+                  <div className="text-[11px] text-teal-200/70 mb-1">
+                    Últimas recargas
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {stats.recargasLista.map((r, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="text-slate-400">
+                          {new Date(r.fecha).toLocaleString("es-ES", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {r.player ? ` · #${r.player}` : ""}
+                        </span>
+                        <span className="font-semibold text-teal-200">
+                          {r.importe > 0 ? `${Math.round(r.importe)} €` : "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-2 text-[10px] text-slate-500">
                 Solo mide (FreshBet no paga las recargas). Se llena a medida que
                 lleguen depósitos por el enlace del bot.

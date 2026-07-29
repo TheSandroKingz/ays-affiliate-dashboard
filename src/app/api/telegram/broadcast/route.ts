@@ -60,9 +60,10 @@ export async function GET(request: Request) {
     // Mide la labor del bot (recargas) aunque el CPA no las pague. limit alto.
     supabaseAdmin
       .from("postback_events")
-      .select("amount, created_at")
+      .select("amount, created_at, player_id")
       .eq("event_type", "redeposit")
       .ilike("afp", "bot%")
+      .order("created_at", { ascending: false })
       .limit(100000),
     supabaseAdmin
       .from("telegram_ai_daily")
@@ -116,6 +117,13 @@ export async function GET(request: Request) {
     if (rowDay === hoyKey) { rec.nHoy++; rec.eurHoy += amt; }
   }
 
+  // Últimas recargas (para verlas una a una con su importe en el panel).
+  const recientes = (recRes.data ?? []).slice(0, 15).map((r) => ({
+    importe: Number(r.amount ?? 0),
+    fecha: r.created_at as string,
+    player: (r.player_id as string) ?? null,
+  }));
+
   const iaHoy = iaHoyRes.data?.count ?? 0;
   const promo = configRes.data?.promo ?? "";
 
@@ -132,6 +140,7 @@ export async function GET(request: Request) {
       iaHoy,
       bot: b,
       recargas: rec,
+      recargasLista: recientes,
     },
     promo,
     diario: diario
