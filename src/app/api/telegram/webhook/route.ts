@@ -553,7 +553,7 @@ export async function POST(request: Request) {
       await guardarMsg(chatId, msg.message_id);
       if (respuesta) {
         const invita =
-          /jug|entra|deposit|recarg|vuelve|\b20\b|enlace|link|registr|apuest/i.test(
+          /jug|entra|deposit|recarg|vuelve|\b20\b|\b30\b|\b100\b|\b150\b|enlace|link|registr|apuest/i.test(
             respuesta
           );
         const rEnv = await tgEnviar(chatId, respuesta, {
