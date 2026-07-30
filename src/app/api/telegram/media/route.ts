@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { descargarFoto, firmarMedia } from "@/lib/telegram";
+import { descargarFoto, firmarMedia, mediaKeyConfigurada } from "@/lib/telegram";
 
 // Sirve una imagen que un jugador envió por Telegram, para verla en el visor de
 // chats del panel. NO usa sesión (un <img> no manda cabeceras): se protege con
@@ -15,6 +15,11 @@ export async function GET(request: Request) {
 
   if (!id || !exp || !sig) {
     return NextResponse.json({ error: "faltan datos" }, { status: 400 });
+  }
+  // Sin clave de firma, el HMAC iría bajo clave vacía (conocida) y cualquiera
+  // podría falsificar una firma válida y sacar fotos privadas. Rechazamos.
+  if (!mediaKeyConfigurada()) {
+    return NextResponse.json({ error: "no disponible" }, { status: 503 });
   }
   // Caducada.
   if (Math.floor(Date.now() / 1000) > exp) {

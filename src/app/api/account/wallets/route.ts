@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 import { enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
+import { estaBloqueado, registrarFallo, limpiarFallos } from "@/lib/lockout";
 
 export async function POST(request: Request) {
   const user = await getApprovedUser(request);
@@ -25,6 +26,15 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  // Anti fuerza-bruta: sin esto, un token robado permitiría probar la contraseña
+  // sin límite AQUÍ (saltándose el bloqueo del login) y desviar los pagos.
+  const claveLock = `reauth:${user.id}`;
+  if (await estaBloqueado(claveLock)) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Espera unos minutos." },
+      { status: 429 }
+    );
+  }
   const authClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -35,11 +45,13 @@ export async function POST(request: Request) {
     password: String(currentPassword),
   });
   if (pwErr) {
+    await registrarFallo(claveLock);
     return NextResponse.json(
       { error: "Contraseña actual incorrecta" },
       { status: 401 }
     );
   }
+  await limpiarFallos(claveLock);
 
   // Validación también en el servidor (no fiarse solo del cliente).
   if (erc && !/^0x[a-fA-F0-9]{40}$/.test(erc)) {

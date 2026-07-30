@@ -150,7 +150,8 @@ export default function DashboardPage() {
           .from("affiliate_daily_stats")
           .select("date, commission, clicks, registrations, ftd")
           .eq("user_id", user.id)
-          .order("date", { ascending: true }),
+          .order("date", { ascending: true })
+          .limit(100000), // sin límite PostgREST corta en 1000 (y en orden asc tiraría los días recientes)
         fetch("/api/subaffiliates", {
           method: "POST",
           headers: {

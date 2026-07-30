@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
+import { CUENTAS_PROPIAS } from "@/lib/adminId";
 
 // Saldos del MES en curso por afiliado (solo admin): lo que gana (comisión +
 // override de sus subs), lo ya pagado este mes, y lo pendiente. Sirve para
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
     .select("user_id, commission")
     .in("user_id", ids)
     .gte("date", from)
-    .lte("date", hoy);
+    .lte("date", hoy)
+    .limit(100000); // sin límite PostgREST corta en 1000 y descuadraría los saldos
   const comByUser = new Map<string, number>();
   for (const d of daily ?? []) {
     comByUser.set(
@@ -80,8 +82,12 @@ export async function GET(request: Request) {
 
   const saldos: Record<string, { owed: number; paid: number }> = {};
   for (const a of structure ?? []) {
-    const owed =
-      (comByUser.get(a.user_id) ?? 0) + (overrideByUser.get(a.user_id) ?? 0);
+    // Las CUENTAS PROPIAS del admin (p. ej. Mongolitos) NO se pagan: su comisión
+    // ya es margen del propio admin. Si no, el panel diría que te debes dinero a
+    // ti mismo y acabarías "pagándote" lo que ya cuentas como tuyo.
+    const owed = CUENTAS_PROPIAS.has(a.user_id)
+      ? 0
+      : (comByUser.get(a.user_id) ?? 0) + (overrideByUser.get(a.user_id) ?? 0);
     saldos[a.user_id] = { owed, paid: paidByUser.get(a.user_id) ?? 0 };
   }
 

@@ -12,14 +12,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const [{ data: events, error }, fraude] = await Promise.all([
+  const columnas =
+    "id, created_at, event_type, status, counted, commission, player_id, tracking_code, afp, isocountry, matched_user_id";
+  const [{ data: events, error }, { data: heldRaw }, fraude] = await Promise.all([
     supabaseAdmin
       .from("postback_events")
-      .select(
-        "id, created_at, event_type, status, counted, commission, player_id, tracking_code, afp, isocountry, matched_user_id"
-      )
+      .select(columnas)
       .order("created_at", { ascending: false })
       .limit(300),
+    // Los RETENIDOS van en consulta APARTE, sin el tope de los 300 últimos: si no,
+    // un retenido más viejo que esos 300 desaparecía del panel y no se podía ni
+    // contar ni descartar (quedaba en el limbo).
+    supabaseAdmin
+      .from("postback_events")
+      .select(columnas)
+      .eq("status", "held")
+      .order("created_at", { ascending: false })
+      .limit(100000),
     deteccionFraude(),
   ]);
 
@@ -30,7 +39,9 @@ export async function GET(request: Request) {
 
   const ids = [
     ...new Set(
-      (events ?? []).map((e) => e.matched_user_id).filter(Boolean) as string[]
+      [...(events ?? []), ...(heldRaw ?? [])]
+        .map((e) => e.matched_user_id)
+        .filter(Boolean) as string[]
     ),
   ];
   const names = new Map<string, string | null>();
@@ -49,7 +60,11 @@ export async function GET(request: Request) {
 
   // FTD RETENIDOS: frenados por sospecha de doble pago, esperando que decidas
   // (contar o descartar). Van aparte, arriba del todo, para que no se pasen.
-  const retenidos = rows.filter((r) => r.status === "held");
+  // Vienen de su consulta propia (sin tope de 300) → nunca se pierden.
+  const retenidos = (heldRaw ?? []).map((e) => ({
+    ...e,
+    name: e.matched_user_id ? names.get(e.matched_user_id) ?? null : null,
+  }));
 
   // Un QFTD/FTD contado va como counted; los QFTD son event_type "commission".
   const esFtdOQftd = (t: string) => t === "ftd" || t === "commission";

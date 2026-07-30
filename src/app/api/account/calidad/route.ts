@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   const { data } = await supabaseAdmin
     .from("affiliate_daily_stats")
     .select("clicks, ftd")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .limit(100000); // sin límite PostgREST corta en 1000 y la conversión saldría mal
   let clicks = 0;
   let ftd = 0;
   for (const d of data ?? []) {

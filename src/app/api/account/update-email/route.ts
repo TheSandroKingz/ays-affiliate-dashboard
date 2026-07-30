@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
+import { estaBloqueado, registrarFallo, limpiarFallos } from "@/lib/lockout";
 
 export async function POST(request: Request) {
   const user = await getApprovedUser(request);
@@ -27,6 +28,15 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  // Anti fuerza-bruta: sin esto, un token robado permitiría probar la contraseña
+  // sin límite aquí (saltándose el bloqueo del login) y tomar la cuenta.
+  const claveLock = `reauth:${user.id}`;
+  if (await estaBloqueado(claveLock)) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Espera unos minutos." },
+      { status: 429 }
+    );
+  }
   const authClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -37,11 +47,13 @@ export async function POST(request: Request) {
     password: String(currentPassword),
   });
   if (pwErr) {
+    await registrarFallo(claveLock);
     return NextResponse.json(
       { error: "Contraseña actual incorrecta" },
       { status: 401 }
     );
   }
+  await limpiarFallos(claveLock);
 
   // Siempre sobre la PROPIA cuenta del token (ignoramos cualquier userId del body).
   const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {

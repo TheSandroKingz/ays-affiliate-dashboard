@@ -234,7 +234,8 @@ export async function depositoMedio(
       .eq("event_type", "ftd")
       .eq("counted", true)
       .not("amount", "is", null)
-      .gt("amount", 0);
+      .gt("amount", 0)
+      .limit(100000); // sin límite PostgREST corta en 1000 y la media saldría sesgada
     if (error || !data || !data.length) return { media: null, num: 0 };
     const sum = data.reduce((s, d) => s + Number(d.amount ?? 0), 0);
     return { media: sum / data.length, num: data.length };

@@ -48,7 +48,8 @@ export async function GET(request: Request) {
         .from("affiliate_daily_stats")
         .select("user_id, date, commission, clicks, registrations, ftd")
         .in("user_id", idsToLoad)
-        .gte("date", inicioMesPasado),
+        .gte("date", inicioMesPasado)
+        .limit(100000), // sin límite PostgREST corta en 1000 → "Lo que me quedo" saldría corto al crecer
       supabaseAdmin
         .from("affiliates")
         .select("user_id", { count: "exact", head: true })
