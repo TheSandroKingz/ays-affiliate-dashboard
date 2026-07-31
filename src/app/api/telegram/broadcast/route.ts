@@ -56,12 +56,14 @@ export async function GET(request: Request) {
       .eq("event_type", "commission")
       .ilike("afp", "bot%")
       .limit(100000),
-    // RECARGAS/depósitos atribuidos al bot (postback de depósito, afp=bot).
-    // Mide la labor del bot (recargas) aunque el CPA no las pague. limit alto.
+    // DEPÓSITOS atribuidos al bot (afp=bot): PRIMEROS depósitos (ftd) + RECARGAS
+    // (redeposit). Sumamos el importe de TODOS para "Dinero que metieron" (antes
+    // solo contaba las recargas, se dejaba fuera lo de los FTD). El nº de
+    // "Recargas" son solo los redeposit. limit alto.
     supabaseAdmin
       .from("postback_events")
-      .select("amount, created_at, player_id")
-      .eq("event_type", "redeposit")
+      .select("amount, created_at, player_id, event_type")
+      .in("event_type", ["ftd", "redeposit"])
       .ilike("afp", "bot%")
       .order("created_at", { ascending: false })
       .limit(100000),
@@ -86,18 +88,23 @@ export async function GET(request: Request) {
     b.depTot++;
     b.eurTot += Number(r.commission ?? 0);
   }
+  // "Dinero que metieron" = importe de TODOS los depósitos del bot (FTD + recargas).
+  // "Recargas" = solo el nº de redeposit.
   const rec = { nTot: 0, eurTot: 0 };
   for (const r of recRes.data ?? []) {
-    rec.nTot++;
+    if (r.event_type === "redeposit") rec.nTot++;
     rec.eurTot += Number(r.amount ?? 0);
   }
 
-  // Últimas recargas (para verlas una a una con su importe en el panel).
-  const recientes = (recRes.data ?? []).slice(0, 15).map((r) => ({
-    importe: Number(r.amount ?? 0),
-    fecha: r.created_at as string,
-    player: (r.player_id as string) ?? null,
-  }));
+  // Últimas recargas (solo redeposit, para verlas una a una con su importe).
+  const recientes = (recRes.data ?? [])
+    .filter((r) => r.event_type === "redeposit")
+    .slice(0, 15)
+    .map((r) => ({
+      importe: Number(r.amount ?? 0),
+      fecha: r.created_at as string,
+      player: (r.player_id as string) ?? null,
+    }));
 
   const iaHoy = iaHoyRes.data?.count ?? 0;
   const promo = configRes.data?.promo ?? "";
