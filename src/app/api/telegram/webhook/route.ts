@@ -233,6 +233,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── "/ejemplo" con un vídeo/foto en el pie → se AÑADE a la biblioteca de
+    // ejemplos ("así juego yo"). El bot manda uno DISTINTO (rotando) cuando piden
+    // el patrón o dicen que una forma les falló. "/ejemplos" = cuántos hay.
+    // "/ejemplos borrar" = vaciar. Es contenido REAL del dueño, no patrones.
+    const cmdEj = (text || (msg.caption ?? "")).trim();
+    if (esDueno && /^\/ejemplos?\b/i.test(cmdEj)) {
+      const resto = cmdEj.replace(/^\/ejemplos?\s*/i, "").trim();
+      if (/^(borrar|vaciar|reset)/i.test(resto)) {
+        await supabaseAdmin.from("telegram_examples").delete().gt("id", 0);
+        await tgEnviar(chatId, "🗑️ Biblioteca de ejemplos vaciada.");
+        return NextResponse.json({ ok: true });
+      }
+      const photosE = msg.photo as Array<{ file_id: string }> | undefined;
+      const mediaE: { media_type: string; file_id: string } | null = msg.video
+        ? { media_type: "video", file_id: msg.video.file_id }
+        : msg.animation
+        ? { media_type: "animation", file_id: msg.animation.file_id }
+        : photosE?.length
+        ? { media_type: "photo", file_id: photosE[photosE.length - 1].file_id }
+        : msg.document
+        ? { media_type: "document", file_id: msg.document.file_id }
+        : null;
+      const contar = async () => {
+        const { count } = await supabaseAdmin
+          .from("telegram_examples")
+          .select("id", { count: "exact", head: true })
+          .eq("enabled", true);
+        return count ?? 0;
+      };
+      if (mediaE) {
+        await supabaseAdmin
+          .from("telegram_examples")
+          .insert({ media_type: mediaE.media_type, file_id: mediaE.file_id });
+        await tgEnviar(
+          chatId,
+          `✅ Ejemplo añadido. Ya tienes ${await contar()} guardados. El bot irá mandando uno distinto cuando pidan el patrón o digan que una forma les falló. Manda más con /ejemplo. Para vaciar: /ejemplos borrar.`
+        );
+      } else {
+        await tgEnviar(
+          chatId,
+          `Tienes ${await contar()} ejemplos guardados. Para añadir uno: mándame /ejemplo junto con el vídeo o foto (escribe /ejemplo en el pie). Para vaciar: /ejemplos borrar.`
+        );
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // ── El DUEÑO envía algo a TODOS ya: "/todos" con un vídeo/foto en el pie ─
     // (desde la galería, sin URL). También "/todos <texto>" para solo texto.
     const cmdTodos = (text || (msg.caption ?? "")).trim();
@@ -382,31 +428,50 @@ export async function POST(request: Request) {
         /patr[oó]n|cuadrad|cuadro|\btruco|c[oó]mo (le das|lo hac|juega)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
           textoJ
         );
-      // Si es una QUEJA/problema (aunque mencione "cuadro" o "patrón"), NO
-      // mandamos el vídeo ni callamos a la IA: la persona necesita AYUDA. Así
-      // "problema con el cuadro de pagos" o "no me sale el patrón" van a la IA.
-      const esQueja =
-        /problema|no me (sal|va|funciona|lleg|deja|carga)|no funciona|error|fall|reclamaci|estafa|no cobr|no me pag|no puedo (retir|cobrar|sacar|deposit|jugar|entrar)/i.test(
+      // Dice que una FORMA de jugar le FALLÓ / no le va / le salen bombas / pide
+      // otra: le mandamos OTRO ejemplo distinto ("así también le doy yo").
+      const falloForma =
+        /no me (va|funciona|sal|tir|acier|sirv)|no funciona|me falla|fall[oó]|pet[oó]|peta|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo|no me sirve/i.test(
           textoJ
         );
-      if (pidePatron && !esQueja && !limitado) {
-        // El vídeo del patrón: primero el /diario; si no hay, el de bienvenida.
+      // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
+      // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
+      const problemaReal =
+        /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
+          textoJ
+        );
+      // Mandamos un EJEMPLO si piden el patrón/vídeo O si dicen que una forma les
+      // falló — salvo que sea un problema real (que necesita respuesta de la IA).
+      if ((pidePatron || falloForma) && !problemaReal && !limitado) {
+        // 1º un EJEMPLO al azar de la biblioteca del dueño (rotando, "así juego
+        // yo"); si no hay ninguno, el /diario; y si tampoco, el de bienvenida.
         let dv:
           | { media_type: string | null; file_id: string | null; enabled: boolean | null }
           | null = null;
-        const { data: diarioV } = await supabaseAdmin
-          .from("telegram_daily")
-          .select("media_type, file_id, enabled")
-          .eq("id", 1)
-          .maybeSingle();
-        if (diarioV && diarioV.enabled && diarioV.file_id) dv = diarioV;
-        else {
-          const { data: bienvV } = await supabaseAdmin
-            .from("telegram_welcome")
+        const { data: ejs } = await supabaseAdmin
+          .from("telegram_examples")
+          .select("media_type, file_id")
+          .eq("enabled", true)
+          .limit(100000);
+        if (ejs && ejs.length) {
+          const pick = ejs[Math.floor(Math.random() * ejs.length)];
+          dv = { media_type: pick.media_type, file_id: pick.file_id, enabled: true };
+        }
+        if (!dv) {
+          const { data: diarioV } = await supabaseAdmin
+            .from("telegram_daily")
             .select("media_type, file_id, enabled")
             .eq("id", 1)
             .maybeSingle();
-          if (bienvV && bienvV.enabled && bienvV.file_id) dv = bienvV;
+          if (diarioV && diarioV.enabled && diarioV.file_id) dv = diarioV;
+          else {
+            const { data: bienvV } = await supabaseAdmin
+              .from("telegram_welcome")
+              .select("media_type, file_id, enabled")
+              .eq("id", 1)
+              .maybeSingle();
+            if (bienvV && bienvV.enabled && bienvV.file_id) dv = bienvV;
+          }
         }
         if (dv && dv.enabled && dv.file_id) {
           const m = dv.media_type;
@@ -414,8 +479,10 @@ export async function POST(request: Request) {
             m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";
           const p: Record<string, unknown> = {
             chat_id: chatId,
-            caption:
-              "Aquí tienes el vídeo 🔥 así le doy yo, míralo y dale — ya puedes jugar, no esperes a ninguno nuevo.",
+            // Si es porque una forma le falló, se lo presentamos como OTRA forma.
+            caption: falloForma
+              ? "Prueba así también 🔥 — es otra forma en la que le doy yo, míralo y hazlo igual, dale otra vuelta."
+              : "Aquí tienes 🔥 así le doy yo, míralo y dale igual — ya puedes jugar.",
             reply_markup: botonSoloJugar(),
           };
           if (m === "video") p.video = dv.file_id;
