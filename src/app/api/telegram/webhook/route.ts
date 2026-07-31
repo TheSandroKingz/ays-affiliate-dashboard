@@ -428,20 +428,22 @@ export async function POST(request: Request) {
         /patr[oó]n|cuadrad|cuadro|\btruco|c[oó]mo (le das|lo hac|juega)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
           textoJ
         );
-      // OTRO ejemplo SOLO cuando el jugador MANDA un vídeo/clip de su jugada
-      // (prueba de que perdió o está a punto). Un simple "no me funciona" por
-      // texto NO basta: eso va a la IA, que le pide el vídeo. Así no regalamos
-      // ejemplos sin que hayan jugado y mostrado el resultado.
       const mandoVideo = !!(msg.video || msg.animation);
+      // Dice que el patrón / una forma NO le va, le falla, le salen bombas, etc.
+      const falloForma =
+        /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
+          textoJ
+        );
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
         /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
           textoJ
         );
-      // Mandamos un EJEMPLO si: piden el patrón/vídeo, O mandan un vídeo de su
-      // jugada → le damos OTRA forma. Nunca en un problema real (pago/cuenta/bono).
-      if ((pidePatron || mandoVideo) && !problemaReal && !limitado) {
+      // Mandamos un EJEMPLO si: piden el patrón/vídeo, O dicen que no les va / les
+      // falló, O mandan un vídeo de su jugada → le damos OTRA forma. Nunca en un
+      // problema real (pago/cuenta/bono).
+      if ((pidePatron || falloForma || mandoVideo) && !problemaReal && !limitado) {
         // 1º un EJEMPLO al azar de la biblioteca del dueño (rotando, "así juego
         // yo"); si no hay ninguno, el /diario; y si tampoco, el de bienvenida.
         let dv:
@@ -478,9 +480,9 @@ export async function POST(request: Request) {
             m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";
           const p: Record<string, unknown> = {
             chat_id: chatId,
-            // Si mandó su vídeo (jugada/pérdida), se lo damos como OTRA forma. En
-            // ambos casos dejamos con ganas de ver MÁS (tengo varias formas).
-            caption: mandoVideo
+            // Si dice que no le va o manda su vídeo, se lo damos como OTRA forma.
+            // En ambos casos dejamos con ganas de ver MÁS (tengo varias formas).
+            caption: (mandoVideo || falloForma)
               ? "Toma, prueba así también 🔥 es OTRA de mis formas. Tengo varias — mándame cómo te va y te paso la siguiente. Míralo y hazlo igual."
               : "Aquí tienes 🔥 así le doy yo. Tengo varias formas; hazlo igual que en esta y si acaso me enseñas cómo te fue y te paso otra.",
             reply_markup: botonSoloJugar(),
