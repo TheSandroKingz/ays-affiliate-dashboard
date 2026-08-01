@@ -54,17 +54,29 @@ export async function GET(request: Request) {
     status: "deposit", // depósito recibido, no cualificado → no suma dinero
   });
 
-  // Si el depósito viene del BOT (afp=bot), avisamos al dueño con un push. Este
-  // postback es solo de PRIMEROS depósitos (no de recargas), así que no llega
-  // aviso por "meter dinero de nuevo".
+  // Si el depósito viene del BOT (afp=bot), avisamos al dueño con un push. Como
+  // FreshBet NO manda el importe del depósito, en su lugar mostramos el PAÍS y lo
+  // que GANARÁS cuando cualifique (el CPA del afiliado atribuido, normalmente tu
+  // propia cuenta). Así el aviso dice de dónde es y cuánto, no un genérico.
   if (/^bot/i.test(afp)) {
+    let cpa = 0;
+    if (matchedUserId) {
+      const { data: aff } = await supabaseAdmin
+        .from("affiliates")
+        .select("cpa_spain, cpa_other")
+        .eq("user_id", matchedUserId)
+        .maybeSingle();
+      const esOtro = isocountry && isocountry !== "ES";
+      cpa = Number((esOtro ? aff?.cpa_other ?? aff?.cpa_spain : aff?.cpa_spain) ?? 0);
+    }
+    const pais = isocountry ? ` de ${isocountry}` : "";
     after(() =>
       enviarPush(ADMIN_USER_ID, {
         title: "💰 ¡Depósito del bot!",
         body:
-          monto > 0
-            ? `Alguien depositó ${monto}€ por el bot 🔥`
-            : "Alguien ha depositado por el bot 🔥",
+          cpa > 0
+            ? `Un jugador${pais} ha hecho su primer depósito por el bot 🔥 Ganas ${cpa}€ cuando cualifique.`
+            : `Un jugador${pais} ha hecho su primer depósito por el bot 🔥`,
         url: "/admin/telegram",
       })
     );
