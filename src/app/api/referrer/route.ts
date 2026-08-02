@@ -12,7 +12,13 @@ export async function POST(request: Request) {
 
   const { ref } = await request.json().catch(() => ({}));
 
-  if (!ref) {
+  // Solo aceptamos un UUID válido. Sin esto, cualquier texto entraba a la consulta
+  // (podía dar error de BD con "id" no-uuid) y se podría sondear la tabla. Con el
+  // filtro, solo un id exacto y bien formado consulta, y solo devuelve el nombre.
+  const esUUID =
+    typeof ref === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
+  if (!esUUID) {
     return NextResponse.json({ displayName: null });
   }
 
