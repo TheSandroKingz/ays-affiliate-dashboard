@@ -44,6 +44,12 @@ export default function AdminLayout({
             Telegram
           </Link>
           <Link
+            href="/admin/reparto"
+            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
+          >
+            Reparto
+          </Link>
+          <Link
             href="/admin/memoria"
             className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
           >
