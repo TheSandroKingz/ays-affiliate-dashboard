@@ -532,33 +532,20 @@ export async function POST(request: Request) {
           ? "[el jugador te ha enviado un archivo]"
           : "");
 
-      // Contexto REAL de la conversación: lo leemos del transcript completo
-      // (telegram_messages), que solo AÑADE y nunca se pisa aunque lleguen dos
-      // mensajes casi a la vez → el bot no "olvida" lo que le acaban de decir.
-      // Respetamos el corte de "Reiniciar memoria" (memory_reset_at).
-      const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
-      const { data: prev } = await supabaseAdmin
-        .from("telegram_messages")
-        .select("role, content")
-        .eq("chat_id", chatId)
-        .gt("created_at", desde)
-        .order("created_at", { ascending: false })
-        .limit(60);
-      const historial: Turno[] = ((prev ?? []) as { role: string; content: string }[])
-        .reverse()
-        .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
-
       // Si el jugador manda una foto/vídeo, guardamos su file_id + tipo para
-      // poder MOSTRARLO en el visor de chats del panel (el socio ve la imagen).
+      // MOSTRARLO en el visor de chats del panel Y para que la IA lo VEA. En los
+      // vídeos guardamos la MINIATURA (un fotograma): así el panel muestra una
+      // imagen y la IA puede "ver" de qué va el vídeo (Claude no procesa vídeo,
+      // pero sí su miniatura). El documento se guarda tal cual (sin visión).
       const fotosMsg = msg.photo as Array<{ file_id: string }> | undefined;
+      const videoThumb =
+        (msg.video?.thumbnail?.file_id ?? msg.video?.thumb?.file_id) ?? null;
+      const animThumb =
+        (msg.animation?.thumbnail?.file_id ?? msg.animation?.thumb?.file_id) ?? null;
       const mediaFileId =
         fotosMsg && fotosMsg.length
           ? fotosMsg[fotosMsg.length - 1].file_id
-          : (msg.video?.file_id ??
-             msg.animation?.file_id ??
-             msg.document?.file_id ??
-             null);
+          : (videoThumb ?? animThumb ?? msg.document?.file_id ?? null);
       const mediaTipo =
         fotosMsg && fotosMsg.length
           ? "photo"
@@ -570,9 +557,9 @@ export async function POST(request: Request) {
           ? "document"
           : null;
 
-      // Guardamos YA el mensaje del jugador (antes de responder): si manda otro
-      // mensaje seguido, ese contexto ya estará disponible para el segundo.
-      await supabaseAdmin
+      // Guardamos YA el mensaje del jugador (antes de responder) y nos quedamos
+      // con su id (para el "piensa antes de responder" de abajo).
+      const { data: insertadoUser } = await supabaseAdmin
         .from("telegram_messages")
         .insert({
           chat_id: chatId,
@@ -581,17 +568,57 @@ export async function POST(request: Request) {
           file_id: mediaFileId,
           media_type: mediaTipo,
         })
-        .then(() => {}, () => {});
+        .select("id")
+        .maybeSingle();
+      const miMsgId = (insertadoUser?.id as number | undefined) ?? undefined;
 
-      // La IA responde (si no está limitada por spam ni por el tope global diario).
-      const TOPE_DIA = 5000;
-      let respuesta: string | null = null;
+      // PIENSA ANTES DE RESPONDER (agrupa mensajes seguidos): esperamos unos
+      // segundos; si mientras tanto el jugador manda OTRO mensaje (p. ej. primero
+      // un vídeo y luego el texto), ESTE no responde y deja que responda el
+      // último, que ya tendrá TODO el contexto. Así el bot no "pasa" del vídeo ni
+      // contesta a medias. Solo aplica cuando vamos a responder con la IA.
+      let debounced = false;
       if (entrada && iaConfigurada() && !limitado && !videoEnviado) {
-        // "Escribiendo…" al instante para que se vea movimiento mientras la IA
-        // piensa (Telegram lo muestra ~5s). No bloquea si falla.
+        // "Escribiendo…" para que se vea que está pensando durante la espera.
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(
           () => {}
         );
+        await new Promise((r) => setTimeout(r, 4500));
+        if (miMsgId) {
+          const { data: masNuevos } = await supabaseAdmin
+            .from("telegram_messages")
+            .select("id")
+            .eq("chat_id", chatId)
+            .eq("role", "user")
+            .gt("id", miMsgId)
+            .limit(1);
+          if (masNuevos && masNuevos.length) debounced = true;
+        }
+      }
+
+      // Contexto REAL de la conversación: se lee AHORA (tras la espera), así
+      // incluye los mensajes del grupo (el vídeo que mandó justo antes). Respeta
+      // el corte de "Reiniciar memoria" y excluye el mensaje actual (va aparte
+      // como `entrada`).
+      const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
+      const { data: prev } = await supabaseAdmin
+        .from("telegram_messages")
+        .select("id, role, content")
+        .eq("chat_id", chatId)
+        .gt("created_at", desde)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      const historial: Turno[] = ((prev ?? []) as { id: number; role: string; content: string }[])
+        .filter((m) => m.id !== miMsgId)
+        .reverse()
+        .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+      // La IA responde (si no está limitada, no se pasó el tope diario y no ha
+      // quedado "debounced" por un mensaje posterior).
+      const TOPE_DIA = 5000;
+      let respuesta: string | null = null;
+      if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
         }).format(new Date());
@@ -607,13 +634,24 @@ export async function POST(request: Request) {
         const dentroTope =
           typeof usoActual !== "number" || usoActual <= TOPE_DIA;
         if (dentroTope) {
-          // Si mandó una foto, la descargamos y se la pasamos a la IA con visión
-          // (la mira de verdad: saldo de bono en rojo, Mines, error, etc.).
-          const fotos = msg.photo as Array<{ file_id: string }> | undefined;
-          const imagen =
-            fotos && fotos.length
-              ? await descargarFoto(fotos[fotos.length - 1].file_id)
-              : null;
+          // Imagen para la IA: la del mensaje actual si trae; si no, la del último
+          // mensaje reciente del jugador con media (para no perder el vídeo/foto
+          // que mandó justo antes del texto). En vídeos, file_id ya es la miniatura.
+          let visionFileId: string | null = mediaFileId;
+          if (!visionFileId) {
+            const { data: ultMedia } = await supabaseAdmin
+              .from("telegram_messages")
+              .select("file_id")
+              .eq("chat_id", chatId)
+              .eq("role", "user")
+              .not("file_id", "is", null)
+              .in("media_type", ["photo", "video", "animation"])
+              .gt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString())
+              .order("created_at", { ascending: false })
+              .limit(1);
+            visionFileId = (ultMedia?.[0]?.file_id as string | undefined) ?? null;
+          }
+          const imagen = visionFileId ? await descargarFoto(visionFileId) : null;
           respuesta = await responderIA(
             historial,
             entrada,
@@ -653,8 +691,9 @@ export async function POST(request: Request) {
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
         });
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !limitado && !videoEnviado) {
-        // Si la IA falla (no por spam), no dejamos al jugador sin nada.
+      } else if (entrada && !limitado && !videoEnviado && !debounced) {
+        // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
+        // "debounced", NO mandamos nada: responderá el último mensaje del grupo.)
         const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });
