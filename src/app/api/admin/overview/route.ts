@@ -67,6 +67,9 @@ export async function GET(request: Request) {
         .select("isocountry")
         .in("event_type", ["ftd", "commission"])
         .eq("counted", true)
+        // Solo el MES en curso (se reinicia cada mes, como el resto del panel), no
+        // el histórico. created_at es timestamptz UTC; inicioMes es el 1 del mes.
+        .gte("created_at", inicioMes)
         .limit(100000), // sin límite se cortaría en 1000 y el histograma saldría corto
     ]);
 

@@ -551,7 +551,7 @@ export default function AdminDashboard() {
       {paises.length > 0 && (
         <div className="animate-in bg-white/10 backdrop-blur border border-white/20 rounded-xl p-4 max-w-lg" style={{ animationDelay: "0.22s" }}>
           <p className="text-sm font-medium text-slate-300 mb-3">
-            🌍 De dónde vienen{" "}
+            🌍 De dónde vienen este mes{" "}
             <span className="text-slate-500">({paises.length} países)</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
