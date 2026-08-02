@@ -205,6 +205,65 @@ export async function generarMensajeDiario(contexto: string): Promise<string | n
   }
 }
 
+// Ensambla los mensajes para la API a partir del historial + el mensaje actual.
+// La API exige turnos que ALTERNEN user/assistant y que empiece por "user"; el
+// transcript puede traer dos "user" seguidos → los colapsamos. La imagen (si hay)
+// se adjunta al último turno del usuario. Compartido por el bot de Sandro y los
+// bots nuevos (misma lógica, distinta persona).
+function ensamblarMensajes(
+  historial: Turno[],
+  mensaje: string,
+  imagen?: { base64: string; mediaType: string } | null
+): Anthropic.MessageParam[] {
+  const previos = historial.filter(
+    (t) => (t.role === "user" || t.role === "assistant") && t.content
+  );
+  while (previos.length && previos[0].role !== "user") previos.shift();
+
+  const secuencia: Turno[] = [
+    ...previos,
+    { role: "user", content: mensaje || "(vacío)" },
+  ];
+  const fusion: Turno[] = [];
+  for (const t of secuencia) {
+    const ult = fusion[fusion.length - 1];
+    if (ult && ult.role === t.role) ult.content += `\n${t.content}`;
+    else fusion.push({ role: t.role, content: t.content });
+  }
+
+  return fusion.map((t, i) => {
+    if (i === fusion.length - 1 && t.role === "user" && imagen) {
+      return {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: imagen.mediaType as
+                | "image/jpeg"
+                | "image/png"
+                | "image/gif"
+                | "image/webp",
+              data: imagen.base64,
+            },
+          },
+          { type: "text", text: t.content },
+        ],
+      };
+    }
+    return { role: t.role, content: t.content };
+  });
+}
+
+// Añade al system la nota del nombre/género de quien escribe. SANITIZADO para que
+// un nombre de perfil malicioso no pueda colar instrucciones (prompt injection).
+function conNombre(system: string, nombre?: string | null): string {
+  const nom = (nombre ?? "").replace(/[\n\r"'`]/g, " ").trim().slice(0, 40);
+  if (!nom) return system;
+  return `${system}\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), en FEMENINO (y jamás "hermano/tío/chaval"). Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO. Puedes usar su nombre para dirigirte a ella/él.`;
+}
+
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
 export async function responderIA(
   historial: Turno[],
@@ -215,65 +274,43 @@ export async function responderIA(
   if (!KEY) return null;
   try {
     const client = new Anthropic({ apiKey: KEY });
-    // Nos quedamos con historial válido y garantizamos que empiece por "user".
-    const previos = historial.filter(
-      (t) => (t.role === "user" || t.role === "assistant") && t.content
-    );
-    while (previos.length && previos[0].role !== "user") previos.shift();
-
-    // La API exige que los turnos ALTERNEN user/assistant. El transcript puede
-    // traer dos "user" seguidos (mensajes muy seguidos, media sin texto, o un
-    // turno en que la IA no respondió). Colapsamos turnos consecutivos del mismo
-    // rol en uno (juntando el texto) para no romper la llamada.
-    const secuencia: Turno[] = [
-      ...previos,
-      { role: "user", content: mensaje || "(vacío)" },
-    ];
-    const fusion: Turno[] = [];
-    for (const t of secuencia) {
-      const ult = fusion[fusion.length - 1];
-      if (ult && ult.role === t.role) ult.content += `\n${t.content}`;
-      else fusion.push({ role: t.role, content: t.content });
-    }
-
-    // La imagen (si hay) se adjunta al ÚLTIMO turno del usuario (el mensaje actual).
-    const messages: Anthropic.MessageParam[] = fusion.map((t, i) => {
-      if (i === fusion.length - 1 && t.role === "user" && imagen) {
-        return {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: imagen.mediaType as
-                  | "image/jpeg"
-                  | "image/png"
-                  | "image/gif"
-                  | "image/webp",
-                data: imagen.base64,
-              },
-            },
-            { type: "text", text: t.content },
-          ],
-        };
-      }
-      return { role: t.role, content: t.content };
-    });
-
+    const messages = ensamblarMensajes(historial, mensaje, imagen);
     const promo = await getPromo();
-    // Nombre de pila de quien escribe (para dirigirse a él/ella y saber el género).
-    // SANITIZADO: quitamos comillas/saltos y limitamos longitud para que un nombre
-    // de perfil malicioso no pueda cerrar el string y colar instrucciones (prompt
-    // injection) en el canal SYSTEM.
-    const nom = (nombre ?? "").replace(/[\n\r"'`]/g, " ").trim().slice(0, 40);
-    const sysNombre = nom
-      ? `${conPromo(SYSTEM, promo)}\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), en FEMENINO (y jamás "hermano/tío/chaval"). Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO. Puedes usar su nombre para dirigirte a ella/él.`
-      : conPromo(SYSTEM, promo);
     const res = await client.messages.create({
       model: MODELO,
       max_tokens: 110,
-      system: sysNombre,
+      system: conNombre(conPromo(SYSTEM, promo), nombre),
+      messages,
+    });
+    const txt = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    return txt || null;
+  } catch {
+    return null;
+  }
+}
+
+// Igual que responderIA pero para los BOTS NUEVOS: recibe la PERSONA (system
+// prompt del bot) y su PROMO activa (de bot_config), en vez de las de Sandro.
+export async function responderIABot(
+  persona: string,
+  promo: string,
+  historial: Turno[],
+  mensaje: string,
+  imagen?: { base64: string; mediaType: string } | null,
+  nombre?: string | null
+): Promise<string | null> {
+  if (!KEY) return null;
+  try {
+    const client = new Anthropic({ apiKey: KEY });
+    const messages = ensamblarMensajes(historial, mensaje, imagen);
+    const res = await client.messages.create({
+      model: MODELO,
+      max_tokens: 110,
+      system: conNombre(conPromo(persona, promo), nombre),
       messages,
     });
     const txt = res.content

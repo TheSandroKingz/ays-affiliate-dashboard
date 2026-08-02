@@ -33,19 +33,20 @@ export const ENLACE_JUGAR =
 const TEXTO_JUGAR = "🟢🎰 JUGAR AHORA 🎰🟢";
 
 // Botones inline: jugar (abre el enlace) y "❓ AYUDA" (el bot invita a escribir
-// su duda y la IA responde). Se añaden como reply_markup.
-export function botonJugar() {
+// su duda y la IA responde). Se añaden como reply_markup. El `enlace` se puede
+// pasar (bots nuevos con su propio enlace); por defecto usa el de Sandro.
+export function botonJugar(enlace: string = ENLACE_JUGAR) {
   return {
     inline_keyboard: [
-      [{ text: TEXTO_JUGAR, url: ENLACE_JUGAR }],
+      [{ text: TEXTO_JUGAR, url: enlace }],
       [{ text: "❓ AYUDA", callback_data: "ayuda" }],
     ],
   };
 }
 
 // Solo el botón del enlace (para las respuestas del chat, sin el de AYUDA).
-export function botonSoloJugar() {
-  return { inline_keyboard: [[{ text: TEXTO_JUGAR, url: ENLACE_JUGAR }]] };
+export function botonSoloJugar(enlace: string = ENLACE_JUGAR) {
+  return { inline_keyboard: [[{ text: TEXTO_JUGAR, url: enlace }]] };
 }
 
 // Guarda un message_id para borrarlo luego (limpieza automática de chats).
@@ -70,14 +71,16 @@ export function telegramConfigurado(): boolean {
   return !!TOKEN;
 }
 
-// Llama a un método de la API del bot. Devuelve el JSON o null si falla.
+// Llama a un método de la API del bot. Devuelve el JSON o null si falla. El
+// `token` se puede pasar (bots nuevos con su propio token); por defecto el de Sandro.
 export async function tgApi(
   method: string,
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  token: string = TOKEN
 ): Promise<{ ok: boolean; result?: unknown; description?: string } | null> {
-  if (!TOKEN) return null;
+  if (!token) return null;
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
@@ -92,16 +95,17 @@ export async function tgApi(
 // en base64 para pasárselo a la IA con visión. null si falla o es muy grande.
 // BLINDADO: cualquier fallo devuelve null y el flujo sigue con solo texto.
 export async function descargarFoto(
-  fileId: string
+  fileId: string,
+  token: string = TOKEN
 ): Promise<{ base64: string; mediaType: string } | null> {
-  if (!TOKEN || !fileId) return null;
+  if (!token || !fileId) return null;
   try {
-    const info = await tgApi("getFile", { file_id: fileId });
+    const info = await tgApi("getFile", { file_id: fileId }, token);
     const filePath = (info?.result as { file_path?: string } | undefined)
       ?.file_path;
     if (!filePath) return null;
     const res = await fetch(
-      `https://api.telegram.org/file/bot${TOKEN}/${filePath}`
+      `https://api.telegram.org/file/bot${token}/${filePath}`
     );
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
@@ -122,17 +126,23 @@ export async function descargarFoto(
   }
 }
 
-// Envía un mensaje de texto a un chat. `reply_markup` opcional (botones).
+// Envía un mensaje de texto a un chat. `reply_markup` opcional (botones). El
+// `token` se puede pasar (bots nuevos); por defecto usa el de Sandro.
 export async function tgEnviar(
   chatId: number | string,
   text: string,
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
+  token: string = TOKEN
 ) {
-  return tgApi("sendMessage", {
-    chat_id: chatId,
-    text,
-    parse_mode: "HTML",
-    disable_web_page_preview: true,
-    ...extra,
-  });
+  return tgApi(
+    "sendMessage",
+    {
+      chat_id: chatId,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      ...extra,
+    },
+    token
+  );
 }
