@@ -21,6 +21,16 @@ export function firmarMedia(id: number, exp: number): string {
 export function mediaKeyConfigurada(): boolean {
   return !!MEDIA_KEY;
 }
+// Firma para las imágenes de los BOTS NUEVOS (tabla bot_messages). Usa un
+// espacio de nombres distinto ("bot.") para que una URL firmada de un bot NO
+// sirva contra el endpoint de imágenes del bot de Sandro (telegram_messages), ni
+// al revés: el id por sí solo no basta, la firma incluye el prefijo.
+export function firmarMediaBot(id: number, exp: number): string {
+  return crypto
+    .createHmac("sha256", MEDIA_KEY)
+    .update(`bot.${id}.${exp}`)
+    .digest("hex");
+}
 export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 
 // Enlace de registro/depósito (afiliado). El "afp=bot" es el sub-id que vuelve

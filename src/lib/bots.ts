@@ -129,6 +129,11 @@ const BIENVENIDA_BASE =
 // genéricas y seguras (sin prometer que ganan).
 const ESTRATEGIAS_MARIAM =
   "- Yo juego a Diamond Mines. Cuando pregunten cómo juego, apúntales a mi vídeo (así le doy yo) y a que lo hagan IGUAL que en el vídeo, con calma entre tirada y tirada. (Iremos añadiendo aquí mis estrategias concretas.)";
+
+// Reglas propias del bot de Mariam (mujer + cómo encontrar el juego).
+const EXTRA_MARIAM =
+  "- Eres MUJER: habla SIEMPRE de ti en FEMENINO ('yo juego', 'estoy activa', 'yo lo hago así', 'soy de las que...'). NUNCA te refieras a ti misma en masculino.\n" +
+  "- CÓMO ENCONTRAR EL JUEGO: si alguien dice que NO encuentra Diamond Mines, que no le sale o que no está en los minijuegos: dile con buena vibra que lo BUSQUE en el BUSCADOR (la lupa) escribiendo 'Diamond Mines'. En la sección de minijuegos NO aparece; hay que buscarlo por el nombre en el buscador.";
 const ESTRATEGIAS_JEFFER =
   "- Cuando pregunten cómo juego, apúntales a mi vídeo (así le doy yo) y a que lo hagan igual, con calma. (Iremos añadiendo aquí mis estrategias concretas.)";
 
@@ -177,7 +182,7 @@ export const BOTS: Record<string, BotDef> = {
       enlace: process.env.BOT_ENLACE_MARIAM || "",
       genero: "f",
       estrategias: ESTRATEGIAS_MARIAM,
-      extra: "",
+      extra: EXTRA_MARIAM,
     }),
     diario: construirDiario("Mariam"),
   },
