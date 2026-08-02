@@ -444,7 +444,7 @@ export async function POST(request: Request) {
       // Evita el "así lo hago yo" 5 veces en la misma charla (queja del socio):
       // si ya se lo pasamos, deja que responda la IA (que le diga que lo mire bien)
       // en vez de spamear otro vídeo. Se resetea a los 40 min.
-      const COOLDOWN_EJEMPLO_MS = 40 * 60 * 1000;
+      const COOLDOWN_EJEMPLO_MS = 6 * 60 * 60 * 1000; // 6 h: no re-mandar el vídeo a cada rato
       const ejemploReciente =
         !!contacto?.last_example_at &&
         Date.now() - new Date(contacto.last_example_at as string).getTime() <
