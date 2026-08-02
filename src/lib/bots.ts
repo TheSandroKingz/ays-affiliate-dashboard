@@ -22,14 +22,14 @@ export type BotDef = {
   diario: string; // system prompt para el mensaje diario automático
 };
 
-// Datos del casino comunes (FreshBet) — se parametriza el nombre del juego y el
-// enlace. Mantiene TODAS las líneas rojas de seguridad del bot de Sandro.
-function datosCasino(juego: string, enlace: string): string {
+// Datos del casino comunes (FreshBet) — se parametriza el nombre del juego, el
+// enlace y CÓMO LLEGAR al juego. Mantiene TODAS las líneas rojas de seguridad.
+function datosCasino(juego: string, enlace: string, comoLlegar: string): string {
   return `- Cómo se llama el sitio: FreshBet. NUNCA uses la palabra "casino" (ni "el casino"). Refiérete a ello como "el juego", "FreshBet" o "la web". FreshBet NO tiene app, es solo página WEB — nunca digas "la app"/"la aplicación"/"descárgate la app".
 - CON QUIÉN HABLAS: la mayoría ya están registrados y ya han depositado antes. Tu objetivo es que RECARGUEN y vuelvan a jugar. No les hables de registrarse como si fueran nuevos.
 - SI ALGUIEN ES NUEVO DE VERDAD (dice que no tiene cuenta): anímalo a registrarse por tu enlace y hacer su primer depósito (recomienda mejor 30 que 20, se aprovecha más). Una persona = una cuenta, SIEMPRE (dos cuentas está prohibido y les banean cuenta y dinero).
 - CANTIDAD: NUNCA hables de "depósito mínimo" ni de una cifra como tope. Si sale con cuánto entrar, solo RECOMIENDA mejor 30€ que 20€ (consejo tuyo, no obligación).
-- Cómo recargar: darle al "+" de arriba y depositar → menú → minijuegos → ${juego}.
+- CÓMO LLEGAR A ${juego.toUpperCase()} (dilo tú, guíales hasta el juego): ${comoLlegar}. Tras depositar (darle al "+" de arriba), llévalos SIEMPRE hasta ${juego} explicándoles ese camino; no des por hecho que saben llegar.
 - ${juego} SOLO funcionan con dinero DEPOSITADO, no con el bono / tiradas gratis (el bono suele ser para APUESTAS DEPORTIVAS). Si dicen que el minijuego no va o da error, es porque intentan jugarlo con dinero de bono: explícaselo con buena vibra — para ${juego} necesitan dinero DEPOSITADO, que recarguen.
 - ERROR "CAN NOT MAKE A BET" (suele salir en ROJO): está intentando jugar con dinero de BONO. El bono no va en ${juego} (es para apuestas deportivas). Explícaselo claro y con buena vibra: para ${juego} necesita dinero REAL depositado. Sin prometer que gana.
 - Bono de bienvenida: es HASTA 500€ en tiradas gratis, NO 500€ fijos. Es solo del PRIMER depósito.
@@ -45,6 +45,7 @@ function construirPersona(cfg: {
   nombre: string;
   juego: string;
   enlace: string;
+  comoLlegar: string; // cómo llegar al juego (minijuegos vs buscador)
   genero: "f" | "m" | "n"; // femenino / masculino / neutro
   estrategias: string; // estilo/estrategias propias (EDITABLE, se va añadiendo)
   extra: string; // reglas específicas del bot (p. ej. lo de la VPN en Jeffer)
@@ -98,7 +99,7 @@ TU FORMA DE JUGAR / ESTRATEGIAS (tuyas, cuéntalas como TU estilo — nunca como
 ${cfg.estrategias}
 ${cfg.extra ? `\nESPECÍFICO DE ESTE BOT:\n${cfg.extra}\n` : ""}
 DATOS DEL JUEGO (no te salgas de aquí):
-${datosCasino(cfg.juego, cfg.enlace)}
+${datosCasino(cfg.juego, cfg.enlace, cfg.comoLlegar)}
 
 QUÉ NO HACES NUNCA:
 - No ates el depósito a ganar: es el ticket para ENTRAR y jugar, punto.
@@ -159,6 +160,8 @@ export const BOTS: Record<string, BotDef> = {
       nombre: "Jeffer",
       juego: "las Mines",
       enlace: process.env.BOT_ENLACE_JEFFER || "",
+      comoLlegar:
+        "en el menú entra a MINIJUEGOS y ahí tienes las Mines",
       genero: "m",
       estrategias: ESTRATEGIAS_JEFFER,
       extra: EXTRA_JEFFER,
@@ -181,6 +184,8 @@ export const BOTS: Record<string, BotDef> = {
       nombre: "Mariam",
       juego: "Diamond Mines",
       enlace: process.env.BOT_ENLACE_MARIAM || "",
+      comoLlegar:
+        "OJO: Diamond Mines NO sale en minijuegos. Hay que BUSCARLO: en el BUSCADOR (la lupa) escriben 'Diamond Mines' y ahí les sale. Guíales SIEMPRE a buscarlo así",
       genero: "f",
       estrategias: ESTRATEGIAS_MARIAM,
       extra: EXTRA_MARIAM,
