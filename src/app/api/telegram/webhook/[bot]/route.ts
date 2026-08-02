@@ -13,6 +13,26 @@ import { procesarUpdate } from "@/lib/botHandler";
 // para que el bot funcione sin ese paso extra (se puede añadir el secreto luego).
 export const maxDuration = 60;
 
+// Diagnóstico: dice si el bot tiene token/secreto/enlace/owner configurados en
+// el entorno de Vercel (solo sí/no, NUNCA los valores). Sirve para depurar el
+// alta de un bot sin exponer nada sensible.
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ bot: string }> }
+) {
+  const { bot: key } = await params;
+  const bot = getBot(key);
+  if (!bot) return NextResponse.json({ known: false });
+  return NextResponse.json({
+    known: true,
+    bot: bot.key,
+    tokenSet: !!bot.token,
+    secretSet: !!bot.secret,
+    enlaceSet: !!bot.enlace,
+    ownerSet: !!bot.owner,
+  });
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ bot: string }> }
