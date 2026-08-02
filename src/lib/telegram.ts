@@ -34,8 +34,12 @@ const TEXTO_JUGAR = "🟢🎰 JUGAR AHORA 🎰🟢";
 
 // Botones inline: jugar (abre el enlace) y "❓ AYUDA" (el bot invita a escribir
 // su duda y la IA responde). Se añaden como reply_markup. El `enlace` se puede
-// pasar (bots nuevos con su propio enlace); por defecto usa el de Sandro.
+// pasar (bots nuevos con su propio enlace); por defecto usa el de Sandro. Si el
+// enlace está vacío (bot nuevo sin enlace configurado aún), devolvemos undefined:
+// Telegram rechaza un botón con url vacía y tumbaría todo el mensaje, así que
+// mejor sin botón (el bot igual saluda y responde) hasta que se ponga el enlace.
 export function botonJugar(enlace: string = ENLACE_JUGAR) {
+  if (!enlace) return undefined;
   return {
     inline_keyboard: [
       [{ text: TEXTO_JUGAR, url: enlace }],
@@ -46,6 +50,7 @@ export function botonJugar(enlace: string = ENLACE_JUGAR) {
 
 // Solo el botón del enlace (para las respuestas del chat, sin el de AYUDA).
 export function botonSoloJugar(enlace: string = ENLACE_JUGAR) {
+  if (!enlace) return undefined;
   return { inline_keyboard: [[{ text: TEXTO_JUGAR, url: enlace }]] };
 }
 
