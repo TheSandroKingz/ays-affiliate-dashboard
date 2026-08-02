@@ -107,13 +107,13 @@ export default function RepartoPage() {
         <>
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-5">
-              <p className="text-sm text-slate-300">Tú (Sandro)</p>
+              <p className="text-sm text-slate-300">Kingz</p>
               <p className="text-3xl font-bold text-emerald-300">
                 {eur(reparto.sandroTotal)}
               </p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
-              <p className="text-sm text-slate-300">Socio</p>
+              <p className="text-sm text-slate-300">PRZ</p>
               <p className="text-3xl font-bold text-white">
                 {eur(reparto.socioTotal)}
               </p>
@@ -125,8 +125,8 @@ export default function RepartoPage() {
               <span>Fuente</span>
               <span className="text-right">FTD</span>
               <span className="text-right">Ganancia</span>
-              <span className="text-right">Tú</span>
-              <span className="text-right">Socio</span>
+              <span className="text-right">Kingz</span>
+              <span className="text-right">PRZ</span>
             </div>
             {reparto.fuentes.map((f) => (
               <div
