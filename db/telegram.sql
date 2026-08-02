@@ -45,6 +45,11 @@ alter table public.telegram_contacts
 alter table public.telegram_contacts
   add column if not exists memory_reset_at timestamptz;
 
+-- Última vez que el bot le mandó un EJEMPLO/vídeo ("así juego yo"). Sirve de
+-- cooldown para no repetírselo a cada rato (no mandar otro hasta 40 min después).
+alter table public.telegram_contacts
+  add column if not exists last_example_at timestamptz;
+
 alter table public.telegram_contacts enable row level security;
 -- Sin políticas = inaccesible para anon/authenticated. Solo el service role.
 

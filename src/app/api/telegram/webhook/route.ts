@@ -393,7 +393,7 @@ export async function POST(request: Request) {
       // Datos del contacto: silencio y corte de memoria.
       const { data: contacto } = await supabaseAdmin
         .from("telegram_contacts")
-        .select("silenced, memory_reset_at")
+        .select("silenced, memory_reset_at, last_example_at")
         .eq("chat_id", chatId)
         .maybeSingle();
       // Silenciado por el dueño: el bot lo ignora del todo.
@@ -440,10 +440,24 @@ export async function POST(request: Request) {
         /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
           textoJ
         );
+      // COOLDOWN: no repetir el vídeo/ejemplo si ya le mandamos uno hace poco.
+      // Evita el "así lo hago yo" 5 veces en la misma charla (queja del socio):
+      // si ya se lo pasamos, deja que responda la IA (que le diga que lo mire bien)
+      // en vez de spamear otro vídeo. Se resetea a los 40 min.
+      const COOLDOWN_EJEMPLO_MS = 40 * 60 * 1000;
+      const ejemploReciente =
+        !!contacto?.last_example_at &&
+        Date.now() - new Date(contacto.last_example_at as string).getTime() <
+          COOLDOWN_EJEMPLO_MS;
       // Mandamos un EJEMPLO si: piden el patrón/vídeo, O dicen que no les va / les
       // falló, O mandan un vídeo de su jugada → le damos OTRA forma. Nunca en un
-      // problema real (pago/cuenta/bono).
-      if ((pidePatron || falloForma || mandoVideo) && !problemaReal && !limitado) {
+      // problema real (pago/cuenta/bono), ni si ya le mandamos uno hace poco.
+      if (
+        (pidePatron || falloForma || mandoVideo) &&
+        !problemaReal &&
+        !limitado &&
+        !ejemploReciente
+      ) {
         // 1º un EJEMPLO al azar de la biblioteca del dueño (rotando, "así juego
         // yo"); si no hay ninguno, el /diario; y si tampoco, el de bienvenida.
         let dv:
@@ -495,6 +509,12 @@ export async function POST(request: Request) {
           if (rv?.ok) {
             await guardarMsg(chatId, midDe(rv));
             videoEnviado = true;
+            // Marcamos cuándo mandamos el ejemplo (para el cooldown de arriba).
+            await supabaseAdmin
+              .from("telegram_contacts")
+              .update({ last_example_at: new Date().toISOString() })
+              .eq("chat_id", chatId)
+              .then(() => {}, () => {});
           }
         }
       }
