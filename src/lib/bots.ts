@@ -13,6 +13,8 @@ export type BotDef = {
   secret: string; // secreto del webhook (cabecera que manda Telegram)
   owner: string; // chat_id del dueño que gestiona ESTE bot (puede ser el propio afiliado)
   enlace: string; // enlace de afiliado con su afp (para atribuir los depósitos)
+  afp: string; // sub-id que marca los depósitos de ESTE bot (p. ej. "botjeffer")
+  trackingCode: string; // freshaffs_tracking_code del afiliado dueño ("patron", "Fresh")
   nombre: string; // nombre de la persona con la que habla el jugador
   juego: string; // "las Mines", "Diamond Mines"…
   bienvenida: string; // texto del /start
@@ -142,6 +144,8 @@ export const BOTS: Record<string, BotDef> = {
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_JEFFER || "",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_JEFFER || "",
     enlace: process.env.BOT_ENLACE_JEFFER || "",
+    afp: "botjeffer",
+    trackingCode: "patron",
     nombre: "Jeffer",
     juego: "las Mines",
     bienvenida: BIENVENIDA_BASE,
@@ -162,6 +166,8 @@ export const BOTS: Record<string, BotDef> = {
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",
     enlace: process.env.BOT_ENLACE_MARIAM || "",
+    afp: "botmariam",
+    trackingCode: "Fresh",
     nombre: "Mariam",
     juego: "Diamond Mines",
     bienvenida: BIENVENIDA_BASE,
@@ -180,4 +186,14 @@ export const BOTS: Record<string, BotDef> = {
 export function getBot(key: string | undefined | null): BotDef | null {
   if (!key) return null;
   return BOTS[key.toLowerCase()] ?? null;
+}
+
+// Devuelve el bot de un afiliado a partir de su freshaffs_tracking_code
+// (p. ej. "patron" → Jeffer, "Fresh" → Mariam). null si ese afiliado no tiene bot.
+export function botPorTracking(trackingCode: string | null | undefined): BotDef | null {
+  if (!trackingCode) return null;
+  const t = trackingCode.trim().toLowerCase();
+  return (
+    Object.values(BOTS).find((b) => b.trackingCode.toLowerCase() === t) ?? null
+  );
 }

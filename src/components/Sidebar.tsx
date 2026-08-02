@@ -39,6 +39,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [esPropia, setEsPropia] = useState(false);
+  const [tieneBot, setTieneBot] = useState(false);
   // Nombre y foto vienen del almacén compartido (una sola carga para toda la app).
   const { displayName, avatarUrl } = useProfile();
 
@@ -49,6 +50,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       setUserEmail(user?.email ?? null);
       setIsAdmin(user?.id === ADMIN_USER_ID);
       setEsPropia(esCuentaPropia(user?.id));
+      // ¿Este afiliado tiene un bot propio (Jeffer, Mariam)? Si sí, le mostramos
+      // el apartado "Telegram" para ver los depósitos de su bot.
+      const token = data.session?.access_token;
+      if (user && user.id !== ADMIN_USER_ID && token) {
+        fetch("/api/telegram/mi-bot", {
+          headers: { Authorization: "Bearer " + token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((b) => setTieneBot(!!b?.tieneBot))
+          .catch(() => {});
+      }
     });
   }, []);
 
@@ -124,6 +136,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <BookOpen size={18} />
           Plan de Comisión
         </Link>
+
+        {!isAdmin && tieneBot && (
+          <Link href="/dashboard/telegram" className={linkClass("/dashboard/telegram")} onClick={onClose}>
+            <MessageCircle size={18} />
+            Telegram
+          </Link>
+        )}
 
         {isAdmin && (
           <Link href="/admin/telegram" className={linkClass("/admin/telegram")} onClick={onClose}>
