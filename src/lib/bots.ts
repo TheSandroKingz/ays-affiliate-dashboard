@@ -138,13 +138,35 @@ const EXTRA_MARIAM =
   "- ⚠️ Diamond Mines NO está en 'Minijuegos'/'Mini Games'. Para llegar SOLO se puede BUSCÁNDOLO: en el BUSCADOR (la lupa) escriben 'Diamond Mines' y ahí les sale. Guíales SIEMPRE por ahí, nunca a minijuegos.\n" +
   "- Si alguien dice que en minijuegos NO encuentra un juego con ese nombre: es NORMAL, ahí NO está. Diles que lo BUSQUEN en el buscador (la lupa) escribiendo 'Diamond Mines'.\n" +
   "- Si te mandan una CAPTURA donde se ve 'Mini Games' o un juego 'MINES' (cuadrado rojo): NO les digas que toquen 'MINES' (ese NO es tu juego). Diles con buena vibra que ese no es, que usen el BUSCADOR (la lupa) y escriban 'Diamond Mines' para entrar al juego correcto.\n" +
-  "- Si alguien menciona 'Mines' o pregunta a qué juegas: aclárales con buena vibra que TÚ juegas a DIAMOND MINES (no a Mines, es otro juego) y que lo busquen por el nombre en el buscador.";
+  "- Si alguien menciona 'Mines' o pregunta a qué juegas: aclárales con buena vibra que TÚ juegas a DIAMOND MINES (no a Mines, es otro juego) y que lo busquen por el nombre en el buscador.\n" +
+  "- Si piden ESTRATEGIAS, PATRONES o TRUCOS: el sistema ya les manda tu ejemplo/vídeo — tú apóyalo corto ('ahí lo tienes, así le doy yo, míralo y hazlo igual'). NO seas PESADA pidiendo que TE manden vídeos/clips de cómo juegan ellos: como MUCHO una vez, y solo si de verdad hace falta para ayudar o dar confianza. Por defecto NO se lo pidas — mejor mándales tu ejemplo y anímalos a jugar, sin exigirles que te graben.";
 const ESTRATEGIAS_JEFFER =
   "- Cuando pregunten cómo juego, apúntales a mi vídeo (así le doy yo) y a que lo hagan igual, con calma. (Iremos añadiendo aquí mis estrategias concretas.)";
 
 // Jeffer: tráfico de fuera. NUNCA coachear VPN ni saltarse bloqueos de país.
 const EXTRA_JEFFER =
   "- NUNCA le digas a nadie que use una VPN, ni le ayudes a saltarse un bloqueo de país para abrir FreshBet. Si alguien dice que no le abre o no le deja desde su país: NO le enseñes a saltárselo. Dile con buena vibra que lo intente desde la web oficial y, si sigue sin poder, que hable con el soporte / chat en vivo de FreshBet. Sin prometer nada.";
+
+// Pone/reemplaza el parámetro `afp` de un enlace por uno NEUTRO (sin el nombre de
+// la persona), para que el jugador no vea "mariam"/"jeffer" en el link. El afp
+// sigue marcando de qué bot viene el depósito (y alimenta su dashboard), pero con
+// un código anónimo. Debe empezar por "bot" para que salte el aviso de depósito.
+function conAfp(enlace: string, afp: string): string {
+  if (!enlace) return enlace;
+  try {
+    const u = new URL(enlace);
+    u.searchParams.set("afp", afp);
+    return u.toString();
+  } catch {
+    return enlace;
+  }
+}
+
+// Códigos afp NEUTROS (no revelan el nombre). Únicos por bot; empiezan por "bot".
+const AFP_JEFFER = "botmn"; // Jeffer → Mines
+const AFP_MARIAM = "botdm"; // Mariam → Diamond Mines
+const ENLACE_JEFFER = conAfp(process.env.BOT_ENLACE_JEFFER || "", AFP_JEFFER);
+const ENLACE_MARIAM = conAfp(process.env.BOT_ENLACE_MARIAM || "", AFP_MARIAM);
 
 export const BOTS: Record<string, BotDef> = {
   jeffer: {
@@ -153,8 +175,8 @@ export const BOTS: Record<string, BotDef> = {
     token: process.env.TELEGRAM_BOT_TOKEN_JEFFER || "",
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_JEFFER || "",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_JEFFER || "",
-    enlace: process.env.BOT_ENLACE_JEFFER || "",
-    afp: "botjeffer",
+    enlace: ENLACE_JEFFER,
+    afp: AFP_JEFFER,
     trackingCode: "patron",
     nombre: "Jeffer",
     juego: "las Mines",
@@ -162,7 +184,7 @@ export const BOTS: Record<string, BotDef> = {
     persona: construirPersona({
       nombre: "Jeffer",
       juego: "las Mines",
-      enlace: process.env.BOT_ENLACE_JEFFER || "",
+      enlace: ENLACE_JEFFER,
       comoLlegar:
         "en el menú entra a MINIJUEGOS y ahí tienes las Mines",
       genero: "m",
@@ -177,8 +199,8 @@ export const BOTS: Record<string, BotDef> = {
     token: process.env.TELEGRAM_BOT_TOKEN_MARIAM || "",
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",
-    enlace: process.env.BOT_ENLACE_MARIAM || "",
-    afp: "botmariam",
+    enlace: ENLACE_MARIAM,
+    afp: AFP_MARIAM,
     trackingCode: "Fresh",
     nombre: "Mariam",
     juego: "Diamond Mines",
@@ -186,7 +208,7 @@ export const BOTS: Record<string, BotDef> = {
     persona: construirPersona({
       nombre: "Mariam",
       juego: "Diamond Mines",
-      enlace: process.env.BOT_ENLACE_MARIAM || "",
+      enlace: ENLACE_MARIAM,
       comoLlegar:
         "OJO: Diamond Mines NO sale en minijuegos. Hay que BUSCARLO: en el BUSCADOR (la lupa) escriben 'Diamond Mines' y ahí les sale. Guíales SIEMPRE a buscarlo así",
       genero: "f",
