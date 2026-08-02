@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
@@ -87,6 +87,13 @@ export default function TelegramPage() {
     }[]
   >([]);
   const [cargandoChat, setCargandoChat] = useState(false);
+  // Contenedor del chat: para bajar solo al último mensaje al abrirlo.
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!cargandoChat && chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMsgs, cargandoChat, chatAbierto]);
 
   async function verChat(chatId: number) {
     if (chatAbierto === chatId) {
@@ -732,7 +739,10 @@ export default function TelegramPage() {
                       </button>
                     )}
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2">
+                  <div
+                    ref={chatScrollRef}
+                    className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2"
+                  >
                     {cargandoChat ? (
                       <p className="text-xs text-slate-400">Cargando…</p>
                     ) : chatMsgs.length === 0 ? (
