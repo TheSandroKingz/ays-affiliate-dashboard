@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
   // Todo lo demás en paralelo. La consulta diaria viene ACOTADA por fecha (mes
   // pasado en adelante); antes traía TODO el histórico en cada carga.
-  const [meRes, dailyRes, pendRes, seguridad, freshbet, paisesRes] =
+  const [meRes, dailyRes, histDailyRes, pendRes, seguridad, freshbet, paisesRes] =
     await Promise.all([
       supabaseAdmin
         .from("affiliates")
@@ -50,6 +50,12 @@ export async function GET(request: Request) {
         .in("user_id", idsToLoad)
         .gte("date", inicioMesPasado)
         .limit(100000), // sin límite PostgREST corta en 1000 → "Lo que me quedo" saldría corto al crecer
+      // TODO el histórico (sin acotar fecha) para el "Total generado" del tooltip.
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, date, commission, clicks, registrations, ftd")
+        .in("user_id", idsToLoad)
+        .limit(100000),
       supabaseAdmin
         .from("affiliates")
         .select("user_id", { count: "exact", head: true })
@@ -113,11 +119,26 @@ export async function GET(request: Request) {
     struct
   ).totals.totalClean;
 
+  // Total generado HISTÓRICO (de todo el tiempo, aunque ya se haya cobrado): lo
+  // que has ganado limpio desde el primer día. Como el afiliado, para el tooltip.
+  const histRows = (histDailyRes.data ?? []).map((d) => ({
+    ...d,
+    date: String(d.date).slice(0, 10),
+  })) as DailyRow[];
+  const totalGenerado = computeAdminStats(
+    histRows,
+    user.id,
+    meId,
+    adminCpa,
+    struct
+  ).totals.totalClean;
+
   return NextResponse.json({
     adminCpa,
     seguridad,
     freshbet,
     lastMonthToDateClean,
+    totalGenerado,
     paises,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     pending: pendRes.count ?? 0,

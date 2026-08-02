@@ -60,6 +60,7 @@ function saludo(): string {
 export default function AdminDashboard() {
   const { displayName } = useProfile(); // nombre desde el almacén compartido
   const [totals, setTotals] = useState<Totals>(emptyTotals);
+  const [totalGenerado, setTotalGenerado] = useState(0); // histórico total (todo el tiempo)
   const [daily, setDaily] = useState<DailyRow[]>([]);
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(
     () => new Set(["commission"])
@@ -129,6 +130,7 @@ export default function AdminDashboard() {
         setLastMonthToDate(
           typeof res.lastMonthToDateClean === "number" ? res.lastMonthToDateClean : null
         );
+        setTotalGenerado(typeof res.totalGenerado === "number" ? res.totalGenerado : 0);
         setPaises(Array.isArray(res.paises) ? res.paises : []);
 
         // Hitos de beneficio: confeti al pasar 100/250/500/1000... por primera
@@ -449,8 +451,12 @@ export default function AdminDashboard() {
                 <span className="font-medium text-white">{eur(totals.structureMarginNet)}</span>
               </div>
               <div className="flex items-center justify-between py-1 text-sm border-t border-white/10 mt-1 pt-2">
-                <span className="text-slate-300">Mi balance</span>
-                <span className="font-semibold text-emerald-400">{eur(totals.totalClean)}</span>
+                <span className="text-slate-300">Mi balance (mes)</span>
+                <span className="font-medium text-white">{eur(totals.totalClean)}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-sm">
+                <span className="text-slate-300">Total generado</span>
+                <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
               </div>
             </div>
         </div>
