@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
 
@@ -15,13 +15,38 @@ type Fuente = {
 };
 type Reparto = { fuentes: Fuente[]; sandroTotal: number; socioTotal: number };
 
+const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
 export default function RepartoPage() {
   const [reparto, setReparto] = useState<Reparto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // "" = mes actual · "YYYY-MM" = un mes · "historico" = todo
+  const [periodo, setPeriodo] = useState("");
+
+  // Opciones del selector: este mes + los 11 anteriores + histórico.
+  const opciones = useMemo(() => {
+    const hoy = new Date();
+    const outs: { value: string; label: string }[] = [
+      { value: "", label: "Este mes" },
+    ];
+    for (let i = 1; i <= 11; i++) {
+      const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      outs.push({ value: ym, label: `${MESES[d.getMonth()]} ${d.getFullYear()}` });
+    }
+    outs.push({ value: "historico", label: "Histórico (todo)" });
+    return outs;
+  }, []);
 
   useEffect(() => {
+    let vivo = true;
     (async () => {
+      setCargando(true);
+      setError(null);
       try {
         const {
           data: { session },
@@ -30,7 +55,8 @@ export default function RepartoPage() {
           setError("Inicia sesión.");
           return;
         }
-        const r = await fetch("/api/admin/overview", {
+        const q = periodo ? `?mes=${periodo}` : "";
+        const r = await fetch(`/api/admin/reparto${q}`, {
           headers: { Authorization: "Bearer " + session.access_token },
         });
         if (!r.ok) {
@@ -38,21 +64,37 @@ export default function RepartoPage() {
           return;
         }
         const b = await r.json();
-        setReparto(b.reparto ?? null);
+        if (vivo) setReparto(b.reparto ?? null);
       } catch {
-        setError("No se pudo cargar.");
+        if (vivo) setError("No se pudo cargar.");
       } finally {
-        setCargando(false);
+        if (vivo) setCargando(false);
       }
     })();
-  }, []);
+    return () => {
+      vivo = false;
+    };
+  }, [periodo]);
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-1">Reparto con el socio</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-1">
+        <h1 className="text-2xl font-bold text-white">Reparto con el socio</h1>
+        <select
+          value={periodo}
+          onChange={(e) => setPeriodo(e.target.value)}
+          className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50"
+        >
+          {opciones.map((o) => (
+            <option key={o.value} value={o.value} className="bg-black">
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <p className="text-sm text-slate-400 mb-6">
         Cómo se reparten las ganancias (el margen que sobra tras pagar a cada
-        afiliado) este mes. Se reinicia cada mes.
+        afiliado) en el período elegido.
       </p>
 
       {cargando ? (
@@ -60,10 +102,9 @@ export default function RepartoPage() {
       ) : error ? (
         <p className="text-sm text-amber-300">{error}</p>
       ) : !reparto || reparto.fuentes.length === 0 ? (
-        <p className="text-sm text-slate-400">Aún no hay ganancias este mes.</p>
+        <p className="text-sm text-slate-400">No hay ganancias en este período.</p>
       ) : (
         <>
-          {/* Totales de cada uno */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-5">
               <p className="text-sm text-slate-300">Tú (Sandro)</p>
@@ -79,7 +120,6 @@ export default function RepartoPage() {
             </div>
           </div>
 
-          {/* Desglose por fuente */}
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-xs font-medium text-slate-400 border-b border-white/10">
               <span>Fuente</span>
@@ -95,20 +135,14 @@ export default function RepartoPage() {
               >
                 <span className="text-white">{f.nombre}</span>
                 <span className="text-right text-slate-300">{f.ftd}</span>
-                <span className="text-right text-slate-300">
-                  {eur(f.ganancia)}
-                </span>
+                <span className="text-right text-slate-300">{eur(f.ganancia)}</span>
                 <span className="text-right text-emerald-300">
                   {eur(f.sandro)}{" "}
-                  <span className="text-[10px] text-slate-500">
-                    ({f.pctSandro}%)
-                  </span>
+                  <span className="text-[10px] text-slate-500">({f.pctSandro}%)</span>
                 </span>
                 <span className="text-right text-slate-200">
                   {eur(f.socio)}{" "}
-                  <span className="text-[10px] text-slate-500">
-                    ({f.pctSocio}%)
-                  </span>
+                  <span className="text-[10px] text-slate-500">({f.pctSocio}%)</span>
                 </span>
               </div>
             ))}

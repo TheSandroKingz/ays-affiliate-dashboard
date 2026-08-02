@@ -126,13 +126,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </Link>
 
         {isAdmin && (
-          <Link href="/admin" className={linkClass("/admin")} onClick={onClose}>
-            <Shield size={18} />
-            Admin
-          </Link>
-        )}
-
-        {isAdmin && (
           <Link href="/admin/telegram" className={linkClass("/admin/telegram")} onClick={onClose}>
             <MessageCircle size={18} />
             Telegram
@@ -143,6 +136,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <Link href="/admin/reparto" className={linkClass("/admin/reparto")} onClick={onClose}>
             <PieChart size={18} />
             Reparto
+          </Link>
+        )}
+
+        {/* Admin siempre el último de las opciones. */}
+        {isAdmin && (
+          <Link href="/admin" className={linkClass("/admin")} onClick={onClose}>
+            <Shield size={18} />
+            Admin
           </Link>
         )}
 

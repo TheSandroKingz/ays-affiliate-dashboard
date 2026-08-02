@@ -546,19 +546,25 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* De dónde vienen los jugadores. */}
+      {/* De dónde vienen los jugadores. Chips compactos que muestran TODOS los
+          países (aunque sea 1 depósito), en vez de una lista larga de 6. */}
       {paises.length > 0 && (
-        <div className="animate-in bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 max-w-lg" style={{ animationDelay: "0.22s" }}>
-          <p className="text-sm font-medium text-slate-300 mb-3">🌍 De dónde vienen</p>
-          <div className="flex flex-col gap-2">
-            {paises.slice(0, 6).map((p) => (
-              <div key={p.code} className="flex items-center justify-between text-sm">
-                <span className="text-white">
-                  {banderaEmoji(p.code)}{" "}
-                  <span className="text-slate-300">{nombrePais(p.code)}</span>
-                </span>
+        <div className="animate-in bg-white/10 backdrop-blur border border-white/20 rounded-xl p-4 max-w-lg" style={{ animationDelay: "0.22s" }}>
+          <p className="text-sm font-medium text-slate-300 mb-3">
+            🌍 De dónde vienen{" "}
+            <span className="text-slate-500">({paises.length} países)</span>
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {paises.map((p) => (
+              <span
+                key={p.code}
+                title={nombrePais(p.code)}
+                className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm"
+              >
+                <span>{banderaEmoji(p.code)}</span>
+                <span className="text-[10px] text-slate-400">{p.code}</span>
                 <span className="font-semibold text-white">{p.n}</span>
-              </div>
+              </span>
             ))}
           </div>
         </div>
