@@ -401,7 +401,7 @@ export async function procesarUpdate(
 
     // ¿Piden el patrón/vídeo, dicen que una forma les falló, o mandan un vídeo?
     const pidePatron =
-      /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|c[oó]mo (le das|lo hac|juega|jueg[oa])|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
+      /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (le das|lo hac|juega|jueg[oa])|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
         textoJ
       );
     const mandoVideo = !!(msg.video || msg.animation);
@@ -409,17 +409,29 @@ export async function procesarUpdate(
       /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
         textoJ
       );
+    // Pide OTRO/MÁS ejemplo explícitamente → se lo mandamos aunque haya cooldown.
+    const pideOtro =
+      /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
+        textoJ
+      );
     const problemaReal =
       /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
         textoJ
       );
-    const COOLDOWN_EJEMPLO_MS = 6 * 60 * 60 * 1000;
+    // Cooldown corto (20 min): no repetir el ejemplo a cada mensaje, pero sí
+    // mandar varios en una charla (antes eran 6h y "no mandaba" cuando pedían).
+    const COOLDOWN_EJEMPLO_MS = 20 * 60 * 1000;
     const ejemploReciente =
       !!contacto?.last_example_at &&
       Date.now() - new Date(contacto.last_example_at as string).getTime() < COOLDOWN_EJEMPLO_MS;
 
     let videoEnviado = false;
-    if ((pidePatron || falloForma || mandoVideo) && !problemaReal && !limitado && !ejemploReciente) {
+    if (
+      (pidePatron || falloForma || mandoVideo) &&
+      !problemaReal &&
+      !limitado &&
+      (!ejemploReciente || pideOtro)
+    ) {
       // Un ejemplo al azar de la biblioteca del bot; si no hay, el /diario del bot.
       let dv: { media_type: string | null; file_id: string | null } | null = null;
       const { data: ejs } = await supabaseAdmin
