@@ -5,9 +5,12 @@ import { procesarUpdate } from "@/lib/botHandler";
 
 // Webhook de los BOTS NUEVOS (Jeffer, Mariam, …). La URL lleva la clave del bot:
 //   /api/telegram/webhook/jeffer   /api/telegram/webhook/mariam
-// Cada bot registra su webhook con SU secreto (secret_token); si no coincide,
-// ignoramos (200 silencioso) para que nadie falsee updates. El bot de Sandro NO
-// pasa por aquí: sigue en /api/telegram/webhook.
+// El bot de Sandro NO pasa por aquí: sigue en /api/telegram/webhook.
+//
+// SEGURIDAD (secreto opcional): si el bot tiene configurado un secreto
+// (TELEGRAM_WEBHOOK_SECRET_*), exigimos que el update traiga ese secret_token
+// (bloquea updates falsos). Si NO hay secreto configurado, aceptamos igualmente
+// para que el bot funcione sin ese paso extra (se puede añadir el secreto luego).
 export const maxDuration = 60;
 
 export async function POST(
@@ -16,14 +19,17 @@ export async function POST(
 ) {
   const { bot: key } = await params;
   const bot = getBot(key);
-  // Bot desconocido o sin token/secreto configurado → 200 silencioso.
-  if (!bot || !bot.token || !bot.secret) {
+  // Bot desconocido o sin token → 200 silencioso (no hay nada que procesar).
+  if (!bot || !bot.token) {
     return NextResponse.json({ ok: true });
   }
 
-  const secret = request.headers.get("x-telegram-bot-api-secret-token");
-  if (!compararSecreto(secret, bot.secret)) {
-    return NextResponse.json({ ok: true });
+  // Si hay secreto configurado, debe coincidir; si no lo hay, no lo exigimos.
+  if (bot.secret) {
+    const secret = request.headers.get("x-telegram-bot-api-secret-token");
+    if (!compararSecreto(secret, bot.secret)) {
+      return NextResponse.json({ ok: true });
+    }
   }
 
   const update = await request.json().catch(() => null);
