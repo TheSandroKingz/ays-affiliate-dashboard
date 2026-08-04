@@ -19,8 +19,25 @@ if (!url || !key) {
 }
 const H = { apikey: key, Authorization: "Bearer " + key };
 
-// Tablas a respaldar. Traemos todo (paginando por si crecen).
-const TABLAS = ["affiliates", "affiliate_daily_stats", "payments", "postback_events"];
+// Tablas a respaldar. Traemos todo (paginando por si crecen). Incluye dinero,
+// caja negra de eventos, y TODO lo de los bots (Sandro telegram_* + Jeffer/Alana bot_*).
+const TABLAS = [
+  "affiliates",
+  "affiliate_daily_stats",
+  "payments",
+  "postback_events",
+  // Bot de Sandro
+  "telegram_contacts",
+  "telegram_messages",
+  "telegram_config",
+  "telegram_welcome",
+  "telegram_daily",
+  // Bots nuevos (Jeffer/Alana)
+  "bot_contacts",
+  "bot_messages",
+  "bot_config",
+  "bot_examples",
+];
 
 async function volcar(tabla) {
   const filas = [];
