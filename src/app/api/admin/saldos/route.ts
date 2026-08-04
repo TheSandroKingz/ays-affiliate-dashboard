@@ -3,16 +3,29 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { CUENTAS_PROPIAS } from "@/lib/adminId";
 
-// Saldos TOTALES (acumulados) por afiliado (solo admin): TODO lo que ha ganado
-// (comisión + override de sus subs) menos TODO lo que ya le has pagado = lo
-// pendiente REAL. Antes solo miraba el mes en curso y se comía lo que debías de
-// meses anteriores sin pagar (p. ej. un afiliado con julio impago aparecía "al
-// día"). Ahora refleja la deuda real acumulada. Sirve para pagar sin descuadres.
+// Saldos por afiliado y MES (solo admin): lo que ganó (comisión + override de
+// sus subs) en el mes elegido y lo ya pagado de ese mes = lo pendiente de ESE
+// mes. Con ?mes=YYYY-MM se elige el mes (por defecto, el mes en curso). Así se ve
+// "cuánto hizo cada uno el mes pasado" para pagarle justo eso, sin mirarlo a mano.
 export async function GET(request: Request) {
   const user = await getAdminUser(request);
   if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
+
+  const hoy = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
+  const mesActual = hoy.slice(0, 7);
+  const param = new URL(request.url).searchParams.get("mes") || "";
+  const mes = /^\d{4}-\d{2}$/.test(param) ? param : mesActual;
+  const from = `${mes}-01`;
+  // Hasta el último día del mes elegido; si es el mes en curso, hasta HOY.
+  const [yy, mm] = mes.split("-").map(Number);
+  const hasta =
+    mes === mesActual
+      ? hoy
+      : new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
 
   const DUMMY = "00000000-0000-0000-0000-000000000000";
 
@@ -30,11 +43,13 @@ export async function GET(request: Request) {
   const structIds = (structure ?? []).map((s) => s.user_id);
   const ids = structIds.length ? structIds : [DUMMY];
 
-  // Comisión TOTAL (todo el histórico) por afiliado — no solo el mes.
+  // Comisión del MES elegido por afiliado.
   const { data: daily } = await supabaseAdmin
     .from("affiliate_daily_stats")
     .select("user_id, commission")
     .in("user_id", ids)
+    .gte("date", from)
+    .lte("date", hasta)
     .limit(100000); // sin límite PostgREST corta en 1000 y descuadraría los saldos
   const comByUser = new Map<string, number>();
   for (const d of daily ?? []) {
@@ -62,11 +77,13 @@ export async function GET(request: Request) {
     );
   }
 
-  // Pagos TOTALES (todo el histórico) por afiliado.
+  // Pagos del MES elegido por afiliado.
   const { data: pagos } = await supabaseAdmin
     .from("payments")
     .select("user_id, amount")
-    .in("user_id", ids);
+    .in("user_id", ids)
+    .gte("date", from)
+    .lte("date", hasta);
   const paidByUser = new Map<string, number>();
   for (const p of pagos ?? []) {
     paidByUser.set(
@@ -86,5 +103,5 @@ export async function GET(request: Request) {
     saldos[a.user_id] = { owed, paid: paidByUser.get(a.user_id) ?? 0 };
   }
 
-  return NextResponse.json({ saldos });
+  return NextResponse.json({ saldos, mes });
 }

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { userId, amount } = await request.json().catch(() => ({}));
+  const { userId, amount, mes } = await request.json().catch(() => ({}));
   const amt = Number(amount);
 
   if (!userId || !Number.isFinite(amt) || amt <= 0) {
@@ -47,6 +47,15 @@ export async function POST(request: Request) {
   const hoy = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
   }).format(new Date());
+  // Fecha contable del pago: si se paga un MES PASADO (mes=YYYY-MM anterior al
+  // actual), se fecha el último día de ESE mes, para que cuadre con la vista de
+  // ese mes en Comisiones. Para el mes en curso (o sin mes), se usa hoy.
+  const mesActual = hoy.slice(0, 7);
+  let fechaPago = hoy;
+  if (typeof mes === "string" && /^\d{4}-\d{2}$/.test(mes) && mes < mesActual) {
+    const [yy, mm] = mes.split("-").map(Number);
+    fechaPago = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
+  }
 
   // Anti-duplicado: si ya hay un pago IDÉNTICO (mismo afiliado, importe y día) en
   // el último minuto, es un doble envío (doble clic / reintento) → no lo grabamos
@@ -68,10 +77,9 @@ export async function POST(request: Request) {
     amount: amt,
     status: "paid",
     // Fecha CONTABLE en zona Madrid (YYYY-MM-DD), coherente con el filtro
-    // mensual de saldos. Con la hora UTC un pago de madrugada del día 1 caía en
-    // el mes anterior y dejaba el pendiente inflado. La hora exacta queda en
-    // created_at.
-    date: hoy,
+    // mensual de saldos. Normalmente hoy; si se paga un mes pasado, el último día
+    // de ese mes (ver fechaPago). La hora exacta queda en created_at.
+    date: fechaPago,
   });
 
   if (error) {

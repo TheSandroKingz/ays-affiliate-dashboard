@@ -1,8 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { eur } from "@/lib/format";
+
+const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
 
 type Affiliate = {
   id: string;
@@ -44,9 +49,28 @@ export default function ComisionesClient({
   // Saldos del mes por afiliado (gana / pagado) para pagar lo pendiente.
   const [saldos, setSaldos] = useState<Record<string, { owed: number; paid: number }>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Mes elegido: "" = este mes · "YYYY-MM" = un mes concreto (para ver/pagar lo
+  // que hizo cada afiliado ESE mes, p. ej. el pasado).
+  const [periodo, setPeriodo] = useState("");
+
+  const opciones = useMemo(() => {
+    const hoy = new Date();
+    const outs: { value: string; label: string }[] = [
+      { value: "", label: "Este mes" },
+    ];
+    for (let i = 1; i <= 11; i++) {
+      const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      outs.push({ value: ym, label: `${MESES[d.getMonth()]} ${d.getFullYear()}` });
+    }
+    return outs;
+  }, []);
+  const etiquetaMes =
+    opciones.find((o) => o.value === periodo)?.label ?? "este mes";
 
   const cargarSaldos = useCallback(async () => {
-    const res = await fetch("/api/admin/saldos", {
+    const q = periodo ? `?mes=${periodo}` : "";
+    const res = await fetch(`/api/admin/saldos${q}`, {
       cache: "no-store",
       headers: { Authorization: "Bearer " + accessToken },
     }).catch(() => null);
@@ -54,7 +78,7 @@ export default function ComisionesClient({
       const b = await res.json().catch(() => null);
       if (b && b.saldos) setSaldos(b.saldos);
     }
-  }, [accessToken]);
+  }, [accessToken, periodo]);
 
   useEffect(() => {
     cargarSaldos();
@@ -74,7 +98,7 @@ export default function ComisionesClient({
         "Content-Type": "application/json",
         Authorization: "Bearer " + accessToken,
       },
-      body: JSON.stringify({ userId, amount: importe }),
+      body: JSON.stringify({ userId, amount: importe, mes: periodo || undefined }),
     });
     setPagandoId(null);
     if (res.ok) {
@@ -134,6 +158,23 @@ export default function ComisionesClient({
     "mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
+    <div className="flex flex-col gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm text-slate-400">
+        Lo que hizo cada afiliado en <b className="text-slate-200">{etiquetaMes}</b> y lo pendiente de pagarle.
+      </p>
+      <select
+        value={periodo}
+        onChange={(e) => setPeriodo(e.target.value)}
+        className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50"
+      >
+        {opciones.map((o) => (
+          <option key={o.value} value={o.value} className="bg-black">
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
     <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
       <table className="w-full text-sm border-collapse">
         <thead>
@@ -239,7 +280,7 @@ export default function ComisionesClient({
 
                         {/* Pago del mes */}
                         <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-                          <p className="text-xs font-medium text-slate-400">Pago del mes</p>
+                          <p className="text-xs font-medium text-slate-400">Pago de {etiquetaMes}</p>
                           {s && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
                               <span className="text-slate-300">Gana <b className="text-white">{eur(s.owed)}</b></span>
@@ -318,6 +359,7 @@ export default function ComisionesClient({
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
