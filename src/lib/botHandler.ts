@@ -11,8 +11,6 @@ import {
   tgApi,
   botonJugar,
   botonSoloJugar,
-  guardarMsg,
-  midDe,
   descargarFoto,
 } from "@/lib/telegram";
 import { responderIABot, iaConfigurada } from "@/lib/telegramAI";
@@ -326,7 +324,6 @@ export async function procesarUpdate(
             const r = await tgApi(metodo, p, tok);
             if (r?.ok) {
               env++;
-              await guardarMsg(cid, midDe(r));
             } else if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
               bloq.push(cid);
             }
@@ -458,14 +455,13 @@ export async function procesarUpdate(
         const p: Record<string, unknown> = {
           chat_id: chatId,
           caption: (mandoVideo || falloForma)
-            ? "Toma, prueba así también 🔥 es OTRA de mis formas. Tengo varias — mándame cómo te va y te paso la siguiente. Míralo y hazlo igual."
-            : "Aquí tienes 🔥 así le doy yo. Tengo varias formas; hazlo igual que en esta y si acaso me enseñas cómo te fue y te paso otra.",
+            ? "Toma, prueba así también 🔥 es OTRA de mis formas. Míralo y hazlo igual."
+            : "Aquí tienes 🔥 así le doy yo. Hazlo igual que en esta y dale.",
           reply_markup: botonSoloJugar(bot.enlace),
         };
         p[campo] = dv.file_id;
         const rv = await tgApi(metodo, p, tok);
         if (rv?.ok) {
-          await guardarMsg(chatId, midDe(rv));
           videoEnviado = true;
           await supabaseAdmin
             .from("bot_contacts")
@@ -483,6 +479,10 @@ export async function procesarUpdate(
         ? "[el jugador te ha enviado un vídeo]"
         : msg.photo
         ? "[el jugador te ha enviado una foto]"
+        : msg.voice || msg.audio
+        ? "[el jugador te ha enviado una nota de voz]"
+        : msg.sticker
+        ? "[el jugador te ha enviado un sticker]"
         : msg.document
         ? "[el jugador te ha enviado un archivo]"
         : "");
@@ -538,10 +538,28 @@ export async function procesarUpdate(
           .eq("bot", bot.key)
           .maybeSingle();
         promo = (cfg?.promo ?? "").trim();
+        // Imagen para la IA: la foto del mensaje actual; si no trae, la última
+        // foto reciente del jugador (mandó la captura en un mensaje y el texto en
+        // otro → así el bot no responde a ciegas a "¿qué ves aquí?").
         const photos = msg.photo as Array<{ file_id: string }> | undefined;
-        const imagen = photos?.length
-          ? await descargarFoto(photos[photos.length - 1].file_id, tok)
+        let visionFileId: string | null = photos?.length
+          ? photos[photos.length - 1].file_id
           : null;
+        if (!visionFileId) {
+          const { data: ultFoto } = await supabaseAdmin
+            .from("bot_messages")
+            .select("file_id")
+            .eq("bot", bot.key)
+            .eq("chat_id", chatId)
+            .eq("role", "user")
+            .eq("media_type", "photo")
+            .not("file_id", "is", null)
+            .gt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1);
+          visionFileId = (ultFoto?.[0]?.file_id as string | undefined) ?? null;
+        }
+        const imagen = visionFileId ? await descargarFoto(visionFileId, tok) : null;
         respuesta = await responderIABot(
           bot.persona,
           promo,
@@ -566,24 +584,21 @@ export async function procesarUpdate(
 
     const intencionJugar =
       /jug|entr|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|min[ae]s?|casino|promo|bono|empez|quiero|gan[ao]|d[oó]nde|m[aá]ndame|p[aá]same|\b20\b|\b30\b|\b100\b|\b150\b/i;
-    await guardarMsg(chatId, msg.message_id as number);
     if (respuesta) {
       const invita = intencionJugar.test(respuesta) || intencionJugar.test(textoJ);
-      const rEnv = await tgEnviar(
+      await tgEnviar(
         chatId,
         respuesta,
         { parse_mode: undefined, ...(invita ? { reply_markup: botonSoloJugar(bot.enlace) } : {}) },
         tok
       );
-      await guardarMsg(chatId, midDe(rEnv));
     } else if (entrada && !limitado && !videoEnviado) {
-      const rEnv = await tgEnviar(
+      await tgEnviar(
         chatId,
         "¡Dale! 🔥 Recarga y entra a jugar 👇",
         { reply_markup: botonSoloJugar(bot.enlace) },
         tok
       );
-      await guardarMsg(chatId, midDe(rEnv));
     }
 
     if (respuesta || videoEnviado) {

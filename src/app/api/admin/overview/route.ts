@@ -19,6 +19,22 @@ export async function GET(request: Request) {
     timeZone: "Europe/Madrid",
   }).format(new Date());
   const inicioMes = hoy.slice(0, 7) + "-01";
+  // Instante UTC equivalente al inicio de mes EN MADRID. postback_events.created_at
+  // es UTC; si filtráramos por "YYYY-MM-01" (medianoche UTC) perderíamos las
+  // primeras ~2h del día 1 en hora Madrid. Restamos el offset de Madrid de ahora.
+  const offMadrid = Number(
+    (
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Madrid",
+        timeZoneName: "shortOffset",
+      })
+        .formatToParts(new Date())
+        .find((p) => p.type === "timeZoneName")?.value ?? "GMT+0"
+    ).match(/GMT([+-]\d+)/)?.[1] ?? "0"
+  );
+  const inicioMesUtc = new Date(
+    Date.parse(inicioMes + "T00:00:00Z") - offMadrid * 3600_000
+  ).toISOString();
   const [y, m] = hoy.split("-").map(Number);
   const finPrev = new Date(Date.UTC(y, m - 1, 1));
   finPrev.setUTCDate(0);
@@ -68,8 +84,9 @@ export async function GET(request: Request) {
         .in("event_type", ["ftd", "commission"])
         .eq("counted", true)
         // Solo el MES en curso (se reinicia cada mes, como el resto del panel), no
-        // el histórico. created_at es timestamptz UTC; inicioMes es el 1 del mes.
-        .gte("created_at", inicioMes)
+        // el histórico. Usamos el inicio de mes de Madrid en UTC (inicioMesUtc)
+        // para no perder las primeras horas del día 1.
+        .gte("created_at", inicioMesUtc)
         .limit(100000), // sin límite se cortaría en 1000 y el histograma saldría corto
     ]);
 

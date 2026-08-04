@@ -47,24 +47,27 @@ export async function GET(request: Request) {
       .select("media_type, enabled")
       .eq("id", 1)
       .maybeSingle(),
-    // QFTD atribuidos al bot (afp=bot) ya contados = lo que paga el CPA.
+    // QFTD atribuidos al bot de SANDRO ya contados = lo que paga el CPA. OJO:
+    // afp EXACTO "bot" (no "bot%"), si no incluiría los sub-bots botmn/botdm de
+    // Jeffer/Alana e inflaría las cifras de ESTE panel con lo de ellos.
     // limit alto: sin él PostgREST corta en 1000 y las cifras se quedarían cortas.
     supabaseAdmin
       .from("postback_events")
       .select("commission")
       .eq("counted", true)
       .eq("event_type", "commission")
-      .ilike("afp", "bot%")
+      .eq("afp", "bot")
       .limit(100000),
-    // DEPÓSITOS atribuidos al bot (afp=bot): PRIMEROS depósitos (ftd) + RECARGAS
-    // (redeposit). Sumamos el importe de TODOS para "Dinero que metieron" (antes
-    // solo contaba las recargas, se dejaba fuera lo de los FTD). El nº de
-    // "Recargas" son solo los redeposit. limit alto.
+    // DEPÓSITOS del bot de Sandro (afp EXACTO "bot"): PRIMEROS depósitos (ftd) +
+    // RECARGAS (redeposit). El nº de "Recargas" son solo los redeposit, y el
+    // importe de "Dinero que metieron" se suma SOLO de las recargas (redeposit):
+    // el postback de depósito salta también en el 1er depósito, así que sumar el
+    // importe de ftd Y redeposit contaría dos veces el primer depósito.
     supabaseAdmin
       .from("postback_events")
       .select("amount, created_at, player_id, event_type")
       .in("event_type", ["ftd", "redeposit"])
-      .ilike("afp", "bot%")
+      .eq("afp", "bot")
       .order("created_at", { ascending: false })
       .limit(100000),
     supabaseAdmin
@@ -88,12 +91,15 @@ export async function GET(request: Request) {
     b.depTot++;
     b.eurTot += Number(r.commission ?? 0);
   }
-  // "Dinero que metieron" = importe de TODOS los depósitos del bot (FTD + recargas).
-  // "Recargas" = solo el nº de redeposit.
+  // "Recargas" = nº de redeposit. "Dinero que metieron" = importe SOLO de las
+  // recargas (redeposit), para no contar dos veces el primer depósito (que salta
+  // como ftd Y como redeposit).
   const rec = { nTot: 0, eurTot: 0 };
   for (const r of recRes.data ?? []) {
-    if (r.event_type === "redeposit") rec.nTot++;
-    rec.eurTot += Number(r.amount ?? 0);
+    if (r.event_type === "redeposit") {
+      rec.nTot++;
+      rec.eurTot += Number(r.amount ?? 0);
+    }
   }
 
   // Últimas recargas (solo redeposit, para verlas una a una con su importe).

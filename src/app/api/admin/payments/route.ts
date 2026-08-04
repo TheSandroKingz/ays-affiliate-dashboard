@@ -66,6 +66,8 @@ export async function POST(request: Request) {
     .select("id")
     .eq("user_id", userId)
     .eq("amount", amt)
+    .eq("date", fechaPago) // incluye el mes/fecha: un pago del mismo importe para
+    // OTRO mes (o del mes en curso vs uno pasado) NO se descarta como duplicado.
     .gte("created_at", hace1min)
     .limit(1);
   if (dup && dup.length) {

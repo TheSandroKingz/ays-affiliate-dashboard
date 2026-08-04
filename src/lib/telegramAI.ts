@@ -266,12 +266,36 @@ function ensamblarMensajes(
   });
 }
 
-// Añade al system la nota del nombre/género de quien escribe. SANITIZADO para que
-// un nombre de perfil malicioso no pueda colar instrucciones (prompt injection).
-function conNombre(system: string, nombre?: string | null): string {
+
+// Sufijo de la nota del nombre/género (solo el añadido, para separarlo del bloque
+// estático cacheado). SANITIZADO contra prompt injection.
+function nombreSuffix(nombre?: string | null): string {
   const nom = (nombre ?? "").replace(/[\n\r"'`]/g, " ").trim().slice(0, 40);
-  if (!nom) return system;
-  return `${system}\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), en FEMENINO (y jamás "hermano/tío/chaval"). Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO. Puedes usar su nombre para dirigirte a ella/él.`;
+  if (!nom) return "";
+  return `\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), en FEMENINO (y jamás "hermano/tío/chaval"). Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO. Puedes usar su nombre para dirigirte a ella/él.`;
+}
+
+// Sufijo de la promo activa (solo el añadido).
+function promoSuffix(promo: string): string {
+  if (!promo) return "";
+  return `\n\nPROMO ACTIVA AHORA (real, de FreshBet; menciónala con ganas cuando venga a cuento, no te inventes otras): ${promo}`;
+}
+
+// Construye el `system` como bloques: el prompt ESTÁTICO grande va marcado con
+// cache_control (Anthropic lo cachea ~5 min y las lecturas cuestan ~0.1x, ahorro
+// de coste en alto volumen), y la parte DINÁMICA (promo + nombre) va en un bloque
+// aparte que NO se cachea. El contenido que ve el modelo es el mismo de antes.
+function sistemaCacheado(
+  base: string,
+  promo: string,
+  nombre?: string | null
+): Anthropic.TextBlockParam[] {
+  const dyn = promoSuffix(promo) + nombreSuffix(nombre);
+  const bloques: Anthropic.TextBlockParam[] = [
+    { type: "text", text: base, cache_control: { type: "ephemeral" } },
+  ];
+  if (dyn) bloques.push({ type: "text", text: dyn });
+  return bloques;
 }
 
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
@@ -288,8 +312,8 @@ export async function responderIA(
     const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
-      max_tokens: 110,
-      system: conNombre(conPromo(SYSTEM, promo), nombre),
+      max_tokens: 200,
+      system: sistemaCacheado(SYSTEM, promo, nombre),
       messages,
     });
     const txt = res.content
@@ -319,8 +343,8 @@ export async function responderIABot(
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     const res = await client.messages.create({
       model: MODELO,
-      max_tokens: 110,
-      system: conNombre(conPromo(persona, promo), nombre),
+      max_tokens: 200,
+      system: sistemaCacheado(persona, promo, nombre),
       messages,
     });
     const txt = res.content

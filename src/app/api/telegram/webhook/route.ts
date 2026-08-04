@@ -425,7 +425,7 @@ export async function POST(request: Request) {
       // dispararse con quejas ("problema con el sistema de pago", "no me llega el
       // vídeo") ni silenciar a la IA cuando la persona necesita ayuda.
       const pidePatron =
-        /patr[oó]n|cuadrad|cuadro|\btruco|c[oó]mo (le das|lo hac|juega)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
+        /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (le das|lo hac|juega|jueg[oa])|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
           textoJ
         );
       const mandoVideo = !!(msg.video || msg.animation);
@@ -434,29 +434,34 @@ export async function POST(request: Request) {
         /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
           textoJ
         );
+      // Pide OTRO/MÁS ejemplo explícitamente → se lo mandamos aunque haya cooldown.
+      const pideOtro =
+        /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
+          textoJ
+        );
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
         /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
           textoJ
         );
-      // COOLDOWN: no repetir el vídeo/ejemplo si ya le mandamos uno hace poco.
-      // Evita el "así lo hago yo" 5 veces en la misma charla (queja del socio):
-      // si ya se lo pasamos, deja que responda la IA (que le diga que lo mire bien)
-      // en vez de spamear otro vídeo. Se resetea a los 40 min.
-      const COOLDOWN_EJEMPLO_MS = 6 * 60 * 60 * 1000; // 6 h: no re-mandar el vídeo a cada rato
+      // COOLDOWN corto (20 min): no repetir el vídeo a cada mensaje, pero sí mandar
+      // varios en una charla (antes 6h y "no mandaba" cuando pedían). Si piden OTRO
+      // explícitamente, se salta el cooldown.
+      const COOLDOWN_EJEMPLO_MS = 20 * 60 * 1000;
       const ejemploReciente =
         !!contacto?.last_example_at &&
         Date.now() - new Date(contacto.last_example_at as string).getTime() <
           COOLDOWN_EJEMPLO_MS;
       // Mandamos un EJEMPLO si: piden el patrón/vídeo, O dicen que no les va / les
       // falló, O mandan un vídeo de su jugada → le damos OTRA forma. Nunca en un
-      // problema real (pago/cuenta/bono), ni si ya le mandamos uno hace poco.
+      // problema real (pago/cuenta/bono), ni si ya le mandamos uno hace poco (salvo
+      // que pidan otro explícitamente).
       if (
         (pidePatron || falloForma || mandoVideo) &&
         !problemaReal &&
         !limitado &&
-        !ejemploReciente
+        (!ejemploReciente || pideOtro)
       ) {
         // 1º un EJEMPLO al azar de la biblioteca del dueño (rotando, "así juego
         // yo"); si no hay ninguno, el /diario; y si tampoco, el de bienvenida.
@@ -528,6 +533,10 @@ export async function POST(request: Request) {
           ? "[el jugador te ha enviado un vídeo]"
           : msg.photo
           ? "[el jugador te ha enviado una foto]"
+          : msg.voice || msg.audio
+          ? "[el jugador te ha enviado una nota de voz]"
+          : msg.sticker
+          ? "[el jugador te ha enviado un sticker]"
           : msg.document
           ? "[el jugador te ha enviado un archivo]"
           : "");
