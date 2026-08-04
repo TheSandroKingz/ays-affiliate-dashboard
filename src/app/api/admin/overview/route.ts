@@ -153,53 +153,8 @@ export async function GET(request: Request) {
     struct
   ).totals.totalClean;
 
-  // ── REPARTO CON EL SOCIO (del MES en curso) ──────────────────────────────
-  // El % que te llevas TÚ (Sandro) varía según de dónde venga el dinero. Se
-  // aplica sobre la GANANCIA/MARGEN de cada fuente (lo que SOBRA tras pagar al
-  // afiliado su CPA; p. ej. de Jeffer son 85-50=35€/FTD), que es lo que se
-  // reparte — NO sobre los 85€ brutos. Jeffer/Mariam se detectan por su nombre.
-  const splitDe = (nombre: string): { sandro: number; socio: number } => {
-    const n = (nombre || "").toLowerCase();
-    if (n.includes("jeffer")) return { sandro: 35, socio: 65 };
-    if (n.includes("mariam")) return { sandro: 50, socio: 50 };
-    return { sandro: 65, socio: 35 }; // general / directo (tú, Mongolitos, otros)
-  };
-  const grupos = new Map<string, { nombre: string; ftd: number; generado: number }>();
-  const sumar = (nombre: string, ftd: number, generado: number) => {
-    const g = grupos.get(nombre) ?? { nombre, ftd: 0, generado: 0 };
-    g.ftd += ftd;
-    g.generado += generado;
-    grupos.set(nombre, g);
-  };
-  // Tu tráfico directo (tu propio link) → General.
-  sumar("General / directo", mes.own.ftd, mes.own.commission);
-  for (const s of mes.stats) {
-    // GANANCIA/margen de esa fuente (lo que SOBRA tras pagar al afiliado su CPA).
-    // Para Jeffer/Mariam = 85-50 = 35€/FTD; para Mongolitos/propias = su comisión
-    // entera. Es lo que se reparte con el socio.
-    const ganancia = Number(s.margin ?? 0);
-    const n = (s.display_name || "").toLowerCase();
-    if (n.includes("jeffer")) sumar("Jeffer", s.ftd, ganancia);
-    else if (n.includes("mariam")) sumar("Mariam", s.ftd, ganancia);
-    else sumar("General / directo", s.ftd, ganancia); // Mongolitos y demás → General
-  }
-  const fuentes = [...grupos.values()].map((f) => {
-    const sp = splitDe(f.nombre === "Jeffer" || f.nombre === "Mariam" ? f.nombre : "");
-    return {
-      nombre: f.nombre,
-      ftd: f.ftd,
-      generado: f.generado,
-      pctSandro: sp.sandro,
-      pctSocio: sp.socio,
-      sandro: (f.generado * sp.sandro) / 100,
-      socio: (f.generado * sp.socio) / 100,
-    };
-  });
-  const reparto = {
-    fuentes,
-    sandroTotal: fuentes.reduce((s, f) => s + f.sandro, 0),
-    socioTotal: fuentes.reduce((s, f) => s + f.socio, 0),
-  };
+  // (El REPARTO con el socio se calcula en su endpoint dedicado /api/admin/reparto,
+  // que la página de Reparto usa. Aquí ya NO se duplica.)
 
   return NextResponse.json({
     adminCpa,
@@ -207,7 +162,6 @@ export async function GET(request: Request) {
     freshbet,
     lastMonthToDateClean,
     totalGenerado,
-    reparto,
     paises,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     pending: pendRes.count ?? 0,

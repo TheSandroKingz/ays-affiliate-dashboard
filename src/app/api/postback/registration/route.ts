@@ -52,11 +52,28 @@ export async function GET(request: Request) {
   // el token en una entrega no atribuida). Si el RPC da error NO soltamos el
   // candado (pudo confirmar aunque devolviera error → un reintento duplicaría el
   // registro). En el peor caso se pierde un registro (no es dinero).
+  const raw = queryLimpia(url);
   let duplicado = false;
   let estado: EstadoEvento = "no_match";
   if (targetUserId) {
-    const eventKey = playerid ? `reg:${playerid}` : null;
-    const contar = await reclamarEvento(eventKey);
+    let contar: boolean;
+    if (playerid) {
+      contar = await reclamarEvento(`reg:${playerid}`);
+    } else {
+      // Sin player_id no hay candado por jugador. FreshBet reintenta el postback
+      // si tardamos: un reintento manda la MISMA query, así que si ya hay un
+      // registro con la misma query en los últimos 5 min, es reintento (no cuenta
+      // dos veces). Dos registros REALES distintos traen query distinta → sí cuentan.
+      const hace5min = new Date(Date.now() - 300000).toISOString();
+      const { data: dup } = await supabaseAdmin
+        .from("postback_events")
+        .select("id")
+        .eq("event_type", "registration")
+        .eq("raw_query", raw)
+        .gte("created_at", hace5min)
+        .limit(1);
+      contar = !(dup && dup.length);
+    }
     duplicado = !contar;
     if (contar) {
       const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
@@ -81,7 +98,7 @@ export async function GET(request: Request) {
   // Caja negra: guardamos el evento pase lo que pase (no bloquea la respuesta).
   await registrarEvento({
     event_type: "registration",
-    raw_query: queryLimpia(url),
+    raw_query: raw,
     tracking_code: trackingcode,
     afp,
     player_id: playerid,

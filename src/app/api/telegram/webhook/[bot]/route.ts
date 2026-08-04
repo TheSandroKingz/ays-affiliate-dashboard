@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { compararSecreto } from "@/lib/secreto";
+import { getAdminUser } from "@/lib/adminAuth";
 import { getBot } from "@/lib/bots";
 import { procesarUpdate } from "@/lib/botHandler";
 
@@ -7,19 +8,21 @@ import { procesarUpdate } from "@/lib/botHandler";
 //   /api/telegram/webhook/jeffer   /api/telegram/webhook/mariam
 // El bot de Sandro NO pasa por aquí: sigue en /api/telegram/webhook.
 //
-// SEGURIDAD (secreto opcional): si el bot tiene configurado un secreto
-// (TELEGRAM_WEBHOOK_SECRET_*), exigimos que el update traiga ese secret_token
-// (bloquea updates falsos). Si NO hay secreto configurado, aceptamos igualmente
-// para que el bot funcione sin ese paso extra (se puede añadir el secreto luego).
+// SEGURIDAD: el secreto del webhook es OBLIGATORIO. El update debe traer el
+// secret_token que Telegram manda (cabecera) y coincidir. Un bot sin secreto
+// configurado NO se procesa (mejor no responder que aceptar updates falsos que
+// podrían quemar saldo de IA, inyectar mensajes o, con el owner, difundir spam).
 export const maxDuration = 60;
 
-// Diagnóstico: dice si el bot tiene token/secreto/enlace/owner configurados en
-// el entorno de Vercel (solo sí/no, NUNCA los valores). Sirve para depurar el
-// alta de un bot sin exponer nada sensible.
+// Diagnóstico (SOLO ADMIN): dice si el bot tiene token/secreto/enlace/owner
+// configurados (solo sí/no, nunca los valores). Con auth para no revelar qué
+// bots existen ni cuáles están mal configurados.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ bot: string }> }
 ) {
+  const user = await getAdminUser(request);
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { bot: key } = await params;
   const bot = getBot(key);
   if (!bot) return NextResponse.json({ known: false });
@@ -39,17 +42,15 @@ export async function POST(
 ) {
   const { bot: key } = await params;
   const bot = getBot(key);
-  // Bot desconocido o sin token → 200 silencioso (no hay nada que procesar).
-  if (!bot || !bot.token) {
+  // Bot desconocido, sin token o SIN SECRETO → 200 silencioso, no procesamos.
+  // Exigir secreto siempre: sin él, cualquiera podría forjar updates.
+  if (!bot || !bot.token || !bot.secret) {
     return NextResponse.json({ ok: true });
   }
 
-  // Si hay secreto configurado, debe coincidir; si no lo hay, no lo exigimos.
-  if (bot.secret) {
-    const secret = request.headers.get("x-telegram-bot-api-secret-token");
-    if (!compararSecreto(secret, bot.secret)) {
-      return NextResponse.json({ ok: true });
-    }
+  const secret = request.headers.get("x-telegram-bot-api-secret-token");
+  if (!compararSecreto(secret, bot.secret)) {
+    return NextResponse.json({ ok: true });
   }
 
   const update = await request.json().catch(() => null);

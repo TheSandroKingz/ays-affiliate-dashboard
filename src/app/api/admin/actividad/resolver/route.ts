@@ -65,10 +65,13 @@ export async function POST(request: Request) {
     .select("cpa_spain, cpa_other")
     .eq("user_id", ev.matched_user_id)
     .maybeSingle();
-  // País desconocido → tarifa España por defecto (casino español).
+  // País desconocido → tarifa España por defecto (casino español). Otro país usa
+  // cpa_other; si no está puesto, cae a cpa_spain (IDÉNTICO al conteo automático
+  // en commission/route.ts). Antes se pagaba 0€ al aprobar a mano un FTD de otro
+  // país sin cpa_other → el afiliado se quedaba sin su CPA.
   const esOtroPais = ev.isocountry && ev.isocountry !== "ES";
   const commission = Number(
-    (esOtroPais ? aff?.cpa_other : aff?.cpa_spain) ?? 0
+    (esOtroPais ? aff?.cpa_other ?? aff?.cpa_spain : aff?.cpa_spain) ?? 0
   );
 
   // ── ANTI-DOBLE-PAGO (por jugador, no solo por evento) ────────────────────

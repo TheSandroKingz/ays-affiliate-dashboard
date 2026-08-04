@@ -4,6 +4,7 @@ import { getAdminUser } from "@/lib/adminAuth";
 import { compararSecreto } from "@/lib/secreto";
 import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
+import { BOTS } from "@/lib/bots";
 
 // Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
 export const maxDuration = 60;
@@ -92,6 +93,89 @@ async function reactivarDormidos(): Promise<number[]> {
       .in("chat_id", bloqueados);
   }
   return picados;
+}
+
+// Mensaje diario de los BOTS NUEVOS (Jeffer, Alana): envía el /diario que el
+// dueño dejó en bot_config a los contactos de cada bot (con SU token/enlace), y
+// limpia sus tablas (bot_updates/bot_ai_daily crecían sin cota). Idempotente por
+// bot y día. BLINDADO: un bot que falle no rompe a los demás ni al de Sandro.
+async function procesarBotsDiario(diaMadrid: string): Promise<void> {
+  // Limpieza global de las tablas bot_* que crecen sin cota.
+  await supabaseAdmin
+    .from("bot_updates")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 2 * 864e5).toISOString())
+    .then(() => {}, () => {});
+  await supabaseAdmin
+    .from("bot_ai_daily")
+    .delete()
+    .lt("day", new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10))
+    .then(() => {}, () => {});
+
+  for (const bot of Object.values(BOTS)) {
+    if (!bot.token) continue;
+    try {
+      // Idempotencia por bot y día (misma tabla que el de Sandro).
+      const clave = `botdiario:${bot.key}:${diaMadrid}`;
+      const { data: ins, error } = await supabaseAdmin
+        .from("telegram_envio_diario")
+        .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
+        .select("clave");
+      if (!error && ins && ins.length === 0) continue; // ya enviado hoy
+
+      const { data: cfg } = await supabaseAdmin
+        .from("bot_config")
+        .select("daily_media_type, daily_file_id, daily_caption, daily_enabled")
+        .eq("bot", bot.key)
+        .maybeSingle();
+      if (!cfg || cfg.daily_enabled === false) continue;
+      const tieneMedia = !!cfg.daily_file_id;
+      const caption = (cfg.daily_caption as string) || undefined;
+      if (!tieneMedia && !caption) continue; // nada configurado para este bot
+
+      const { data: contactos } = await supabaseAdmin
+        .from("bot_contacts")
+        .select("chat_id")
+        .eq("bot", bot.key)
+        .eq("opted_out", false)
+        .eq("silenced", false);
+      const ids = (contactos ?? []).map((c) => c.chat_id as number);
+      const boton = botonJugar(bot.enlace);
+      const bloq: number[] = [];
+      for (let i = 0; i < ids.length; i += 25) {
+        const tanda = ids.slice(i, i + 25);
+        await Promise.all(
+          tanda.map(async (chatId) => {
+            const t = cfg.daily_media_type;
+            const metodo = tieneMedia
+              ? t === "video" ? "sendVideo" : t === "animation" ? "sendAnimation" : t === "photo" ? "sendPhoto" : t === "document" ? "sendDocument" : "sendMessage"
+              : "sendMessage";
+            const p: Record<string, unknown> = tieneMedia
+              ? { chat_id: chatId, caption, reply_markup: boton }
+              : { chat_id: chatId, text: caption, disable_web_page_preview: true, reply_markup: boton };
+            if (tieneMedia) {
+              const campo = t === "video" ? "video" : t === "animation" ? "animation" : t === "photo" ? "photo" : "document";
+              p[campo] = cfg.daily_file_id;
+            }
+            const r = await tgApi(metodo, p, bot.token);
+            if (r && !r.ok && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
+              bloq.push(chatId);
+            }
+          })
+        );
+        if (i + 25 < ids.length) await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (bloq.length) {
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ opted_out: true })
+          .eq("bot", bot.key)
+          .in("chat_id", bloq);
+      }
+    } catch {
+      /* un bot no rompe a los demás */
+    }
+  }
 }
 
 export async function GET(request: Request) {
@@ -183,6 +267,16 @@ export async function GET(request: Request) {
     .delete()
     .lt("created_at", new Date(Date.now() - 3 * 864e5).toISOString())
     .then(() => {}, () => {});
+
+  // BOTS NUEVOS (Jeffer/Alana): envían su propio /diario y limpian sus tablas.
+  // Va aparte del de Sandro y blindado (no rompe nada si falla). Idempotente por
+  // bot/día, así que un segundo disparo del cron no lo duplica.
+  {
+    const diaMadrid = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date());
+    await procesarBotsDiario(diaMadrid).catch(() => {});
+  }
 
   // Reactivamos dormidos solo en el envío de la noche (1 vez/día), no en el extra.
   const picados = hora === 20 || force ? await reactivarDormidos() : [];
