@@ -218,6 +218,19 @@ export async function GET(request: Request) {
   if (estado === "counted" && target) {
     await notificarEvento(target.user_id, "ftd", comisionPagada);
   }
+  // Aviso "💰 ¡Depósito del bot!": SOLO cuando CUALIFICA (aquí, en el QFTD), no en
+  // el FTD a secas. Salta si el depósito viene de un bot (afp empieza por "bot").
+  if (estado === "counted" && /^bot/i.test(afp)) {
+    const pais = isocountry ? ` de ${isocountry}` : "";
+    await enviarPush(ADMIN_USER_ID, {
+      title: "💰 ¡Depósito del bot!",
+      body:
+        comisionPagada > 0
+          ? `Un jugador${pais} ha cualificado por el bot 🔥 Ganas ${comisionPagada}€.`
+          : `Un jugador${pais} ha cualificado por el bot 🔥`,
+      url: "/admin/telegram",
+    });
+  }
   // Solo avisamos si es un POSIBLE DOBLE PAGO (jugador ya contado). Las
   // retenciones "sin depósito" son casi siempre pruebas de FreshBet o disparos
   // prematuros: se aparcan calladas (siguen visibles en Actividad por si acaso),

@@ -1,8 +1,6 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { compararSecreto } from "@/lib/secreto";
-import { enviarPush } from "@/lib/push";
-import { ADMIN_USER_ID } from "@/lib/adminAuth";
 import { getPlayerId, getMonto, registrarEvento, queryLimpia } from "@/lib/postback";
 
 // Postback de FTD = CUALQUIER primer depósito (aunque no cualifique). FreshBet
@@ -54,33 +52,9 @@ export async function GET(request: Request) {
     status: "deposit", // depósito recibido, no cualificado → no suma dinero
   });
 
-  // Si el depósito viene del BOT (afp=bot), avisamos al dueño con un push. Como
-  // FreshBet NO manda el importe del depósito, en su lugar mostramos el PAÍS y lo
-  // que GANARÁS cuando cualifique (el CPA del afiliado atribuido, normalmente tu
-  // propia cuenta). Así el aviso dice de dónde es y cuánto, no un genérico.
-  if (/^bot/i.test(afp)) {
-    let cpa = 0;
-    if (matchedUserId) {
-      const { data: aff } = await supabaseAdmin
-        .from("affiliates")
-        .select("cpa_spain, cpa_other")
-        .eq("user_id", matchedUserId)
-        .maybeSingle();
-      const esOtro = isocountry && isocountry !== "ES";
-      cpa = Number((esOtro ? aff?.cpa_other ?? aff?.cpa_spain : aff?.cpa_spain) ?? 0);
-    }
-    const pais = isocountry ? ` de ${isocountry}` : "";
-    after(() =>
-      enviarPush(ADMIN_USER_ID, {
-        title: "💰 ¡Depósito del bot!",
-        body:
-          cpa > 0
-            ? `Un jugador${pais} ha hecho su primer depósito por el bot 🔥 Ganas ${cpa}€ cuando cualifique.`
-            : `Un jugador${pais} ha hecho su primer depósito por el bot 🔥`,
-        url: "/admin/telegram",
-      })
-    );
-  }
+  // NOTA: el aviso "💰 ¡Depósito del bot!" NO se manda aquí (en el FTD a secas).
+  // Solo debe saltar cuando el depósito CUALIFICA (QFTD), igual que el resto del
+  // dinero. Ese aviso vive ahora en /api/postback/commission (evento de comisión).
 
   return NextResponse.json({ ok: true, matched: !!matchedUserId, counted: false });
 }
