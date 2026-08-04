@@ -17,13 +17,20 @@ export async function GET(request: Request) {
     timeZone: "Europe/Madrid",
   }).format(new Date());
   const mesActual = hoy.slice(0, 7);
-  const param = new URL(request.url).searchParams.get("mes") || "";
+  const url = new URL(request.url);
+  const dia = url.searchParams.get("dia") || "";
+  const param = url.searchParams.get("mes") || "";
 
   // Rango de fechas según el período pedido.
   let desde: string;
   let hasta: string;
   let etiqueta: string;
-  if (param === "historico") {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+    // Un DÍA suelto (p. ej. hoy, para ver un día bueno).
+    desde = dia;
+    hasta = dia;
+    etiqueta = dia;
+  } else if (param === "historico") {
     desde = "2000-01-01";
     hasta = hoy;
     etiqueta = "Histórico (todo)";

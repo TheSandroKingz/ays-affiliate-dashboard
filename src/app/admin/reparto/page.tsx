@@ -24,13 +24,24 @@ export default function RepartoPage() {
   const [reparto, setReparto] = useState<Reparto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // "" = mes actual · "YYYY-MM" = un mes · "historico" = todo
+  // "" = mes actual · "YYYY-MM" = un mes · "historico" = todo · "dia:YYYY-MM-DD" = un día
   const [periodo, setPeriodo] = useState("");
 
-  // Opciones del selector: este mes + los 11 anteriores + histórico.
+  const fechaISO = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  const hoyStr = fechaISO(new Date());
+  const ayerD = new Date();
+  ayerD.setDate(ayerD.getDate() - 1);
+  const ayerStr = fechaISO(ayerD);
+
+  // Opciones del selector: Hoy, Ayer, este mes + los 11 anteriores + histórico.
   const opciones = useMemo(() => {
     const hoy = new Date();
     const outs: { value: string; label: string }[] = [
+      { value: `dia:${hoyStr}`, label: "Hoy" },
+      { value: `dia:${ayerStr}`, label: "Ayer" },
       { value: "", label: "Este mes" },
     ];
     for (let i = 1; i <= 11; i++) {
@@ -40,7 +51,16 @@ export default function RepartoPage() {
     }
     outs.push({ value: "historico", label: "Histórico (todo)" });
     return outs;
-  }, []);
+  }, [hoyStr, ayerStr]);
+
+  // Si hay un día concreto elegido con el calendario que no está en la lista, lo
+  // añadimos como opción para que el selector lo muestre bien.
+  const opcionesFinal = useMemo(() => {
+    if (periodo.startsWith("dia:") && !opciones.some((o) => o.value === periodo)) {
+      return [{ value: periodo, label: periodo.slice(4) }, ...opciones];
+    }
+    return opciones;
+  }, [periodo, opciones]);
 
   useEffect(() => {
     let vivo = true;
@@ -55,7 +75,11 @@ export default function RepartoPage() {
           setError("Inicia sesión.");
           return;
         }
-        const q = periodo ? `?mes=${periodo}` : "";
+        const q = periodo.startsWith("dia:")
+          ? `?dia=${periodo.slice(4)}`
+          : periodo
+          ? `?mes=${periodo}`
+          : "";
         const r = await fetch(`/api/admin/reparto${q}`, {
           headers: { Authorization: "Bearer " + session.access_token },
         });
@@ -80,17 +104,28 @@ export default function RepartoPage() {
     <div className="max-w-3xl mx-auto">
       <div className="flex flex-wrap items-end justify-between gap-3 mb-1">
         <h1 className="text-2xl font-bold text-white">Reparto con el socio</h1>
-        <select
-          value={periodo}
-          onChange={(e) => setPeriodo(e.target.value)}
-          className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50"
-        >
-          {opciones.map((o) => (
-            <option key={o.value} value={o.value} className="bg-black">
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50"
+          >
+            {opcionesFinal.map((o) => (
+              <option key={o.value} value={o.value} className="bg-black">
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {/* Un día concreto (calendario). */}
+          <input
+            type="date"
+            max={hoyStr}
+            value={periodo.startsWith("dia:") ? periodo.slice(4) : ""}
+            onChange={(e) => e.target.value && setPeriodo(`dia:${e.target.value}`)}
+            title="Ver un día concreto"
+            className="rounded-lg border border-white/15 bg-white/5 px-2 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50 [color-scheme:dark]"
+          />
+        </div>
       </div>
       <p className="text-sm text-slate-400 mb-6">
         Cómo se reparten las ganancias (el margen que sobra tras pagar a cada
