@@ -9,6 +9,7 @@
 export type BotDef = {
   key: string; // identificador interno (columna `bot` en la BD y en la URL del webhook)
   label: string; // nombre para el panel
+  username: string; // @usuario del bot en Telegram (para el panel)
   token: string; // TELEGRAM_BOT_TOKEN_*
   secret: string; // secreto del webhook (cabecera que manda Telegram)
   owner: string; // chat_id del dueño que gestiona ESTE bot (puede ser el propio afiliado)
@@ -181,6 +182,7 @@ export const BOTS: Record<string, BotDef> = {
   jeffer: {
     key: "jeffer",
     label: "Jeffer",
+    username: "@Jeffer17Money_bot",
     token: process.env.TELEGRAM_BOT_TOKEN_JEFFER || "",
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_JEFFER || "",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_JEFFER || "",
@@ -205,6 +207,7 @@ export const BOTS: Record<string, BotDef> = {
   mariam: {
     key: "mariam",
     label: "Mariam",
+    username: "@AlanaZdr_bot",
     token: process.env.TELEGRAM_BOT_TOKEN_MARIAM || "",
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",

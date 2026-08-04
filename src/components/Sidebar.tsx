@@ -20,6 +20,7 @@ import {
   Shield,
   MessageCircle,
   PieChart,
+  Bot,
 } from "lucide-react";
 
 const reportLinks = [
@@ -148,6 +149,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <Link href="/admin/telegram" className={linkClass("/admin/telegram")} onClick={onClose}>
             <MessageCircle size={18} />
             Telegram
+          </Link>
+        )}
+
+        {isAdmin && (
+          <Link href="/admin/bots" className={linkClass("/admin/bots")} onClick={onClose}>
+            <Bot size={18} />
+            Bots
           </Link>
         )}
 
