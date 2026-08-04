@@ -139,15 +139,11 @@ export default function EstadoBotsPage() {
                   </div>
                 </div>
 
-                {/* Recorrido: registros → depositaron → depósitos que pagan */}
-                <div className="grid grid-cols-3 gap-1 text-center text-xs">
+                {/* Recorrido: se registraron → depósitos que pagan */}
+                <div className="grid grid-cols-2 gap-1 text-center text-xs">
                   <div className="rounded-lg bg-white/5 py-1.5">
                     <p className="font-bold text-white">{b.registros}</p>
                     <p className="text-[10px] text-slate-400">se registraron</p>
-                  </div>
-                  <div className="rounded-lg bg-white/5 py-1.5">
-                    <p className="font-bold text-white">{b.ftd}</p>
-                    <p className="text-[10px] text-slate-400">depositaron</p>
                   </div>
                   <div className="rounded-lg bg-white/5 py-1.5">
                     <p className="font-bold text-white">{b.qftd}</p>

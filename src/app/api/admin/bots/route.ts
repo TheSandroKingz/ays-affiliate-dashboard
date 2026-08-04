@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   // Los 3 bots: Sandro + los del registro (Jeffer, Alana). afp único por bot.
   const defs = [
-    { key: "sandro", label: "Sandro", username: "Mongolitos", afp: "bot", token: true, enlace: true },
+    { key: "sandro", label: "A&S", username: "Mongolitos", afp: "bot", token: true, enlace: true },
     ...Object.values(BOTS).map((b) => ({
       key: b.key,
       label: b.label,
