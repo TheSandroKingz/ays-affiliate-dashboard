@@ -27,14 +27,12 @@ export default function RepartoPage() {
   // "" = mes actual · "YYYY-MM" = un mes · "historico" = todo · "dia:YYYY-MM-DD" = un día
   const [periodo, setPeriodo] = useState("");
 
-  const fechaISO = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
-  const hoyStr = fechaISO(new Date());
-  const ayerD = new Date();
-  ayerD.setDate(ayerD.getDate() - 1);
-  const ayerStr = fechaISO(ayerD);
+  // Fecha en zona Madrid (no la del dispositivo), para que "Hoy"/"Ayer" cuadren
+  // con el server aunque el móvil esté en otra zona horaria.
+  const fechaMadrid = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(d);
+  const hoyStr = fechaMadrid(new Date());
+  const ayerStr = fechaMadrid(new Date(Date.now() - 864e5));
 
   // Opciones del selector: Hoy, Ayer, este mes + los 11 anteriores + histórico.
   const opciones = useMemo(() => {

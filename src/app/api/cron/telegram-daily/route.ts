@@ -101,7 +101,7 @@ async function reactivarDormidos(): Promise<number[]> {
 // dueño dejó en bot_config a los contactos de cada bot (con SU token/enlace), y
 // limpia sus tablas (bot_updates/bot_ai_daily crecían sin cota). Idempotente por
 // bot y día. BLINDADO: un bot que falle no rompe a los demás ni al de Sandro.
-async function procesarBotsDiario(diaMadrid: string): Promise<void> {
+async function procesarBotsDiario(diaMadrid: string, force = false): Promise<void> {
   // Limpieza global de las tablas bot_* que crecen sin cota.
   await supabaseAdmin
     .from("bot_updates")
@@ -117,13 +117,16 @@ async function procesarBotsDiario(diaMadrid: string): Promise<void> {
   for (const bot of Object.values(BOTS)) {
     if (!bot.token) continue;
     try {
-      // Idempotencia por bot y día (misma tabla que el de Sandro).
-      const clave = `botdiario:${bot.key}:${diaMadrid}`;
-      const { data: ins, error } = await supabaseAdmin
-        .from("telegram_envio_diario")
-        .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
-        .select("clave");
-      if (!error && ins && ins.length === 0) continue; // ya enviado hoy
+      // Idempotencia por bot y día (misma tabla que el de Sandro). El envío
+      // MANUAL (force) del dueño no se frena, para poder reenviar a mano.
+      if (!force) {
+        const clave = `botdiario:${bot.key}:${diaMadrid}`;
+        const { data: ins, error } = await supabaseAdmin
+          .from("telegram_envio_diario")
+          .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
+          .select("clave");
+        if (!error && ins && ins.length === 0) continue; // ya enviado hoy
+      }
 
       const { data: cfg } = await supabaseAdmin
         .from("bot_config")
@@ -193,16 +196,27 @@ export async function GET(request: Request) {
   }
 
   // VIGILANTE anti doble-pago: si algún día se materializa un FTD duplicado (un
-  // jugador contado dos veces que se escapó de los candados), avisamos al dueño
-  // al momento por push. Corre en cada disparo del cron. BLINDADO.
+  // jugador contado dos veces que se escapó de los candados), avisamos al dueño.
+  // Escanea en cada disparo del cron (barato), pero AVISA como MUCHO una vez al
+  // día (reserva una clave por día) para no bombardear con 8 push. BLINDADO.
   try {
     const seg = await resumenSeguridad();
     if (seg.dobles > 0) {
-      await enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ Posible FTD duplicado",
-        body: `Hay ${seg.dobles} jugador(es) con un FTD contado 2 veces. Revísalo en Actividad para no pagar de más.`,
-        url: "/admin/actividad",
-      });
+      const diaMadrid = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Madrid",
+      }).format(new Date());
+      const { data: ins } = await supabaseAdmin
+        .from("telegram_envio_diario")
+        .upsert({ clave: `vigilante:${diaMadrid}` }, { onConflict: "clave", ignoreDuplicates: true })
+        .select("clave");
+      const primeraAlertaHoy = !ins || ins.length > 0;
+      if (primeraAlertaHoy) {
+        await enviarPush(ADMIN_USER_ID, {
+          title: "⚠️ Posible FTD duplicado",
+          body: `Hay ${seg.dobles} jugador(es) con un FTD contado 2 veces. Revísalo en Actividad para no pagar de más.`,
+          url: "/admin/actividad",
+        });
+      }
     }
   } catch {
     /* la vigilancia nunca rompe el cron */
@@ -288,13 +302,14 @@ export async function GET(request: Request) {
     .then(() => {}, () => {});
 
   // BOTS NUEVOS (Jeffer/Alana): envían su propio /diario y limpian sus tablas.
-  // Va aparte del de Sandro y blindado (no rompe nada si falla). Idempotente por
-  // bot/día, así que un segundo disparo del cron no lo duplica.
-  {
+  // SOLO en el envío de la noche (hora===20) o forzado, para que salga a las
+  // 20:00 como el de Sandro (no a mediodía en el envío extra de findes) y no se
+  // duplique. Blindado (no rompe nada si falla).
+  if (hora === 20 || force) {
     const diaMadrid = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Europe/Madrid",
     }).format(new Date());
-    await procesarBotsDiario(diaMadrid).catch(() => {});
+    await procesarBotsDiario(diaMadrid, force).catch(() => {});
   }
 
   // Reactivamos dormidos solo en el envío de la noche (1 vez/día), no en el extra.

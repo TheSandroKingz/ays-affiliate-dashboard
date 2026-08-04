@@ -20,7 +20,6 @@ type BotEstado = {
   registros: number;
   qftd: number;
   ganado: number;
-  ftd: number;
   recargas: number;
   mensajes: number;
   promo: string;

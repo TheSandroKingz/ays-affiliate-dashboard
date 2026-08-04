@@ -130,6 +130,17 @@ export default function ComisionesClient({
     const row = rows.find((r) => r.id === id);
     if (!row) return;
 
+    // Guarda contra un borrado accidental del CPA (input vacío → 0). Un CPA en 0
+    // dejaría al afiliado sin cobrar; pedimos confirmar antes de guardar.
+    if (
+      (!row.cpaSpain || !row.cpaOther) &&
+      !window.confirm(
+        "Vas a dejar un CPA en 0€ (el afiliado no cobraría por esos FTD). ¿Seguro?"
+      )
+    ) {
+      return;
+    }
+
     setSavingId(id);
     setResult(null);
 

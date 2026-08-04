@@ -16,7 +16,19 @@ export async function GET(request: Request) {
   const hoyKey = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
   }).format(new Date());
-  const hace24 = Date.now() - 864e5;
+  // Inicio del día de HOY en Madrid, en instante UTC (para "escribieron/nuevos
+  // hoy" = día natural de Madrid, no una ventana rodante de 24h).
+  const offMadrid = Number(
+    (
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Madrid",
+        timeZoneName: "shortOffset",
+      })
+        .formatToParts(new Date())
+        .find((p) => p.type === "timeZoneName")?.value ?? "GMT+0"
+    ).match(/GMT([+-]\d+)/)?.[1] ?? "0"
+  );
+  const inicioHoy = Date.parse(hoyKey + "T00:00:00Z") - offMadrid * 3600_000;
 
   // Los 3 bots: Sandro + los del registro (Jeffer, Alana). afp único por bot.
   const defs = [
@@ -66,8 +78,8 @@ export async function GET(request: Request) {
         .limit(100000),
       supabaseAdmin
         .from("postback_events")
-        .select("afp, event_type")
-        .in("event_type", ["ftd", "redeposit"])
+        .select("afp")
+        .eq("event_type", "redeposit")
         .in("afp", afps)
         .limit(100000),
       // Registros atribuidos a cada bot (por su afp).
@@ -78,11 +90,19 @@ export async function GET(request: Request) {
         .eq("counted", true)
         .in("afp", afps)
         .limit(100000),
-      // Mensajes totales guardados: bot de Sandro (head count) y bots nuevos.
+      // Mensajes totales guardados: head counts (NO traer toda la tabla).
       supabaseAdmin
         .from("telegram_messages")
         .select("id", { count: "exact", head: true }),
-      supabaseAdmin.from("bot_messages").select("bot").limit(100000),
+      Promise.all(
+        Object.values(BOTS).map((b) =>
+          supabaseAdmin
+            .from("bot_messages")
+            .select("id", { count: "exact", head: true })
+            .eq("bot", b.key)
+            .then((r) => [b.key, r.count ?? 0] as [string, number])
+        )
+      ),
     ]);
 
   type Contacto = {
@@ -99,8 +119,9 @@ export async function GET(request: Request) {
       const act = !c.opted_out && !c.silenced;
       if (act) activos++;
       if (c.opted_out) bajas++;
-      if (c.last_msg_at && new Date(c.last_msg_at).getTime() >= hace24) escribieron++;
-      if (c.joined_at && new Date(c.joined_at).getTime() >= hace24) nuevos++;
+      // "Hoy" = desde el inicio del día en Madrid.
+      if (c.last_msg_at && new Date(c.last_msg_at).getTime() >= inicioHoy) escribieron++;
+      if (c.joined_at && new Date(c.joined_at).getTime() >= inicioHoy) nuevos++;
       // Dormido = activo pero sin escribir en 3+ días (candidato a reactivar).
       if (act && (!c.last_msg_at || new Date(c.last_msg_at).getTime() < hace3d)) dormidos++;
     }
@@ -123,21 +144,16 @@ export async function GET(request: Request) {
     qftd.set(e.afp, (qftd.get(e.afp) ?? 0) + 1);
     ganado.set(e.afp, (ganado.get(e.afp) ?? 0) + Number(e.commission ?? 0));
   }
-  const ftd = new Map<string, number>();
   const recargas = new Map<string, number>();
   for (const e of deps.data ?? []) {
-    if (e.event_type === "ftd") ftd.set(e.afp, (ftd.get(e.afp) ?? 0) + 1);
-    else if (e.event_type === "redeposit") recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
+    recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
   }
   const registros = new Map<string, number>();
   for (const e of regs.data ?? []) {
     registros.set(e.afp, (registros.get(e.afp) ?? 0) + 1);
   }
-  // Mensajes totales guardados por bot.
-  const msgsByBot = new Map<string, number>();
-  for (const m of botMsgs.data ?? []) {
-    msgsByBot.set(m.bot, (msgsByBot.get(m.bot) ?? 0) + 1);
-  }
+  // Mensajes totales por bot (head counts).
+  const msgsByBot = new Map<string, number>(botMsgs);
   const mensajesSandro = tgMsgCount.count ?? 0;
 
   const bots = defs.map((d) => {
@@ -159,7 +175,6 @@ export async function GET(request: Request) {
       registros: registros.get(d.afp) ?? 0,
       qftd: qftd.get(d.afp) ?? 0,
       ganado: ganado.get(d.afp) ?? 0,
-      ftd: ftd.get(d.afp) ?? 0,
       recargas: recargas.get(d.afp) ?? 0,
       mensajes: d.key === "sandro" ? mensajesSandro : msgsByBot.get(d.key) ?? 0,
       promo: (promo ?? "").trim(),

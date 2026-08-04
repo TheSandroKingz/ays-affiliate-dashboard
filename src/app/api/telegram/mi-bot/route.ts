@@ -21,11 +21,12 @@ export async function GET(request: Request) {
   const bot = botPorTracking(aff?.freshaffs_tracking_code);
   if (!bot) return NextResponse.json({ tieneBot: false });
 
-  // Todos los eventos de postback marcados con el afp de ESTE bot.
+  // Eventos de postback marcados con el afp EXACTO de ESTE bot (igual que el
+  // panel admin; un prefijo podría cruzar datos con otro bot cuyo afp empiece igual).
   const { data: eventos } = await supabaseAdmin
     .from("postback_events")
     .select("event_type, commission, amount, counted, isocountry, created_at")
-    .ilike("afp", `${bot.afp}%`)
+    .eq("afp", bot.afp)
     .order("created_at", { ascending: false })
     .limit(100000);
 
