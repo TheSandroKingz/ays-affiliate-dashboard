@@ -53,15 +53,6 @@ export default function RepartoPage() {
     return outs;
   }, [hoyStr, ayerStr]);
 
-  // Si hay un día concreto elegido con el calendario que no está en la lista, lo
-  // añadimos como opción para que el selector lo muestre bien.
-  const opcionesFinal = useMemo(() => {
-    if (periodo.startsWith("dia:") && !opciones.some((o) => o.value === periodo)) {
-      return [{ value: periodo, label: periodo.slice(4) }, ...opciones];
-    }
-    return opciones;
-  }, [periodo, opciones]);
-
   useEffect(() => {
     let vivo = true;
     (async () => {
@@ -104,28 +95,17 @@ export default function RepartoPage() {
     <div className="max-w-3xl mx-auto">
       <div className="flex flex-wrap items-end justify-between gap-3 mb-1">
         <h1 className="text-2xl font-bold text-white">Reparto con el socio</h1>
-        <div className="flex items-center gap-2">
-          <select
-            value={periodo}
-            onChange={(e) => setPeriodo(e.target.value)}
-            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50"
-          >
-            {opcionesFinal.map((o) => (
-              <option key={o.value} value={o.value} className="bg-black">
-                {o.label}
-              </option>
-            ))}
-          </select>
-          {/* Un día concreto (calendario). */}
-          <input
-            type="date"
-            max={hoyStr}
-            value={periodo.startsWith("dia:") ? periodo.slice(4) : ""}
-            onChange={(e) => e.target.value && setPeriodo(`dia:${e.target.value}`)}
-            title="Ver un día concreto"
-            className="rounded-lg border border-white/15 bg-white/5 px-2 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50 [color-scheme:dark]"
-          />
-        </div>
+        <select
+          value={periodo}
+          onChange={(e) => setPeriodo(e.target.value)}
+          className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/50"
+        >
+          {opciones.map((o) => (
+            <option key={o.value} value={o.value} className="bg-black">
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
       <p className="text-sm text-slate-400 mb-6">
         Cómo se reparten las ganancias (el margen que sobra tras pagar a cada
