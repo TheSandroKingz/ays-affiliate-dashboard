@@ -32,8 +32,19 @@ export async function GET(request: Request) {
   ];
   const afps = defs.map((d) => d.afp);
 
-  const [tgContacts, botContacts, tgAi, botAi, tgConfig, botConfig, comms, deps] =
-    await Promise.all([
+  const [
+    tgContacts,
+    botContacts,
+    tgAi,
+    botAi,
+    tgConfig,
+    botConfig,
+    comms,
+    deps,
+    regs,
+    tgMsgCount,
+    botMsgs,
+  ] = await Promise.all([
       supabaseAdmin
         .from("telegram_contacts")
         .select("opted_out, silenced, last_msg_at, joined_at")
@@ -59,6 +70,19 @@ export async function GET(request: Request) {
         .in("event_type", ["ftd", "redeposit"])
         .in("afp", afps)
         .limit(100000),
+      // Registros atribuidos a cada bot (por su afp).
+      supabaseAdmin
+        .from("postback_events")
+        .select("afp")
+        .eq("event_type", "registration")
+        .eq("counted", true)
+        .in("afp", afps)
+        .limit(100000),
+      // Mensajes totales guardados: bot de Sandro (head count) y bots nuevos.
+      supabaseAdmin
+        .from("telegram_messages")
+        .select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("bot_messages").select("bot").limit(100000),
     ]);
 
   type Contacto = {
@@ -67,15 +91,20 @@ export async function GET(request: Request) {
     last_msg_at: string | null;
     joined_at: string | null;
   };
+  const hace3d = Date.now() - 3 * 864e5;
   const contactStats = (rows: Contacto[]) => {
-    let activos = 0, total = 0, escribieron = 0, nuevos = 0;
+    let activos = 0, total = 0, escribieron = 0, nuevos = 0, bajas = 0, dormidos = 0;
     for (const c of rows) {
       total++;
-      if (!c.opted_out && !c.silenced) activos++;
+      const act = !c.opted_out && !c.silenced;
+      if (act) activos++;
+      if (c.opted_out) bajas++;
       if (c.last_msg_at && new Date(c.last_msg_at).getTime() >= hace24) escribieron++;
       if (c.joined_at && new Date(c.joined_at).getTime() >= hace24) nuevos++;
+      // Dormido = activo pero sin escribir en 3+ días (candidato a reactivar).
+      if (act && (!c.last_msg_at || new Date(c.last_msg_at).getTime() < hace3d)) dormidos++;
     }
-    return { activos, total, escribieron, nuevos };
+    return { activos, total, escribieron, nuevos, bajas, dormidos };
   };
 
   const sandroContacts = (tgContacts.data ?? []) as Contacto[];
@@ -100,6 +129,16 @@ export async function GET(request: Request) {
     if (e.event_type === "ftd") ftd.set(e.afp, (ftd.get(e.afp) ?? 0) + 1);
     else if (e.event_type === "redeposit") recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
   }
+  const registros = new Map<string, number>();
+  for (const e of regs.data ?? []) {
+    registros.set(e.afp, (registros.get(e.afp) ?? 0) + 1);
+  }
+  // Mensajes totales guardados por bot.
+  const msgsByBot = new Map<string, number>();
+  for (const m of botMsgs.data ?? []) {
+    msgsByBot.set(m.bot, (msgsByBot.get(m.bot) ?? 0) + 1);
+  }
+  const mensajesSandro = tgMsgCount.count ?? 0;
 
   const bots = defs.map((d) => {
     const cs =
@@ -117,10 +156,12 @@ export async function GET(request: Request) {
       ...cs,
       ia,
       topeIa: TOPE_IA,
+      registros: registros.get(d.afp) ?? 0,
       qftd: qftd.get(d.afp) ?? 0,
       ganado: ganado.get(d.afp) ?? 0,
       ftd: ftd.get(d.afp) ?? 0,
       recargas: recargas.get(d.afp) ?? 0,
+      mensajes: d.key === "sandro" ? mensajesSandro : msgsByBot.get(d.key) ?? 0,
       promo: (promo ?? "").trim(),
     };
   });

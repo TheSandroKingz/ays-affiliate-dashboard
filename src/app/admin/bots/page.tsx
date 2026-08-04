@@ -13,12 +13,16 @@ type BotEstado = {
   total: number;
   escribieron: number;
   nuevos: number;
+  bajas: number;
+  dormidos: number;
   ia: number;
   topeIa: number;
+  registros: number;
   qftd: number;
   ganado: number;
   ftd: number;
   recargas: number;
+  mensajes: number;
   promo: string;
 };
 
@@ -103,8 +107,10 @@ export default function EstadoBotsPage() {
                   <span className="text-xs text-slate-400">activos / {b.total} total</span>
                 </div>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-300">
-                  <span>💬 {b.escribieron} escribieron hoy</span>
-                  <span>✨ {b.nuevos} nuevos hoy</span>
+                  <span>💬 {b.escribieron} hoy</span>
+                  <span>✨ {b.nuevos} nuevos</span>
+                  <span className="text-slate-400">😴 {b.dormidos} dormidos</span>
+                  {b.bajas > 0 && <span className="text-slate-500">🚫 {b.bajas} bajas</span>}
                 </div>
 
                 {/* IA hoy */}
@@ -125,20 +131,39 @@ export default function EstadoBotsPage() {
                   </div>
                 </div>
 
-                {/* Depósitos del bot */}
-                <div className="rounded-lg bg-black/20 border border-white/10 p-2.5 grid grid-cols-3 gap-1 text-center">
+                {/* Embudo: registros → FTD → QFTD */}
+                <div className="grid grid-cols-3 gap-1 text-center text-xs">
+                  <div className="rounded-lg bg-white/5 py-1.5">
+                    <p className="font-bold text-white">{b.registros}</p>
+                    <p className="text-[10px] text-slate-400">registros</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 py-1.5">
+                    <p className="font-bold text-white">{b.ftd}</p>
+                    <p className="text-[10px] text-slate-400">1ᵉʳ depósito</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 py-1.5">
+                    <p className="font-bold text-white">{b.qftd}</p>
+                    <p className="text-[10px] text-slate-400">cualificados</p>
+                  </div>
+                </div>
+
+                {/* Dinero + recargas */}
+                <div className="rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-2.5 grid grid-cols-2 gap-1 text-center">
                   <div>
-                    <p className="text-sm font-bold text-emerald-300">{eur(b.ganado)}</p>
+                    <p className="text-base font-bold text-emerald-300">{eur(b.ganado)}</p>
                     <p className="text-[10px] text-slate-400">ganado</p>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">{b.qftd}</p>
-                    <p className="text-[10px] text-slate-400">QFTD</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white">{b.recargas}</p>
+                    <p className="text-base font-bold text-white">{b.recargas}</p>
                     <p className="text-[10px] text-slate-400">recargas</p>
                   </div>
+                </div>
+
+                <div className="flex justify-between text-[11px] text-slate-500 border-t border-white/5 pt-2">
+                  <span>💬 {b.mensajes.toLocaleString("es-ES")} mensajes</span>
+                  {b.registros > 0 && (
+                    <span>conv. {Math.round((b.qftd / b.registros) * 100)}%</span>
+                  )}
                 </div>
 
                 {b.promo && (
