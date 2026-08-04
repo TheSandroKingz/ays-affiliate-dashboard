@@ -208,25 +208,32 @@ export async function deteccionFraude(): Promise<Fraude> {
 
 export async function resumenSeguridad(): Promise<ResumenSeguridad> {
   try {
-    // FTD antiguos + QFTD nuevos (los QFTD se registran como "commission").
-    const { data, error } = await supabaseAdmin
-      .from("postback_events")
-      .select("status, counted, player_id")
-      .in("event_type", ["ftd", "commission"])
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error || !data) return { retenidos: 0, dobles: 0, ok: true };
+    // IMPORTANTE (anti doble-pago): revisamos TODOS los eventos, sin tope de 500.
+    // Con >500 eventos, un tope se podía comer un duplicado antiguo y no verlo.
+    //  - retenidos: nº de FTD/QFTD en "held" (head count, barato).
+    //  - dobles: jugadores con MÁS de un FTD contado AUTOMÁTICAMENTE (status
+    //    "counted"; los aprobados a mano son "resolved" y no dan falsa alarma).
+    const [heldRes, countedRes] = await Promise.all([
+      supabaseAdmin
+        .from("postback_events")
+        .select("id", { count: "exact", head: true })
+        .in("event_type", ["ftd", "commission"])
+        .eq("status", "held"),
+      supabaseAdmin
+        .from("postback_events")
+        .select("player_id")
+        .in("event_type", ["ftd", "commission"])
+        .eq("status", "counted")
+        .not("player_id", "is", null)
+        .limit(100000),
+    ]);
+    if (countedRes.error) return { retenidos: 0, dobles: 0, ok: true };
 
-    const retenidos = data.filter((r) => r.status === "held").length;
-
-    // Solo contamos como "doble" los FTD contados AUTOMÁTICAMENTE (status
-    // "counted"). Los aprobados a mano por el admin quedan como "resolved" y no
-    // cuentan (si no, cada aprobación de un retenido daría falsa alarma).
+    const retenidos = heldRes.count ?? 0;
     const cnt = new Map<string, number>();
-    for (const r of data) {
-      if (r.status === "counted" && r.player_id) {
-        cnt.set(r.player_id, (cnt.get(r.player_id) ?? 0) + 1);
-      }
+    for (const r of countedRes.data ?? []) {
+      const p = r.player_id as string;
+      cnt.set(p, (cnt.get(p) ?? 0) + 1);
     }
     const dobles = [...cnt.values()].filter((n) => n > 1).length;
 

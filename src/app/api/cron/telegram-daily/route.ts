@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser } from "@/lib/adminAuth";
+import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 import { compararSecreto } from "@/lib/secreto";
 import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 import { BOTS } from "@/lib/bots";
+import { resumenSeguridad } from "@/lib/seguridad";
+import { enviarPush } from "@/lib/push";
 
 // Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
 export const maxDuration = 60;
@@ -189,6 +191,23 @@ export async function GET(request: Request) {
   if (!esCron && !admin) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
+
+  // VIGILANTE anti doble-pago: si algún día se materializa un FTD duplicado (un
+  // jugador contado dos veces que se escapó de los candados), avisamos al dueño
+  // al momento por push. Corre en cada disparo del cron. BLINDADO.
+  try {
+    const seg = await resumenSeguridad();
+    if (seg.dobles > 0) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ Posible FTD duplicado",
+        body: `Hay ${seg.dobles} jugador(es) con un FTD contado 2 veces. Revísalo en Actividad para no pagar de más.`,
+        url: "/admin/actividad",
+      });
+    }
+  } catch {
+    /* la vigilancia nunca rompe el cron */
+  }
+
   if (!telegramConfigurado()) {
     return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
   }
