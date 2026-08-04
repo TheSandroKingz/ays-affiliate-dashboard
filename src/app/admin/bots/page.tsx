@@ -104,21 +104,29 @@ export default function EstadoBotsPage() {
                 {/* Contactos */}
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-emerald-300">{b.activos}</span>
-                  <span className="text-xs text-slate-400">activos / {b.total} total</span>
+                  <span className="text-xs text-slate-400">personas activas (de {b.total})</span>
                 </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-300">
-                  <span>💬 {b.escribieron} hoy</span>
-                  <span>✨ {b.nuevos} nuevos</span>
-                  <span className="text-slate-400">😴 {b.dormidos} dormidos</span>
-                  {b.bajas > 0 && <span className="text-slate-500">🚫 {b.bajas} bajas</span>}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-300">
+                  <span>
+                    Escribieron hoy: <b className="text-white">{b.escribieron}</b>
+                  </span>
+                  <span>
+                    Nuevos hoy: <b className="text-white">{b.nuevos}</b>
+                  </span>
+                  <span>
+                    Llevan días sin hablar: <b className="text-white">{b.dormidos}</b>
+                  </span>
+                  <span>
+                    Se dieron de baja: <b className="text-white">{b.bajas}</b>
+                  </span>
                 </div>
 
                 {/* IA hoy */}
                 <div>
                   <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                    <span>IA hoy</span>
+                    <span>Respuestas de la IA hoy</span>
                     <span>
-                      {b.ia} / {b.topeIa}
+                      {b.ia} de {b.topeIa}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -131,19 +139,19 @@ export default function EstadoBotsPage() {
                   </div>
                 </div>
 
-                {/* Embudo: registros → FTD → QFTD */}
+                {/* Recorrido: registros → depositaron → depósitos que pagan */}
                 <div className="grid grid-cols-3 gap-1 text-center text-xs">
                   <div className="rounded-lg bg-white/5 py-1.5">
                     <p className="font-bold text-white">{b.registros}</p>
-                    <p className="text-[10px] text-slate-400">registros</p>
+                    <p className="text-[10px] text-slate-400">se registraron</p>
                   </div>
                   <div className="rounded-lg bg-white/5 py-1.5">
                     <p className="font-bold text-white">{b.ftd}</p>
-                    <p className="text-[10px] text-slate-400">1ᵉʳ depósito</p>
+                    <p className="text-[10px] text-slate-400">depositaron</p>
                   </div>
                   <div className="rounded-lg bg-white/5 py-1.5">
                     <p className="font-bold text-white">{b.qftd}</p>
-                    <p className="text-[10px] text-slate-400">cualificados</p>
+                    <p className="text-[10px] text-slate-400">depósitos que pagan</p>
                   </div>
                 </div>
 
@@ -151,7 +159,7 @@ export default function EstadoBotsPage() {
                 <div className="rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-2.5 grid grid-cols-2 gap-1 text-center">
                   <div>
                     <p className="text-base font-bold text-emerald-300">{eur(b.ganado)}</p>
-                    <p className="text-[10px] text-slate-400">ganado</p>
+                    <p className="text-[10px] text-slate-400">has ganado</p>
                   </div>
                   <div>
                     <p className="text-base font-bold text-white">{b.recargas}</p>
@@ -160,15 +168,17 @@ export default function EstadoBotsPage() {
                 </div>
 
                 <div className="flex justify-between text-[11px] text-slate-500 border-t border-white/5 pt-2">
-                  <span>💬 {b.mensajes.toLocaleString("es-ES")} mensajes</span>
+                  <span>{b.mensajes.toLocaleString("es-ES")} mensajes en total</span>
                   {b.registros > 0 && (
-                    <span>conv. {Math.round((b.qftd / b.registros) * 100)}%</span>
+                    <span>
+                      Conversión: {Math.round((b.qftd / b.registros) * 100)}%
+                    </span>
                   )}
                 </div>
 
                 {b.promo && (
                   <p className="text-[11px] text-slate-400 line-clamp-2">
-                    📣 <span className="text-slate-300">{b.promo}</span>
+                    Promo: <span className="text-slate-300">{b.promo}</span>
                   </p>
                 )}
               </div>
@@ -178,8 +188,9 @@ export default function EstadoBotsPage() {
       )}
 
       <p className="text-xs text-slate-500">
-        Depósitos por su afp (Sandro=bot, Jeffer=botmn, Alana=botdm). "Ganado" y
-        "QFTD" son los depósitos cualificados; dependen de que FreshBet mande el afp.
+        "Depósitos que pagan" son los que ya te generan comisión (los cualificados).
+        "Conversión" = de los que se registraron, cuántos han hecho un depósito que
+        paga. El dinero de cada bot depende de que FreshBet lo marque bien.
       </p>
     </main>
   );
