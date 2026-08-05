@@ -185,6 +185,33 @@ export default function AfiliadoDetallePage() {
     [daily]
   );
 
+  // Proyección de comisión a fin de mes (al ritmo actual). SIEMPRE del mes en
+  // curso (aunque el toggle esté en "Todo"): filtramos por el mes de hoy. Misma
+  // fórmula que el panel: comisión del mes + ritmo/día × días que quedan.
+  const proyeccion = useMemo(() => {
+    const hoyIso = hoyMadridISO();
+    const mesActual = hoyIso.slice(0, 7);
+    const delMes = daily.filter((d) => String(d.date).slice(0, 7) === mesActual);
+    const comMes = delMes.reduce((s, d) => s + Number(d.commission ?? 0), 0);
+    if (comMes <= 0) return null;
+    const [y, m] = hoyIso.split("-").map(Number);
+    const diaHoy = Number(hoyIso.slice(8, 10));
+    const diasMes = new Date(y, m, 0).getDate();
+    if (diaHoy >= diasMes) return comMes; // último día del mes: ya es el cierre
+    const conAct = delMes.filter(
+      (d) => Number(d.commission ?? 0) !== 0 || Number(d.ftd ?? 0) > 0
+    );
+    if (!conAct.length) return null;
+    const primera = conAct.reduce(
+      (min, d) => (String(d.date).slice(0, 10) < min ? String(d.date).slice(0, 10) : min),
+      String(conAct[0].date).slice(0, 10)
+    );
+    const diasTrab =
+      Math.round((Date.parse(hoyIso) - Date.parse(primera)) / 86400000) + 1;
+    const ritmo = diasTrab > 0 ? comMes / diasTrab : 0;
+    return Math.round((comMes + ritmo * (diasMes - diaHoy)) / 10) * 10;
+  }, [daily]);
+
   if (loading) {
     return <TableSkeleton title="Detalle del afiliado" cols={5} />;
   }
@@ -204,14 +231,20 @@ export default function AfiliadoDetallePage() {
   }
 
   const fichas = [
-    { label: "CPA", value: eur(Number(perfil.cpa_spain ?? 0)) },
-    { label: "% Subafiliados", value: `${Number(perfil.subaffiliate_percent ?? 0)}%` },
+    { label: "CPA", value: eur(Number(perfil.cpa_spain ?? 0)), destacar: false },
+    { label: "% Subafiliados", value: `${Number(perfil.subaffiliate_percent ?? 0)}%`, destacar: false },
     {
       label: "Conversión",
       value:
         totals.clicks > 0
           ? `${((totals.ftd / totals.clicks) * 100).toFixed(1)}%`
           : "—",
+      destacar: false,
+    },
+    {
+      label: "Proyección fin de mes",
+      value: proyeccion != null ? `~${eur(proyeccion)}` : "—",
+      destacar: true,
     },
   ];
 
@@ -278,15 +311,25 @@ export default function AfiliadoDetallePage() {
         </button>
       </div>
 
-      {/* Ficha: CPA y % */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Ficha: CPA, %, conversión y proyección */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {fichas.map((f) => (
           <div
             key={f.label}
-            className="p-4 rounded-xl border border-white/15 bg-black/40"
+            className={`p-4 rounded-xl border ${
+              f.destacar
+                ? "border-emerald-400/40 bg-emerald-500/10"
+                : "border-white/15 bg-black/40"
+            }`}
           >
             <p className="text-xs text-slate-400 mb-1">{f.label}</p>
-            <p className="text-lg font-bold text-white">{f.value}</p>
+            <p
+              className={`text-lg font-bold ${
+                f.destacar ? "text-emerald-300" : "text-white"
+              }`}
+            >
+              {f.value}
+            </p>
           </div>
         ))}
       </div>
