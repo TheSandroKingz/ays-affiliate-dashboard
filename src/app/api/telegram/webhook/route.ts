@@ -9,6 +9,7 @@ import {
   guardarMsg,
   midDe,
   descargarFoto,
+  ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
@@ -458,6 +459,7 @@ export async function POST(request: Request) {
       // problema real (pago/cuenta/bono), ni si ya le mandamos uno hace poco (salvo
       // que pidan otro explícitamente).
       if (
+        !ENLACES_PAUSADOS && // PAUSA: no mandamos vídeos de "cómo juego yo" (ahora no va)
         (pidePatron || falloForma || mandoVideo) &&
         !problemaReal &&
         !limitado &&

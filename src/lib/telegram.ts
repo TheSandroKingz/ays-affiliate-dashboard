@@ -38,6 +38,13 @@ export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 export const ENLACE_JUGAR =
   "https://go.affision.com/visit/?bta=44878&nci=5520&afp=bot";
 
+// ⛔ PAUSA (FreshBet cortó el tráfico — ya no trabajamos con ellos). Mientras
+// esto sea true, NO se envía NINGÚN enlace/botón en ningún mensaje (chat, diario,
+// bienvenida, broadcast): las funciones de botón devuelven undefined. Los bots
+// siguen encendidos y respondiendo, pero sin enlaces y diciendo que ahora no va.
+// Cuando volvamos a tener casino, poner false (y repasar los prompts).
+export const ENLACES_PAUSADOS = true;
+
 // Texto del botón de jugar (llamativo — Telegram no deja cambiar color/tamaño,
 // solo el texto y los emojis).
 const TEXTO_JUGAR = "🟢🎰 JUGAR AHORA 🎰🟢";
@@ -49,7 +56,7 @@ const TEXTO_JUGAR = "🟢🎰 JUGAR AHORA 🎰🟢";
 // Telegram rechaza un botón con url vacía y tumbaría todo el mensaje, así que
 // mejor sin botón (el bot igual saluda y responde) hasta que se ponga el enlace.
 export function botonJugar(enlace: string = ENLACE_JUGAR) {
-  if (!enlace) return undefined;
+  if (ENLACES_PAUSADOS || !enlace) return undefined;
   return {
     inline_keyboard: [
       [{ text: TEXTO_JUGAR, url: enlace }],
@@ -60,7 +67,7 @@ export function botonJugar(enlace: string = ENLACE_JUGAR) {
 
 // Solo el botón del enlace (para las respuestas del chat, sin el de AYUDA).
 export function botonSoloJugar(enlace: string = ENLACE_JUGAR) {
-  if (!enlace) return undefined;
+  if (ENLACES_PAUSADOS || !enlace) return undefined;
   return { inline_keyboard: [[{ text: TEXTO_JUGAR, url: enlace }]] };
 }
 

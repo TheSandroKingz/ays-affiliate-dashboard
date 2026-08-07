@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 import { compararSecreto } from "@/lib/secreto";
-import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
+import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe, ENLACES_PAUSADOS } from "@/lib/telegram";
 import { generarMensajeDiario } from "@/lib/telegramAI";
 import { BOTS } from "@/lib/bots";
 import { resumenSeguridad } from "@/lib/seguridad";
@@ -259,6 +259,14 @@ export async function GET(request: Request) {
         .delete()
         .lte("created_at", ultimo);
     }
+  }
+
+  // ⛔ PAUSA (FreshBet cortó el tráfico): NO se manda NADA promocional — ni el
+  // mensaje diario, ni el vídeo, ni el "hey vuelve" a los dormidos, ni el diario
+  // de los bots nuevos. La vigilancia anti-doble-pago y la limpieza de chats de
+  // arriba SÍ siguen corriendo. Al reactivar el casino, poner ENLACES_PAUSADOS=false.
+  if (ENLACES_PAUSADOS) {
+    return NextResponse.json({ ok: true, enviado: false, motivo: "pausa: sin envíos promocionales (FreshBet cortado)" });
   }
 
   // Envíos: el fijo de las 20:00 (siempre) y un extra a las 13:00 SOLO los

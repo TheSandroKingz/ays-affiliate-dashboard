@@ -12,6 +12,7 @@ import {
   botonJugar,
   botonSoloJugar,
   descargarFoto,
+  ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { responderIABot, iaConfigurada } from "@/lib/telegramAI";
 import type { BotDef } from "@/lib/bots";
@@ -424,6 +425,7 @@ export async function procesarUpdate(
 
     let videoEnviado = false;
     if (
+      !ENLACES_PAUSADOS && // PAUSA: no mandamos vídeos de "cómo juego yo" (ahora no va)
       (pidePatron || falloForma || mandoVideo) &&
       !problemaReal &&
       !limitado &&
