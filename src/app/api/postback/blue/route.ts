@@ -106,8 +106,10 @@ export async function GET(request: Request) {
   }
 
   const event = pick(url, ["event"]).toLowerCase();
-  // Etiqueta del afiliado: sub1..sub3 (lo que añadimos al enlace), luego campaña/clickid.
-  const tag = pick(url, ["sub1", "s1", "sub2", "s2", "sub3", "s3", "campaign", "campaign_slug", "clickid"]);
+  // Etiqueta del afiliado: sub1..sub3 (lo que añadimos al enlace) y, si acaso, la
+  // campaña. NO usamos clickid (es único por click, nunca es un código de afiliado
+  // → ensuciaría el emparejado). Sin etiqueta → cae en el afiliado por defecto.
+  const tag = pick(url, ["sub1", "s1", "sub2", "s2", "sub3", "s3", "campaign", "campaign_slug"]);
   // Id del jugador (hash estable de Blue) o cualquier id alternativo.
   const playerid = pick(url, ["player", "player_token", "playerid", "player_id", "txid", "transaction_id", "txn"]);
   const isocountry = pick(url, ["country", "isocountry"]).toUpperCase();
