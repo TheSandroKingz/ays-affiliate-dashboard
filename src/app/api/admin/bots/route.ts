@@ -149,8 +149,14 @@ export async function GET(request: Request) {
   const recargas = new Map<string, number>();
   const depositado = new Map<string, number>();
   for (const e of deps.data ?? []) {
-    if (e.event_type === "redeposit") recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
-    depositado.set(e.afp, (depositado.get(e.afp) ?? 0) + Number(e.amount ?? 0));
+    // El importe se suma SOLO de los "redeposit": el postback de depósito de
+    // Celsius salta también en el 1er depósito, así que sumar el importe de ftd Y
+    // redeposit contaría DOS VECES el primer depósito (mismo criterio que el resto
+    // del panel). El nº de recargas también son los redeposit.
+    if (e.event_type === "redeposit") {
+      recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
+      depositado.set(e.afp, (depositado.get(e.afp) ?? 0) + Number(e.amount ?? 0));
+    }
   }
   const registros = new Map<string, number>();
   for (const e of regs.data ?? []) {

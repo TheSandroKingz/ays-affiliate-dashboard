@@ -115,6 +115,31 @@ export async function GET(request: Request) {
   const raw = queryLimpia(url);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 
+  // ── EVENTO DE PRUEBA (botón "Probar" de Blue: sub1=test-sub1, campaign=test-…) ──
+  // NO debe contar ni pagar NADA: con la atribución por defecto a tu cuenta, cada
+  // test se sumaría como un depósito falso. Se registra en la caja negra y se sale.
+  const esTest = /^test-/i.test(tag) || /(sub1|s1|campaign|campaign_slug)=test-/i.test(raw);
+  if (esTest) {
+    const et = (event === "registration"
+      ? "registration"
+      : event === "ftd"
+      ? "ftd"
+      : event === "deposit"
+      ? "redeposit"
+      : "commission") as "registration" | "ftd" | "commission" | "redeposit";
+    await registrarEvento({
+      event_type: et,
+      raw_query: raw,
+      tracking_code: tag,
+      afp: "",
+      player_id: playerid,
+      isocountry,
+      matched_user_id: null,
+      status: "no_match",
+    });
+    return NextResponse.json({ ok: true, test: true, nota: "evento de prueba: registrado pero NO contado" });
+  }
+
   // ── REGISTRO ──────────────────────────────────────────────────────────────
   if (event === "registration" || event === "register" || event === "signup") {
     const target = await matchAfiliado(tag);
