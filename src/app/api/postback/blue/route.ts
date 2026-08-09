@@ -313,6 +313,11 @@ export async function GET(request: Request) {
             p_commission: commission,
           });
           if (error) {
+            // A PROPÓSITO no liberamos el candado: el RPC pudo CONFIRMAR en
+            // Postgres aunque devolviera error (timeout tras commit). Liberarlo
+            // haría que un reintento SUMARA otra vez (doble pago). Preferimos NO
+            // contar (queda status=error para revisión manual) antes que arriesgar
+            // un doble pago. Mismo criterio que el endpoint viejo de comisión.
             estado = "error";
           } else {
             estado = "counted";

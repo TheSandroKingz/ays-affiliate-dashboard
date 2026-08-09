@@ -55,6 +55,13 @@ export async function GET(
   if (destino.protocol !== "https:") {
     return NextResponse.redirect(new URL("/", request.url));
   }
+  // Candado de host: SOLO redirigimos a Celsius/Blue. Si un promo_link quedara
+  // apuntando al casino viejo (FreshBet/affision), NO mandamos ahí a la gente:
+  // mejor a la home que a un casino muerto. Red de seguridad ante links rancios.
+  const HOST_OK = /(^|\.)celsius\.games$|(^|\.)blue2affiliates\.com$/i;
+  if (!HOST_OK.test(destino.hostname)) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   // ¿Es un bot/preview o una precarga del navegador? Redirigimos sin contar.
   const ua = request.headers.get("user-agent") ?? "";
