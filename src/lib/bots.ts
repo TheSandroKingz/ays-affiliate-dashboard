@@ -191,7 +191,7 @@ export const BOTS: Record<string, BotDef> = {
       juego: "las Mines",
       enlace: ENLACE_JEFFER,
       comoLlegar:
-        "en el menú entra a MINIJUEGOS y ahí tienes las Mines",
+        "en el menú entra a JUEGOS ORIGINALES (no 'minijuegos') y ahí tienes las Mines",
       genero: "m",
       estrategias: ESTRATEGIAS_JEFFER,
       extra: EXTRA_JEFFER,
