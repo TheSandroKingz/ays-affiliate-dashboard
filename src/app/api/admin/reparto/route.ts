@@ -78,40 +78,40 @@ export async function GET(request: Request) {
   })) as DailyRow[];
   const mes = computeAdminStats(rows, user.id, meId, adminCpa, struct);
 
-  // Reparto por fuente sobre la GANANCIA (margen).
-  const splitDe = (nombre: string): { sandro: number; socio: number } => {
-    const n = (nombre || "").toLowerCase();
-    if (n.includes("jeffer")) return { sandro: 35, socio: 65 };
-    if (n.includes("mariam")) return { sandro: 50, socio: 50 };
-    return { sandro: 65, socio: 35 };
+  // Reparto por fuente sobre la GANANCIA (margen). El % de cada uno va por
+  // afiliado identificado por su USER_ID (NO por el nombre): así no se rompe
+  // aunque renombres la cuenta ("Jeffer17"/"Mariam"). Cualquier otro afiliado, y
+  // el tráfico directo del admin, cae en "General / directo".
+  type Split = { grupo: string; sandro: number; socio: number };
+  const REPARTO_POR_USUARIO: Record<string, Split> = {
+    "13dd6a9d-2365-4ebb-923b-009e795aff51": { grupo: "Jeffer", sandro: 35, socio: 65 }, // Jeffer17
+    "89a1c478-2282-44ed-b7b1-bd1f4d1b154c": { grupo: "Mariam", sandro: 50, socio: 50 }, // Mariam
   };
-  const grupos = new Map<string, { nombre: string; ftd: number; ganancia: number }>();
-  const sumar = (nombre: string, ftd: number, ganancia: number) => {
-    const g = grupos.get(nombre) ?? { nombre, ftd: 0, ganancia: 0 };
+  const GENERAL: Split = { grupo: "General / directo", sandro: 65, socio: 35 };
+
+  const grupos = new Map<string, { nombre: string; ftd: number; ganancia: number; sandro: number; socio: number }>();
+  const sumar = (cfg: Split, ftd: number, ganancia: number) => {
+    const g =
+      grupos.get(cfg.grupo) ??
+      { nombre: cfg.grupo, ftd: 0, ganancia: 0, sandro: cfg.sandro, socio: cfg.socio };
     g.ftd += ftd;
     g.ganancia += ganancia;
-    grupos.set(nombre, g);
+    grupos.set(cfg.grupo, g);
   };
-  sumar("General / directo", mes.own.ftd, mes.own.commission);
+  sumar(GENERAL, mes.own.ftd, mes.own.commission);
   for (const s of mes.stats) {
-    const ganancia = Number(s.margin ?? 0);
-    const n = (s.display_name || "").toLowerCase();
-    if (n.includes("jeffer")) sumar("Jeffer", s.ftd, ganancia);
-    else if (n.includes("mariam")) sumar("Mariam", s.ftd, ganancia);
-    else sumar("General / directo", s.ftd, ganancia);
+    const cfg = REPARTO_POR_USUARIO[s.user_id] ?? GENERAL;
+    sumar(cfg, s.ftd, Number(s.margin ?? 0));
   }
-  const fuentes = [...grupos.values()].map((f) => {
-    const sp = splitDe(f.nombre);
-    return {
-      nombre: f.nombre,
-      ftd: f.ftd,
-      ganancia: f.ganancia,
-      pctSandro: sp.sandro,
-      pctSocio: sp.socio,
-      sandro: (f.ganancia * sp.sandro) / 100,
-      socio: (f.ganancia * sp.socio) / 100,
-    };
-  });
+  const fuentes = [...grupos.values()].map((f) => ({
+    nombre: f.nombre,
+    ftd: f.ftd,
+    ganancia: f.ganancia,
+    pctSandro: f.sandro,
+    pctSocio: f.socio,
+    sandro: (f.ganancia * f.sandro) / 100,
+    socio: (f.ganancia * f.socio) / 100,
+  }));
 
   return NextResponse.json({
     etiqueta,
