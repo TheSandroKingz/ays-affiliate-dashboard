@@ -215,7 +215,7 @@ export const BOTS: Record<string, BotDef> = {
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",
     enlace: ENLACE_MARIAM,
     afp: AFP_MARIAM,
-    trackingCode: "Fresh",
+    trackingCode: "mine", // SubID de Mariam en Blue (?s1=mine)
     nombre: "Alana",
     juego: "Diamond Mines",
     bienvenida: BIENVENIDA_BASE,
