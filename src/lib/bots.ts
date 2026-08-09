@@ -178,8 +178,11 @@ function conAfp(enlace: string, afp: string): string {
 // Códigos afp NEUTROS (no revelan el nombre). Únicos por bot; empiezan por "bot".
 const AFP_JEFFER = "botmn"; // Jeffer → Mines
 const AFP_MARIAM = "botdm"; // Mariam → Diamond Mines
-const ENLACE_JEFFER = conAfp(process.env.BOT_ENLACE_JEFFER || "", AFP_JEFFER);
-const ENLACE_MARIAM = conAfp(process.env.BOT_ENLACE_MARIAM || "", AFP_MARIAM);
+// Enlaces de Celsius (Blue) de cada bot, con su campaña propia. Se ponen aquí
+// (no en env) para no depender de una variable de Vercel que traía el de FreshBet.
+// Jeffer → campaña "Mine" (cZahjDgQoR); Mariam/Alana → campaña "Patron" (AhBpxgTaoP).
+const ENLACE_JEFFER = "https://celsius.games/cZahjDgQoR";
+const ENLACE_MARIAM = "https://celsius.games/AhBpxgTaoP";
 
 export const BOTS: Record<string, BotDef> = {
   jeffer: {
