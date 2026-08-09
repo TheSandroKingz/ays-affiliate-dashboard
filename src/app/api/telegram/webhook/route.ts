@@ -37,8 +37,8 @@ function esc(s: string): string {
 // ⚠️ EDITA AQUÍ el mensaje de bienvenida (el "gancho" que ve al unirse):
 const BIENVENIDA =
   "¡Hey, bienvenido! 👋🔥\n\n" +
-  "Aquí te voy pasando <b>vídeos, promos y tips</b> para que estés al día. 🎰\n\n" +
-  "Cualquier duda me escribes por aquí y te ayudo al momento. ¡Dale que esto se pone bueno! 💪\n\n" +
+  "Ese vídeo de ahí arriba es <b>mi patrón de las Mines</b> — así es como le doy yo 🎰. Míralo bien y hazlo IGUAL, dale y a por ello 💪\n\n" +
+  "Por aquí te voy pasando el <b>patrón, vídeos, promos y tips</b> cada día, así que mantente atento. Cualquier duda me escribes y te ayudo al momento. ¡Dale que esto se pone bueno! 🔥\n\n" +
   "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
 
 export async function POST(request: Request) {
