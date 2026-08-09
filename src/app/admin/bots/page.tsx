@@ -190,7 +190,7 @@ export default function EstadoBotsPage() {
       <p className="text-xs text-slate-500">
         "Depósitos que pagan" son los que ya te generan comisión (los cualificados).
         "Conversión" = de los que se registraron, cuántos han hecho un depósito que
-        paga. El dinero de cada bot depende de que FreshBet lo marque bien.
+        paga. El dinero de cada bot depende de que Celsius lo marque bien.
       </p>
     </main>
   );

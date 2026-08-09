@@ -165,7 +165,7 @@ export default function ActividadPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">Actividad</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Últimos eventos que manda freshbet (registros, FTD, comisión).
+            Últimos eventos que manda Celsius (registros, FTD, comisión).
           </p>
           {(() => {
             const dias = ultimoEvento
@@ -181,7 +181,7 @@ export default function ActividadPage() {
                 }`}
               >
                 {viejo ? "⚠️ " : "✔ "}
-                Último evento de FreshBet:{" "}
+                Último evento de Celsius:{" "}
                 {ultimoEvento ? tiempoRelativo(ultimoEvento) : "nunca"}
               </p>
             );
@@ -323,8 +323,8 @@ export default function ActividadPage() {
       {sinPlayerId > 0 && (
         <div className="rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           ⚠️ Hay <b>{sinPlayerId}</b> FTD contados <b>sin identificador de jugador</b>.
-          Sin ese dato, si freshbet reenvía un FTD se contaría dos veces. Revisa
-          que freshbet incluya el <span className="font-mono">playerid</span> en los postbacks.
+          Sin ese dato, si Celsius reenvía un FTD se contaría dos veces. Revisa
+          que Celsius incluya el <span className="font-mono">playerid</span> en los postbacks.
         </div>
       )}
 

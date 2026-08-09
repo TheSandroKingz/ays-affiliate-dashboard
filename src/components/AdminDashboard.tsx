@@ -366,7 +366,7 @@ export default function AdminDashboard() {
           <span className="flex items-center gap-3">
             <ShieldAlert size={20} className="text-amber-400 shrink-0" />
             <span className="text-sm text-amber-100">
-              FreshBet lleva <b className="text-white">{freshbet.diasSin} días</b> sin
+              Celsius lleva <b className="text-white">{freshbet.diasSin} días</b> sin
               enviar ningún evento, pero ha habido{" "}
               <b className="text-white">{freshbet.clics7} clics</b>. Puede que se
               haya desconfigurado — compruébalo.

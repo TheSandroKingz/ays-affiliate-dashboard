@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     freshbetAlerta = salud.alerta;
     if (salud.alerta) {
       await enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ FreshBet en silencio",
+        title: "⚠️ Celsius en silencio",
         body: `${salud.diasSin} días sin ningún evento y ${salud.clics7} clics. Revisa que siga configurado.`,
         url: "/admin/actividad",
       });
