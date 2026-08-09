@@ -23,6 +23,43 @@ export async function GET(request: Request) {
     timeZone: "Europe/Madrid",
   }).format(new Date());
 
+  // Período para "lo que ha generado el bot": ?dia=YYYY-MM-DD (hoy/ayer),
+  // ?mes=YYYY-MM (un mes) o nada = TOTAL de siempre. Devolvemos ambas cifras
+  // (total + período) para que el panel las muestre según el selector.
+  const url = new URL(request.url);
+  const diaParam = url.searchParams.get("dia") || "";
+  const mesParam = url.searchParams.get("mes") || "";
+  let etiqueta = "Total";
+  let desdeMs = 0;
+  let hastaMs = Infinity;
+  const offMadrid = Number(
+    (
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Madrid",
+        timeZoneName: "shortOffset",
+      })
+        .formatToParts(new Date())
+        .find((p) => p.type === "timeZoneName")?.value ?? "GMT+0"
+    ).match(/GMT([+-]\d+)/)?.[1] ?? "0"
+  );
+  const madridStartUTC = (d: string) => Date.parse(d + "T00:00:00Z") - offMadrid * 3600_000;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(diaParam)) {
+    desdeMs = madridStartUTC(diaParam);
+    hastaMs = desdeMs + 864e5;
+    etiqueta = diaParam === hoyKey ? "Hoy" : diaParam;
+  } else if (/^\d{4}-\d{2}$/.test(mesParam)) {
+    const [yy, mm] = mesParam.split("-").map(Number);
+    desdeMs = madridStartUTC(`${mesParam}-01`);
+    const finMes = new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 10);
+    hastaMs = madridStartUTC(finMes);
+    etiqueta = mesParam;
+  }
+  const enPeriodo = (createdAt: string) => {
+    if (hastaMs === Infinity) return true; // total
+    const t = Date.parse(createdAt);
+    return t >= desdeMs && t < hastaMs;
+  };
+
   const [
     activos,
     total,
@@ -53,7 +90,7 @@ export async function GET(request: Request) {
     // limit alto: sin él PostgREST corta en 1000 y las cifras se quedarían cortas.
     supabaseAdmin
       .from("postback_events")
-      .select("commission")
+      .select("commission, created_at")
       .eq("counted", true)
       .eq("event_type", "commission")
       .eq("afp", "bot")
@@ -86,19 +123,29 @@ export async function GET(request: Request) {
   // El panel solo muestra TOTALES (no se reinician), así que sumamos sin más.
   // Antes se calculaban ventanas hoy/7d/30d creando un Intl.DateTimeFormat por
   // fila (carísimo); eran código muerto tras el rediseño del panel → fuera.
-  const b = { depTot: 0, eurTot: 0 };
+  // Total de siempre (nunca se reinicia) Y del período elegido (Hoy/Ayer/mes).
+  const b = { depTot: 0, eurTot: 0, dep: 0, eur: 0 };
   for (const r of botRes.data ?? []) {
+    const c = Number(r.commission ?? 0);
     b.depTot++;
-    b.eurTot += Number(r.commission ?? 0);
+    b.eurTot += c;
+    if (enPeriodo(r.created_at as string)) {
+      b.dep++;
+      b.eur += c;
+    }
   }
   // "Recargas" = nº de redeposit. "Dinero que metieron" = importe SOLO de las
   // recargas (redeposit), para no contar dos veces el primer depósito (que salta
   // como ftd Y como redeposit).
-  const rec = { nTot: 0, eurTot: 0 };
+  const rec = { nTot: 0, eurTot: 0, n: 0, eur: 0 };
   for (const r of recRes.data ?? []) {
     if (r.event_type === "redeposit") {
       rec.nTot++;
       rec.eurTot += Number(r.amount ?? 0);
+      if (enPeriodo(r.created_at as string)) {
+        rec.n++;
+        rec.eur += Number(r.amount ?? 0);
+      }
     }
   }
 
@@ -129,6 +176,7 @@ export async function GET(request: Request) {
       bot: b,
       recargas: rec,
       recargasLista: recientes,
+      etiqueta,
     },
     promo,
     diario: diario

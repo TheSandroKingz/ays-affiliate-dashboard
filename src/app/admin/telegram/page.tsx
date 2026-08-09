@@ -28,10 +28,13 @@ export default function TelegramPage() {
     nuevos24h: number;
     escribieron24h: number;
     iaHoy: number;
-    bot: { depTot: number; eurTot: number };
-    recargas?: { nTot: number; eurTot: number };
+    bot: { depTot: number; eurTot: number; dep: number; eur: number };
+    recargas?: { nTot: number; eurTot: number; n: number; eur: number };
     recargasLista?: { importe: number; fecha: string; player: string | null }[];
+    etiqueta?: string;
   } | null>(null);
+  // Período del "dinero generado": "total" | "hoy" | "ayer" | "YYYY-MM".
+  const [periodo, setPeriodo] = useState<string>("total");
   const [texto, setTexto] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
   const [promo, setPromo] = useState("");
@@ -270,7 +273,19 @@ export default function TelegramPage() {
       router.replace("/dashboard");
       return;
     }
-    const res = await fetch("/api/telegram/broadcast", {
+    const fMadrid = (off: number) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(
+        new Date(Date.now() + off * 864e5)
+      );
+    const qp =
+      periodo === "total"
+        ? ""
+        : periodo === "hoy"
+        ? `?dia=${fMadrid(0)}`
+        : periodo === "ayer"
+        ? `?dia=${fMadrid(-1)}`
+        : `?mes=${periodo}`;
+    const res = await fetch("/api/telegram/broadcast" + qp, {
       headers: { Authorization: "Bearer " + session.access_token },
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -283,7 +298,7 @@ export default function TelegramPage() {
       setPromo(res.promo ?? "");
       setPromoGuardada(true);
     }
-  }, [router]);
+  }, [router, periodo]);
 
   useEffect(() => {
     cargar();
@@ -396,16 +411,60 @@ export default function TelegramPage() {
 
       {stats && (
         <div className="flex flex-col gap-3">
-          {/* 1) Dinero que me ha generado el bot: TOTAL de siempre, no se reinicia. */}
+          {/* 1) Dinero que me ha generado el bot, por período (Hoy/Ayer/mes/Total). */}
           <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
-            <div className="text-sm text-emerald-200/80">
-              💰 Dinero que me ha generado el bot
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-sm text-emerald-200/80">
+                💰 Dinero que me ha generado el bot
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                {([["hoy", "Hoy"], ["ayer", "Ayer"], ["total", "Total"]] as [string, string][]).map(
+                  ([v, l]) => (
+                    <button
+                      key={v}
+                      onClick={() => setPeriodo(v)}
+                      className={`px-2.5 py-1 rounded-lg border transition ${
+                        periodo === v
+                          ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
+                          : "border-white/15 text-slate-300 hover:bg-white/5"
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  )
+                )}
+                <select
+                  value={/^\d{4}-\d{2}$/.test(periodo) ? periodo : ""}
+                  onChange={(e) => e.target.value && setPeriodo(e.target.value)}
+                  className={`px-2 py-1 rounded-lg border bg-transparent ${
+                    /^\d{4}-\d{2}$/.test(periodo)
+                      ? "border-emerald-400/60 text-emerald-200"
+                      : "border-white/15 text-slate-300"
+                  }`}
+                >
+                  <option value="">Mes…</option>
+                  {Array.from({ length: 6 }, (_, i) => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - i);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                  }).map((m) => (
+                    <option key={m} value={m} className="text-black">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="mt-1 text-5xl font-extrabold text-emerald-300">
-              {Math.round(stats.bot.eurTot).toLocaleString("es-ES")} €
+              {Math.round(periodo === "total" ? stats.bot.eurTot : stats.bot.eur).toLocaleString(
+                "es-ES"
+              )}{" "}
+              €
             </div>
             <div className="mt-1 text-xs text-slate-400">
-              Total desde el primer día · nunca se reinicia
+              {periodo === "total"
+                ? "Total desde el primer día · nunca se reinicia"
+                : `Generado · ${stats.etiqueta ?? periodo}`}
             </div>
           </div>
 
@@ -419,9 +478,9 @@ export default function TelegramPage() {
                 {
                   t: "💵 Depósitos del bot",
                   rows: [
-                    ["Primeros depósitos (FTD)", stats.bot.depTot],
-                    ["Dinero que metieron", `${Math.round(stats.recargas?.eurTot ?? 0).toLocaleString("es-ES")} €`],
-                    ["Recargas", stats.recargas?.nTot ?? 0],
+                    ["Primeros depósitos (FTD)", periodo === "total" ? stats.bot.depTot : stats.bot.dep],
+                    ["Dinero que metieron", `${Math.round(periodo === "total" ? (stats.recargas?.eurTot ?? 0) : (stats.recargas?.eur ?? 0)).toLocaleString("es-ES")} €`],
+                    ["Recargas", periodo === "total" ? (stats.recargas?.nTot ?? 0) : (stats.recargas?.n ?? 0)],
                   ] as [string, string | number][],
                 },
                 {
