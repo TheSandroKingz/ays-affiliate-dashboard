@@ -224,7 +224,8 @@ export async function resumenSeguridad(): Promise<ResumenSeguridad> {
         .select("player_id")
         .in("event_type", ["ftd", "commission"])
         .eq("status", "counted")
-        .not("player_id", "is", null)
+        .eq("counted", true) // OJO: una reversión pone counted=false pero DEJA status="counted".
+        .not("player_id", "is", null) // Sin esto, un QFTD revertido + recualificado daba doble FALSO.
         .limit(100000),
     ]);
     if (countedRes.error) return { retenidos: 0, dobles: 0, ok: true };

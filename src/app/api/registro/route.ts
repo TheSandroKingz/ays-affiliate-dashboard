@@ -5,9 +5,9 @@ import { enviarPush } from '@/lib/push'
 import { ADMIN_USER_ID } from '@/lib/adminAuth'
 import { contieneEmoji } from '@/lib/texto'
 
-// Enlace de promoción por defecto para nuevas cuentas.
-// Cuentas concretas (p. ej. Jeffer) se personalizan a mano en la BD.
-const DEFAULT_PROMO_LINK = 'https://go.affision.com/visit/?bta=44878&nci=5520'
+// Enlace de promoción por defecto para nuevas cuentas (Celsius vía Blue).
+// Cuentas concretas se personalizan a mano en la BD con su ?s1=<trackingcode>.
+const DEFAULT_PROMO_LINK = 'https://blue2affiliates.com/g/rNotVFJl'
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)

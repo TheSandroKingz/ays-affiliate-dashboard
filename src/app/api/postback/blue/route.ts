@@ -120,7 +120,7 @@ export async function GET(request: Request) {
   // ── EVENTO DE PRUEBA (botón "Probar" de Blue: sub1=test-sub1, campaign=test-…) ──
   // NO debe contar ni pagar NADA: con la atribución por defecto a tu cuenta, cada
   // test se sumaría como un depósito falso. Se registra en la caja negra y se sale.
-  const esTest = /^test-/i.test(tag) || /(sub1|s1|campaign|campaign_slug)=test-/i.test(raw);
+  const esTest = /^test-/i.test(tag) || /(sub[123]|s[123]|campaign|campaign_slug)=test-/i.test(raw);
   if (esTest) {
     const et = (event === "registration"
       ? "registration"
@@ -192,13 +192,14 @@ export async function GET(request: Request) {
   if (event === "ftd" || event === "deposit" || event === "redeposit") {
     const target = await matchAfiliado(tag);
     const et: "ftd" | "redeposit" = event === "ftd" ? "ftd" : "redeposit";
-    // Anti-reintento en recargas (mismo jugador + importe en 2 min = reintento).
-    if (et === "redeposit" && playerid) {
+    // Anti-reintento (mismo jugador + mismo tipo + mismo importe en 2 min = reintento
+    // de Blue). Vale para ftd y recarga: no suma dinero pero evita inflar contadores.
+    if (playerid) {
       const hace2min = new Date(Date.now() - 120000).toISOString();
       const { data: dup } = await supabaseAdmin
         .from("postback_events")
         .select("id")
-        .eq("event_type", "redeposit")
+        .eq("event_type", et)
         .eq("player_id", playerid)
         .eq("amount", monto)
         .gte("created_at", hace2min)
@@ -227,7 +228,14 @@ export async function GET(request: Request) {
   // ── QUALIFICATION / COMMISSION_PAID = QFTD que PAGA (candado compartido) ───
   if (event === "qualification" || event === "commission_paid" || event === "commission") {
     // Comisión que nos paga la red (para detectar REVERSIÓN si viene negativa).
-    const comisionRed = montoConSigno(pick(url, ["commission"]) || null);
+    // Probamos varios nombres de campo por si Blue no la manda en "commission"
+    // (si no, una reversión pasaría desapercibida y el afiliado se quedaría el
+    // dinero que el casino le quitó). Si no hay comisión, miramos un amount negativo.
+    const comisionRed = montoConSigno(
+      pick(url, ["commission", "commission_amount", "commissionamount", "payout", "revenue"]) ||
+        pick(url, ["amount"]) ||
+        null
+    );
 
     // REVERSIÓN: comisión negativa → el casino quitó la comisión. Si ese QFTD
     // estaba contado, se lo restamos también al afiliado (espejo con la red).

@@ -221,8 +221,11 @@ export async function registrarEvento(e: EventoPostback): Promise<void> {
 }
 
 // Depósito medio de un afiliado (calidad de tráfico): media del importe de sus
-// FTD contados con importe > 0. Devuelve media=null si no hay datos (freshbet
-// aún no manda el importe, o la columna no existe). BLINDADO.
+// primeros depósitos con importe > 0. Devuelve media=null si no hay datos.
+// OJO: los eventos "ftd" se guardan con status "deposit" (counted=false), así que
+// NO se puede exigir counted=true (eso los excluía a todos y salía siempre vacío,
+// era el supuesto viejo de que "el casino no manda importe"; Celsius sí lo manda).
+// BLINDADO.
 export async function depositoMedio(
   userId: string
 ): Promise<{ media: number | null; num: number }> {
@@ -232,7 +235,6 @@ export async function depositoMedio(
       .select("amount")
       .eq("matched_user_id", userId)
       .eq("event_type", "ftd")
-      .eq("counted", true)
       .not("amount", "is", null)
       .gt("amount", 0)
       .limit(100000); // sin límite PostgREST corta en 1000 y la media saldría sesgada

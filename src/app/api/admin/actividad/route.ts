@@ -80,8 +80,9 @@ export async function GET(request: Request) {
   const cnt = new Map<string, number>();
   for (const r of rows) {
     // Solo los contados AUTOMÁTICAMENTE (status "counted"); los aprobados a mano
-    // quedan "resolved" y no cuentan como doble.
-    if (esFtdOQftd(r.event_type) && r.status === "counted" && r.player_id) {
+    // quedan "resolved" y no cuentan como doble. Exigimos counted=true porque una
+    // reversión pone counted=false pero deja status="counted" (si no, daba doble falso).
+    if (esFtdOQftd(r.event_type) && r.status === "counted" && r.counted && r.player_id) {
       cnt.set(r.player_id, (cnt.get(r.player_id) ?? 0) + 1);
     }
   }

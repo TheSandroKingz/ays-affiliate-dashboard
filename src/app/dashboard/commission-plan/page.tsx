@@ -123,11 +123,11 @@ export default function CommissionPlanPage() {
         <h2 className="text-lg font-semibold text-white mb-4">Campaña Activa</h2>
         <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
           <p className="text-slate-200">Marca</p>
-          <p className="text-white font-semibold">FreshBet</p>
+          <p className="text-white font-semibold">Celsius</p>
         </div>
         {promoLink && (
           <div className="border-b border-white/10 pb-3 mb-3">
-            <p className="text-slate-200 mb-2">Tu enlace de FreshBet</p>
+            <p className="text-slate-200 mb-2">Tu enlace de Celsius</p>
             <div className="flex items-center gap-2">
               <input
                 readOnly
