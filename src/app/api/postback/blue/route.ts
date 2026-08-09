@@ -14,6 +14,7 @@ import {
 } from "@/lib/postback";
 import { notificarEvento, enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
+import { botPorTracking } from "@/lib/bots";
 
 // ============================================================================
 // Receptor UNIFICADO de los postbacks de BLUE AFFILIATES (casino Celsius).
@@ -44,21 +45,28 @@ function pick(url: URL, names: string[]): string {
   return "";
 }
 
-type Afiliado = { user_id: string; cpa_spain: number | null; cpa_other: number | null };
+type Afiliado = {
+  user_id: string;
+  cpa_spain: number | null;
+  cpa_other: number | null;
+  freshaffs_tracking_code: string | null;
+};
+
+const SEL = "user_id, cpa_spain, cpa_other, freshaffs_tracking_code";
 
 async function matchAfiliado(tag: string): Promise<Afiliado | null> {
   if (tag) {
     // 1) por tracking code (insensible a mayúsculas, escapando comodines)
     const { data } = await supabaseAdmin
       .from("affiliates")
-      .select("user_id, cpa_spain, cpa_other")
+      .select(SEL)
       .ilike("freshaffs_tracking_code", tag.replace(/[\\%_*]/g, "\\$&"))
       .limit(1);
     if (data?.[0]) return data[0];
     // 2) por affiliate id exacto
     const { data: d2 } = await supabaseAdmin
       .from("affiliates")
-      .select("user_id, cpa_spain, cpa_other")
+      .select(SEL)
       .eq("freshaffs_affiliate_id", tag)
       .limit(1);
     if (d2?.[0]) return d2[0];
@@ -70,10 +78,25 @@ async function matchAfiliado(tag: string): Promise<Afiliado | null> {
   // con su ?s1=<código> propio SÍ emparejan arriba y se llevan lo suyo.
   const { data: def } = await supabaseAdmin
     .from("affiliates")
-    .select("user_id, cpa_spain, cpa_other")
+    .select(SEL)
     .ilike("freshaffs_tracking_code", "Default")
     .limit(1);
   return def?.[0] ?? null;
+}
+
+// afp del bot al que pertenece el afiliado (bot/botmn/botdm), para que los paneles
+// que agrupan por afp (Estado de bots, "mi bot") sigan funcionando igual que antes.
+// Mongolitos/Default no está en el registro de bots nuevos → afp "bot" (el de Sandro).
+function afpDeTracking(tc: string | null | undefined): string {
+  return botPorTracking(tc || "")?.afp ?? "bot";
+}
+async function afpDeUser(userId: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("affiliates")
+    .select("freshaffs_tracking_code")
+    .eq("user_id", userId)
+    .limit(1);
+  return afpDeTracking(data?.[0]?.freshaffs_tracking_code as string | null);
 }
 
 export async function GET(request: Request) {
@@ -128,6 +151,7 @@ export async function GET(request: Request) {
       event_type: "registration",
       raw_query: raw,
       tracking_code: tag,
+      afp: afpDeTracking(target?.freshaffs_tracking_code),
       player_id: playerid,
       isocountry,
       matched_user_id: target?.user_id ?? null,
@@ -158,6 +182,7 @@ export async function GET(request: Request) {
       event_type: et,
       raw_query: raw,
       tracking_code: tag,
+      afp: afpDeTracking(target?.freshaffs_tracking_code),
       player_id: playerid,
       isocountry,
       matched_user_id: target?.user_id ?? null,
@@ -211,6 +236,7 @@ export async function GET(request: Request) {
         event_type: "commission",
         raw_query: raw,
         tracking_code: tag,
+        afp: contado ? await afpDeUser(contado.userId) : "bot",
         player_id: playerid,
         isocountry,
         matched_user_id: contado?.userId ?? null,
@@ -266,10 +292,12 @@ export async function GET(request: Request) {
       event_type: "commission",
       raw_query: raw,
       tracking_code: tag,
+      afp: afpDeTracking(target?.freshaffs_tracking_code),
       player_id: playerid,
       isocountry,
       matched_user_id: target?.user_id ?? null,
       commission: comisionPagada,
+      amount: monto, // importe del depósito cualificado (Celsius sí lo manda)
       status: estado,
     });
     if (estado === "counted" && target) {
@@ -299,6 +327,7 @@ export async function GET(request: Request) {
     event_type: "registration",
     raw_query: `[event=${event || "?"}] ${raw}`,
     tracking_code: tag,
+    afp: "",
     player_id: playerid,
     isocountry,
     matched_user_id: null,

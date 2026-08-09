@@ -21,6 +21,7 @@ type BotEstado = {
   qftd: number;
   ganado: number;
   recargas: number;
+  depositado: number;
   mensajes: number;
   promo: string;
 };
@@ -150,11 +151,15 @@ export default function EstadoBotsPage() {
                   </div>
                 </div>
 
-                {/* Dinero + recargas */}
-                <div className="rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-2.5 grid grid-cols-2 gap-1 text-center">
+                {/* Dinero + recargas + depositado */}
+                <div className="rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-2.5 grid grid-cols-3 gap-1 text-center">
                   <div>
                     <p className="text-base font-bold text-emerald-300">{eur(b.ganado)}</p>
                     <p className="text-[10px] text-slate-400">has ganado</p>
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-white">{eur(b.depositado)}</p>
+                    <p className="text-[10px] text-slate-400">depositado</p>
                   </div>
                   <div>
                     <p className="text-base font-bold text-white">{b.recargas}</p>

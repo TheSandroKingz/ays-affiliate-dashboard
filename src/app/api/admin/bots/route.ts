@@ -76,10 +76,12 @@ export async function GET(request: Request) {
         .eq("event_type", "commission")
         .in("afp", afps)
         .limit(100000),
+      // Depósitos con importe (Celsius sí manda el amount): primeros depósitos y
+      // recargas. Sirve para contar recargas Y sumar la cantidad depositada.
       supabaseAdmin
         .from("postback_events")
-        .select("afp")
-        .eq("event_type", "redeposit")
+        .select("afp, amount, event_type")
+        .in("event_type", ["ftd", "redeposit"])
         .in("afp", afps)
         .limit(100000),
       // Registros atribuidos a cada bot (por su afp).
@@ -145,8 +147,10 @@ export async function GET(request: Request) {
     ganado.set(e.afp, (ganado.get(e.afp) ?? 0) + Number(e.commission ?? 0));
   }
   const recargas = new Map<string, number>();
+  const depositado = new Map<string, number>();
   for (const e of deps.data ?? []) {
-    recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
+    if (e.event_type === "redeposit") recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
+    depositado.set(e.afp, (depositado.get(e.afp) ?? 0) + Number(e.amount ?? 0));
   }
   const registros = new Map<string, number>();
   for (const e of regs.data ?? []) {
@@ -176,6 +180,7 @@ export async function GET(request: Request) {
       qftd: qftd.get(d.afp) ?? 0,
       ganado: ganado.get(d.afp) ?? 0,
       recargas: recargas.get(d.afp) ?? 0,
+      depositado: depositado.get(d.afp) ?? 0,
       mensajes: d.key === "sandro" ? mensajesSandro : msgsByBot.get(d.key) ?? 0,
       promo: (promo ?? "").trim(),
     };
