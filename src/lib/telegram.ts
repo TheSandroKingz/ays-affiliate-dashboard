@@ -35,15 +35,14 @@ export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 
 // Enlace de registro/depósito (afiliado). El "afp=bot" es el sub-id que vuelve
 // en el postback de FreshBet, para saber qué depósitos vienen del bot.
-export const ENLACE_JUGAR =
-  "https://go.affision.com/visit/?bta=44878&nci=5520&afp=bot";
+export const ENLACE_JUGAR = "https://celsius.games/SAIqylWftX";
 
 // ⛔ PAUSA (FreshBet cortó el tráfico — ya no trabajamos con ellos). Mientras
 // esto sea true, NO se envía NINGÚN enlace/botón en ningún mensaje (chat, diario,
 // bienvenida, broadcast): las funciones de botón devuelven undefined. Los bots
 // siguen encendidos y respondiendo, pero sin enlaces y diciendo que ahora no va.
 // Cuando volvamos a tener casino, poner false (y repasar los prompts).
-export const ENLACES_PAUSADOS = true;
+export const ENLACES_PAUSADOS = false;
 
 // Texto del botón de jugar (llamativo — Telegram no deja cambiar color/tamaño,
 // solo el texto y los emojis).
