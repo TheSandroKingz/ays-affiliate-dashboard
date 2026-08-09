@@ -507,7 +507,7 @@ export async function procesarUpdate(
     // file_id de la media del jugador (para verla en el panel).
     const mediaJ = extraerMedia(msg);
 
-    await supabaseAdmin
+    const { data: insUser } = await supabaseAdmin
       .from("bot_messages")
       .insert({
         bot: bot.key,
@@ -517,13 +517,34 @@ export async function procesarUpdate(
         file_id: mediaJ?.file_id ?? null,
         media_type: mediaJ?.media_type ?? null,
       })
-      .then(() => {}, () => {});
+      .select("id")
+      .maybeSingle();
+    const miMsgId = (insUser?.id as number | undefined) ?? null;
 
-    // La IA responde (si no está limitada ni se pasó el tope diario del bot).
+    // PIENSA ANTES DE RESPONDER (agrupa mensajes seguidos): esperamos unos segundos;
+    // si mientras tanto el jugador manda OTRO mensaje (p. ej. foto y luego texto),
+    // ESTE no responde y deja que responda el último, que ya tendrá TODO el contexto.
+    // Evita la doble respuesta. Solo cuando vamos a responder con la IA.
+    let debounced = false;
+    if (entrada && iaConfigurada() && !limitado && !videoEnviado && miMsgId) {
+      tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
+      await new Promise((r) => setTimeout(r, 4500));
+      const { data: masNuevos } = await supabaseAdmin
+        .from("bot_messages")
+        .select("id")
+        .eq("bot", bot.key)
+        .eq("chat_id", chatId)
+        .eq("role", "user")
+        .gt("id", miMsgId)
+        .limit(1);
+      if (masNuevos && masNuevos.length) debounced = true;
+    }
+
+    // La IA responde (si no está limitada, dentro del tope y no ha quedado debounced).
     const TOPE_DIA = 5000;
     let respuesta: string | null = null;
     let promo = "";
-    if (entrada && iaConfigurada() && !limitado && !videoEnviado) {
+    if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced) {
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
       const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(
         new Date()
@@ -594,7 +615,7 @@ export async function procesarUpdate(
         { parse_mode: undefined, ...(invita ? { reply_markup: botonSoloJugar(bot.enlace) } : {}) },
         tok
       );
-    } else if (entrada && !limitado && !videoEnviado) {
+    } else if (entrada && !limitado && !videoEnviado && !debounced) {
       await tgEnviar(
         chatId,
         "¡Dale! 🔥 Recarga y entra a jugar 👇",
