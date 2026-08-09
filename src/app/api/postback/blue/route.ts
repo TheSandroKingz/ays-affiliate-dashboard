@@ -47,21 +47,33 @@ function pick(url: URL, names: string[]): string {
 type Afiliado = { user_id: string; cpa_spain: number | null; cpa_other: number | null };
 
 async function matchAfiliado(tag: string): Promise<Afiliado | null> {
-  if (!tag) return null;
-  // 1) por tracking code (insensible a mayúsculas, escapando comodines)
-  const { data } = await supabaseAdmin
+  if (tag) {
+    // 1) por tracking code (insensible a mayúsculas, escapando comodines)
+    const { data } = await supabaseAdmin
+      .from("affiliates")
+      .select("user_id, cpa_spain, cpa_other")
+      .ilike("freshaffs_tracking_code", tag.replace(/[\\%_*]/g, "\\$&"))
+      .limit(1);
+    if (data?.[0]) return data[0];
+    // 2) por affiliate id exacto
+    const { data: d2 } = await supabaseAdmin
+      .from("affiliates")
+      .select("user_id, cpa_spain, cpa_other")
+      .eq("freshaffs_affiliate_id", tag)
+      .limit(1);
+    if (d2?.[0]) return d2[0];
+  }
+  // 3) POR DEFECTO: si no hay etiqueta o no empareja con ningún afiliado, va a la
+  // cuenta de la casa/bot (tracking code "Default" = Mongolitos), igual que antes
+  // (el tráfico del bot entraba como trackingcode=Default). Así TU tráfico sale en
+  // el dashboard aunque el enlace directo de Celsius no traiga sub1. Los afiliados
+  // con su ?s1=<código> propio SÍ emparejan arriba y se llevan lo suyo.
+  const { data: def } = await supabaseAdmin
     .from("affiliates")
     .select("user_id, cpa_spain, cpa_other")
-    .ilike("freshaffs_tracking_code", tag.replace(/[\\%_*]/g, "\\$&"))
+    .ilike("freshaffs_tracking_code", "Default")
     .limit(1);
-  if (data?.[0]) return data[0];
-  // 2) por affiliate id exacto (fallback)
-  const { data: d2 } = await supabaseAdmin
-    .from("affiliates")
-    .select("user_id, cpa_spain, cpa_other")
-    .eq("freshaffs_affiliate_id", tag)
-    .limit(1);
-  return d2?.[0] ?? null;
+  return def?.[0] ?? null;
 }
 
 export async function GET(request: Request) {
