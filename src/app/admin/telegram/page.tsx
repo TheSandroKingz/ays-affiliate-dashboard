@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { RefreshCw, ChevronLeft } from "lucide-react";
-import Aprender from "@/components/admin/Aprender";
 
 type Jugador = {
   chat_id: number;
@@ -345,9 +344,6 @@ export default function TelegramPage() {
           )}
         </div>
       )}
-
-      {/* Aprender: analiza conversaciones, propone respuestas y las gestiona. */}
-      <Aprender />
 
       {/* Chats con los jugadores. */}
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">

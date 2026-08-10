@@ -5,7 +5,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
-import { getFaqTexto, faqSuffix } from "@/lib/botFaq";
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -321,10 +320,9 @@ function promoSuffix(promo: string): string {
 function sistemaCacheado(
   base: string,
   promo: string,
-  faq: string,
   nombre?: string | null
 ): Anthropic.TextBlockParam[] {
-  const dyn = promoSuffix(promo) + faqSuffix(faq) + nombreSuffix(nombre);
+  const dyn = promoSuffix(promo) + nombreSuffix(nombre);
   const bloques: Anthropic.TextBlockParam[] = [
     { type: "text", text: base, cache_control: { type: "ephemeral" } },
   ];
@@ -415,10 +413,10 @@ export async function responderIA(
   try {
     const client = new Anthropic({ apiKey: KEY });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
-    const [promo, faq] = await Promise.all([getPromo(), getFaqTexto()]);
+    const promo = await getPromo();
     const txt = await crearConGuardia(
       client,
-      sistemaCacheado(SYSTEM, promo, faq, nombre),
+      sistemaCacheado(SYSTEM, promo, nombre),
       messages
     );
     return txt || null;
@@ -441,10 +439,9 @@ export async function responderIABot(
   try {
     const client = new Anthropic({ apiKey: KEY });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
-    const faq = await getFaqTexto();
     const txt = await crearConGuardia(
       client,
-      sistemaCacheado(persona, promo, faq, nombre),
+      sistemaCacheado(persona, promo, nombre),
       messages
     );
     return txt || null;
