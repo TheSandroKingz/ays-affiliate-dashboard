@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
-import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe } from "@/lib/telegram";
+import { telegramConfigurado } from "@/lib/telegram";
 
-// Los envíos en masa pueden tardar; damos margen para que no se corten.
-export const maxDuration = 60;
-
-// GET: nº de contactos activos (para el panel). POST: envía un mensaje a todos.
+// GET: stats del bot para el panel (dinero generado, depósitos, comunidad, chats).
 export async function GET(request: Request) {
   const user = await getAdminUser(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -183,86 +180,4 @@ export async function GET(request: Request) {
       ? { activo: !!diario.enabled, tipo: diario.media_type ?? null }
       : null,
   });
-}
-
-export async function POST(request: Request) {
-  const user = await getAdminUser(request);
-  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!telegramConfigurado()) {
-    return NextResponse.json(
-      { error: "Falta TELEGRAM_BOT_TOKEN en el servidor." },
-      { status: 500 }
-    );
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const texto = String(body?.texto ?? "").trim();
-  const foto = body?.foto ? String(body.foto).trim() : "";
-  const soloActivos = !!body?.soloActivos; // solo a quien escribió en 7 días
-  if (!texto && !foto) {
-    return NextResponse.json({ error: "El mensaje está vacío." }, { status: 400 });
-  }
-  if (texto.length > 4000) {
-    return NextResponse.json({ error: "Mensaje demasiado largo (máx 4000)." }, { status: 400 });
-  }
-
-  let q = supabaseAdmin
-    .from("telegram_contacts")
-    .select("chat_id")
-    .eq("opted_out", false)
-    .eq("silenced", false);
-  if (soloActivos) {
-    q = q.gte("last_msg_at", new Date(Date.now() - 7 * 864e5).toISOString());
-  }
-  const { data: contactos } = await q;
-  const ids = (contactos ?? []).map((c) => c.chat_id as number);
-
-  let enviados = 0;
-  let fallos = 0;
-  const bloqueados: number[] = [];
-
-  // En tandas de 25 (Telegram permite ~30 mensajes/seg a usuarios distintos).
-  for (let i = 0; i < ids.length; i += 25) {
-    const tanda = ids.slice(i, i + 25);
-    await Promise.all(
-      tanda.map(async (chatId) => {
-        const r = foto
-          ? await tgApi("sendPhoto", {
-              chat_id: chatId,
-              photo: foto,
-              caption: texto || undefined,
-              parse_mode: "HTML",
-              reply_markup: botonJugar(),
-            })
-          : await tgApi("sendMessage", {
-              chat_id: chatId,
-              text: texto,
-              parse_mode: "HTML",
-              disable_web_page_preview: true,
-              reply_markup: botonJugar(),
-            });
-        if (r?.ok) {
-          enviados++;
-          await guardarMsg(chatId, midDe(r));
-        } else {
-          fallos++;
-          // 403 = el usuario bloqueó el bot → lo damos de baja para no reintentar.
-          if (r && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
-            bloqueados.push(chatId);
-          }
-        }
-      })
-    );
-    // Pausa entre tandas para que Telegram no nos frene en listas grandes.
-    if (i + 25 < ids.length) await new Promise((r) => setTimeout(r, 1000));
-  }
-
-  if (bloqueados.length) {
-    await supabaseAdmin
-      .from("telegram_contacts")
-      .update({ opted_out: true })
-      .in("chat_id", bloqueados);
-  }
-
-  return NextResponse.json({ ok: true, enviados, fallos, total: ids.length });
 }
