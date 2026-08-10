@@ -522,13 +522,16 @@ export default function TelegramPage() {
             </div>
           </div>
 
-          {/* Últimas recargas: quién y cuánto metió (se llena con los depósitos). */}
+          {/* Últimas recargas: plegable y colapsado por defecto (ocupa poco). */}
           {stats.recargasLista && stats.recargasLista.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <div className="text-sm text-slate-300 font-medium mb-2">
-                Últimas recargas
-              </div>
-              <div className="flex flex-col gap-1">
+            <details className="group rounded-2xl border border-white/10 bg-black/40">
+              <summary className="flex items-center justify-between cursor-pointer select-none list-none px-4 py-2.5 text-sm text-slate-300 font-medium">
+                <span>Últimas recargas ({stats.recargasLista.length})</span>
+                <span className="text-slate-500 text-xs transition-transform group-open:rotate-180">
+                  ▼
+                </span>
+              </summary>
+              <div className="flex flex-col gap-1 px-4 pb-4 max-h-56 overflow-y-auto">
                 {stats.recargasLista.map((r, i) => (
                   <div
                     key={i}
@@ -551,7 +554,7 @@ export default function TelegramPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
           )}
         </div>
       )}
