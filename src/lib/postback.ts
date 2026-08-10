@@ -121,6 +121,7 @@ export type EstadoEvento =
   | "discarded"
   | "resolved" // FTD retenido aprobado a mano por el admin (dinero sí sumado)
   | "deposit" // primer depósito recibido, aún NO cualificado (no suma dinero)
+  | "qualified" // Blue marcó el FTD como cualificado, pero AÚN no paga comisión (no suma dinero; el CPA se cuenta con commission_paid)
   | "reversed"; // FreshBet quitó la comisión → se restó también al afiliado
 
 // ¿Este jugador YA tiene un FTD CONTADO? Salvaguarda extra anti-doble-pago,
