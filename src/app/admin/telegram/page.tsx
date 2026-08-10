@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { Send, RefreshCw, ChevronLeft } from "lucide-react";
+import FaqManager from "@/components/admin/FaqManager";
 
 type Jugador = {
   chat_id: number;
@@ -582,6 +583,9 @@ export default function TelegramPage() {
           {guardandoPromo ? "Guardando…" : promoGuardada ? "Guardada" : "Guardar promo"}
         </button>
       </div>
+
+      {/* Respuestas fijas que usa el bot (se aprueban en "Aprender" o a mano). */}
+      <FaqManager />
 
       <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
