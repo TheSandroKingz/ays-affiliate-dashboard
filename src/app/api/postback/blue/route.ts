@@ -134,7 +134,11 @@ export async function GET(request: Request) {
   // Etiqueta del afiliado: sub1..sub3 (lo que añadimos al enlace) y, si acaso, la
   // campaña. NO usamos clickid (es único por click, nunca es un código de afiliado
   // → ensuciaría el emparejado). Sin etiqueta → cae en el afiliado por defecto.
-  const tag = pick(url, ["sub1", "s1", "sub2", "s2", "sub3", "s3", "campaign", "campaign_slug"]);
+  // El identificador del afiliado llega en `campaign` (el código del enlace de
+  // Celsius: YmIjpivpyx, iSHRdbxNKE, AhBpxgTaoP…). Lo miramos PRIMERO; los subN
+  // son solo respaldo por si algún enlace los usara. (Antes iban primero los sub
+  // y, si Blue rellenara sub1 con un clickid, el dinero caía en Default por error.)
+  const tag = pick(url, ["campaign", "campaign_slug", "sub1", "s1", "sub2", "s2", "sub3", "s3"]);
   // Id del jugador (hash estable de Blue) o cualquier id alternativo.
   const playerid = pick(url, ["player", "player_token", "playerid", "player_id", "txid", "transaction_id", "txn"]);
   const isocountry = pick(url, ["country", "isocountry"]).toUpperCase();

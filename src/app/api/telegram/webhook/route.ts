@@ -41,12 +41,14 @@ const BIENVENIDA =
   "Por aquí te voy pasando el <b>patrón, vídeos, promos y tips</b> cada día, así que mantente atento. Cualquier duda me escribes y te ayudo al momento. ¡Dale que esto se pone bueno! 🔥\n\n" +
   "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
 
-// ── ANTI-TROLL: insulto DIRIGIDO al bot o AMENAZA (denunciar, guardia civil,
-// "estafador", "no eres hombre"…). NO cuenta un taco suelto de frustración del
-// juego ("joder", "me cago", "puto juego") — solo insultos/amenazas a la persona.
-// Si se repite (varios mensajes así), se auto-silencia para no gastar IA con él.
+// ── ANTI-TROLL: INSULTO PERSONAL dirigido al bot (no un taco de frustración del
+// juego, ni una queja legítima de un pago). ⚠️ OJO: NO metemos aquí "estafa",
+// "denunciar", "guardia civil", "reportar"… porque son las palabras que usa un
+// jugador CABREADO pero LEGÍTIMO con un retiro que no le llega ("esto es una
+// estafa, no me llega el dinero, voy a denunciar") — a ese hay que AYUDARLE, no
+// silenciarlo. Solo cuentan los insultos personales claros. A los 3, se silencia.
 const ABUSO_RE =
-  /estafad|\bestafa\b|timad|\btimo\b|fraude|farsante|mentiros|sinverg[uü]enza|payaso|malnacido|escoria|denunci|guardia civil|\bpolic[ií]a\b|\babogad|\bdemand(a|ar)\b|reportar|no eres (un )?hombre|s[eé] un (puto )?hombre|eres (un|una) (puto|puta|fraude|mentiroso|estafador|payaso|rata|mierda)|hijo de puta|hijoputa|\bhdp\b/i;
+  /gilipollas|cabr[oó]n|subnormal|imb[eé]cil|payaso|farsante|mentiros[oa]|sinverg[uü]enza|malnacido|escoria|maric[oó]n|\bhdp\b|hijo ?de ?puta|hijoputa|no eres (un )?hombre|s[eé] un (puto )?hombre|eres (un|una) (puto|puta|fraude|mentiros[oa]|estafador|payaso|rata|mierda|basura|in[uú]til|escoria)|tu puta madre|tus muertos|me cago en (ti|tu madre|tus muertos)/i;
 
 export async function POST(request: Request) {
   // Verificación del secreto del webhook (comparación en tiempo constante).
