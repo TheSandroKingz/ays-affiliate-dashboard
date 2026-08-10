@@ -182,7 +182,7 @@ export const BOTS: Record<string, BotDef> = {
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_JEFFER || "",
     enlace: ENLACE_JEFFER,
     afp: AFP_JEFFER,
-    trackingCode: "mine", // Campaña de Jeffer en Blue (enlace cZahjDgQoR = "Mine", sub=mine)
+    trackingCode: "cZahjDgQoR", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "mine"
     nombre: "Jeffer",
     juego: "las Mines",
     bienvenida: BIENVENIDA_BASE,
@@ -207,7 +207,7 @@ export const BOTS: Record<string, BotDef> = {
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",
     enlace: ENLACE_MARIAM,
     afp: AFP_MARIAM,
-    trackingCode: "patron", // Campaña de Mariam en Blue (enlace AhBpxgTaoP = "Patron", sub=patron)
+    trackingCode: "AhBpxgTaoP", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "patron"
     nombre: "Alana",
     juego: "Diamond Mines",
     bienvenida: BIENVENIDA_BASE,
