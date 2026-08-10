@@ -41,6 +41,13 @@ const BIENVENIDA =
   "Por aquí te voy pasando el <b>patrón, vídeos, promos y tips</b> cada día, así que mantente atento. Cualquier duda me escribes y te ayudo al momento. ¡Dale que esto se pone bueno! 🔥\n\n" +
   "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
 
+// ── ANTI-TROLL: insulto DIRIGIDO al bot o AMENAZA (denunciar, guardia civil,
+// "estafador", "no eres hombre"…). NO cuenta un taco suelto de frustración del
+// juego ("joder", "me cago", "puto juego") — solo insultos/amenazas a la persona.
+// Si se repite (varios mensajes así), se auto-silencia para no gastar IA con él.
+const ABUSO_RE =
+  /estafad|\bestafa\b|timad|\btimo\b|fraude|farsante|mentiros|sinverg[uü]enza|payaso|malnacido|escoria|denunci|guardia civil|\bpolic[ií]a\b|\babogad|\bdemand(a|ar)\b|reportar|no eres (un )?hombre|s[eé] un (puto )?hombre|eres (un|una) (puto|puta|fraude|mentiroso|estafador|payaso|rata|mierda)|hijo de puta|hijoputa|\bhdp\b/i;
+
 export async function POST(request: Request) {
   // Verificación del secreto del webhook (comparación en tiempo constante).
   const secret = request.headers.get("x-telegram-bot-api-secret-token");
@@ -417,6 +424,38 @@ export async function POST(request: Request) {
       // bot ignoraba lo que la gente escribe junto a la foto (y lo perdía de la
       // memoria). Así lee la imagen Y lo que dice sobre ella.
       const textoJ = text || (msg.caption ?? "").trim();
+
+      // ── ANTI-TROLL: si INSULTA al bot o AMENAZA (denunciar, guardia civil,
+      // "estafador"…) de forma PERSISTENTE, dejamos de contestarle para no gastar
+      // IA con él. A los 3 mensajes abusivos se auto-silencia; el dueño puede
+      // quitarle el silencio a mano desde el panel. Un taco suelto NO lo silencia.
+      if (textoJ && ABUSO_RE.test(textoJ)) {
+        const { data: prevAbuso } = await supabaseAdmin
+          .from("telegram_messages")
+          .select("content")
+          .eq("chat_id", chatId)
+          .eq("role", "user")
+          .order("created_at", { ascending: false })
+          .limit(12);
+        const nAbuso =
+          1 +
+          (prevAbuso ?? []).filter((m) =>
+            ABUSO_RE.test(String(m.content ?? ""))
+          ).length;
+        if (nAbuso >= 3) {
+          await supabaseAdmin
+            .from("telegram_contacts")
+            .update({ silenced: true })
+            .eq("chat_id", chatId);
+          if (OWNER_CHAT_ID) {
+            await tgEnviar(
+              String(OWNER_CHAT_ID),
+              `🔇 Silenciado ${from.first_name ?? "un usuario"} (chat ${chatId}): lleva varios insultos/amenazas, dejé de contestarle para no gastar IA. Para reactivarlo, quítale el silencio en el panel.`
+            ).catch(() => {});
+          }
+          return NextResponse.json({ ok: true, silenced: "troll" });
+        }
+      }
 
       let videoEnviado = false;
       // Detecta que piden el patrón/método O que piden VER el vídeo o están
