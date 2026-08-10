@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
-import { Send, RefreshCw, ChevronLeft } from "lucide-react";
+import { RefreshCw, ChevronLeft } from "lucide-react";
 import FaqManager from "@/components/admin/FaqManager";
 
 type Jugador = {
@@ -16,11 +16,28 @@ type Jugador = {
   silenced: boolean;
 };
 
+function iniciales(n?: string | null): string {
+  const s = (n || "").trim();
+  if (!s) return "?";
+  const p = s.split(/\s+/);
+  return ((p[0]?.[0] ?? "?") + (p[1]?.[0] ?? "")).toUpperCase();
+}
+const AVATAR_COLORS = [
+  "bg-emerald-500/25 text-emerald-200",
+  "bg-sky-500/25 text-sky-200",
+  "bg-fuchsia-500/25 text-fuchsia-200",
+  "bg-amber-500/25 text-amber-200",
+  "bg-rose-500/25 text-rose-200",
+  "bg-indigo-500/25 text-indigo-200",
+  "bg-teal-500/25 text-teal-200",
+];
+function colorAvatar(id: number): string {
+  return AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
+}
+
 export default function TelegramPage() {
   const router = useRouter();
-  const [contactos, setContactos] = useState<number | null>(null);
   const [configurado, setConfigurado] = useState(true);
-  const [diario, setDiario] = useState<{ activo: boolean; tipo: string | null } | null>(null);
   const [stats, setStats] = useState<{
     activos: number;
     total: number;
@@ -36,62 +53,14 @@ export default function TelegramPage() {
   } | null>(null);
   // Período del "dinero generado": "total" | "hoy" | "ayer" | "YYYY-MM".
   const [periodo, setPeriodo] = useState<string>("total");
-  const [texto, setTexto] = useState("");
-  const [soloActivos, setSoloActivos] = useState(false);
-  const [promo, setPromo] = useState("");
-  const [promoGuardada, setPromoGuardada] = useState(true);
-  const [guardandoPromo, setGuardandoPromo] = useState(false);
   const [refrescando, setRefrescando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<string | null>(null);
-  const [probando, setProbando] = useState(false);
-  const [diag, setDiag] = useState<string | null>(null);
-  const [reconectando, setReconectando] = useState(false);
-  const [recon, setRecon] = useState<string | null>(null);
-  const [probandoDiario, setProbandoDiario] = useState(false);
-  const [testDiario, setTestDiario] = useState<string | null>(null);
-  const [enviandoAhora, setEnviandoAhora] = useState(false);
-  const [resAhora, setResAhora] = useState<string | null>(null);
-
-  async function enviarDiarioAhora() {
-    if (!confirm("¿Enviar el mensaje diario AHORA a todos los jugadores?")) return;
-    setEnviandoAhora(true);
-    setResAhora(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/cron/telegram-daily?force=1", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      if (b.enviado) {
-        setResAhora(`✅ Enviado a ${b.enviados} de ${b.total}.`);
-      } else {
-        setResAhora("⚠️ " + (b.motivo || b.error || "No se envió."));
-      }
-    } catch {
-      setResAhora("⚠️ No se pudo (mira tu conexión).");
-    } finally {
-      setEnviandoAhora(false);
-    }
-  }
-  const [reiniciando, setReiniciando] = useState(false);
-  const [reinicio, setReinicio] = useState<string | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
   const [cargandoJug, setCargandoJug] = useState(false);
   const [chatAbierto, setChatAbierto] = useState<number | null>(null);
   const [chatMsgs, setChatMsgs] = useState<
-    {
-      role: string;
-      content: string;
-      created_at?: string;
-      media_url?: string | null;
-    }[]
+    { role: string; content: string; created_at?: string; media_url?: string | null }[]
   >([]);
   const [cargandoChat, setCargandoChat] = useState(false);
-  // Contenedor del chat: para bajar solo al último mensaje al abrirlo.
   const chatScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!cargandoChat && chatScrollRef.current) {
@@ -157,115 +126,6 @@ export default function TelegramPage() {
     );
   }
 
-  async function reiniciarMemoria() {
-    if (!confirm("¿Borrar la memoria de todas las conversaciones? (no borra contactos)")) return;
-    setReiniciando(true);
-    setReinicio(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/reset-memory", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      setReinicio(b.ok ? "✅ Memoria borrada. El bot empieza de cero." : "⚠️ " + (b.error || "No se pudo."));
-    } catch {
-      setReinicio("⚠️ No se pudo (mira tu conexión).");
-    } finally {
-      setReiniciando(false);
-    }
-  }
-
-  async function probarDiario() {
-    setProbandoDiario(true);
-    setTestDiario(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/test-daily", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      if (b.ok) {
-        setTestDiario(
-          "✅ Te lo he enviado por Telegram (solo a ti)" +
-            (b.con_video ? " con el vídeo" : " (sin vídeo)") +
-            ". Míralo en tu chat con el bot."
-        );
-      } else {
-        setTestDiario("⚠️ " + (b.error || "No se pudo enviar."));
-      }
-    } catch {
-      setTestDiario("⚠️ No se pudo probar (mira tu conexión).");
-    } finally {
-      setProbandoDiario(false);
-    }
-  }
-
-  async function reconectar() {
-    setReconectando(true);
-    setRecon(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/setup", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      if (b.ok) {
-        setRecon("✅ Bot reconectado a esta web. Prueba a escribirle otra vez.");
-      } else {
-        setRecon("⚠️ No se pudo reconectar: " + (b.error || "error desconocido"));
-      }
-    } catch {
-      setRecon("⚠️ No se pudo reconectar (mira tu conexión).");
-    } finally {
-      setReconectando(false);
-    }
-  }
-
-  async function probarBot() {
-    setProbando(true);
-    setDiag(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/diag", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      if (b.ok) {
-        setDiag("✅ El bot con IA funciona. Respuesta de prueba: “" + (b.respuesta_prueba || "") + "”");
-      } else if (!b.clave_presente) {
-        setDiag("❌ Falta la clave de Claude (ANTHROPIC_API_KEY) en Vercel, o no se hizo Redeploy.");
-      } else {
-        setDiag(
-          "❌ La clave está (" +
-            (b.clave_empieza_por || "") +
-            ") pero Claude da error" +
-            (b.status ? " " + b.status : "") +
-            ": " +
-            (b.mensaje_error || "desconocido")
-        );
-      }
-    } catch {
-      setDiag("⚠️ No se pudo comprobar (mira tu conexión).");
-    } finally {
-      setProbando(false);
-    }
-  }
-
   const cargar = useCallback(async () => {
     const {
       data: { session },
@@ -292,85 +152,15 @@ export default function TelegramPage() {
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     if (res) {
-      setContactos(Number(res.contactos ?? 0));
       setConfigurado(res.configurado !== false);
-      setDiario(res.diario ?? null);
       setStats(res.stats ?? null);
-      setPromo(res.promo ?? "");
-      setPromoGuardada(true);
     }
   }, [router, periodo]);
 
   useEffect(() => {
     cargar();
-    cargarJugadores(); // carga la lista de chats al entrar
+    cargarJugadores();
   }, [cargar]);
-
-  async function guardarPromo() {
-    setGuardandoPromo(true);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({ promo }),
-      });
-      if (r.ok) setPromoGuardada(true);
-    } finally {
-      setGuardandoPromo(false);
-    }
-  }
-
-  async function enviar() {
-    if (!texto.trim()) return;
-    if (
-      !confirm(
-        soloActivos
-          ? "¿Enviar este mensaje SOLO a los jugadores activos (7 días)?"
-          : `¿Enviar este mensaje a ${contactos ?? 0} contacto(s) de Telegram?`
-      )
-    )
-      return;
-    setEnviando(true);
-    setResultado(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch("/api/telegram/broadcast", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({
-          texto,
-          soloActivos,
-        }),
-      });
-      const b = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setResultado("⚠️ " + (b.error || "No se pudo enviar."));
-      } else {
-        setResultado(
-          `✅ Enviado a ${b.enviados} de ${b.total}${
-            b.fallos ? ` (${b.fallos} fallaron)` : ""
-          }.`
-        );
-        setTexto("");
-        cargar();
-      }
-    } finally {
-      setEnviando(false);
-    }
-  }
 
   const chatSel = jugadores?.find((j) => j.chat_id === chatAbierto) ?? null;
 
@@ -386,13 +176,14 @@ export default function TelegramPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">Telegram</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Manda un mensaje a todos los jugadores que se han unido al bot.
+            El dinero que trae el bot, sus respuestas y los chats con los jugadores.
           </p>
         </div>
         <button
           onClick={async () => {
             setRefrescando(true);
             await cargar();
+            await cargarJugadores();
             setRefrescando(false);
           }}
           disabled={refrescando}
@@ -412,7 +203,7 @@ export default function TelegramPage() {
 
       {stats && (
         <div className="flex flex-col gap-3">
-          {/* 1) Dinero que me ha generado el bot, por período (Hoy/Ayer/mes/Total). */}
+          {/* Dinero que me ha generado el bot, por período (Hoy/Ayer/mes/Total). */}
           <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-emerald-200/80">
@@ -469,11 +260,9 @@ export default function TelegramPage() {
             </div>
           </div>
 
-          {/* 2) Más específico: en listas (etiqueta → valor), como estaba antes. */}
+          {/* Más específico: en listas (etiqueta → valor). */}
           <div>
-            <div className="text-sm text-slate-300 font-medium mb-2">
-              Más específico
-            </div>
+            <div className="text-sm text-slate-300 font-medium mb-2">Más específico</div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[
                 {
@@ -502,10 +291,7 @@ export default function TelegramPage() {
                   ] as [string, string | number][],
                 },
               ].map((card) => (
-                <div
-                  key={card.t}
-                  className="rounded-2xl border border-white/15 bg-white/5 p-4"
-                >
+                <div key={card.t} className="rounded-2xl border border-white/15 bg-white/5 p-4">
                   <div className="text-xs text-slate-400 mb-3">{card.t}</div>
                   <div className="flex flex-col gap-2">
                     {card.rows.map(([l, v]) => (
@@ -523,7 +309,7 @@ export default function TelegramPage() {
             </div>
           </div>
 
-          {/* Últimas recargas: plegable y colapsado por defecto (ocupa poco). */}
+          {/* Últimas recargas: plegable y colapsado por defecto. */}
           {stats.recargasLista && stats.recargasLista.length > 0 && (
             <details className="group rounded-2xl border border-white/10 bg-black/40">
               <summary className="flex items-center justify-between cursor-pointer select-none list-none px-4 py-2.5 text-sm text-slate-300 font-medium">
@@ -560,254 +346,132 @@ export default function TelegramPage() {
         </div>
       )}
 
-      {/* Promo activa que el bot menciona */}
-      <div className="bg-white/5 border border-white/15 rounded-xl p-4 flex flex-col gap-2">
-        <label className="text-sm font-medium text-slate-200">
-          🎁 Promo activa (el bot la menciona)
-        </label>
-        <textarea
-          value={promo}
-          onChange={(e) => {
-            setPromo(e.target.value);
-            setPromoGuardada(false);
-          }}
-          rows={2}
-          placeholder="Ej: Hoy recarga del 50% metiendo 20€ o más 🔥 (déjalo vacío si no hay promo)"
-          className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400/60"
-        />
-        <button
-          onClick={guardarPromo}
-          disabled={guardandoPromo || promoGuardada}
-          className="self-start bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition"
-        >
-          {guardandoPromo ? "Guardando…" : promoGuardada ? "Guardada" : "Guardar promo"}
-        </button>
-      </div>
-
       {/* Respuestas fijas que usa el bot (se aprueban en "Aprender" o a mano). */}
       <FaqManager />
 
-      <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-slate-300">
-            🤖 Respuestas automáticas con IA
-          </span>
-          <button
-            onClick={probarBot}
-            disabled={probando}
-            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-          >
-            {probando ? "Probando…" : "Probar bot"}
-          </button>
-        </div>
-        {diag && <p className="text-sm text-slate-200">{diag}</p>}
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 mt-1">
-          <span className="text-sm text-slate-300">
-            🧠 Memoria del bot (si sigue con el tono viejo)
-          </span>
-          <button
-            onClick={reiniciarMemoria}
-            disabled={reiniciando}
-            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-          >
-            {reiniciando ? "Borrando…" : "Reiniciar memoria"}
-          </button>
-        </div>
-        {reinicio && <p className="text-sm text-slate-200">{reinicio}</p>}
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 mt-1">
-          <span className="text-sm text-slate-300">
-            🔌 Conexión del bot (webhook)
-          </span>
-          <button
-            onClick={reconectar}
-            disabled={reconectando}
-            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-          >
-            {reconectando ? "Reconectando…" : "Reconectar bot"}
-          </button>
-        </div>
-        {recon && <p className="text-sm text-slate-200">{recon}</p>}
-        <div className="border-t border-white/10 pt-2 mt-1 text-sm text-slate-300">
-          📅 Mensaje diario automático:{" "}
-          {diario === null ? (
-            <span className="text-slate-400">sin configurar</span>
-          ) : diario.activo ? (
-            <span className="text-emerald-300">✅ activo ({diario.tipo})</span>
-          ) : (
-            <span className="text-amber-300">⏸️ pausado</span>
-          )}
-          <p className="text-[11px] text-slate-500 mt-1">
-            Sale a las <b>20:00</b> (hora española). La IA escribe
-            un texto distinto cada día. Para poner/cambiar el vídeo: mándale al
-            bot <b>/diario</b> con el vídeo (escribe <b>/diario</b> en el pie).
-            Pausar el vídeo: <b>/diario off</b>.
-          </p>
-          <div className="flex items-center justify-between gap-3 pt-1">
-            <span className="text-sm text-slate-300">🧪 Ver un ejemplo</span>
-            <button
-              onClick={probarDiario}
-              disabled={probandoDiario}
-              className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-            >
-              {probandoDiario ? "Enviando…" : "Probar envío diario"}
-            </button>
-          </div>
-          {testDiario && <p className="text-sm text-slate-200">{testDiario}</p>}
-          <div className="flex items-center justify-between gap-3 pt-1">
-            <span className="text-sm text-slate-300">📤 Enviar ahora a todos</span>
-            <button
-              onClick={enviarDiarioAhora}
-              disabled={enviandoAhora}
-              className="shrink-0 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-            >
-              {enviandoAhora ? "Enviando…" : "Enviar diario ahora"}
-            </button>
-          </div>
-          {resAhora && <p className="text-sm text-slate-200">{resAhora}</p>}
-        </div>
-      </div>
-
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-5 flex flex-col gap-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">
-            Mensaje
-          </label>
-          <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            rows={6}
-            placeholder="Escribe el mensaje… (puedes usar &lt;b&gt;negrita&lt;/b&gt; y emojis)"
-            className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:border-emerald-400/60"
-          />
-          <p className="text-[11px] text-slate-500 mt-1">
-            {texto.length}/4000 · admite HTML básico (&lt;b&gt;, &lt;i&gt;, &lt;a
-            href&gt;)
-          </p>
-        </div>
-        <p className="text-[11px] text-slate-500">
-          ¿Mandar un <b>vídeo o foto</b> desde la galería? Se hace desde el chat
-          del bot: <b>/todos</b> con el vídeo en el pie (lo envía ya a todos) o{" "}
-          <b>/diario</b> (envío diario). Aquí solo se manda texto.
-        </p>
-        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={soloActivos}
-            onChange={(e) => setSoloActivos(e.target.checked)}
-            className="h-4 w-4 accent-emerald-500"
-          />
-          Enviar solo a los activos (escribieron en 7 días)
-        </label>
-        <button
-          onClick={enviar}
-          disabled={enviando || !texto.trim()}
-          className="self-start inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition"
-        >
-          <Send size={16} />
-          {enviando ? "Enviando…" : "Enviar a todos"}
-        </button>
-        {resultado && <p className="text-sm text-slate-200">{resultado}</p>}
-      </div>
-
-      <div className="bg-white/5 border border-white/15 rounded-xl p-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium text-slate-200">
-            💬 Chats {jugadores ? `(${jugadores.length})` : ""}
+      {/* Chats con los jugadores. */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10">
+          <span className="text-sm font-semibold text-white">
+            💬 Chats{jugadores ? ` · ${jugadores.length}` : ""}
           </span>
           <button
             onClick={cargarJugadores}
             disabled={cargandoJug}
-            className="shrink-0 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+            className="shrink-0 inline-flex items-center gap-1.5 text-slate-300 hover:text-white disabled:opacity-50 text-sm transition"
           >
-            {cargandoJug ? "Cargando…" : jugadores ? "Actualizar" : "Ver chats"}
+            <RefreshCw size={14} className={cargandoJug ? "animate-spin" : ""} />
+            {cargandoJug ? "Cargando…" : "Actualizar"}
           </button>
         </div>
 
-        {jugadores && jugadores.length === 0 && (
-          <p className="text-sm text-slate-400">Aún no hay jugadores.</p>
-        )}
-
-        {jugadores && jugadores.length > 0 && (
-          <div className="flex rounded-xl overflow-hidden border border-white/10 h-[70vh] sm:h-[520px]">
+        {!jugadores ? (
+          <p className="text-sm text-slate-400 p-4">Cargando chats…</p>
+        ) : jugadores.length === 0 ? (
+          <p className="text-sm text-slate-400 p-4">Aún no hay jugadores.</p>
+        ) : (
+          <div className="flex h-[70vh] sm:h-[540px]">
             {/* Lista de chats (izquierda) */}
             <div
               className={`${
                 chatAbierto ? "hidden sm:flex" : "flex"
-              } flex-col w-full sm:w-64 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20`}
+              } flex-col w-full sm:w-72 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20`}
             >
-              {jugadores.map((j) => (
-                <button
-                  key={j.chat_id}
-                  onClick={() => verChat(j.chat_id)}
-                  className={`text-left px-3 py-2.5 border-b border-white/5 hover:bg-white/5 transition ${
-                    chatAbierto === j.chat_id ? "bg-white/10" : ""
-                  }`}
-                >
-                  <div className="text-sm text-white truncate">
-                    {j.first_name || "Jugador"}{" "}
-                    {j.username ? `(@${j.username})` : ""}
-                  </div>
-                  <div className="text-[11px] text-slate-500 truncate">
-                    {j.silenced && (
-                      <span className="text-amber-300">silenciado · </span>
-                    )}
-                    {j.opted_out && <span>baja · </span>}
-                    {j.last_msg_at
-                      ? new Date(j.last_msg_at).toLocaleString("es-ES", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "sin actividad"}
-                  </div>
-                </button>
-              ))}
+              {jugadores.map((j) => {
+                const activo = chatAbierto === j.chat_id;
+                return (
+                  <button
+                    key={j.chat_id}
+                    onClick={() => verChat(j.chat_id)}
+                    className={`flex items-center gap-3 text-left px-3 py-2.5 border-b border-white/5 transition ${
+                      activo ? "bg-white/10" : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div
+                      className={`shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold ${colorAvatar(
+                        j.chat_id
+                      )}`}
+                    >
+                      {iniciales(j.first_name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-white truncate">
+                          {j.first_name || "Jugador"}
+                        </span>
+                        <span className="text-[10px] text-slate-500 shrink-0">
+                          {j.last_msg_at
+                            ? new Date(j.last_msg_at).toLocaleDateString("es-ES", {
+                                day: "2-digit",
+                                month: "2-digit",
+                              })
+                            : ""}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate">
+                        {j.silenced && <span className="text-amber-300">🔇 silenciado · </span>}
+                        {j.opted_out && <span className="text-slate-400">baja · </span>}
+                        {j.username ? `@${j.username}` : `#${j.chat_id}`}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Conversación (derecha) */}
             <div
               className={`${
                 chatAbierto ? "flex" : "hidden sm:flex"
-              } flex-col flex-1 min-w-0 min-h-0 bg-black/30`}
+              } flex-col flex-1 min-w-0 min-h-0 bg-[#0b141a]`}
             >
               {chatAbierto === null ? (
-                <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
-                  Elige un chat de la lista 👈
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
+                  <span className="text-3xl">💬</span>
+                  Elige un chat de la lista
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-white/10 bg-black/40">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-white/10 bg-black/40">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <button
                         onClick={() => setChatAbierto(null)}
                         className="sm:hidden text-slate-300 hover:text-white shrink-0"
                       >
                         <ChevronLeft size={18} />
                       </button>
-                      <span className="text-sm text-white truncate">
-                        {chatSel?.first_name || "Jugador"}{" "}
-                        {chatSel?.username ? `(@${chatSel.username})` : ""}
-                      </span>
+                      <div
+                        className={`shrink-0 w-8 h-8 rounded-full grid place-items-center text-[11px] font-bold ${colorAvatar(
+                          chatSel?.chat_id ?? 0
+                        )}`}
+                      >
+                        {iniciales(chatSel?.first_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm text-white truncate leading-tight">
+                          {chatSel?.first_name || "Jugador"}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate leading-tight">
+                          {chatSel?.username ? `@${chatSel.username}` : `#${chatSel?.chat_id}`}
+                        </div>
+                      </div>
                     </div>
                     {chatSel && (
                       <button
-                        onClick={() =>
-                          toggleSilencio(chatSel.chat_id, !chatSel.silenced)
-                        }
+                        onClick={() => toggleSilencio(chatSel.chat_id, !chatSel.silenced)}
                         className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg transition ${
                           chatSel.silenced
                             ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                            : "bg-white/10 hover:bg-white/20 text-white"
+                            : "bg-white/10 hover:bg-white/20 text-slate-200"
                         }`}
                       >
-                        {chatSel.silenced ? "Reactivar" : "Silenciar"}
+                        {chatSel.silenced ? "🔊 Reactivar" : "🔇 Silenciar"}
                       </button>
                     )}
                   </div>
                   <div
                     ref={chatScrollRef}
-                    className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2"
+                    className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-1.5"
                   >
                     {cargandoChat ? (
                       <p className="text-xs text-slate-400">Cargando…</p>
@@ -819,17 +483,12 @@ export default function TelegramPage() {
                       chatMsgs.map((m, i) => {
                         const bot = m.role === "assistant";
                         return (
-                          <div
-                            key={i}
-                            className={`flex ${
-                              bot ? "justify-end" : "justify-start"
-                            }`}
-                          >
+                          <div key={i} className={`flex ${bot ? "justify-end" : "justify-start"}`}>
                             <div
-                              className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-xs leading-snug ${
+                              className={`max-w-[82%] rounded-2xl px-3 py-1.5 text-xs leading-snug shadow-sm ${
                                 bot
-                                  ? "bg-emerald-600 text-white rounded-br-sm"
-                                  : "bg-white/15 text-slate-100 rounded-bl-sm"
+                                  ? "bg-emerald-700/90 text-white rounded-br-sm"
+                                  : "bg-white/12 text-slate-100 rounded-bl-sm"
                               }`}
                             >
                               {m.media_url && (
@@ -844,21 +503,16 @@ export default function TelegramPage() {
                               {m.content}
                               {m.created_at && (
                                 <div
-                                  className={`text-[9px] mt-0.5 ${
-                                    bot
-                                      ? "text-emerald-100/70"
-                                      : "text-slate-400"
+                                  className={`text-[9px] mt-0.5 text-right ${
+                                    bot ? "text-emerald-100/60" : "text-slate-400"
                                   }`}
                                 >
-                                  {new Date(m.created_at).toLocaleString(
-                                    "es-ES",
-                                    {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }
-                                  )}
+                                  {new Date(m.created_at).toLocaleString("es-ES", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -875,9 +529,8 @@ export default function TelegramPage() {
       </div>
 
       <p className="text-xs text-slate-500">
-        Consejo: no envíes demasiado seguido (para que Telegram no bloquee el
-        bot). Cada jugador puede darse de baja con /stop, y tú puedes silenciar a
-        un pesado arriba.
+        Puedes silenciar a un pesado desde su chat. Cada jugador puede darse de
+        baja con /stop.
       </p>
     </main>
   );
