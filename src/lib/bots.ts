@@ -176,7 +176,9 @@ const AFP_MARIAM = "botdm"; // Mariam → Diamond Mines
 // Enlaces de Celsius (Blue) de cada bot, con su campaña propia. Se ponen aquí
 // (no en env) para no depender de una variable de Vercel que traía el de FreshBet.
 // Jeffer → campaña "Mine" (cZahjDgQoR); Mariam/Alana → campaña "Patron" (AhBpxgTaoP).
-const ENLACE_JEFFER = "https://celsius.games/cZahjDgQoR";
+// Enlace DEDICADO del bot de Jeffer (BOT JEFFER, código iSHRdbxNKE). El dinero
+// se atribuye a la cuenta de Jeffer y su tráfico sale como afp "botmn".
+const ENLACE_JEFFER = "https://celsius.games/iSHRdbxNKE";
 const ENLACE_MARIAM = "https://celsius.games/AhBpxgTaoP";
 
 export const BOTS: Record<string, BotDef> = {

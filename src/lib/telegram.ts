@@ -38,7 +38,9 @@ export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 // clickid y el postback podría no dispararse. El g/ redirige a Celsius añadiendo
 // click_id (y el sub1 si lo lleva). Sin sub1 = tráfico del bot = va a tu cuenta
 // por defecto (Mongolitos). Los afiliados usan el mismo g/ con su ?s1=<código>.
-export const ENLACE_JUGAR = "https://blue2affiliates.com/g/rNotVFJl";
+// Enlace DEDICADO del bot de Sandro (BOT AS, código YmIjpivpyx). Al ser propio
+// del bot, su tráfico se separa del Instagram del socio en el panel (afp "bot").
+export const ENLACE_JUGAR = "https://celsius.games/YmIjpivpyx";
 
 // ⛔ PAUSA (FreshBet cortó el tráfico — ya no trabajamos con ellos). Mientras
 // esto sea true, NO se envía NINGÚN enlace/botón en ningún mensaje (chat, diario,

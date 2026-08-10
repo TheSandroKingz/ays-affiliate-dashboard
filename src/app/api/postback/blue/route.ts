@@ -99,6 +99,31 @@ async function afpDeUser(userId: string): Promise<string> {
   return afpDeTracking(data?.[0]?.freshaffs_tracking_code as string | null);
 }
 
+// ── Enlaces DEDICADOS de cada BOT de Telegram (los creó la red en Blue). Cada
+// bot manda SU código, así el panel de cada bot cuenta SOLO su tráfico, separado
+// del tráfico del socio/Instagram (que usa OTROS códigos → afp "web", no es bot).
+// El afp sale del CÓDIGO del enlace (tag), NO del afiliado (antes todo lo que caía
+// en la casa/Default se marcaba "bot" y mezclaba el Instagram del socio).
+const AFP_CAMPANA: Record<string, string> = {
+  ymijpivpyx: "bot", // BOT AS  (bot de Sandro)
+  ishrdbxnke: "botmn", // BOT JEFFER (bot de Jeffer)
+  ahbpxgtaop: "botdm", // bot de Mariam/Alana (su enlace de siempre)
+};
+// Dinero: si el código de un bot pertenece a un afiliado concreto, con qué
+// tracking se empareja para atribuírselo (BOT JEFFER → cuenta de Jeffer).
+const DUENO_CAMPANA: Record<string, string> = {
+  ishrdbxnke: "cZahjDgQoR", // el dinero de BOT JEFFER va a la cuenta de Jeffer
+};
+// afp para los PANELES de bot, a partir del código del enlace. Lo que no sea un
+// enlace de bot conocido (Instagram del socio, directos, etc.) → "web" (no bot).
+function afpDeCampana(tag: string): string {
+  return AFP_CAMPANA[(tag || "").trim().toLowerCase()] ?? "web";
+}
+// Código con el que emparejar el DINERO (resuelve el dueño si es un enlace de bot).
+function codigoParaMatch(tag: string): string {
+  return DUENO_CAMPANA[(tag || "").trim().toLowerCase()] ?? tag;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   if (!compararSecreto(url.searchParams.get("key"), process.env.POSTBACK_SECRET)) {
@@ -144,7 +169,7 @@ export async function GET(request: Request) {
 
   // ── REGISTRO ──────────────────────────────────────────────────────────────
   if (event === "registration" || event === "register" || event === "signup") {
-    const target = await matchAfiliado(tag);
+    const target = await matchAfiliado(codigoParaMatch(tag));
     let estado: EstadoEvento = "no_match";
     if (target) {
       let contar: boolean;
@@ -178,7 +203,7 @@ export async function GET(request: Request) {
       event_type: "registration",
       raw_query: raw,
       tracking_code: tag,
-      afp: afpDeTracking(target?.freshaffs_tracking_code),
+      afp: afpDeCampana(tag),
       player_id: playerid,
       isocountry,
       matched_user_id: target?.user_id ?? null,
@@ -190,7 +215,7 @@ export async function GET(request: Request) {
 
   // ── FTD / RECARGA (log, NO paga) ──────────────────────────────────────────
   if (event === "ftd" || event === "deposit" || event === "redeposit") {
-    const target = await matchAfiliado(tag);
+    const target = await matchAfiliado(codigoParaMatch(tag));
     const et: "ftd" | "redeposit" = event === "ftd" ? "ftd" : "redeposit";
     // Anti-reintento (mismo jugador + mismo tipo + mismo importe en 2 min = reintento
     // de Blue). Vale para ftd y recarga: no suma dinero pero evita inflar contadores.
@@ -210,7 +235,7 @@ export async function GET(request: Request) {
       event_type: et,
       raw_query: raw,
       tracking_code: tag,
-      afp: afpDeTracking(target?.freshaffs_tracking_code),
+      afp: afpDeCampana(tag),
       player_id: playerid,
       isocountry,
       matched_user_id: target?.user_id ?? null,
@@ -293,7 +318,7 @@ export async function GET(request: Request) {
 
     // QFTD normal: emparejar, candado por jugador, retener si ya estaba contado,
     // y pagar el CPA (nuestro plan, no la comisión de la red).
-    const target = await matchAfiliado(tag);
+    const target = await matchAfiliado(codigoParaMatch(tag));
     let estado: EstadoEvento = "no_match";
     let comisionPagada = 0;
     let heldReason: "double_pay" | null = null;
@@ -335,7 +360,7 @@ export async function GET(request: Request) {
       event_type: "commission",
       raw_query: raw,
       tracking_code: tag,
-      afp: afpDeTracking(target?.freshaffs_tracking_code),
+      afp: afpDeCampana(tag),
       player_id: playerid,
       isocountry,
       matched_user_id: target?.user_id ?? null,
