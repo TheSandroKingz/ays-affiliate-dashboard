@@ -50,12 +50,6 @@ export default function AdminLayout({
             Bots
           </Link>
           <Link
-            href="/admin/aprender"
-            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
-          >
-            Aprender
-          </Link>
-          <Link
             href="/admin/reparto"
             className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
           >
