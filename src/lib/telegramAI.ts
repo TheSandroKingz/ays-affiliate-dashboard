@@ -334,7 +334,7 @@ function sistemaCacheado(
 // "es normal" a secas, porque vale para depósitos/bono ("eso es normal, está en
 // proceso"); solo las inequívocas de dar por normal/esperable la pérdida o el azar.
 const NORMALIZA_PERDER =
-  /\beso pasa\b|a veces no sal|a veces se pierd|a veces toca|le pasa a todos|cada tirada es|\bes azar\b|mala suerte|toca petar|a veces sale bomba|no sale bien y ya|as[ií] es (el juego|esto)/i;
+  /\beso (le )?pasa\b|a veces no sal|a veces se pierd|a veces toca|le pasa a todos|cada tirada es|\bes azar\b|\bes suerte\b|mala suerte|toca petar|a veces sale bomba|no sale bien y ya|es parte del juego|es lo que hay|as[ií] es (el juego|esto|la (cosa|vaina))/i;
 
 function textoDe(res: Anthropic.Message): string {
   return res.content
@@ -344,8 +344,29 @@ function textoDe(res: Anthropic.Message): string {
     .trim();
 }
 
-// Genera la respuesta y, si normaliza perder, la REGENERA una vez con un aviso
-// tajante (el reintento casi siempre cumple). Blindado por el try de cada caller.
+// Última red de seguridad: si tras regenerar el modelo SIGUE metiendo la frase
+// que normaliza perder, la quitamos a mano (mejor una frase un pelín cortada que
+// soltarle "eso pasa" a alguien que acaba de perder).
+function limpiarNormaliza(txt: string): string {
+  return txt
+    .replace(/\beso (le )?pasa( a veces)?\b[\s.,!¡—-]*/gi, "")
+    .replace(/\bes parte del juego\b[\s.,!¡—-]*/gi, "")
+    .replace(/\bes lo que hay\b[\s.,!¡—-]*/gi, "")
+    .replace(/\ba veces no sal\w*( bien)?( y ya( est[aá])?)?\b[\s.,!¡—-]*/gi, "")
+    .replace(/\ba veces (se pierd\w*|toca( petar)?|sale bomba)\b[\s.,!¡—-]*/gi, "")
+    .replace(/\b(es|eso es) (azar|suerte)\b[\s.,!¡—-]*/gi, "")
+    .replace(/\bmala suerte\b[\s.,!¡—-]*/gi, "")
+    .replace(/\bcada tirada es[^.!\n]*/gi, "")
+    .replace(/\bas[ií] es (el juego|esto|la (cosa|vaina))\b[\s.,!¡—-]*/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,!?])/g, "$1")
+    .replace(/^[\s,.!¡—-]+/, "")
+    .trim();
+}
+
+// Genera la respuesta y, si normaliza perder, la REGENERA con un aviso tajante;
+// si el reintento TAMBIÉN falla, limpia la frase a la fuerza (o responde algo
+// seguro). Garantiza que NUNCA le llega "eso pasa" a quien perdió. Blindado.
 async function crearConGuardia(
   client: Anthropic,
   system: Anthropic.TextBlockParam[],
@@ -357,22 +378,27 @@ async function crearConGuardia(
     system,
     messages,
   });
-  let txt = textoDe(res);
-  if (txt && NORMALIZA_PERDER.test(txt)) {
-    const aviso: Anthropic.TextBlockParam = {
-      type: "text",
-      text: "⛔ CORRIGE: tu respuesta NO puede contener \"eso pasa\", \"a veces no sale\", \"a veces toca\", \"es azar\", \"mala suerte\", \"le pasa a todos\" ni NADA que dé por normal/esperable perder. Reescríbela desde cero SIN eso: buena vibra, si perdió NO lo valides, desvía y anímalo a entrar y darle — sin normalizar la pérdida.",
-    };
-    const res2 = await client.messages.create({
-      model: MODELO,
-      max_tokens: 200,
-      system: [...system, aviso],
-      messages,
-    });
-    const txt2 = textoDe(res2);
-    if (txt2) txt = txt2;
-  }
-  return txt;
+  const txt = textoDe(res);
+  if (!txt || !NORMALIZA_PERDER.test(txt)) return txt;
+
+  // Reintento con aviso tajante.
+  const aviso: Anthropic.TextBlockParam = {
+    type: "text",
+    text: "⛔ CORRIGE: tu respuesta NO puede contener \"eso pasa\", \"a veces no sale\", \"a veces toca\", \"es azar\", \"mala suerte\", \"le pasa a todos\", \"es parte del juego\" ni NADA que dé por normal/esperable perder. Reescríbela desde cero SIN eso: buena vibra, si perdió NO lo valides, desvía y anímalo a entrar y darle — sin normalizar la pérdida.",
+  };
+  const res2 = await client.messages.create({
+    model: MODELO,
+    max_tokens: 200,
+    system: [...system, aviso],
+    messages,
+  });
+  const txt2 = textoDe(res2);
+  if (txt2 && !NORMALIZA_PERDER.test(txt2)) return txt2;
+
+  // A la segunda sigue fallando: quitamos la frase a mano.
+  const limpio = limpiarNormaliza(txt2 || txt);
+  if (limpio && limpio.length >= 8 && !NORMALIZA_PERDER.test(limpio)) return limpio;
+  return "Tranqui, tú dale otra vuelta y a por ello 💪 ¿cuánto llevas?";
 }
 
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
