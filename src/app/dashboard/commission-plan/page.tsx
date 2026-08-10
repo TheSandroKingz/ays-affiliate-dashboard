@@ -91,7 +91,48 @@ export default function CommissionPlanPage() {
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-2xl font-semibold text-white">Plan de Comisión</h1>
 
-      
+      {/* Tu enlace, lo primero y bien visible: es la herramienta para ganar. */}
+      {promoLink && (
+        <div className="rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-6">
+          <h2 className="text-lg font-semibold text-white mb-1">🔗 Tu enlace para ganar</h2>
+          <p className="text-sm text-slate-300 mb-4">
+            Compártelo con tu gente. Cuando alguien se registre y haga su primer
+            depósito por aquí, ganas tu CPA.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={promoLink}
+              onFocus={(e) => e.currentTarget.select()}
+              className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/20 text-white text-sm px-3 py-2.5 truncate"
+            />
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(promoLink);
+                  setPromoLinkCopied(true);
+                  setTimeout(() => setPromoLinkCopied(false), 1500);
+                } catch {}
+              }}
+              className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${
+                promoLinkCopied
+                  ? "bg-emerald-500/20 border border-emerald-400/50 text-emerald-200"
+                  : "bg-emerald-500 hover:bg-emerald-400 text-black"
+              }`}
+            >
+              {promoLinkCopied ? (
+                <>
+                  <Check size={16} className="animate-celebra" /> ¡Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy size={16} /> Copiar
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!esPropia && (
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
@@ -125,43 +166,6 @@ export default function CommissionPlanPage() {
           <p className="text-slate-200">Marca</p>
           <p className="text-white font-semibold">Celsius</p>
         </div>
-        {promoLink && (
-          <div className="border-b border-white/10 pb-3 mb-3">
-            <p className="text-slate-200 mb-2">Tu enlace de Celsius</p>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={promoLink}
-                onFocus={(e) => e.currentTarget.select()}
-                className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2 truncate"
-              />
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(promoLink);
-                    setPromoLinkCopied(true);
-                    setTimeout(() => setPromoLinkCopied(false), 1500);
-                  } catch {}
-                }}
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                  promoLinkCopied
-                    ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
-                    : "border-white/20 text-white hover:bg-white/10"
-                }`}
-              >
-                {promoLinkCopied ? (
-                  <>
-                    <Check size={15} className="animate-celebra" /> ¡Copiado!
-                  </>
-                ) : (
-                  <>
-                    <Copy size={15} /> Copiar enlace
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
         <div className="flex items-center justify-between">
           <p className="text-slate-200">Depósito mínimo</p>
           <p className="text-white font-semibold">€20</p>

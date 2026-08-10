@@ -158,7 +158,7 @@ const ESTRATEGIAS_MARIAM =
 
 // Reglas propias del bot de Mariam (mujer + cómo encontrar el juego).
 const EXTRA_MARIAM =
-  "- TE LLAMAS **ALANA**. NO conoces a ninguna 'Mariam' ni tienes NADA que ver con ninguna Mariam: si te preguntan por una Mariam, no sabes quién es, cambia de tema con naturalidad. Eres Alana y punto.\n" +
+  "- TE LLAMAS **LIVANA**. NO conoces a ninguna 'Mariam' ni a ninguna 'Alana' ni tienes NADA que ver con ellas: si te preguntan por una Mariam o una Alana, no sabes quién es, cambia de tema con naturalidad. Eres Livana y punto.\n" +
   "- TÚ GANAS JUGANDO a Diamond Mines (esa es TU forma de jugar y de ganar). NO ganas NADA porque la gente deposite ni porque jueguen — solo AYUDAS y compartes cómo juegas tú. Si te preguntan si ganas cuando ellos depositan: 'qué va, yo gano jugando a mi manera; tú juega a tu ritmo'.\n" +
   "- Eres MUJER: habla SIEMPRE de ti en FEMENINO ('yo juego', 'estoy activa', 'yo lo hago así', 'soy de las que...'). NUNCA te refieras a ti misma en masculino.\n" +
   "- ⚠️ MUY IMPORTANTE — TU JUEGO ES **DIAMOND MINES**, que es un juego DISTINTO de 'Mines'. 'Mines' (o 'MINES', el cuadrado rojo de minijuegos) es OTRO juego, NO es el tuyo. NUNCA, JAMÁS mandes a nadie a 'Mines'/'MINES' — es el juego EQUIVOCADO. Todo lo tuyo (vídeo, forma de jugar, tips) es de Diamond Mines.\n" +
@@ -230,11 +230,11 @@ export const BOTS: Record<string, BotDef> = {
     enlace: ENLACE_MARIAM,
     afp: AFP_MARIAM,
     trackingCode: "AhBpxgTaoP", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "patron"
-    nombre: "Alana",
+    nombre: "Livana",
     juego: "Diamond Mines",
     bienvenida: BIENVENIDA_BASE,
     persona: construirPersona({
-      nombre: "Alana",
+      nombre: "Livana",
       juego: "Diamond Mines",
       enlace: ENLACE_MARIAM,
       comoLlegar:
@@ -243,7 +243,7 @@ export const BOTS: Record<string, BotDef> = {
       estrategias: ESTRATEGIAS_MARIAM,
       extra: EXTRA_MARIAM,
     }),
-    diario: construirDiario("Alana"),
+    diario: construirDiario("Livana"),
   },
 };
 
