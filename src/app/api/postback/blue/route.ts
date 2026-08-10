@@ -225,35 +225,11 @@ export async function GET(request: Request) {
     });
   }
 
-  // ── QUALIFICATION (Blue marca el FTD como cualificado, pero AÚN NO paga la
-  // comisión). NO cuenta ni paga: solo dejamos constancia. El CPA se acredita
-  // con el evento de COMISIÓN (commission_paid), que es cuando en Blue sube la
-  // comisión de verdad. Así nuestro dashboard va a la par que Blue y no adelanta
-  // el pago (antes se pagaba aquí y saltaba antes de tiempo).
-  if (event === "qualification" || event === "qualified") {
-    const target = await matchAfiliado(tag);
-    await registrarEvento({
-      event_type: "commission",
-      raw_query: raw,
-      tracking_code: tag,
-      afp: afpDeTracking(target?.freshaffs_tracking_code),
-      player_id: playerid,
-      isocountry,
-      matched_user_id: target?.user_id ?? null,
-      commission: 0,
-      amount: monto,
-      status: "qualified",
-    });
-    return NextResponse.json({
-      ok: true,
-      event,
-      nota: "cualificado; el CPA se cuenta cuando llegue la comisión (commission_paid)",
-    });
-  }
-
-  // ── COMMISSION_PAID = comisión pagada por la red = QFTD que PAGA el CPA
-  // (candado compartido). Es lo que hace subir la comisión en Blue. ───────────
-  if (event === "commission_paid" || event === "commission") {
+  // ── QUALIFICATION / COMMISSION_PAID = QFTD que PAGA el CPA (candado
+  // compartido). En Blue, el QFTD (depósito cualificado) es lo que genera la
+  // comisión/ingreso y llega como evento "qualification"; ahí se acredita el CPA
+  // (una sola vez por jugador, gracias al candado). ──────────────────────────
+  if (event === "qualification" || event === "commission_paid" || event === "commission") {
     // Comisión que nos paga la red (para detectar REVERSIÓN si viene negativa).
     // Probamos varios nombres de campo por si Blue no la manda en "commission"
     // (si no, una reversión pasaría desapercibida y el afiliado se quedaría el
