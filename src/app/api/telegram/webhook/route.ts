@@ -465,35 +465,49 @@ export async function POST(request: Request) {
         !limitado &&
         (!ejemploReciente || pideOtro)
       ) {
-        // 1º un EJEMPLO al azar de la biblioteca del dueño (rotando, "así juego
-        // yo"); si no hay ninguno, el /diario; y si tampoco, el de bienvenida.
+        // Vídeo a mandar. Si PIDEN el patrón (p. ej. "el patrón nuevo"), mandamos
+        // SIEMPRE el vídeo del DIARIO = el patrón ACTUAL que el dueño dejó en
+        // "información". Así quien tenga un patrón viejo recibe el de AHORA. Para
+        // "otra forma" (les falló, o mandan su jugada) rotamos por la biblioteca
+        // de ejemplos. En ambos casos, si falta la fuente, caemos a las otras.
         let dv:
           | { media_type: string | null; file_id: string | null; enabled: boolean | null }
           | null = null;
-        const { data: ejs } = await supabaseAdmin
-          .from("telegram_examples")
-          .select("media_type, file_id")
-          .eq("enabled", true)
-          .limit(100000);
-        if (ejs && ejs.length) {
-          const pick = ejs[Math.floor(Math.random() * ejs.length)];
-          dv = { media_type: pick.media_type, file_id: pick.file_id, enabled: true };
-        }
-        if (!dv) {
-          const { data: diarioV } = await supabaseAdmin
+        const cargarDiario = async () => {
+          const { data } = await supabaseAdmin
             .from("telegram_daily")
             .select("media_type, file_id, enabled")
             .eq("id", 1)
             .maybeSingle();
-          if (diarioV && diarioV.enabled && diarioV.file_id) dv = diarioV;
-          else {
-            const { data: bienvV } = await supabaseAdmin
-              .from("telegram_welcome")
-              .select("media_type, file_id, enabled")
-              .eq("id", 1)
-              .maybeSingle();
-            if (bienvV && bienvV.enabled && bienvV.file_id) dv = bienvV;
+          return data && data.enabled && data.file_id ? data : null;
+        };
+        const cargarEjemplo = async () => {
+          const { data: ejs } = await supabaseAdmin
+            .from("telegram_examples")
+            .select("media_type, file_id")
+            .eq("enabled", true)
+            .limit(100000);
+          if (ejs && ejs.length) {
+            const pick = ejs[Math.floor(Math.random() * ejs.length)];
+            return { media_type: pick.media_type, file_id: pick.file_id, enabled: true };
           }
+          return null;
+        };
+        const cargarBienv = async () => {
+          const { data } = await supabaseAdmin
+            .from("telegram_welcome")
+            .select("media_type, file_id, enabled")
+            .eq("id", 1)
+            .maybeSingle();
+          return data && data.enabled && data.file_id ? data : null;
+        };
+        // "Piden el patrón" (y NO es un caso de otra-forma / su vídeo) → el DIARIO
+        // (el patrón actual de "información"). El resto → rotación de ejemplos.
+        const pidenPatronNuevo = pidePatron && !falloForma && !mandoVideo;
+        if (pidenPatronNuevo) {
+          dv = (await cargarDiario()) || (await cargarEjemplo()) || (await cargarBienv());
+        } else {
+          dv = (await cargarEjemplo()) || (await cargarDiario()) || (await cargarBienv());
         }
         if (dv && dv.enabled && dv.file_id) {
           const m = dv.media_type;
@@ -503,7 +517,9 @@ export async function POST(request: Request) {
             chat_id: chatId,
             // Si dice que no le va o manda su vídeo, se lo damos como OTRA forma.
             // En ambos casos dejamos con ganas de ver MÁS (tengo varias formas).
-            caption: (mandoVideo || falloForma)
+            caption: pidenPatronNuevo
+              ? "Este es el patrón que va AHORA 🔥 usa este, míralo y hazlo IGUAL. Si tienes uno más viejo, ese ya no vale."
+              : (mandoVideo || falloForma)
               ? "Toma, prueba así también 🔥 es OTRA de mis formas. Tengo varias — mándame cómo te va y te paso la siguiente. Míralo y hazlo igual."
               : "Aquí tienes 🔥 así le doy yo. Tengo varias formas; hazlo igual que en esta y si acaso me enseñas cómo te fue y te paso otra.",
             reply_markup: botonSoloJugar(),
