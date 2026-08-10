@@ -59,7 +59,7 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
         .gte("date", hace7),
       supabaseAdmin
         .from("postback_events")
-        .select("event_type, counted")
+        .select("event_type, counted, afp, player_id")
         .gte("created_at", hace3),
     ]);
 
@@ -76,9 +76,15 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
     // postback de comisión. Si se rompiera solo ese (y siguiera llegando el de
     // ftd), habría depósitos pero 0 QFTD contado → 0€ acreditado sin avisar.
     // Umbral prudente (≥5 depósitos y 0 QFTD en 3 días) para no dar falsa alarma.
+    // Solo cuenta tráfico de Celsius: los postbacks residuales de FreshBet (casino
+    // que ya no trabajamos) llegan sin `afp` y con player_id "freshbet-*"; no deben
+    // disparar la alarma ni contar como depósitos vivos.
+    const esCelsius = (r: { afp?: string | null; player_id?: string | null }) =>
+      !!r.afp && !String(r.player_id ?? "").startsWith("freshbet-");
     let depositos3d = 0;
     let qftdContados3d = 0;
     for (const r of recientesRes.data ?? []) {
+      if (!esCelsius(r)) continue;
       if (r.event_type === "ftd") depositos3d++;
       else if (r.event_type === "commission" && r.counted) qftdContados3d++;
     }
