@@ -3,6 +3,7 @@
 
 export type TonoNotif =
   | "off"
+  | "notif"
   | "venta"
   | "kaching"
   | "registradora"
@@ -13,6 +14,7 @@ const KEY = "sonidoNotif";
 
 export const TONOS: { id: TonoNotif; label: string }[] = [
   { id: "off", label: "Silencio" },
+  { id: "notif", label: "Notificación (tipo iPhone)" },
   { id: "venta", label: "Venta (cha-ching)" },
   { id: "kaching", label: "Ka-ching brillante" },
   { id: "registradora", label: "Registradora" },
@@ -81,7 +83,12 @@ export function reproducirSonido(tono?: TonoNotif) {
   if (!ac) return;
   try {
     if (ac.state === "suspended") ac.resume();
-    if (t === "venta") {
+    if (t === "notif") {
+      // Dos notas limpias tipo aviso de móvil (marimba/campana suave). Discreto,
+      // sin estridencias: "din-don" corto.
+      nota(ac, 880, 0, 0.16, 0.22, "sine"); // primera nota (A5)
+      nota(ac, 1319, 0.11, 0.28, 0.2, "sine"); // segunda, más aguda (E6)
+    } else if (t === "venta") {
       // "Cha-ching" de venta tipo Shopify: golpe corto + campanilla brillante.
       nota(ac, 784, 0, 0.09, 0.2, "square"); // "cha"
       nota(ac, 1568, 0.09, 0.4, 0.22, "triangle"); // "ching" brillante

@@ -1,38 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { RefreshCw, ChevronLeft } from "lucide-react";
-
-type Jugador = {
-  chat_id: number;
-  first_name: string | null;
-  username: string | null;
-  last_msg_at: string | null;
-  opted_out: boolean;
-  silenced: boolean;
-};
-
-function iniciales(n?: string | null): string {
-  const s = (n || "").trim();
-  if (!s) return "?";
-  const p = s.split(/\s+/);
-  return ((p[0]?.[0] ?? "?") + (p[1]?.[0] ?? "")).toUpperCase();
-}
-const AVATAR_COLORS = [
-  "bg-emerald-500/25 text-emerald-200",
-  "bg-sky-500/25 text-sky-200",
-  "bg-fuchsia-500/25 text-fuchsia-200",
-  "bg-amber-500/25 text-amber-200",
-  "bg-rose-500/25 text-rose-200",
-  "bg-indigo-500/25 text-indigo-200",
-  "bg-teal-500/25 text-teal-200",
-];
-function colorAvatar(id: number): string {
-  return AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
-}
+import BotChatViewer from "@/components/BotChatViewer";
 
 export default function TelegramPage() {
   const router = useRouter();
@@ -53,77 +26,6 @@ export default function TelegramPage() {
   // Período del "dinero generado": "total" | "hoy" | "ayer" | "YYYY-MM".
   const [periodo, setPeriodo] = useState<string>("total");
   const [refrescando, setRefrescando] = useState(false);
-  const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
-  const [cargandoJug, setCargandoJug] = useState(false);
-  const [chatAbierto, setChatAbierto] = useState<number | null>(null);
-  const [chatMsgs, setChatMsgs] = useState<
-    { role: string; content: string; created_at?: string; media_url?: string | null }[]
-  >([]);
-  const [cargandoChat, setCargandoChat] = useState(false);
-  const chatScrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!cargandoChat && chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [chatMsgs, cargandoChat, chatAbierto]);
-
-  async function verChat(chatId: number) {
-    if (chatAbierto === chatId) {
-      setChatAbierto(null);
-      return;
-    }
-    setChatAbierto(chatId);
-    setChatMsgs([]);
-    setCargandoChat(true);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/chat?chat_id=" + chatId, {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      setChatMsgs(Array.isArray(b.history) ? b.history : []);
-    } finally {
-      setCargandoChat(false);
-    }
-  }
-
-  async function cargarJugadores() {
-    setCargandoJug(true);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const r = await fetch("/api/telegram/contacts", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const b = await r.json().catch(() => ({}));
-      setJugadores(b.jugadores ?? []);
-    } finally {
-      setCargandoJug(false);
-    }
-  }
-
-  async function toggleSilencio(chatId: number, silenced: boolean) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
-    await fetch("/api/telegram/contacts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + session.access_token,
-      },
-      body: JSON.stringify({ chat_id: chatId, silenced }),
-    });
-    setJugadores((js) =>
-      (js ?? []).map((j) => (j.chat_id === chatId ? { ...j, silenced } : j))
-    );
-  }
 
   const cargar = useCallback(async () => {
     const {
@@ -158,10 +60,7 @@ export default function TelegramPage() {
 
   useEffect(() => {
     cargar();
-    cargarJugadores();
   }, [cargar]);
-
-  const chatSel = jugadores?.find((j) => j.chat_id === chatAbierto) ?? null;
 
   return (
     <main className="flex flex-col gap-5 max-w-3xl">
@@ -182,7 +81,6 @@ export default function TelegramPage() {
           onClick={async () => {
             setRefrescando(true);
             await cargar();
-            await cargarJugadores();
             setRefrescando(false);
           }}
           disabled={refrescando}
@@ -345,188 +243,12 @@ export default function TelegramPage() {
         </div>
       )}
 
-      {/* Chats con los jugadores. */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10">
-          <span className="text-sm font-semibold text-white">
-            💬 Chats{jugadores ? ` · ${jugadores.length}` : ""}
-          </span>
-          <button
-            onClick={cargarJugadores}
-            disabled={cargandoJug}
-            className="shrink-0 inline-flex items-center gap-1.5 text-slate-300 hover:text-white disabled:opacity-50 text-sm transition"
-          >
-            <RefreshCw size={14} className={cargandoJug ? "animate-spin" : ""} />
-            {cargandoJug ? "Cargando…" : "Actualizar"}
-          </button>
-        </div>
-
-        {!jugadores ? (
-          <p className="text-sm text-slate-400 p-4">Cargando chats…</p>
-        ) : jugadores.length === 0 ? (
-          <p className="text-sm text-slate-400 p-4">Aún no hay jugadores.</p>
-        ) : (
-          <div className="flex h-[70vh] sm:h-[540px]">
-            {/* Lista de chats (izquierda) */}
-            <div
-              className={`${
-                chatAbierto ? "hidden sm:flex" : "flex"
-              } flex-col w-full sm:w-72 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20`}
-            >
-              {jugadores.map((j) => {
-                const activo = chatAbierto === j.chat_id;
-                return (
-                  <button
-                    key={j.chat_id}
-                    onClick={() => verChat(j.chat_id)}
-                    className={`flex items-center gap-3 text-left px-3 py-2.5 border-b border-white/5 transition ${
-                      activo ? "bg-white/10" : "hover:bg-white/5"
-                    }`}
-                  >
-                    <div
-                      className={`shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold ${colorAvatar(
-                        j.chat_id
-                      )}`}
-                    >
-                      {iniciales(j.first_name)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm text-white truncate">
-                          {j.first_name || "Jugador"}
-                        </span>
-                        <span className="text-[10px] text-slate-500 shrink-0">
-                          {j.last_msg_at
-                            ? new Date(j.last_msg_at).toLocaleDateString("es-ES", {
-                                day: "2-digit",
-                                month: "2-digit",
-                              })
-                            : ""}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 truncate">
-                        {j.silenced && <span className="text-amber-300">🔇 silenciado · </span>}
-                        {j.opted_out && <span className="text-slate-400">baja · </span>}
-                        {j.username ? `@${j.username}` : `#${j.chat_id}`}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Conversación (derecha) */}
-            <div
-              className={`${
-                chatAbierto ? "flex" : "hidden sm:flex"
-              } flex-col flex-1 min-w-0 min-h-0 bg-[#0b141a]`}
-            >
-              {chatAbierto === null ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
-                  <span className="text-3xl">💬</span>
-                  Elige un chat de la lista
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-white/10 bg-black/40">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <button
-                        onClick={() => setChatAbierto(null)}
-                        className="sm:hidden text-slate-300 hover:text-white shrink-0"
-                      >
-                        <ChevronLeft size={18} />
-                      </button>
-                      <div
-                        className={`shrink-0 w-8 h-8 rounded-full grid place-items-center text-[11px] font-bold ${colorAvatar(
-                          chatSel?.chat_id ?? 0
-                        )}`}
-                      >
-                        {iniciales(chatSel?.first_name)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm text-white truncate leading-tight">
-                          {chatSel?.first_name || "Jugador"}
-                        </div>
-                        <div className="text-[10px] text-slate-500 truncate leading-tight">
-                          {chatSel?.username ? `@${chatSel.username}` : `#${chatSel?.chat_id}`}
-                        </div>
-                      </div>
-                    </div>
-                    {chatSel && (
-                      <button
-                        onClick={() => toggleSilencio(chatSel.chat_id, !chatSel.silenced)}
-                        className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg transition ${
-                          chatSel.silenced
-                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                            : "bg-white/10 hover:bg-white/20 text-slate-200"
-                        }`}
-                      >
-                        {chatSel.silenced ? "🔊 Reactivar" : "🔇 Silenciar"}
-                      </button>
-                    )}
-                  </div>
-                  <div
-                    ref={chatScrollRef}
-                    className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-1.5"
-                  >
-                    {cargandoChat ? (
-                      <p className="text-xs text-slate-400">Cargando…</p>
-                    ) : chatMsgs.length === 0 ? (
-                      <p className="text-xs text-slate-400">
-                        Sin conversación guardada (o aún no ha escrito).
-                      </p>
-                    ) : (
-                      chatMsgs.map((m, i) => {
-                        const bot = m.role === "assistant";
-                        return (
-                          <div key={i} className={`flex ${bot ? "justify-end" : "justify-start"}`}>
-                            <div
-                              className={`max-w-[82%] rounded-2xl px-3 py-1.5 text-xs leading-snug shadow-sm ${
-                                bot
-                                  ? "bg-emerald-700/90 text-white rounded-br-sm"
-                                  : "bg-white/12 text-slate-100 rounded-bl-sm"
-                              }`}
-                            >
-                              {m.media_url && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={m.media_url}
-                                  alt="Imagen enviada"
-                                  className="mb-1 max-w-[200px] rounded-lg"
-                                  loading="lazy"
-                                />
-                              )}
-                              {m.content}
-                              {m.created_at && (
-                                <div
-                                  className={`text-[9px] mt-0.5 text-right ${
-                                    bot ? "text-emerald-100/60" : "text-slate-400"
-                                  }`}
-                                >
-                                  {new Date(m.created_at).toLocaleString("es-ES", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Chats con los jugadores (Sandro + Jeffer), estilo WhatsApp. */}
+      <BotChatViewer admin />
 
       <p className="text-xs text-slate-500">
         Puedes silenciar a un pesado desde su chat. Cada jugador puede darse de
-        baja con /stop.
+        baja con /stop. Los chats de Jeffer salen con su etiqueta.
       </p>
     </main>
   );

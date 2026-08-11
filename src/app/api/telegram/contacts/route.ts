@@ -91,13 +91,20 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const chatId = Number(body?.chat_id);
   const silenced = !!body?.silenced;
+  const origen = body?.origen === "jeffer" ? "jeffer" : "as";
   if (!chatId) {
     return NextResponse.json({ error: "Falta chat_id." }, { status: 400 });
   }
-  const { error } = await supabaseAdmin
-    .from("telegram_contacts")
-    .update({ silenced })
-    .eq("chat_id", chatId);
+  // El bot de Sandro guarda en telegram_contacts; el de Jeffer en bot_contacts.
+  const q =
+    origen === "jeffer"
+      ? supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced })
+          .eq("bot", "jeffer")
+          .eq("chat_id", chatId)
+      : supabaseAdmin.from("telegram_contacts").update({ silenced }).eq("chat_id", chatId);
+  const { error } = await q;
   if (error) return NextResponse.json({ ok: false, error: error.message });
   return NextResponse.json({ ok: true });
 }
