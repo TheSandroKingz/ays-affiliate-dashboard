@@ -248,8 +248,8 @@ export const BOTS: Record<string, BotDef> = {
     diario: construirDiario("Jeffer"),
   },
   mariam: {
-    key: "mariam",
-    label: "Mariam",
+    key: "mariam", // clave interna en BD (nunca se muestra al jugador)
+    label: "Livana", // nombre visible en el panel (su nombre real NO se usa nunca)
     username: "@AlanaZdr_bot",
     token: process.env.TELEGRAM_BOT_TOKEN_MARIAM || "",
     secret: process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "",
