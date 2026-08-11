@@ -63,7 +63,7 @@ export default function TelegramPage() {
   }, [cargar]);
 
   return (
-    <main className="flex flex-col gap-5 max-w-3xl">
+    <main className="flex flex-col gap-5">
       <button
         onClick={() => router.back()}
         className="self-start inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition"

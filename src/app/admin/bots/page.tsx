@@ -64,7 +64,7 @@ export default function EstadoBotsPage() {
   }, []);
 
   return (
-    <main className="max-w-4xl mx-auto flex flex-col gap-4">
+    <main className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-white">Estado de los bots</h1>
         <button

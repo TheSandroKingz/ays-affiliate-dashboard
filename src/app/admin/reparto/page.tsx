@@ -90,7 +90,7 @@ export default function RepartoPage() {
   }, [periodo]);
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-1">
         <h1 className="text-2xl font-bold text-white">Reparto con el socio</h1>
         <select
