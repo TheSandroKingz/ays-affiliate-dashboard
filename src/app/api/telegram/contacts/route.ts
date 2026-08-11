@@ -24,6 +24,37 @@ export async function GET(request: Request) {
       .limit(150),
   ]);
 
+  // Último mensaje de cada chat (vista previa estilo WhatsApp). Traemos los
+  // mensajes más recientes de cada tabla y nos quedamos con el primero (el más
+  // nuevo) de cada chat. Cubre de sobra los chats activos; si alguno muy viejo
+  // no entra en la ventana, simplemente se queda sin preview.
+  type MsgFila = { chat_id: number; role: string; content: string | null; media_type: string | null };
+  const previewDe = (msgs: MsgFila[] | null) => {
+    const m = new Map<number, { texto: string; rol: string }>();
+    for (const x of msgs ?? []) {
+      if (m.has(x.chat_id)) continue; // ya tenemos el más nuevo (vienen desc)
+      const media = x.media_type ? (x.media_type === "photo" ? "📷 Foto" : "🎬 Vídeo") : "";
+      const texto = (x.content || media || "").replace(/\s+/g, " ").trim().slice(0, 70);
+      m.set(x.chat_id, { texto, rol: x.role });
+    }
+    return m;
+  };
+  const [msgsAs, msgsJeffer] = await Promise.all([
+    supabaseAdmin
+      .from("telegram_messages")
+      .select("chat_id, role, content, media_type")
+      .order("created_at", { ascending: false })
+      .limit(600),
+    supabaseAdmin
+      .from("bot_messages")
+      .select("chat_id, role, content, media_type")
+      .eq("bot", "jeffer")
+      .order("created_at", { ascending: false })
+      .limit(600),
+  ]);
+  const prevAs = previewDe(msgsAs.data as MsgFila[] | null);
+  const prevJeffer = previewDe(msgsJeffer.data as MsgFila[] | null);
+
   type Fila = {
     chat_id: number;
     first_name: string | null;
@@ -32,12 +63,23 @@ export async function GET(request: Request) {
     opted_out: boolean;
     silenced: boolean;
   };
-  const marcar = (filas: Fila[] | null, origen: "as" | "jeffer", botNombre: string) =>
-    (filas ?? []).map((f) => ({ ...f, origen, bot_nombre: botNombre }));
+  const marcar = (
+    filas: Fila[] | null,
+    origen: "as" | "jeffer",
+    botNombre: string,
+    prev: Map<number, { texto: string; rol: string }>
+  ) =>
+    (filas ?? []).map((f) => ({
+      ...f,
+      origen,
+      bot_nombre: botNombre,
+      ultimo: prev.get(f.chat_id)?.texto ?? null,
+      ultimo_rol: prev.get(f.chat_id)?.rol ?? null,
+    }));
 
   const jugadores = [
-    ...marcar(sandro.data as Fila[] | null, "as", "Sandro"),
-    ...marcar(jeffer.data as Fila[] | null, "jeffer", "Jeffer"),
+    ...marcar(sandro.data as Fila[] | null, "as", "Sandro", prevAs),
+    ...marcar(jeffer.data as Fila[] | null, "jeffer", "Jeffer", prevJeffer),
   ].sort((a, b) => (b.last_msg_at ?? "").localeCompare(a.last_msg_at ?? ""));
 
   return NextResponse.json({ jugadores });

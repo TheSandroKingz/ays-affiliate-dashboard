@@ -14,6 +14,8 @@ type Jugador = {
   silenced: boolean;
   origen: "as" | "jeffer";
   bot_nombre: string;
+  ultimo: string | null; // texto del último mensaje (vista previa)
+  ultimo_rol: string | null; // "user" (jugador) o "assistant" (bot)
 };
 
 // Clave única de un chat: el mismo usuario podría hablar con dos bots, así que
@@ -181,6 +183,23 @@ export default function BotLectorPage() {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatMsgs, cargandoChat, chatAbierto]);
+
+  // Contador en el título de la pestaña: así ve mensajes nuevos aunque tenga
+  // otra pestaña delante (estilo WhatsApp Web).
+  useEffect(() => {
+    const sinLeer = (jugadores ?? []).filter((j) => {
+      const k = claveDe(j);
+      return (
+        !!j.last_msg_at &&
+        k !== chatAbierto &&
+        (!leidos[k] || j.last_msg_at > leidos[k])
+      );
+    }).length;
+    document.title = sinLeer > 0 ? `(${sinLeer}) Conversaciones del bot` : "Conversaciones del bot";
+    return () => {
+      document.title = "Conversaciones del bot";
+    };
+  }, [jugadores, leidos, chatAbierto]);
 
   async function verChat(j: Jugador) {
     const clave = claveDe(j);
@@ -362,10 +381,20 @@ export default function BotLectorPage() {
                           )}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 truncate">
-                        {j.silenced && <span className="text-amber-300">🔇 silenciado · </span>}
-                        {j.opted_out && <span>baja · </span>}
-                        {j.username ? `@${j.username}` : `#${j.chat_id}`}
+                      <div className={`text-[11px] truncate ${sinLeer ? "text-slate-200" : "text-slate-500"}`}>
+                        {j.silenced && <span className="text-amber-300">🔇 </span>}
+                        {j.ultimo ? (
+                          <>
+                            {j.ultimo_rol === "assistant" && (
+                              <span className="text-slate-500">Bot: </span>
+                            )}
+                            {j.ultimo}
+                          </>
+                        ) : (
+                          <span className="text-slate-500">
+                            {j.username ? `@${j.username}` : `#${j.chat_id}`}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
