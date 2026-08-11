@@ -66,6 +66,33 @@ export default function EstadoBotsPage() {
     cargar();
   }, []);
 
+  // Cambia el nombre VISIBLE del bot en Telegram (no el @usuario, eso es BotFather).
+  async function renombrar(key: string, actual: string) {
+    const nombre = window.prompt(
+      `Nuevo nombre visible en Telegram (el de arriba del chat). No cambia el @usuario.`,
+      actual
+    );
+    if (!nombre || !nombre.trim()) return;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const r = await fetch("/api/admin/rename-bot", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + session.access_token,
+      },
+      body: JSON.stringify({ key, name: nombre.trim() }),
+    });
+    const j = await r.json().catch(() => ({}));
+    alert(
+      r.ok
+        ? `Nombre cambiado a "${j.name}". Puede tardar un momento en verse en Telegram.`
+        : `No se pudo: ${j.error || "error"}`
+    );
+  }
+
   return (
     <main className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -96,6 +123,14 @@ export default function EstadoBotsPage() {
                   <div className="min-w-0">
                     <p className="text-base font-bold text-white truncate">{b.label}</p>
                     <p className="text-[11px] text-slate-400 truncate">{b.username}</p>
+                    {b.configurado && (
+                      <button
+                        onClick={() => renombrar(b.key, b.label)}
+                        className="mt-1 text-[10px] text-emerald-300 hover:text-emerald-200 underline underline-offset-2"
+                      >
+                        ✏️ Renombrar en Telegram
+                      </button>
+                    )}
                   </div>
                   {!b.configurado && (
                     <span className="shrink-0 text-[10px] rounded bg-amber-500/20 border border-amber-400/40 text-amber-200 px-1.5 py-0.5">
