@@ -83,7 +83,7 @@ export async function procesarUpdate(
       if (cid && cb.data === "ayuda") {
         await tgEnviar(
           cid,
-          "¡Klk! 👋 Escríbeme aquí mismo tu duda y te ayudo al momento.",
+          `${bot.saludo} Escríbeme aquí mismo tu duda y te ayudo al momento.`,
           {},
           tok
         );

@@ -19,6 +19,7 @@ export type BotDef = {
   nombre: string; // nombre de la persona con la que habla el jugador
   juego: string; // "las Mines", "Diamond Mines"…
   bienvenida: string; // texto del /start
+  saludo: string; // saludo corto (al pulsar ❓ AYUDA); según acento/género del bot
   persona: string; // system prompt para responder a los jugadores
   diario: string; // system prompt para el mensaje diario automático
 };
@@ -73,7 +74,7 @@ function construirPersona(cfg: {
   // Cómo suenas TÚ según tu género (concordancias y muletillas).
   const vozGenero =
     cfg.genero === "f"
-      ? `- HABLAS COMO CHICA: cuando hables de ti concuerda en FEMENINO ("yo sola", "estoy lista", "yo soy la primera"). Usa con naturalidad muletillas de tía ("tía", "tranqui tía", "ay"), sonando cercana y femenina. Cuando quieras tranquilizar a alguien di "tranqui tía"/"tranqui, que lo tienes".\n`
+      ? `- HABLAS COMO CHICA: cuando hables de ti concuerda en FEMENINO ("yo sola", "estoy lista", "yo soy la primera"). Usa con naturalidad muletillas de tía ("tía", "tranqui tía", "ay"), sonando cercana y femenina. Para saludar di "¿qué pasa tía?" en vez de solo "¿qué pasa?". Cuando tranquilices a alguien di "tranqui tía"/"tranqui, que lo tienes".\n`
       : cfg.genero === "m"
       ? `- Cuando quieras tranquilizar a alguien, di "tranqui bro" (suena más cercano y amigable) en vez de "tranquilo".\n`
       : "";
@@ -173,10 +174,13 @@ Devuelve SOLO el mensaje, sin comillas.`;
 }
 
 // ── Definición de cada bot ──────────────────────────────────────────────────
-const BIENVENIDA_BASE =
-  "¡Hey, bienvenido! 👋\n\n" +
-  "Aquí te voy pasando <b>vídeos, promos y tips</b> para que estés al día. 🎰\n\n" +
-  "Cualquier duda me escribes por aquí y te ayudo al momento.\n\n" +
+// Bienvenida que menciona el JUEGO y el patrón (como la del bot de Sandro). Se
+// usa como pie del VÍDEO de bienvenida (el dueño lo pone con /bienvenida). Si no
+// hay vídeo, sale como texto igualmente.
+const bienvenidaJuego = (juego: string) =>
+  "¡Hey, bienvenido! 👋🔥\n\n" +
+  `Ese vídeo de ahí arriba es <b>mi patrón de ${juego}</b> — así es como le doy yo 🎰. Míralo bien y hazlo IGUAL, dale y a por ello 💪\n\n` +
+  "Por aquí te voy pasando el <b>patrón, vídeos, promos y tips</b>, mantente atento. Cualquier duda me escribes y te ayudo al momento. ¡Dale que esto se pone bueno! 🔥\n\n" +
   "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
 
 // Estrategias EDITABLES: se van añadiendo según las pase el afiliado. De momento
@@ -234,7 +238,8 @@ export const BOTS: Record<string, BotDef> = {
     trackingCode: "cZahjDgQoR", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "mine"
     nombre: "Jeffer",
     juego: "las Mines",
-    bienvenida: BIENVENIDA_BASE,
+    bienvenida: bienvenidaJuego("las Mines"),
+    saludo: "¡Klk! 👋",
     persona: construirPersona({
       nombre: "Jeffer",
       juego: "las Mines",
@@ -263,7 +268,8 @@ export const BOTS: Record<string, BotDef> = {
     trackingCode: "AhBpxgTaoP", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "patron"
     nombre: "Livana",
     juego: "Diamond Mines",
-    bienvenida: BIENVENIDA_BASE,
+    bienvenida: bienvenidaJuego("Diamond Mines"),
+    saludo: "¿Qué pasa tía? 👋",
     persona: construirPersona({
       nombre: "Livana",
       juego: "Diamond Mines",
