@@ -93,6 +93,29 @@ export default function EstadoBotsPage() {
     );
   }
 
+  // Conecta el webhook del bot a esta web (tras cambiar su token en Vercel).
+  async function conectar(key: string) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const r = await fetch("/api/admin/connect-bot", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + session.access_token,
+      },
+      body: JSON.stringify({ key }),
+    });
+    const j = await r.json().catch(() => ({}));
+    alert(
+      j.ok
+        ? `Conectado a @${j.bot}. Ya recibe mensajes.`
+        : `No se pudo conectar: ${j.error || "error"}`
+    );
+    cargar();
+  }
+
   return (
     <main className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -124,12 +147,22 @@ export default function EstadoBotsPage() {
                     <p className="text-base font-bold text-white truncate">{b.label}</p>
                     <p className="text-[11px] text-slate-400 truncate">{b.username}</p>
                     {b.configurado && (
-                      <button
-                        onClick={() => renombrar(b.key, b.label)}
-                        className="mt-1 text-[10px] text-emerald-300 hover:text-emerald-200 underline underline-offset-2"
-                      >
-                        ✏️ Renombrar en Telegram
-                      </button>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                        <button
+                          onClick={() => renombrar(b.key, b.label)}
+                          className="text-[10px] text-emerald-300 hover:text-emerald-200 underline underline-offset-2"
+                        >
+                          ✏️ Renombrar en Telegram
+                        </button>
+                        {b.key !== "as" && b.key !== "sandro" && (
+                          <button
+                            onClick={() => conectar(b.key)}
+                            className="text-[10px] text-sky-300 hover:text-sky-200 underline underline-offset-2"
+                          >
+                            🔌 Conectar webhook
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   {!b.configurado && (
