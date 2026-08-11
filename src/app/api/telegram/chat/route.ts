@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser } from "@/lib/adminAuth";
+import { getGestorBot } from "@/lib/adminAuth";
 import { firmarMedia, mediaKeyConfigurada } from "@/lib/telegram";
 
 // Devuelve la conversación guardada de un jugador (para verla en el panel), con
-// una URL firmada temporal para las imágenes que haya enviado.
+// una URL firmada temporal para las imágenes. La leen el admin y los gestores
+// del bot (Yaiza).
 export async function GET(request: Request) {
-  const user = await getAdminUser(request);
+  const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const chatId = Number(new URL(request.url).searchParams.get("chat_id"));
   if (!chatId) return NextResponse.json({ error: "Falta chat_id." }, { status: 400 });

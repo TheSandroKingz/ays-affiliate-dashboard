@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { ADMIN_USER_ID } from "@/lib/adminId";
+import { ADMIN_USER_ID, esSoloBot } from "@/lib/adminId";
 import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
@@ -94,6 +95,13 @@ function fillMissingDays(
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  // Yaiza (gestora del bot) no usa el panel de afiliado: la mandamos a su lector.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (esSoloBot(data.session?.user?.id)) router.replace("/dashboard/bot");
+    });
+  }, [router]);
   const [showBalanceInfo, setShowBalanceInfo] = useState(false);
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));

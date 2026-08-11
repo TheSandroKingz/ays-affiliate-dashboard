@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser } from "@/lib/adminAuth";
+import { getAdminUser, getGestorBot } from "@/lib/adminAuth";
 
-// GET: lista de jugadores (para el panel). POST: silenciar/reactivar a uno.
+// GET: lista de jugadores (para el panel). Lo pueden LEER el admin y los gestores
+// del bot (Yaiza). POST: silenciar/reactivar a uno — solo admin.
 export async function GET(request: Request) {
-  const user = await getAdminUser(request);
+  const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { data } = await supabaseAdmin
     .from("telegram_contacts")
     .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
     .order("last_msg_at", { ascending: false, nullsFirst: false })
-    .limit(60);
+    .limit(150);
   return NextResponse.json({ jugadores: data ?? [] });
 }
 

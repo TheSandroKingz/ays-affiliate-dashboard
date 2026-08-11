@@ -12,3 +12,15 @@ export const CUENTAS_PROPIAS = new Set<string>([
 ]);
 export const esCuentaPropia = (userId: string | null | undefined) =>
   !!userId && CUENTAS_PROPIAS.has(userId);
+
+// Gestores del bot de Sandro (además del admin): pueden LEER las conversaciones
+// del bot (solo lectura). Client-safe.
+export const YAIZA_ID = "9c7c638a-6a1a-48f8-a587-713b80ced2e1";
+export const YAIZA_START = "2026-08-11"; // desde cuándo cuenta "su" dinero del bot
+const GESTORES_BOT = new Set<string>([ADMIN_USER_ID, YAIZA_ID]);
+// Usuarios cuyo dashboard es SOLO el bot (sin apartados de afiliado).
+const SOLO_BOT = new Set<string>([YAIZA_ID]);
+export const esGestorBot = (userId?: string | null) =>
+  !!userId && GESTORES_BOT.has(userId);
+export const esSoloBot = (userId?: string | null) =>
+  !!userId && SOLO_BOT.has(userId);

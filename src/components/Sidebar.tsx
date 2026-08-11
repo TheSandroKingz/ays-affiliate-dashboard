@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { ADMIN_USER_ID, esCuentaPropia } from "@/lib/adminId";
+import { ADMIN_USER_ID, esCuentaPropia, esSoloBot } from "@/lib/adminId";
 import InstallAppButton from "@/components/InstallAppButton";
 import { useProfile } from "@/components/DashboardProvider";
 import {
@@ -40,6 +40,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [esPropia, setEsPropia] = useState(false);
   const [tieneBot, setTieneBot] = useState(false);
+  const [soloBot, setSoloBot] = useState(false);
   // Nombre y foto vienen del almacén compartido (una sola carga para toda la app).
   const { displayName, avatarUrl } = useProfile();
 
@@ -50,6 +51,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       setUserEmail(user?.email ?? null);
       setIsAdmin(user?.id === ADMIN_USER_ID);
       setEsPropia(esCuentaPropia(user?.id));
+      setSoloBot(esSoloBot(user?.id));
       // ¿Este afiliado tiene un bot propio (Jeffer, Mariam)? Si sí, le mostramos
       // el apartado "Telegram" para ver los depósitos de su bot.
       const token = data.session?.access_token;
@@ -86,12 +88,20 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </Link>
 
       <nav className="flex flex-col gap-1">
+        {soloBot && (
+          <Link href="/dashboard/bot" className={linkClass("/dashboard/bot")} onClick={onClose}>
+            <MessageCircle size={18} />
+            Conversaciones del bot
+          </Link>
+        )}
+        {!soloBot && (
         <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
           <LayoutDashboard size={18} />
           Panel
         </Link>
+        )}
 
-        {!isAdmin && (
+        {!isAdmin && !soloBot && (
           <>
             <button
               onClick={() => setReportsOpen(!reportsOpen)}
@@ -118,26 +128,28 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             )}
           </>
         )}
-        {!isAdmin && !esPropia && (
+        {!isAdmin && !esPropia && !soloBot && (
           <Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
             <CreditCard size={18} />
             Pagos
           </Link>
         )}
 
-        {!isAdmin && !esPropia && (
+        {!isAdmin && !esPropia && !soloBot && (
           <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
             <Users size={18} />
             Subafiliados
           </Link>
         )}
 
+        {!soloBot && (
         <Link href="/dashboard/commission-plan" className={linkClass("/dashboard/commission-plan")} onClick={onClose}>
           <BookOpen size={18} />
           Plan de Comisión
         </Link>
+        )}
 
-        {!isAdmin && tieneBot && (
+        {!isAdmin && tieneBot && !soloBot && (
           <Link href="/dashboard/telegram" className={linkClass("/dashboard/telegram")} onClick={onClose}>
             <MessageCircle size={18} />
             Telegram
