@@ -57,6 +57,7 @@ const CASINO = `- Cómo se llama el sitio: Celsius. MUY IMPORTANTE: al hablar co
 - SI ALGUIEN DICE QUE YA TIENE CUENTA: si es cuenta de CELSIUS, trátalo normal y ayúdale a recargar en la suya. PERO si se refiere a la del sitio VIEJO (o no te queda claro y ves que anda liado con "la de antes"), esa NO vale en Celsius: dile con buena vibra que en Celsius entra y se registra de nuevo por tu enlace. NUNCA le digas que su cuenta vieja funciona en Celsius. No saques tú el tema de "dos cuentas" ni sermonees; si ÉL pregunta por abrirse otra EN CELSIUS, dile UNA vez que es una cuenta por persona y ya.
 - SI ALGUIEN ES NUEVO DE VERDAD (dice que NO tiene cuenta / nunca ha jugado aquí): ahí SÍ, anímalo con ganas a registrarse por tu enlace y hacer su primer depósito para empezar (tú le recomiendas mejor 30 que 20, que se aprovecha más). Ese es el registro legítimo.
 - CANTIDAD: NUNCA hables de "depósito mínimo" ni de una cifra como tope. Si surge el tema de con cuánto entrar, simplemente RECOMIENDA mejor 30€ que 20€ (se aprovecha más) — como consejo tuyo, no como mínimo obligatorio.
+- ⚠️ EXCEPCIÓN DÓLARES: si el jugador habla en DÓLARES (dice "dólares", "usd" o "$"), ahí SÍ hay un mínimo real: 25 dólares. Si pregunta con cuánto entrar EN DÓLARES o propone menos de 25 (p. ej. "¿20 dólares está bien?"), dile con buena vibra que en dólares el mínimo son 25, que meta 25 o más. OJO: esto es SOLO cuando habla en dólares; en EUROS NO hay mínimo (ahí sigue la regla de arriba: cualquier cantidad vale, mejor 30 que 20).
 - Cómo recargar y CÓMO LLEGAR a Mines (guíales por aquí si preguntan): recargar = darle al "+" de arriba y depositar. Para LLEGAR a Mines: en el MENÚ, entra a "JUEGOS ORIGINALES" (OJO: NO es "minijuegos"), y ahí sale "Mines". Repíteselo así: menú → JUEGOS ORIGINALES → Mines.
 - ⚠️ DEMO (muy importante): Mines deja probar en DEMO / sin apostar. En el DEMO el patrón NO funciona (es de mentira, no va con dinero real). Para que funcione, hay que jugar con dinero REAL depositado, NO en demo. Si alguien dice que "no le funciona", "no le sale" o "el patrón no va", PREGÚNTALE si está en DEMO: si es así, dile con buena vibra que el demo no cuenta y que juegue con su dinero real depositado (fuera del modo demo).
 - Las Mines SOLO funcionan con dinero DEPOSITADO, no con el bono. El bono es para las máquinas TRAGAPERRAS (slots), NO sirve para las Mines. Si alguien manda captura o dice que el juego/Mines no le va o le da error, es porque intenta jugarlo con dinero de bono: explícaselo con buena vibra y dile que para las Mines necesita dinero DEPOSITADO (no el bono), así que recargue.
@@ -327,6 +328,20 @@ function limpiarNormaliza(txt: string): string {
     .trim();
 }
 
+// Quita los guiones que Haiku mete como si fueran comas (cantan a bot): el
+// guion largo/corto y el "-" con espacios a los lados se pasan a coma. NO toca
+// guiones dentro de palabras (ex-jugador) ni de URLs (no llevan espacios).
+function quitarGuiones(txt: string): string {
+  return txt
+    .replace(/\s*[—–]\s*/g, ", ") // — y – (con o sin espacios) → coma
+    .replace(/\s+-\s+/g, ", ") // " - " usado como guion → coma
+    .replace(/,\s*,/g, ",") // comas duplicadas que puedan quedar
+    .replace(/\s+([.,!?])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[\s,]+/, "")
+    .trim();
+}
+
 // Genera la respuesta y, si normaliza perder, la REGENERA con un aviso tajante;
 // si el reintento TAMBIÉN falla, limpia la frase a la fuerza (o responde algo
 // seguro). Garantiza que NUNCA le llega "eso pasa" a quien perdió. Blindado.
@@ -397,7 +412,7 @@ export async function responderIA(
       sistemaCacheado(SYSTEM, promo, nombre),
       messages
     );
-    return txt || null;
+    return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;
   }
@@ -422,7 +437,7 @@ export async function responderIABot(
       sistemaCacheado(persona, promo, nombre),
       messages
     );
-    return txt || null;
+    return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;
   }
