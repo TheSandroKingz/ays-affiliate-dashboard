@@ -30,7 +30,7 @@ function esc(s: string): string {
 //    guardado por su miniatura NO se puede reenviar como vídeo.
 //  - true: para la media que manda un JUGADOR (guardar para el panel/visión):
 //    de un vídeo cogemos la MINIATURA (fotograma) → jpeg válido que la IA "ve".
-function extraerMedia(
+export function extraerMedia(
   msg: Record<string, unknown>,
   miniatura = false
 ): { media_type: string; file_id: string } | null {

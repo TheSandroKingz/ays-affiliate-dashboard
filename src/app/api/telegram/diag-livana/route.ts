@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getBot } from "@/lib/bots";
 import { tgApi } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
+import { extraerMedia } from "@/lib/botHandler";
 
 // TEMPORAL: lee la config de bienvenida del bot de Livana (mariam) e intenta
 // enviarla, devolviendo el error EXACTO de Telegram. Solo con secreto. BORRAR.
@@ -41,12 +42,20 @@ export async function GET(request: Request) {
     const r2 = await tgApi("sendPhoto", { chat_id: chat, photo: fid, caption: "diag 2 (como foto)" }, bot.token);
     results.comoFoto = { ok: r2?.ok, description: r2?.description };
   }
+  // Auto-test: ¿el código en vivo guarda el file_id REAL de un vídeo (no la
+  // miniatura)? Si devuelve "REAL_VID" el arreglo está activo; si "THUMB" no.
+  const test = extraerMedia({
+    video: { file_id: "REAL_VID", thumbnail: { file_id: "THUMB" } },
+  } as unknown as Record<string, unknown>);
+
   return NextResponse.json({
     welcome_enabled: cfg?.welcome_enabled ?? null,
     welcome_media_type: mt ?? null,
     file_id_prefijo: fid ? fid.slice(0, 12) : null,
     file_id_len: fid?.length ?? 0,
     tiene_texto: !!cfg?.welcome_text,
+    arregloActivo: test?.file_id === "REAL_VID",
+    testDevuelve: test?.file_id ?? null,
     results,
   });
 }
