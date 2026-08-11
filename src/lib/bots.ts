@@ -253,7 +253,10 @@ export const BOTS: Record<string, BotDef> = {
     label: "Livana", // nombre visible en el panel (su nombre real NO se usa nunca)
     username: "@LivanaZdrbot", // bot NUEVO (el token va en TELEGRAM_BOT_TOKEN_MARIAM en Vercel)
     token: process.env.TELEGRAM_BOT_TOKEN_MARIAM || "",
-    secret: process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "",
+    // Secreto del webhook FIJO en código (el env daba problemas de cuadre al
+    // cambiar el bot). Es un secreto de webhook (no el token): protege de updates
+    // falsos. Repo privado. TODO: mover a env cuando se estabilice.
+    secret: "livanaWH_9f3a2b7c8e1d4506ab",
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",
     enlace: ENLACE_MARIAM,
     afp: AFP_MARIAM,
