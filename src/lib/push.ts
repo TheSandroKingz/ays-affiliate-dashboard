@@ -103,16 +103,18 @@ export async function quiereNotif(userId: string, tipo: TipoNotif): Promise<bool
 const fmtMonto = (n: number) =>
   `+${Math.round(n).toLocaleString("de-DE")} €`;
 
-// CPA de España del admin (para calcular tu margen por un FTD de un afiliado).
-// Blindado: null si no se puede leer (entonces el aviso va sin importe).
-async function adminCpaSpain(): Promise<number | null> {
+// CPA del admin para calcular tu margen por un FTD de un afiliado. Sensible al
+// país igual que la comisión del afiliado: si el FTD es de fuera de España, usa
+// el cpa_other del admin (con respaldo a cpa_spain). Blindado: null si no se puede.
+async function adminCpa(isocountry?: string): Promise<number | null> {
   try {
     const { data } = await supabaseAdmin
       .from("affiliates")
-      .select("cpa_spain")
+      .select("cpa_spain, cpa_other")
       .eq("user_id", ADMIN_USER_ID)
       .maybeSingle();
-    const v = Number(data?.cpa_spain);
+    const esOtro = !!isocountry && isocountry !== "ES";
+    const v = Number(esOtro ? data?.cpa_other ?? data?.cpa_spain : data?.cpa_spain);
     return Number.isFinite(v) ? v : null;
   } catch {
     return null;
@@ -127,7 +129,8 @@ export async function notificarEvento(
   userId: string | null | undefined,
   tipo: TipoNotif,
   monto?: number,
-  esBot = false
+  esBot = false,
+  isocountry?: string
 ): Promise<void> {
   if (!userId) return;
   const esFtd = tipo === "ftd";
@@ -166,7 +169,7 @@ export async function notificarEvento(
       if (esCuentaPropia(userId)) {
         montoAdmin = monto!;
       } else {
-        const cpa = await adminCpaSpain();
+        const cpa = await adminCpa(isocountry);
         montoAdmin = cpa != null ? Math.max(0, cpa - monto!) : null;
       }
     }

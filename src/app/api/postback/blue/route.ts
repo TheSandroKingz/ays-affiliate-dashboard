@@ -139,8 +139,13 @@ export async function GET(request: Request) {
   // son solo respaldo por si algún enlace los usara. (Antes iban primero los sub
   // y, si Blue rellenara sub1 con un clickid, el dinero caía en Default por error.)
   const tag = pick(url, ["campaign", "campaign_slug", "sub1", "s1", "sub2", "s2", "sub3", "s3"]);
-  // Id del jugador (hash estable de Blue) o cualquier id alternativo.
-  const playerid = pick(url, ["player", "player_token", "playerid", "player_id", "txid", "transaction_id", "txn"]);
+  // Id del jugador (hash ESTABLE de Blue). OJO: solo identificadores de JUGADOR,
+  // nunca ids de transacción (txid/transaction_id/txn): esos son únicos por
+  // transacción y romperían el candado por jugador, el anti-doble-pago y la
+  // reversión (que emparejan por player_id). Si no viene ninguno, playerid queda
+  // vacío y el QFTD NO paga (estado seguro), mejor que pagar contra un id
+  // irrepetible que ni se puede revertir ni frena el doble pago.
+  const playerid = pick(url, ["player", "player_token", "playerid", "player_id", "customerid", "customer_id", "userid"]);
   const isocountry = pick(url, ["country", "isocountry"]).toUpperCase();
   const monto = getMonto(url); // {amount}
   const raw = queryLimpia(url);
@@ -281,9 +286,15 @@ export async function GET(request: Request) {
       if (contado) {
         const revKey = `qftdrev:${contado.id}`;
         if (await reclamarEvento(revKey)) {
+          // Si el QFTD original es de un mes YA cerrado (y pagado), restarlo en su
+          // fecha no tocaría el balance vigente. En ese caso imputamos la reversión
+          // a HOY para que el clawback reduzca el saldo del mes en curso. Si es del
+          // mismo mes, se resta en su fecha (normal).
+          const fechaRev =
+            contado.date.slice(0, 7) === today.slice(0, 7) ? contado.date : today;
           const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
             p_user_id: contado.userId,
-            p_date: contado.date,
+            p_date: fechaRev,
             p_registrations: 0,
             p_ftd: -1,
             p_commission: -contado.commission,
@@ -384,7 +395,8 @@ export async function GET(request: Request) {
         target.user_id,
         "ftd",
         comisionPagada,
-        afpDeCampana(tag).startsWith("bot")
+        afpDeCampana(tag).startsWith("bot"),
+        isocountry
       );
       // Aviso a Yaiza: FTD NUEVO por este bot (diciendo de qué bot es).
       after(() => avisarDepositoBotYaiza(afpDeCampana(tag), "ftd"));

@@ -10,9 +10,16 @@ export async function GET(request: Request) {
   const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const desde = new Date(`${YAIZA_START}T00:00:00+02:00`).toISOString();
-  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
-  const hoyDesde = new Date(`${hoy}T00:00:00+02:00`).toISOString();
+  // Fecha en Madrid, sin asumir offset fijo (Madrid es +01:00 en invierno y
+  // +02:00 en verano). Comparamos por la FECHA de Madrid de cada evento.
+  const fmtMadrid = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" });
+  const hoy = fmtMadrid.format(new Date());
+  // Límite inferior amplio para la consulta (un día antes de YAIZA_START en UTC,
+  // para no perder eventos del borde de medianoche); el filtro fino por fecha de
+  // Madrid (>= YAIZA_START) se hace luego fila a fila.
+  const desde = new Date(
+    Date.parse(`${YAIZA_START}T00:00:00Z`) - 24 * 3600 * 1000
+  ).toISOString();
 
   // El IMPORTE del depósito viene en los eventos de depósito (event_type
   // "redeposit", que Blue manda en TODOS los depósitos, incluido el primero), no
@@ -31,10 +38,12 @@ export async function GET(request: Request) {
   let nTotal = 0;
   let nHoy = 0;
   for (const e of data ?? []) {
+    const md = fmtMadrid.format(new Date(e.created_at as string)); // fecha Madrid del evento
+    if (md < YAIZA_START) continue; // fuera del rango (borde de medianoche)
     const c = Number(e.amount ?? 0);
     total += c;
     nTotal++;
-    if ((e.created_at as string) >= hoyDesde) {
+    if (md === hoy) {
       hoyTotal += c;
       nHoy++;
     }

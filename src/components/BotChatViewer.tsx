@@ -169,6 +169,7 @@ export default function BotChatViewer({
 
   const cargarChat = useCallback(
     async (j: Jugador) => {
+      const clave = claveDe(j);
       const { t } = await token();
       if (!t) return;
       const r = await fetch(
@@ -176,6 +177,9 @@ export default function BotChatViewer({
         { headers: { Authorization: "Bearer " + t } }
       );
       const b = await r.json().catch(() => ({}));
+      // Si mientras cargaba el usuario cambió de chat (clic o refresco silencioso),
+      // NO pintamos: evitaría mostrar los mensajes de un chat en la cabecera de otro.
+      if (chatAbiertoRef.current !== clave) return;
       setChatMsgs(Array.isArray(b.history) ? b.history : []);
     },
     [token]
@@ -293,11 +297,15 @@ export default function BotChatViewer({
   async function verChat(j: Jugador) {
     const clave = claveDe(j);
     if (chatAbierto === clave) {
+      chatAbiertoRef.current = null;
       setChatAbierto(null);
       return;
     }
     marcarLeido(clave, j.last_msg_at);
     pegadoAbajoRef.current = true; // al abrir un chat, empieza abajo (lo más nuevo)
+    // Fijamos el ref YA (el effect lo sincroniza tras render) para que la guarda
+    // de cargarChat compare contra el chat correcto desde el primer momento.
+    chatAbiertoRef.current = clave;
     setChatAbierto(clave);
     setChatMsgs([]);
     setCargandoChat(true);

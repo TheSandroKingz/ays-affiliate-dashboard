@@ -292,7 +292,7 @@ function sistemaCacheado(
 // "es normal" a secas, porque vale para depósitos/bono ("eso es normal, está en
 // proceso"); solo las inequívocas de dar por normal/esperable la pérdida o el azar.
 const NORMALIZA_PERDER =
-  /\beso (le )?pasa\b|a veces (no sal|se pierd|toca|sale|salen|va\b)|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|\bes azar\b|\bes suerte\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|se pierd|toca|sale)|eso es (el|este) (juego|negocio)|(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|se (puede|pued\w+) (llegar a )?perder/i;
+  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!no )\bes azar\b|(?<!no )\bes suerte\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|se (puede|pued\w+) (llegar a )?perder/i;
 
 // Segunda red de seguridad: el bot NUNCA puede VALIDAR que es una estafa/engaño,
 // ni animar a denunciar, ni conceder que otros fueron estafados. Si su respuesta
@@ -317,10 +317,10 @@ function limpiarNormaliza(txt: string): string {
     .replace(/\beso (le )?pasa( a veces)?\b[\s.,!¡—-]*/gi, "")
     .replace(/\bes parte del juego\b[\s.,!¡—-]*/gi, "")
     .replace(/\bes lo que hay\b[\s.,!¡—-]*/gi, "")
-    .replace(/\ba veces (no sal\w*( bien)?( y ya( est[aá])?)?|se pierd\w*|toca( petar)?|sale\w*( as[ií])?( y a veces no)?|salen\w*( as[ií])?( las (tiradas|cosas))?)\b[\s.,!¡—-]*/gi, "")
+    .replace(/\ba veces (no sal\w*( bien)?( y ya( est[aá])?)?|(se )?pierd\w*|toca( petar)?|sale\w*( as[ií])?( y a veces no)?|salen\w*( as[ií])?( las (tiradas|cosas))?)\b[\s.,!¡—-]*/gi, "")
     .replace(/\bel juego (va|es) as[ií]( algunas veces)?\b[\s.,!¡—-]*/gi, "")
     .replace(/\bno siempre (sale|se gana|va)\b[\s.,!¡—-]*/gi, "")
-    .replace(/\b(es|eso es) (azar|suerte)\b[\s.,!¡—-]*/gi, "")
+    .replace(/(?<!no )\b(es|eso es) (azar|suerte)\b[\s.,!¡—-]*/gi, "")
     .replace(/\bmala suerte\b[\s.,!¡—-]*/gi, "")
     .replace(/\bcada tirada es[^.!\n]*/gi, "")
     .replace(/\bas[ií] es (el juego|esto|la (cosa|vaina))\b[\s.,!¡—-]*/gi, "")
@@ -338,6 +338,9 @@ function limpiarNormaliza(txt: string): string {
 //    deja tal cual.
 function quitarGuiones(txt: string): string {
   const base = txt
+    // Rangos numéricos (0–24h, 30 - 40): guion normal pegado, NO coma (si no,
+    // "0–24h" salía "0, 24h").
+    .replace(/(\d)\s*[—–-]\s*(\d)/g, "$1-$2")
     .replace(/\s*[—–]\s*/g, ", ") // — y – (con o sin espacios) → coma
     .replace(/\s+-\s+/g, ", ") // " - " usado como guion → coma
     .replace(/,\s*,/g, ",") // comas duplicadas que puedan quedar

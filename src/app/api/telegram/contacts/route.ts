@@ -56,19 +56,32 @@ export async function GET(request: Request) {
     }
     return m;
   };
+  // Los chat_id que realmente vamos a mostrar (para acotar las previews a ELLOS
+  // y que ningún contacto listado salga sin vista previa por quedar fuera de una
+  // ventana global de mensajes).
+  const idsSandro = ((contactos[0].data as Fila[] | null) ?? []).map((f) => f.chat_id);
+  const idsBots = BOTS_EXTRA.map(
+    (_, i) => ((contactos[i + 1].data as Fila[] | null) ?? []).map((f) => f.chat_id)
+  );
   const previews = await Promise.all([
-    supabaseAdmin
-      .from("telegram_messages")
-      .select("chat_id, role, content, media_type")
-      .order("created_at", { ascending: false })
-      .limit(600),
-    ...BOTS_EXTRA.map((b) =>
-      supabaseAdmin
-        .from("bot_messages")
-        .select("chat_id, role, content, media_type")
-        .eq("bot", b.key)
-        .order("created_at", { ascending: false })
-        .limit(600)
+    idsSandro.length
+      ? supabaseAdmin
+          .from("telegram_messages")
+          .select("chat_id, role, content, media_type")
+          .in("chat_id", idsSandro)
+          .order("created_at", { ascending: false })
+          .limit(4000)
+      : Promise.resolve({ data: [] as MsgFila[] }),
+    ...BOTS_EXTRA.map((b, i) =>
+      idsBots[i].length
+        ? supabaseAdmin
+            .from("bot_messages")
+            .select("chat_id, role, content, media_type")
+            .eq("bot", b.key)
+            .in("chat_id", idsBots[i])
+            .order("created_at", { ascending: false })
+            .limit(4000)
+        : Promise.resolve({ data: [] as MsgFila[] })
     ),
   ]);
 
