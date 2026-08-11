@@ -39,9 +39,11 @@ function conPromo(system: string, promo: string): string {
   return `${system}\n\nPROMO ACTIVA AHORA (real, de Celsius; menciónala con ganas cuando venga a cuento, no te inventes otras): ${promo}`;
 }
 
-// Barato y rápido, ideal para chat de soporte de alto volumen. Para respuestas
-// más listas cambia a "claude-opus-4-8" (cuesta bastante más).
-const MODELO = "claude-haiku-4-5";
+// Modelo de TODOS los bots (Sandro, Jeffer, Livana). Sonnet sigue el prompt
+// largo (muchas reglas duras) muchísimo mejor que Haiku, que se saltaba reglas.
+// Cuesta ~3x que Haiku, pero cumple las pautas y convierte mejor. Si algún día
+// se quiere abaratar: "claude-haiku-4-5". Más listo aún: "claude-opus-4-8".
+const MODELO = "claude-sonnet-4-6";
 
 // Datos reales del casino (Celsius). Los métodos pueden variar por país, así
 // que el bot da lo habitual y remite a la sección de depósito para el detalle.
