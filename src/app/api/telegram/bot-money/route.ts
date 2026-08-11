@@ -14,12 +14,15 @@ export async function GET(request: Request) {
   const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
   const hoyDesde = new Date(`${hoy}T00:00:00+02:00`).toISOString();
 
+  // El IMPORTE del depósito viene en los eventos de depósito (event_type
+  // "redeposit", que Blue manda en TODOS los depósitos, incluido el primero), no
+  // en el de comisión (ahí a veces no llega el amount → salía 0). Mismo criterio
+  // que "Dinero que metieron" del panel de admin.
   const { data } = await supabaseAdmin
     .from("postback_events")
     .select("amount, created_at")
     .eq("afp", "bot")
-    .eq("event_type", "commission")
-    .eq("counted", true)
+    .eq("event_type", "redeposit")
     .gte("created_at", desde)
     .limit(100000);
 

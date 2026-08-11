@@ -48,6 +48,11 @@ const AVATAR_COLORS = [
 ];
 const colorAvatar = (id: number) => AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
 
+// Barra de scroll SIEMPRE visible (en PC/Mac el navegador la oculta; así se ve y
+// se puede arrastrar para bajar tanto la lista como la conversación).
+const BARRA =
+  "[scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.3)_transparent] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/25 hover:[&::-webkit-scrollbar-thumb]:bg-white/40 [&::-webkit-scrollbar-track]:bg-transparent";
+
 // Color de la etiqueta de cada bot (Sandro / Jeffer / Livana).
 const estiloEtiqueta = (origen: Jugador["origen"]) =>
   origen === "jeffer"
@@ -389,7 +394,7 @@ export default function BotChatViewer({
           <div
             className={`${
               chatAbierto ? "hidden sm:flex" : "flex"
-            } flex-col w-full sm:w-72 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20`}
+            } flex-col w-full sm:w-72 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20 ${BARRA}`}
           >
             {lista.map((j) => {
               const clave = claveDe(j);
@@ -527,7 +532,7 @@ export default function BotChatViewer({
                 <div
                   ref={chatScrollRef}
                   onScroll={alScrollChat}
-                  className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-1.5"
+                  className={`flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-1.5 ${BARRA}`}
                 >
                   {cargandoChat ? (
                     <p className="text-xs text-slate-400">Cargando…</p>

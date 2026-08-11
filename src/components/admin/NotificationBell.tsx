@@ -81,14 +81,12 @@ export default function NotificationBell() {
     pendingList.filter((p) => t(p.created_at) > visto).length +
     ftdRecientes.filter((e) => t(e.created_at) > visto).length;
 
-  // El título de la pestaña sigue avisando de solicitudes pendientes (a resolver).
   const pending = pendingList.length;
+  // El título de la pestaña NO lleva contador (molestaba y no se iba). El aviso
+  // de novedades lo da la campana con su punto, que sí se marca como visto.
   useEffect(() => {
-    document.title = pending > 0 ? `(${pending}) A&S Afiliados` : "A&S Afiliados";
-    return () => {
-      document.title = "A&S Afiliados";
-    };
-  }, [pending]);
+    document.title = "A&S Afiliados";
+  }, []);
 
   function abrir() {
     setOpen((v) => {

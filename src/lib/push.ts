@@ -223,24 +223,42 @@ export async function notificarEvento(
         })
       );
     }
-    // Si el FTD vino por el bot, avisamos también a Yaiza (gestora del bot) si
-    // ella tiene activado "cuando alguien deposita". Sin importe (lo ve en su
-    // panel); solo el aviso de que ha entrado un depósito.
-    if (esFtd && esBot) {
-      const quiereYaiza = await quiereNotif(YAIZA_ID, "bot_deposito");
-      if (quiereYaiza) {
-        tareas.push(
-          enviarPush(YAIZA_ID, {
-            title: "💰 Han depositado por el bot",
-            body: "Un jugador acaba de depositar. Entra a verlo.",
-            url: "/dashboard/bot",
-            tag: "bot-dep",
-          })
-        );
-      }
-    }
+    // El aviso de depósito a Yaiza (con bot y FTD/recarga) va aparte, desde el
+    // postback (avisarDepositoBotYaiza), para poder etiquetarlo bien.
 
     await Promise.all(tareas);
+  } catch {
+    /* nunca romper */
+  }
+}
+
+// Nombre "de cara" de cada bot según su afp (para los avisos de Yaiza).
+const BOT_NOMBRE: Record<string, string> = {
+  bot: "Sandro",
+  botmn: "Jeffer",
+  botdm: "Livana",
+};
+
+// Aviso a Yaiza (gestora del bot) de un depósito por uno de los bots, diciendo
+// de QUÉ bot es y si es un FTD NUEVO (primer depósito) o una RECARGA. Gateado por
+// su preferencia "cuando depositan". Blindado: nunca rompe el postback.
+export async function avisarDepositoBotYaiza(
+  afp: string,
+  tipo: "ftd" | "recarga"
+): Promise<void> {
+  try {
+    if (!afp || !afp.startsWith("bot")) return;
+    if (!(await quiereNotif(YAIZA_ID, "bot_deposito"))) return;
+    const bot = BOT_NOMBRE[afp] ?? "un bot";
+    const esFtd = tipo === "ftd";
+    await enviarPush(YAIZA_ID, {
+      title: esFtd ? `🎉 FTD nuevo · bot de ${bot}` : `🔁 Recarga · bot de ${bot}`,
+      body: esFtd
+        ? `Un jugador ha hecho su PRIMER depósito por el bot de ${bot}. Entra a verlo.`
+        : `Un jugador ha vuelto a depositar (recarga) por el bot de ${bot}.`,
+      url: "/dashboard/bot",
+      tag: "bot-dep",
+    });
   } catch {
     /* nunca romper */
   }

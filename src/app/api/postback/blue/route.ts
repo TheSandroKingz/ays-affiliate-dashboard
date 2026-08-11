@@ -12,7 +12,7 @@ import {
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
-import { notificarEvento, enviarPush } from "@/lib/push";
+import { notificarEvento, enviarPush, avisarDepositoBotYaiza } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
 import { botPorTracking } from "@/lib/bots";
 
@@ -246,6 +246,10 @@ export async function GET(request: Request) {
       amount: monto,
       status: "deposit", // depósito recibido, no suma dinero (el CPA va por el QFTD)
     });
+    // Si es una RECARGA por un bot, avisamos a Yaiza (el FTD nuevo se avisa en el
+    // evento de comisión, más abajo).
+    if (et === "redeposit")
+      after(() => avisarDepositoBotYaiza(afpDeCampana(tag), "recarga"));
     return NextResponse.json({
       ok: true,
       event,
@@ -382,6 +386,8 @@ export async function GET(request: Request) {
         comisionPagada,
         afpDeCampana(tag).startsWith("bot")
       );
+      // Aviso a Yaiza: FTD NUEVO por este bot (diciendo de qué bot es).
+      after(() => avisarDepositoBotYaiza(afpDeCampana(tag), "ftd"));
     }
     if (estado === "held" && heldReason === "double_pay") {
       await enviarPush(ADMIN_USER_ID, {
