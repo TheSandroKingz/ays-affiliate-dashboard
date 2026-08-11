@@ -13,6 +13,8 @@ import {
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
+import { enviarPush } from "@/lib/push";
+import { ADMIN_USER_ID, YAIZA_ID } from "@/lib/adminId";
 
 type Turno = { role: "user" | "assistant"; content: string };
 
@@ -400,14 +402,38 @@ export async function POST(request: Request) {
 
     // ── Un JUGADOR escribe → la IA le responde sola + copia al dueño ─────────
     if (!esDueno) {
-      // Datos del contacto: silencio y corte de memoria.
+      // Datos del contacto: silencio, corte de memoria y última vez que habló.
       const { data: contacto } = await supabaseAdmin
         .from("telegram_contacts")
-        .select("silenced, memory_reset_at, last_example_at")
+        .select("silenced, memory_reset_at, last_example_at, last_msg_at")
         .eq("chat_id", chatId)
         .maybeSingle();
       // Silenciado por el dueño: el bot lo ignora del todo.
       if (contacto?.silenced) return NextResponse.json({ ok: true });
+
+      // Aviso push "ha hablado alguien" (para Sandro y Yaiza, que gestiona el
+      // bot desde la web). Anti-spam: solo si es un contacto NUEVO o si llevaba
+      // +15 min callado — así avisa de conversaciones que empiezan, no de cada
+      // mensaje suelto de una charla en curso. Blindado: nunca rompe el webhook.
+      try {
+        const prev = contacto?.last_msg_at ? Date.parse(contacto.last_msg_at) : 0;
+        const conversacionNueva = !prev || Date.now() - prev > 15 * 60_000;
+        if (conversacionNueva) {
+          const quien = from.first_name || from.username || "Alguien";
+          const aviso = {
+            title: "💬 Han escrito al bot",
+            body: `${quien} está hablando con el bot. Entra a leerlo.`,
+            url: "/dashboard/bot",
+            tag: "bot-msg",
+          };
+          await Promise.all([
+            enviarPush(YAIZA_ID, aviso),
+            enviarPush(ADMIN_USER_ID, { ...aviso, url: "/admin/telegram" }),
+          ]);
+        }
+      } catch {
+        /* nunca romper el webhook por una notificación */
+      }
 
       // Límite: máx 8 mensajes de IA por minuto por usuario (protege el saldo de
       // Claude). ATÓMICO en BD: una ráfaga concurrente del mismo usuario no puede

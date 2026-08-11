@@ -375,7 +375,13 @@ export async function GET(request: Request) {
     if (estado === "counted" && target) {
       // Una sola notificación (la de siempre): notificarEvento ya avisa al
       // afiliado y, si es tráfico propio/tuyo, a ti UNA vez. Sin push extra.
-      await notificarEvento(target.user_id, "ftd", comisionPagada);
+      // Si el FTD vino por un bot (afp bot/botmn/botdm), el aviso lo dice.
+      await notificarEvento(
+        target.user_id,
+        "ftd",
+        comisionPagada,
+        afpDeCampana(tag).startsWith("bot")
+      );
     }
     if (estado === "held" && heldReason === "double_pay") {
       await enviarPush(ADMIN_USER_ID, {

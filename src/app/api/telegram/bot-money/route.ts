@@ -3,8 +3,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getGestorBot } from "@/lib/adminAuth";
 import { YAIZA_START } from "@/lib/adminId";
 
-// Dinero que ha generado el BOT de Sandro (afp="bot") desde que Yaiza empezó, y
-// el de hoy. Solo lectura, para el gestor del bot. Blindado.
+// Dinero que ha DEPOSITADO la gente por el BOT de Sandro (afp="bot") desde que
+// Yaiza empezó, y el de hoy — el importe del depósito (amount), NO la comisión.
+// Solo lectura, para el gestor del bot. Blindado.
 export async function GET(request: Request) {
   const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
 
   const { data } = await supabaseAdmin
     .from("postback_events")
-    .select("commission, created_at")
+    .select("amount, created_at")
     .eq("afp", "bot")
     .eq("event_type", "commission")
     .eq("counted", true)
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
   let nTotal = 0;
   let nHoy = 0;
   for (const e of data ?? []) {
-    const c = Number(e.commission ?? 0);
+    const c = Number(e.amount ?? 0);
     total += c;
     nTotal++;
     if ((e.created_at as string) >= hoyDesde) {

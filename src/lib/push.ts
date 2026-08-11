@@ -119,7 +119,8 @@ async function adminCpaSpain(): Promise<number | null> {
 export async function notificarEvento(
   userId: string | null | undefined,
   tipo: TipoNotif,
-  monto?: number
+  monto?: number,
+  esBot = false
 ): Promise<void> {
   if (!userId) return;
   const esFtd = tipo === "ftd";
@@ -181,12 +182,22 @@ export async function notificarEvento(
       if (quiereAdmin) {
         tareas.push(
           enviarPush(ADMIN_USER_ID, {
-            title: esFtd ? `💰 Nuevo FTD de ${nombre}` : `Nuevo registro de ${nombre}`,
+            title: esFtd
+              ? esBot
+                ? "🤖 ¡FTD del bot! 🎉"
+                : `💰 Nuevo FTD de ${nombre}`
+              : esBot
+                ? "🤖 Nuevo registro del bot"
+                : `Nuevo registro de ${nombre}`,
             body: esFtd
               ? montoAdmin != null
-                ? `Te llevas ${fmtMonto(montoAdmin)} 🤑`
-                : "Un afiliado ha generado un FTD."
-              : "Un afiliado ha generado un registro.",
+                ? `${esBot ? "El bot lo ha traído. " : ""}Te llevas ${fmtMonto(montoAdmin)} 🤑`
+                : esBot
+                  ? "El bot ha generado un FTD."
+                  : "Un afiliado ha generado un FTD."
+              : esBot
+                ? "El bot ha generado un registro."
+                : "Un afiliado ha generado un registro.",
             url: "/admin/actividad",
           })
         );

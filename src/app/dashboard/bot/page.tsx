@@ -33,7 +33,13 @@ const colorAvatar = (id: number) => AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.l
 
 export default function BotLectorPage() {
   const [autorizado, setAutorizado] = useState<boolean | null>(null);
-  const [dinero, setDinero] = useState<{ total: number; hoy: number; desde: string } | null>(null);
+  const [dinero, setDinero] = useState<{
+    total: number;
+    hoy: number;
+    desde: string;
+    veces: number;
+    vecesHoy: number;
+  } | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
   const [cargandoJug, setCargandoJug] = useState(false);
   const [chatAbierto, setChatAbierto] = useState<number | null>(null);
@@ -67,7 +73,14 @@ export default function BotLectorPage() {
       const bc = await rc.json().catch(() => ({}));
       setJugadores(bc.jugadores ?? []);
       const bm = await rm.json().catch(() => ({}));
-      if (typeof bm.total === "number") setDinero({ total: bm.total, hoy: bm.hoy, desde: bm.desde });
+      if (typeof bm.total === "number")
+        setDinero({
+          total: bm.total,
+          hoy: bm.hoy,
+          desde: bm.desde,
+          veces: bm.qftdTotal ?? 0,
+          vecesHoy: bm.qftdHoy ?? 0,
+        });
     } finally {
       setCargandoJug(false);
     }
@@ -142,18 +155,27 @@ export default function BotLectorPage() {
         </button>
       </div>
 
-      {/* Dinero que ha generado el bot desde que empezó Yaiza. */}
+      {/* Lo que ha depositado la gente por el bot desde que empezó Yaiza. */}
       {dinero && (
-        <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
-          <div className="text-sm text-emerald-200/80">
-            💰 Dinero que ha generado el bot desde que estás
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
+            <div className="text-sm text-emerald-200/80">
+              💰 Han depositado por el bot desde que estás
+            </div>
+            <div className="mt-1 text-4xl font-extrabold text-emerald-300">
+              {Math.round(dinero.total).toLocaleString("es-ES")} €
+            </div>
+            <div className="mt-1 text-xs text-slate-400">
+              Desde el {new Date(dinero.desde + "T00:00:00").toLocaleDateString("es-ES")} · hoy:{" "}
+              <b className="text-emerald-200">{Math.round(dinero.hoy).toLocaleString("es-ES")} €</b>
+            </div>
           </div>
-          <div className="mt-1 text-4xl font-extrabold text-emerald-300">
-            {Math.round(dinero.total).toLocaleString("es-ES")} €
-          </div>
-          <div className="mt-1 text-xs text-slate-400">
-            Desde el {new Date(dinero.desde + "T00:00:00").toLocaleDateString("es-ES")} · hoy:{" "}
-            <b className="text-emerald-200">{Math.round(dinero.hoy).toLocaleString("es-ES")} €</b>
+          <div className="rounded-2xl border border-sky-400/30 bg-gradient-to-br from-sky-500/20 to-sky-500/5 p-5">
+            <div className="text-sm text-sky-200/80">🔁 Veces que han depositado</div>
+            <div className="mt-1 text-4xl font-extrabold text-sky-300">{dinero.veces}</div>
+            <div className="mt-1 text-xs text-slate-400">
+              hoy: <b className="text-sky-200">{dinero.vecesHoy}</b>
+            </div>
           </div>
         </div>
       )}
@@ -203,13 +225,22 @@ export default function BotLectorPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm text-white truncate">{j.first_name || "Jugador"}</span>
-                        <span className="text-[10px] text-slate-500 shrink-0">
-                          {j.last_msg_at
-                            ? new Date(j.last_msg_at).toLocaleDateString("es-ES", {
+                        <span className="text-[10px] text-slate-500 shrink-0 text-right leading-tight">
+                          {j.last_msg_at ? (
+                            <>
+                              {new Date(j.last_msg_at).toLocaleDateString("es-ES", {
                                 day: "2-digit",
                                 month: "2-digit",
-                              })
-                            : ""}
+                              })}
+                              <br />
+                              {new Date(j.last_msg_at).toLocaleTimeString("es-ES", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </>
+                          ) : (
+                            ""
+                          )}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-500 truncate">
