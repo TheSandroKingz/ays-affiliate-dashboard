@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { esGestorBot } from "@/lib/adminId";
-import { RefreshCw, ChevronLeft } from "lucide-react";
+import { reproducirSonido } from "@/lib/sonido";
+import { RefreshCw, ChevronLeft, Bell, BellOff } from "lucide-react";
 
 type Jugador = {
   chat_id: number;
@@ -67,6 +68,35 @@ export default function BotLectorPage() {
   useEffect(() => {
     chatAbiertoRef.current = chatAbierto;
   }, [chatAbierto]);
+  // Sonido al llegar un mensaje nuevo mientras tiene la web abierta.
+  const [sonidoOn, setSonidoOn] = useState(true);
+  const sonidoOnRef = useRef(true);
+  useEffect(() => {
+    sonidoOnRef.current = sonidoOn;
+  }, [sonidoOn]);
+  // Último last_msg_at conocido de cada chat, para detectar mensajes nuevos.
+  const prevMsgRef = useRef<Record<string, string>>({});
+
+  // Preferencia de sonido guardada en este dispositivo.
+  useEffect(() => {
+    try {
+      setSonidoOn(localStorage.getItem("bot_sonido") !== "off");
+    } catch {
+      /* ignora */
+    }
+  }, []);
+  const toggleSonido = () => {
+    setSonidoOn((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("bot_sonido", next ? "on" : "off");
+      } catch {
+        /* ignora */
+      }
+      if (next) reproducirSonido("venta"); // confirma que suena (y desbloquea audio)
+      return next;
+    });
+  };
 
   // Carga inicial de "leídos" guardados en este dispositivo.
   useEffect(() => {
@@ -131,6 +161,24 @@ export default function BotLectorPage() {
         const bc = await rc.json().catch(() => ({}));
         const nuevos: Jugador[] = bc.jugadores ?? [];
         setJugadores(nuevos);
+        // ¿Ha entrado algún mensaje NUEVO desde el último refresco? (un chat con
+        // last_msg_at más nuevo, que no sea el que tiene abierto). Si sí y el
+        // sonido está activado, suena. La primera carga NO suena.
+        {
+          const prev = prevMsgRef.current;
+          const primeraVez = Object.keys(prev).length === 0;
+          let hayNuevo = false;
+          const actual: Record<string, string> = {};
+          for (const j of nuevos) {
+            if (!j.last_msg_at) continue;
+            const k = claveDe(j);
+            actual[k] = j.last_msg_at;
+            if (k !== chatAbiertoRef.current && (!prev[k] || j.last_msg_at > prev[k]))
+              hayNuevo = true;
+          }
+          prevMsgRef.current = actual;
+          if (hayNuevo && !primeraVez && sonidoOnRef.current) reproducirSonido("venta");
+        }
         // La PRIMERA vez marcamos todo lo actual como visto: así solo lo NUEVO a
         // partir de ahora aparece como no leído (si no, saldría todo en verde).
         try {
@@ -258,14 +306,28 @@ export default function BotLectorPage() {
             Lee todas las charlas con los jugadores. Anota lo que veas para mejorarlo.
           </p>
         </div>
-        <button
-          onClick={() => cargar()}
-          disabled={cargandoJug}
-          className="shrink-0 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-        >
-          <RefreshCw size={15} className={cargandoJug ? "animate-spin" : ""} />
-          Actualizar
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={toggleSonido}
+            title={sonidoOn ? "Sonido activado (toca para silenciar)" : "Sonido silenciado (toca para activar)"}
+            className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition ${
+              sonidoOn
+                ? "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30"
+                : "bg-white/10 text-slate-400 hover:bg-white/20"
+            }`}
+          >
+            {sonidoOn ? <Bell size={15} /> : <BellOff size={15} />}
+            {sonidoOn ? "Sonido" : "Silencio"}
+          </button>
+          <button
+            onClick={() => cargar()}
+            disabled={cargandoJug}
+            className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+          >
+            <RefreshCw size={15} className={cargandoJug ? "animate-spin" : ""} />
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Lo que ha depositado la gente por el bot desde que empezó Yaiza. */}
