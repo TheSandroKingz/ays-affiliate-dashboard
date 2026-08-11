@@ -24,21 +24,25 @@ function esc(s: string): string {
 }
 
 // Extrae el archivo (vídeo/foto/gif/documento) de un mensaje de Telegram, si lo trae.
+// `miniatura`:
+//  - false (por defecto): file_id del ARCHIVO real. Para cuando el bot va a
+//    REENVIAR ese vídeo/foto luego (/bienvenida, /ejemplo, /diario). Un vídeo
+//    guardado por su miniatura NO se puede reenviar como vídeo.
+//  - true: para la media que manda un JUGADOR (guardar para el panel/visión):
+//    de un vídeo cogemos la MINIATURA (fotograma) → jpeg válido que la IA "ve".
 function extraerMedia(
-  msg: Record<string, unknown>
+  msg: Record<string, unknown>,
+  miniatura = false
 ): { media_type: string; file_id: string } | null {
   type Med = { file_id: string; thumbnail?: { file_id: string }; thumb?: { file_id: string } };
   const photos = msg.photo as Array<{ file_id: string }> | undefined;
   const video = msg.video as Med | undefined;
   const animation = msg.animation as Med | undefined;
   const document = msg.document as { file_id: string } | undefined;
-  // En vídeos/gifs guardamos la MINIATURA (fotograma): así el panel muestra un
-  // jpeg válido (no el .mp4) y la IA puede "ver" de qué va (Claude no procesa
-  // vídeo, sí su miniatura). Igual que el bot de Sandro.
-  if (video)
-    return { media_type: "video", file_id: video.thumbnail?.file_id ?? video.thumb?.file_id ?? video.file_id };
-  if (animation)
-    return { media_type: "animation", file_id: animation.thumbnail?.file_id ?? animation.thumb?.file_id ?? animation.file_id };
+  const miniOrReal = (m: Med) =>
+    miniatura ? m.thumbnail?.file_id ?? m.thumb?.file_id ?? m.file_id : m.file_id;
+  if (video) return { media_type: "video", file_id: miniOrReal(video) };
+  if (animation) return { media_type: "animation", file_id: miniOrReal(animation) };
   if (photos?.length)
     return { media_type: "photo", file_id: photos[photos.length - 1].file_id };
   if (document) return { media_type: "document", file_id: document.file_id };
@@ -516,7 +520,7 @@ export async function procesarUpdate(
       .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
     // file_id de la media del jugador (para verla en el panel).
-    const mediaJ = extraerMedia(msg);
+    const mediaJ = extraerMedia(msg, true); // media del jugador: miniatura (panel/visión)
 
     const { data: insUser } = await supabaseAdmin
       .from("bot_messages")
