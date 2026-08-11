@@ -29,7 +29,8 @@ export async function GET(request: Request) {
   const { data: dailyRaw, error } = await supabaseAdmin
     .from("affiliate_daily_stats")
     .select("user_id, date, commission, clicks, registrations, ftd")
-    .in("user_id", idsToLoad);
+    .in("user_id", idsToLoad)
+    .limit(100000); // sin límite, PostgREST corta en 1000 y el histórico saldría corto
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const all = (dailyRaw ?? []).map((d) => ({

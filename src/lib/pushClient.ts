@@ -152,8 +152,11 @@ export async function reactivarSiConcedido(): Promise<void> {
     const key = "pushSync:" + session.user.id;
     const last = Number(localStorage.getItem(key) || 0);
     if (Date.now() - last < 6 * 60 * 60 * 1000) return;
-    await activarPush();
-    localStorage.setItem(key, String(Date.now()));
+    // Solo marcamos la sincronización como hecha si activarPush TUVO ÉXITO. Si
+    // falla (red caída, etc.), NO guardamos el timestamp para reintentar en la
+    // próxima apertura, en vez de quedarnos 6h con un endpoint muerto.
+    const ok = await activarPush();
+    if (ok) localStorage.setItem(key, String(Date.now()));
   } catch {
     /* silencioso */
   }

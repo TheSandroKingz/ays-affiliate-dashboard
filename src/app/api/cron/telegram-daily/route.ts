@@ -347,6 +347,19 @@ export async function GET(request: Request) {
   // Texto = el que genera la IA (sin necesidad de que tú lo escribas).
   const texto = textoIA;
   if (!tieneMedia && !texto) {
+    // No hay NADA que enviar (IA caída y sin vídeo). LIBERAMOS la clave de la
+    // franja para poder reintentar en un disparo posterior; si no, quedaría
+    // marcada como "ya enviada" y el mensaje del día no saldría nunca.
+    if (!force) {
+      const diaMadrid = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Madrid",
+      }).format(new Date());
+      await supabaseAdmin
+        .from("telegram_envio_diario")
+        .delete()
+        .eq("clave", `${diaMadrid}-${esExtra ? "extra" : "noche"}`)
+        .then(() => {}, () => {});
+    }
     return NextResponse.json({ ok: true, enviado: false, reactivados, motivo: "sin texto (IA) ni video" });
   }
 

@@ -67,6 +67,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   }, []);
 
   async function handleLogout() {
+    // Soltamos la suscripción push del navegador antes de cerrar sesión: si en
+    // este mismo navegador entra otra cuenta, generará una suscripción nueva sin
+    // colisionar con la del usuario anterior (evita que los avisos ajenos, con su
+    // importe, lleguen al siguiente usuario). En móvil (una cuenta por PWA) es
+    // inocuo. Blindado: nunca bloquea el cierre de sesión.
+    try {
+      const { desactivarPush } = await import("@/lib/pushClient");
+      await desactivarPush();
+    } catch {
+      /* si falla, seguimos con el logout igual */
+    }
     await supabase.auth.signOut();
     router.push("/login");
   }

@@ -53,9 +53,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Rechazar = eliminar la cuenta por completo.
+  // Rechazar = eliminar la cuenta por completo (igual que "Eliminar cuenta").
   await supabaseAdmin.from("affiliate_daily_stats").delete().eq("user_id", userId);
   await supabaseAdmin.from("payments").delete().eq("user_id", userId);
+  // Eventos emparejados a este usuario (si tenía tracking_code ya asignado), para
+  // no dejar postback_events huérfanos apuntando a un usuario inexistente.
+  await supabaseAdmin
+    .from("postback_events")
+    .delete()
+    .eq("matched_user_id", userId)
+    .then(() => {}, () => {});
   await supabaseAdmin.from("affiliates").delete().eq("user_id", userId);
   await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
 

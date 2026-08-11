@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 import { eur } from "@/lib/format";
 
 type BotEstado = {
@@ -27,6 +29,7 @@ type BotEstado = {
 };
 
 export default function EstadoBotsPage() {
+  const router = useRouter();
   const [bots, setBots] = useState<BotEstado[] | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
@@ -38,8 +41,8 @@ export default function EstadoBotsPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session) {
-        setError(true);
+      if (!session || session.user.id !== ADMIN_USER_ID) {
+        router.replace("/dashboard");
         return;
       }
       const r = await fetch("/api/admin/bots", {

@@ -28,12 +28,16 @@ export async function GET(request: Request) {
         .from("telegram_messages")
         .select("id, role, content, created_at, file_id, media_type")
         .eq("chat_id", chatId);
-  const { data } = await query.order("created_at", { ascending: true }).limit(500);
+  // Traemos los 500 mensajes MÁS RECIENTES (order desc + limit) y los invertimos
+  // a orden cronológico. Con ascending+limit salían los 500 más VIEJOS y en un
+  // chat largo nunca se veían los mensajes recientes.
+  const { data } = await query.order("created_at", { ascending: false }).limit(500);
+  const filas = (data ?? []).slice().reverse();
 
   // Caducidad de 12h para las URLs de imagen (suficiente para ver el chat). Cada
   // bot firma y sirve su media por su propia ruta (Sandro /media, bots nuevos /mi-bot/media).
   const exp = Math.floor(Date.now() / 1000) + 12 * 3600;
-  const history = (data ?? []).map((m) => {
+  const history = filas.map((m) => {
     const esImagen =
       m.file_id && (m.media_type === "photo" || m.media_type === "animation");
     const id = m.id as number;

@@ -27,12 +27,18 @@ function esc(s: string): string {
 function extraerMedia(
   msg: Record<string, unknown>
 ): { media_type: string; file_id: string } | null {
+  type Med = { file_id: string; thumbnail?: { file_id: string }; thumb?: { file_id: string } };
   const photos = msg.photo as Array<{ file_id: string }> | undefined;
-  const video = msg.video as { file_id: string } | undefined;
-  const animation = msg.animation as { file_id: string } | undefined;
+  const video = msg.video as Med | undefined;
+  const animation = msg.animation as Med | undefined;
   const document = msg.document as { file_id: string } | undefined;
-  if (video) return { media_type: "video", file_id: video.file_id };
-  if (animation) return { media_type: "animation", file_id: animation.file_id };
+  // En vídeos/gifs guardamos la MINIATURA (fotograma): así el panel muestra un
+  // jpeg válido (no el .mp4) y la IA puede "ver" de qué va (Claude no procesa
+  // vídeo, sí su miniatura). Igual que el bot de Sandro.
+  if (video)
+    return { media_type: "video", file_id: video.thumbnail?.file_id ?? video.thumb?.file_id ?? video.file_id };
+  if (animation)
+    return { media_type: "animation", file_id: animation.thumbnail?.file_id ?? animation.thumb?.file_id ?? animation.file_id };
   if (photos?.length)
     return { media_type: "photo", file_id: photos[photos.length - 1].file_id };
   if (document) return { media_type: "document", file_id: document.file_id };
@@ -561,13 +567,17 @@ export async function procesarUpdate(
           .eq("bot", bot.key)
           .maybeSingle();
         promo = (cfg?.promo ?? "").trim();
-        // Imagen para la IA: la foto del mensaje actual; si no trae, la última
-        // foto reciente del jugador (mandó la captura en un mensaje y el texto en
-        // otro → así el bot no responde a ciegas a "¿qué ves aquí?").
-        const photos = msg.photo as Array<{ file_id: string }> | undefined;
-        let visionFileId: string | null = photos?.length
-          ? photos[photos.length - 1].file_id
-          : null;
+        // Imagen para la IA: la foto/fotograma del mensaje actual (mediaJ ya trae
+        // la miniatura de vídeos/gifs); si no trae, la última imagen reciente del
+        // jugador (mandó la captura en un mensaje y el texto en otro → así el bot
+        // no responde a ciegas a "¿qué ves aquí?").
+        let visionFileId: string | null =
+          mediaJ &&
+          (mediaJ.media_type === "photo" ||
+            mediaJ.media_type === "video" ||
+            mediaJ.media_type === "animation")
+            ? mediaJ.file_id
+            : null;
         if (!visionFileId) {
           const { data: ultFoto } = await supabaseAdmin
             .from("bot_messages")
@@ -575,7 +585,7 @@ export async function procesarUpdate(
             .eq("bot", bot.key)
             .eq("chat_id", chatId)
             .eq("role", "user")
-            .eq("media_type", "photo")
+            .in("media_type", ["photo", "video", "animation"])
             .not("file_id", "is", null)
             .gt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString())
             .order("created_at", { ascending: false })

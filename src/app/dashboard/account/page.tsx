@@ -270,21 +270,27 @@ export default function AccountPage() {
           ? "Ese nombre de usuario ya está en uso, elige otro."
           : "Error al guardar"
       );
-    } else if (emailError) {
-      // El nombre SÍ se guardó; solo falló el correo. No mentimos con "todo ok".
-      setMessage(
-        emailMsg ||
-          "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo."
-      );
     } else {
-      setMessage("Guardado correctamente");
-      // Avisamos al menú lateral para que refleje el nuevo nombre al instante,
-      // sin recargar toda la app (antes se hacía window.location.reload()).
+      // El nombre SÍ se guardó (haya ido bien o no lo del correo): avisamos al
+      // menú lateral para que refleje el nuevo nombre al instante, sin recargar.
       window.dispatchEvent(
         new CustomEvent("profile-updated", {
           detail: { display_name: firstName.trim() },
         })
       );
+      if (emailError) {
+        // Solo falló/canceló el correo. No mentimos con "todo ok".
+        setMessage(
+          emailMsg ||
+            "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo."
+        );
+      } else {
+        setMessage("Guardado correctamente");
+        // Si se cambió el correo, refrescamos la sesión para que el JWT local
+        // traiga el email nuevo; si no, cada "Guardar" siguiente creería que el
+        // correo cambió otra vez y volvería a pedir la contraseña.
+        if (emailChanged) await supabase.auth.refreshSession();
+      }
     }
   }
 

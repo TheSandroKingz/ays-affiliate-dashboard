@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 import { eur } from "@/lib/format";
 
 type Fuente = {
@@ -21,6 +23,7 @@ const MESES = [
 ];
 
 export default function RepartoPage() {
+  const router = useRouter();
   const [reparto, setReparto] = useState<Reparto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +63,8 @@ export default function RepartoPage() {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (!session) {
-          setError("Inicia sesión.");
+        if (!session || session.user.id !== ADMIN_USER_ID) {
+          router.replace("/dashboard");
           return;
         }
         const q = periodo.startsWith("dia:")

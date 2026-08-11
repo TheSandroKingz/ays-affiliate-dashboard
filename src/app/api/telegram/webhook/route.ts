@@ -432,10 +432,14 @@ export async function POST(request: Request) {
         /* nunca romper el webhook por una notificación */
       }
 
-      // Límite: máx 8 mensajes de IA por minuto por usuario (protege el saldo de
-      // Claude). ATÓMICO en BD: una ráfaga concurrente del mismo usuario no puede
-      // saltárselo. Si la función aún no existe (SQL sin aplicar), no bloquea.
-      const LIMITE_IA = 8;
+      // Límite: máx 15 mensajes por minuto por usuario (protege el saldo de
+      // Claude y evita floods). ATÓMICO en BD: una ráfaga concurrente del mismo
+      // usuario no puede saltárselo. Si la función aún no existe (SQL sin aplicar),
+      // no bloquea. Subido de 8 a 15: un jugador ansioso que parte su duda en
+      // varios mensajes cortos (cada uno cuenta, aunque el debounce agrupe la
+      // respuesta) no debe quedarse sin respuesta ni sin copia al dueño; un flood
+      // real (decenas/min) sí se corta.
+      const LIMITE_IA = 15;
       const { data: nUsuario } = await supabaseAdmin.rpc("bump_ai_user", {
         p_chat_id: chatId,
         p_ventana_ms: 60_000,

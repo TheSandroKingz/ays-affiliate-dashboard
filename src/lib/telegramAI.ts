@@ -301,14 +301,14 @@ function sistemaCacheado(
 // "es normal" a secas, porque vale para depósitos/bono ("eso es normal, está en
 // proceso"); solo las inequívocas de dar por normal/esperable la pérdida o el azar.
 const NORMALIZA_PERDER =
-  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!no )\bes azar\b|(?<!no )\bes suerte\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|se (puede|pued\w+) (llegar a )?perder/i;
+  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!no )\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|se (puede|pued\w+) (llegar a )?perder/i;
 
 // Segunda red de seguridad: el bot NUNCA puede VALIDAR que es una estafa/engaño,
 // ni animar a denunciar, ni conceder que otros fueron estafados. Si su respuesta
 // contiene eso, la REGENERAMOS. (El "no es una estafa" queda excluido con el
 // negative lookbehind.)
 const VALIDA_ESTAFA =
-  /(?<!no )(?<!nadie )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|que (la gente|los dem[aá]s) (lo )?(vea|decid|juzgue|sepa)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a\w* (los |esos |tus |bien )?(v[ií]deos|pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|probablemente no (seas|ser[aá]s|eres)|seguramente no (seas|ser[aá]s|eres)/i;
+  /(?<!no )(?<!nadie )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(vea|decid|juzgue|sepa)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a\w* (los |esos |tus |bien )?(v[ií]deos|pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|probablemente no (seas|ser[aá]s|eres)|seguramente no (seas|ser[aá]s|eres)/i;
 
 function textoDe(res: Anthropic.Message): string {
   return res.content
