@@ -13,8 +13,8 @@ import {
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { responderIA, iaConfigurada } from "@/lib/telegramAI";
-import { enviarPush } from "@/lib/push";
-import { ADMIN_USER_ID, YAIZA_ID } from "@/lib/adminId";
+import { enviarPush, quiereNotif } from "@/lib/push";
+import { YAIZA_ID } from "@/lib/adminId";
 
 type Turno = { role: "user" | "assistant"; content: string };
 
@@ -411,25 +411,22 @@ export async function POST(request: Request) {
       // Silenciado por el dueño: el bot lo ignora del todo.
       if (contacto?.silenced) return NextResponse.json({ ok: true });
 
-      // Aviso push "ha hablado alguien" (para Sandro y Yaiza, que gestiona el
-      // bot desde la web). Anti-spam: solo si es un contacto NUEVO o si llevaba
-      // +15 min callado — así avisa de conversaciones que empiezan, no de cada
-      // mensaje suelto de una charla en curso. Blindado: nunca rompe el webhook.
+      // Aviso push "ha hablado alguien" SOLO para Yaiza (gestiona el bot desde
+      // la web). Al admin NO se le avisa de cada charla: a él solo le llegan los
+      // FTD. Anti-spam: solo si es un contacto NUEVO o si llevaba +15 min callado
+      // — así avisa de conversaciones que empiezan, no de cada mensaje de una
+      // charla en curso. Blindado: nunca rompe el webhook.
       try {
         const prev = contacto?.last_msg_at ? Date.parse(contacto.last_msg_at) : 0;
         const conversacionNueva = !prev || Date.now() - prev > 15 * 60_000;
-        if (conversacionNueva) {
+        if (conversacionNueva && (await quiereNotif(YAIZA_ID, "bot_msg"))) {
           const quien = from.first_name || from.username || "Alguien";
-          const aviso = {
+          await enviarPush(YAIZA_ID, {
             title: "💬 Han escrito al bot",
             body: `${quien} está hablando con el bot. Entra a leerlo.`,
             url: "/dashboard/bot",
             tag: "bot-msg",
-          };
-          await Promise.all([
-            enviarPush(YAIZA_ID, aviso),
-            enviarPush(ADMIN_USER_ID, { ...aviso, url: "/admin/telegram" }),
-          ]);
+          });
         }
       } catch {
         /* nunca romper el webhook por una notificación */

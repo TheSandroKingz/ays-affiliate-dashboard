@@ -1,7 +1,7 @@
 import webpush from "web-push";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { ADMIN_USER_ID } from "./adminAuth";
-import { esCuentaPropia } from "./adminId";
+import { esCuentaPropia, YAIZA_ID } from "./adminId";
 
 // Notificaciones push (Web Push / PWA). Enviamos avisos al móvil de un usuario
 // (afiliado o admin) cuando ocurre algo (registro, FTD). BLINDADO: cualquier
@@ -72,12 +72,19 @@ export async function enviarPush(
   }
 }
 
-type TipoNotif = "ftd" | "registration";
+export type TipoNotif = "ftd" | "registration" | "bot_msg" | "bot_deposito";
+
+const COL_NOTIF: Record<TipoNotif, string> = {
+  ftd: "notif_ftd",
+  registration: "notif_registro",
+  bot_msg: "notif_bot_msg", // Yaiza: alguien escribe al bot
+  bot_deposito: "notif_bot_deposito", // Yaiza: alguien deposita por el bot
+};
 
 // ¿El usuario quiere que le avisen de este tipo de evento? Lee sus preferencias.
-// Por defecto (o si la columna aún no existe): ambos activados.
-async function quiereNotif(userId: string, tipo: TipoNotif): Promise<boolean> {
-  const col = tipo === "ftd" ? "notif_ftd" : "notif_registro";
+// Por defecto (o si la columna aún no existe): activado.
+export async function quiereNotif(userId: string, tipo: TipoNotif): Promise<boolean> {
+  const col = COL_NOTIF[tipo];
   try {
     const { data, error } = await supabaseAdmin
       .from("affiliates")
@@ -216,6 +223,23 @@ export async function notificarEvento(
         })
       );
     }
+    // Si el FTD vino por el bot, avisamos también a Yaiza (gestora del bot) si
+    // ella tiene activado "cuando alguien deposita". Sin importe (lo ve en su
+    // panel); solo el aviso de que ha entrado un depósito.
+    if (esFtd && esBot) {
+      const quiereYaiza = await quiereNotif(YAIZA_ID, "bot_deposito");
+      if (quiereYaiza) {
+        tareas.push(
+          enviarPush(YAIZA_ID, {
+            title: "💰 Han depositado por el bot",
+            body: "Un jugador acaba de depositar. Entra a verlo.",
+            url: "/dashboard/bot",
+            tag: "bot-dep",
+          })
+        );
+      }
+    }
+
     await Promise.all(tareas);
   } catch {
     /* nunca romper */

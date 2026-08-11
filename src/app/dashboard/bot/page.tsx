@@ -12,7 +12,13 @@ type Jugador = {
   last_msg_at: string | null;
   opted_out: boolean;
   silenced: boolean;
+  origen: "as" | "jeffer";
+  bot_nombre: string;
 };
+
+// Clave única de un chat: el mismo usuario podría hablar con dos bots, así que
+// combinamos el bot (origen) con su chat_id.
+const claveDe = (j: Jugador) => `${j.origen}:${j.chat_id}`;
 
 function iniciales(n?: string | null): string {
   const s = (n || "").trim();
@@ -42,13 +48,47 @@ export default function BotLectorPage() {
   } | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
   const [cargandoJug, setCargandoJug] = useState(false);
-  const [chatAbierto, setChatAbierto] = useState<number | null>(null);
+  // El chat abierto se identifica por su clave compuesta "origen:chat_id".
+  const [chatAbierto, setChatAbierto] = useState<string | null>(null);
   const [chatMsgs, setChatMsgs] = useState<
     { role: string; content: string; created_at?: string; media_url?: string | null }[]
   >([]);
   const [cargandoChat, setCargandoChat] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  // "Leídos": para cada chat (por su clave), el last_msg_at que Yaiza ya vio. Si
+  // el chat tiene uno más nuevo → mensaje sin leer (punto verde estilo WhatsApp).
+  // En este dispositivo (localStorage), no hace falta backend.
+  const [leidos, setLeidos] = useState<Record<string, string>>({});
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  // Ref para que el auto-refresco (interval) conozca el chat abierto sin recrearse.
+  const chatAbiertoRef = useRef<string | null>(null);
+  useEffect(() => {
+    chatAbiertoRef.current = chatAbierto;
+  }, [chatAbierto]);
+
+  // Carga inicial de "leídos" guardados en este dispositivo.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("bot_leidos");
+      if (raw) setLeidos(JSON.parse(raw));
+    } catch {
+      /* ignora */
+    }
+  }, []);
+
+  const marcarLeido = useCallback((clave: string, cuando?: string | null) => {
+    if (!cuando) return;
+    setLeidos((prev) => {
+      if (prev[clave] === cuando) return prev;
+      const next = { ...prev, [clave]: cuando };
+      try {
+        localStorage.setItem("bot_leidos", JSON.stringify(next));
+      } catch {
+        /* ignora */
+      }
+      return next;
+    });
+  }, []);
 
   const token = useCallback(async () => {
     const {
@@ -57,37 +97,83 @@ export default function BotLectorPage() {
     return { t: session?.access_token ?? null, uid: session?.user?.id ?? null };
   }, []);
 
-  const cargar = useCallback(async () => {
-    const { t, uid } = await token();
-    if (!t || !esGestorBot(uid)) {
-      setAutorizado(false);
-      return;
-    }
-    setAutorizado(true);
-    setCargandoJug(true);
-    try {
-      const [rc, rm] = await Promise.all([
-        fetch("/api/telegram/contacts", { headers: { Authorization: "Bearer " + t }, cache: "no-store" }),
-        fetch("/api/telegram/bot-money", { headers: { Authorization: "Bearer " + t }, cache: "no-store" }),
-      ]);
-      const bc = await rc.json().catch(() => ({}));
-      setJugadores(bc.jugadores ?? []);
-      const bm = await rm.json().catch(() => ({}));
-      if (typeof bm.total === "number")
-        setDinero({
-          total: bm.total,
-          hoy: bm.hoy,
-          desde: bm.desde,
-          veces: bm.qftdTotal ?? 0,
-          vecesHoy: bm.qftdHoy ?? 0,
-        });
-    } finally {
-      setCargandoJug(false);
-    }
-  }, [token]);
+  // Trae los mensajes de un chat (sin tocar cuál está abierto).
+  const cargarChat = useCallback(
+    async (j: Jugador) => {
+      const { t } = await token();
+      if (!t) return;
+      const r = await fetch(
+        `/api/telegram/chat?chat_id=${j.chat_id}&origen=${j.origen}`,
+        { headers: { Authorization: "Bearer " + t } }
+      );
+      const b = await r.json().catch(() => ({}));
+      setChatMsgs(Array.isArray(b.history) ? b.history : []);
+    },
+    [token]
+  );
+
+  const cargar = useCallback(
+    async (silent = false) => {
+      const { t, uid } = await token();
+      if (!t || !esGestorBot(uid)) {
+        setAutorizado(false);
+        return;
+      }
+      setAutorizado(true);
+      if (!silent) setCargandoJug(true);
+      try {
+        const [rc, rm] = await Promise.all([
+          fetch("/api/telegram/contacts", { headers: { Authorization: "Bearer " + t }, cache: "no-store" }),
+          fetch("/api/telegram/bot-money", { headers: { Authorization: "Bearer " + t }, cache: "no-store" }),
+        ]);
+        const bc = await rc.json().catch(() => ({}));
+        const nuevos: Jugador[] = bc.jugadores ?? [];
+        setJugadores(nuevos);
+        // La PRIMERA vez marcamos todo lo actual como visto: así solo lo NUEVO a
+        // partir de ahora aparece como no leído (si no, saldría todo en verde).
+        try {
+          if (localStorage.getItem("bot_leidos") === null) {
+            const seed: Record<string, string> = {};
+            for (const j of nuevos) if (j.last_msg_at) seed[claveDe(j)] = j.last_msg_at;
+            localStorage.setItem("bot_leidos", JSON.stringify(seed));
+            setLeidos(seed);
+          }
+        } catch {
+          /* ignora */
+        }
+        // Si hay un chat abierto, cuenta como leído en vivo y, en refresco
+        // silencioso, recargamos sus mensajes para verlos llegar al momento.
+        const abierto = chatAbiertoRef.current;
+        if (abierto != null) {
+          const jj = nuevos.find((j) => claveDe(j) === abierto);
+          if (jj?.last_msg_at) marcarLeido(abierto, jj.last_msg_at);
+          if (silent && jj) cargarChat(jj);
+        }
+        const bm = await rm.json().catch(() => ({}));
+        if (typeof bm.total === "number")
+          setDinero({
+            total: bm.total,
+            hoy: bm.hoy,
+            desde: bm.desde,
+            veces: bm.qftdTotal ?? 0,
+            vecesHoy: bm.qftdHoy ?? 0,
+          });
+      } finally {
+        if (!silent) setCargandoJug(false);
+      }
+    },
+    [token, marcarLeido, cargarChat]
+  );
 
   useEffect(() => {
     cargar();
+  }, [cargar]);
+
+  // Auto-refresco cada 20 s (silencioso): así los mensajes nuevos y sus puntos
+  // verdes aparecen sin tener que darle a "Actualizar".
+  useEffect(() => {
+    const id = setInterval(() => cargar(true), 20_000);
+    return () => clearInterval(id);
   }, [cargar]);
 
   useEffect(() => {
@@ -96,22 +182,19 @@ export default function BotLectorPage() {
     }
   }, [chatMsgs, cargandoChat, chatAbierto]);
 
-  async function verChat(chatId: number) {
-    if (chatAbierto === chatId) {
+  async function verChat(j: Jugador) {
+    const clave = claveDe(j);
+    if (chatAbierto === clave) {
       setChatAbierto(null);
       return;
     }
-    setChatAbierto(chatId);
+    // Al abrirlo queda leído: guardamos su último mensaje como visto.
+    marcarLeido(clave, j.last_msg_at);
+    setChatAbierto(clave);
     setChatMsgs([]);
     setCargandoChat(true);
     try {
-      const { t } = await token();
-      if (!t) return;
-      const r = await fetch("/api/telegram/chat?chat_id=" + chatId, {
-        headers: { Authorization: "Bearer " + t },
-      });
-      const b = await r.json().catch(() => ({}));
-      setChatMsgs(Array.isArray(b.history) ? b.history : []);
+      await cargarChat(j);
     } finally {
       setCargandoChat(false);
     }
@@ -134,7 +217,18 @@ export default function BotLectorPage() {
       String(j.chat_id).includes(q)
     );
   });
-  const chatSel = jugadores?.find((j) => j.chat_id === chatAbierto) ?? null;
+  const chatSel = jugadores?.find((j) => claveDe(j) === chatAbierto) ?? null;
+  // ¿Chat con mensaje sin leer? Tiene un último mensaje más nuevo que el visto,
+  // y no es el que está abierto ahora mismo.
+  const noLeido = (j: Jugador) => {
+    const k = claveDe(j);
+    return (
+      !!j.last_msg_at &&
+      k !== chatAbierto &&
+      (!leidos[k] || j.last_msg_at > leidos[k])
+    );
+  };
+  const nSinLeer = (jugadores ?? []).filter(noLeido).length;
 
   return (
     <main className="flex flex-col gap-5 max-w-3xl mx-auto">
@@ -146,7 +240,7 @@ export default function BotLectorPage() {
           </p>
         </div>
         <button
-          onClick={cargar}
+          onClick={() => cargar()}
           disabled={cargandoJug}
           className="shrink-0 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
         >
@@ -183,8 +277,13 @@ export default function BotLectorPage() {
       {/* Lector de chats (solo lectura). */}
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
-          <span className="text-sm font-semibold text-white shrink-0">
+          <span className="text-sm font-semibold text-white shrink-0 flex items-center gap-2">
             💬 Chats{jugadores ? ` · ${jugadores.length}` : ""}
+            {nSinLeer > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-500 text-black text-[11px] font-bold">
+                {nSinLeer}
+              </span>
+            )}
           </span>
           <input
             value={busqueda}
@@ -206,25 +305,45 @@ export default function BotLectorPage() {
               } flex-col w-full sm:w-72 sm:border-r border-white/10 overflow-y-auto min-h-0 bg-black/20`}
             >
               {lista.map((j) => {
-                const activo = chatAbierto === j.chat_id;
+                const clave = claveDe(j);
+                const activo = chatAbierto === clave;
+                const sinLeer = noLeido(j);
                 return (
                   <button
-                    key={j.chat_id}
-                    onClick={() => verChat(j.chat_id)}
+                    key={clave}
+                    onClick={() => verChat(j)}
                     className={`flex items-center gap-3 text-left px-3 py-2.5 border-b border-white/5 transition ${
-                      activo ? "bg-white/10" : "hover:bg-white/5"
+                      activo ? "bg-white/10" : sinLeer ? "bg-emerald-500/10 hover:bg-emerald-500/15" : "hover:bg-white/5"
                     }`}
                   >
                     <div
-                      className={`shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold ${colorAvatar(
+                      className={`relative shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold ${colorAvatar(
                         j.chat_id
                       )}`}
                     >
                       {iniciales(j.first_name)}
+                      {sinLeer && (
+                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-black" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm text-white truncate">{j.first_name || "Jugador"}</span>
+                        <span
+                          className={`text-sm truncate flex items-center gap-1.5 ${
+                            sinLeer ? "text-white font-bold" : "text-white"
+                          }`}
+                        >
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                              j.origen === "jeffer"
+                                ? "bg-fuchsia-500/25 text-fuchsia-200"
+                                : "bg-emerald-500/25 text-emerald-200"
+                            }`}
+                          >
+                            {j.bot_nombre}
+                          </span>
+                          <span className="truncate">{j.first_name || "Jugador"}</span>
+                        </span>
                         <span className="text-[10px] text-slate-500 shrink-0 text-right leading-tight">
                           {j.last_msg_at ? (
                             <>
@@ -281,8 +400,19 @@ export default function BotLectorPage() {
                       {iniciales(chatSel?.first_name)}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm text-white truncate leading-tight">
-                        {chatSel?.first_name || "Jugador"}
+                      <div className="text-sm text-white truncate leading-tight flex items-center gap-1.5">
+                        {chatSel && (
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                              chatSel.origen === "jeffer"
+                                ? "bg-fuchsia-500/25 text-fuchsia-200"
+                                : "bg-emerald-500/25 text-emerald-200"
+                            }`}
+                          >
+                            {chatSel.bot_nombre}
+                          </span>
+                        )}
+                        <span className="truncate">{chatSel?.first_name || "Jugador"}</span>
                       </div>
                       <div className="text-[10px] text-slate-500 truncate leading-tight">
                         {chatSel?.username ? `@${chatSel.username}` : `#${chatSel?.chat_id}`}

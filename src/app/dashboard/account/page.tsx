@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
+import { esSoloBot } from "@/lib/adminId";
 import { CardsSkeleton } from "@/components/Skeletons";
 import { traducirError } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
@@ -19,6 +20,10 @@ export default function AccountPage() {
   >("personal");
   const [notifFtd, setNotifFtd] = useState(true);
   const [notifRegistro, setNotifRegistro] = useState(true);
+  // Yaiza (gestora del bot): sus dos avisos propios.
+  const [soloBot, setSoloBot] = useState(false);
+  const [notifBotMsg, setNotifBotMsg] = useState(true);
+  const [notifBotDep, setNotifBotDep] = useState(true);
   const [tono, setTonoState] = useState<TonoNotif>("off");
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -89,15 +94,35 @@ export default function AccountPage() {
         setNotifRegistro((data.notif_registro as boolean) ?? true);
       }
 
+      // Yaiza: sus dos avisos propios (select aparte y blindado para no romper
+      // la página si las columnas aún no existen).
+      const yaiza = esSoloBot(user.id);
+      setSoloBot(yaiza);
+      if (yaiza) {
+        const { data: bot } = await supabase
+          .from("affiliates")
+          .select("notif_bot_msg, notif_bot_deposito")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const b = bot as Record<string, unknown> | null;
+        setNotifBotMsg((b?.notif_bot_msg as boolean) ?? true);
+        setNotifBotDep((b?.notif_bot_deposito as boolean) ?? true);
+      }
+
       setLoading(false);
     }
     loadData();
   }, []);
 
   // Guarda una preferencia de notificación (optimista, blindado).
-  async function guardarNotif(campo: "notif_ftd" | "notif_registro", valor: boolean) {
+  async function guardarNotif(
+    campo: "notif_ftd" | "notif_registro" | "notif_bot_msg" | "notif_bot_deposito",
+    valor: boolean
+  ) {
     if (campo === "notif_ftd") setNotifFtd(valor);
-    else setNotifRegistro(valor);
+    else if (campo === "notif_registro") setNotifRegistro(valor);
+    else if (campo === "notif_bot_msg") setNotifBotMsg(valor);
+    else setNotifBotDep(valor);
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -465,10 +490,16 @@ export default function AccountPage() {
             <div className="mt-3">
               <p className="text-xs text-slate-400 mb-2">Avísame de:</p>
               <div className="flex flex-col gap-2">
-                {[
-                  { campo: "notif_ftd" as const, label: "Nuevos FTD 🎉", val: notifFtd },
-                  { campo: "notif_registro" as const, label: "Nuevos registros 👀", val: notifRegistro },
-                ].map((o) => (
+                {(soloBot
+                  ? [
+                      { campo: "notif_bot_msg" as const, label: "Cuando escriben al bot 💬", val: notifBotMsg },
+                      { campo: "notif_bot_deposito" as const, label: "Cuando depositan por el bot 💰", val: notifBotDep },
+                    ]
+                  : [
+                      { campo: "notif_ftd" as const, label: "Nuevos FTD 🎉", val: notifFtd },
+                      { campo: "notif_registro" as const, label: "Nuevos registros 👀", val: notifRegistro },
+                    ]
+                ).map((o) => (
                   <button
                     key={o.campo}
                     type="button"
@@ -491,6 +522,7 @@ export default function AccountPage() {
                 ))}
               </div>
             </div>
+            {!soloBot && (
             <div className="mt-4">
               <p className="text-xs text-slate-400 mb-2">Sonido al entrar un QFTD:</p>
               <div className="flex items-center gap-2">
@@ -519,6 +551,7 @@ export default function AccountPage() {
                 entra un QFTD nuevo.
               </p>
             </div>
+            )}
           </div>
         </div>
       )}
