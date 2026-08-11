@@ -121,6 +121,7 @@ export async function procesarUpdate(
         .maybeSingle();
       const textoBienv = (cfg?.welcome_text || bot.bienvenida) as string;
       const boton = botonJugar(bot.enlace);
+      let bienvOk = false;
       if (cfg?.welcome_enabled !== false && cfg?.welcome_file_id) {
         const { metodo, campo } = metodoMedia(cfg.welcome_media_type as string);
         const params: Record<string, unknown> = {
@@ -130,8 +131,12 @@ export async function procesarUpdate(
           reply_markup: boton,
         };
         params[campo] = cfg.welcome_file_id;
-        await tgApi(metodo, params, tok);
-      } else {
+        const rb = await tgApi(metodo, params, tok);
+        bienvOk = !!rb?.ok;
+      }
+      // Si no había vídeo, o el vídeo FALLÓ (p. ej. file_id de otro bot que no
+      // vale), mandamos el TEXTO igualmente: el /start SIEMPRE responde.
+      if (!bienvOk) {
         await tgEnviar(chatId, textoBienv, { reply_markup: boton }, tok);
       }
       return;
