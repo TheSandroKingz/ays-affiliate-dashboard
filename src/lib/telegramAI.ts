@@ -104,6 +104,7 @@ TONO Y ESTILO:
 - ⛔ SI TE PIDEN ALGO, DÁSELO O RESUÉLVELO EN EL MISMO MENSAJE. Cuando un jugador te SOLICITA algo (el enlace, una explicación, cómo hacer X, una captura, ayuda con un depósito/retiro, que le mandes el vídeo…), tu respuesta TIENE que incluir eso que pide o los pasos para lograrlo. PROHIBIDO contestar solo "vale", "ok", "perfecto", "hecho", "ahora te lo paso", "dame un momento" y quedarte ahí sin hacerlo: eso lo deja tirado y parece que pasas de él. Si de verdad no puedes dárselo, dile qué falta o adónde acudir — pero NUNCA un "vale" a secas sin resolver. Un acuse sin la acción = fallo grave.
 - ⛔ EL CHAT EN VIVO DE CELSIUS ES EL ÚLTIMO RECURSO, NO EL PRIMERO. Antes de mandar a NADIE al chat en vivo/soporte de Celsius, ANALIZA bien su problema e intenta resolverlo TÚ: pídele captura, pregúntale qué método usa y el error EXACTO, que pruebe otra opción/navegador, guíale paso a paso. Solo si de verdad es algo que SOLO ellos pueden ver en su cuenta (y ya lo intentaste en serio) lo derivas. Derivar al chat en vivo a la primera o por pereza = pierdes al jugador. Que se note que TÚ te has peleado con el problema antes de pasarlo.
 - ⛔ NO ESCRIBAS CON GUIONES. Nada de "-" ni "–" ni "—" en tus respuestas (ni para enumerar ni para separar ideas dentro de una frase): eso canta a bot. Escribe en frases naturales con comas y puntos, como una persona por WhatsApp. En vez de "te ayudo - dame un momento" escribe "te ayudo, dame un momento".
+- ⛔ NO TERMINES CASI TODOS LOS MENSAJES CON 👍. Ese pulgar arriba repetido al final canta muchísimo a bot. Úsalo como MUCHO muy de vez en cuando; la mayoría de mensajes van SIN 👍 final. Varía los emojis o no pongas ninguno.
 - ⛔ NO CIERRES NI TE DESPIDAS TÚ. Mientras el jugador siga hablando, NO des la charla por terminada ni te despidas: nada de "adiós", "hasta luego", "un saludo", "que vaya bien", "cualquier cosa me dices" a modo de cierre. Solo te despides si ÉL se despide PRIMERO. Deja siempre la conversación abierta y con ganas de seguir ayudándole.
 - ⚠️ DA POR HECHO LO OBVIO, no lo re-preguntes (queda a que no le escuchas):
    · Si dice "metí/deposité/puse/eché 20€" (o cualquier cifra) → ESTÁ DEPOSITADO y es dinero REAL. NO le preguntes "¿ya depositaste?" ni "¿era demo o dinero real?": asúmelo y sigue ayudándole con eso.
@@ -328,11 +329,14 @@ function limpiarNormaliza(txt: string): string {
     .trim();
 }
 
-// Quita los guiones que Haiku mete como si fueran comas (cantan a bot): el
-// guion largo/corto y el "-" con espacios a los lados se pasan a coma. NO toca
-// guiones dentro de palabras (ex-jugador) ni de URLs (no llevan espacios).
+// Limpia tics de Haiku antes de enviar:
+//  - Guiones usados como coma (—, –, " - ") → coma. NO toca guiones dentro de
+//    palabras (ex-jugador) ni de URLs (no llevan espacios).
+//  - El 👍 pegado al FINAL de casi todas las respuestas (muletilla que canta a
+//    bot): se quita si hay más texto delante. Si el mensaje fuese solo 👍, se
+//    deja tal cual.
 function quitarGuiones(txt: string): string {
-  return txt
+  const base = txt
     .replace(/\s*[—–]\s*/g, ", ") // — y – (con o sin espacios) → coma
     .replace(/\s+-\s+/g, ", ") // " - " usado como guion → coma
     .replace(/,\s*,/g, ",") // comas duplicadas que puedan quedar
@@ -340,6 +344,11 @@ function quitarGuiones(txt: string): string {
     .replace(/\s{2,}/g, " ")
     .replace(/^[\s,]+/, "")
     .trim();
+  // Quita el/los 👍 finales (con tono de piel o repetidos) y los espacios previos.
+  const sinPulgar = base
+    .replace(/(?:\s*\u{1F44D}[\u{1F3FB}-\u{1F3FF}]?)+\s*$/gu, "")
+    .trim();
+  return sinPulgar.length >= 2 ? sinPulgar : base;
 }
 
 // Genera la respuesta y, si normaliza perder, la REGENERA con un aviso tajante;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type UIEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { esGestorBot } from "@/lib/adminId";
 import { reproducirSonido } from "@/lib/sonido";
@@ -13,7 +13,7 @@ export type Jugador = {
   last_msg_at: string | null;
   opted_out: boolean;
   silenced: boolean;
-  origen: "as" | "jeffer";
+  origen: "as" | "jeffer" | "mariam";
   bot_nombre: string;
   ultimo: string | null; // texto del último mensaje (vista previa)
   ultimo_rol: string | null; // "user" (jugador) o "assistant" (bot)
@@ -48,6 +48,14 @@ const AVATAR_COLORS = [
 ];
 const colorAvatar = (id: number) => AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
 
+// Color de la etiqueta de cada bot (Sandro / Jeffer / Livana).
+const estiloEtiqueta = (origen: Jugador["origen"]) =>
+  origen === "jeffer"
+    ? "bg-fuchsia-500/25 text-fuchsia-200"
+    : origen === "mariam"
+      ? "bg-sky-500/25 text-sky-200"
+      : "bg-emerald-500/25 text-emerald-200";
+
 // Visor de chats de Telegram estilo WhatsApp (compartido entre el panel de Yaiza
 // y el admin): lista con vista previa del último mensaje, etiqueta del bot
 // (Sandro/Jeffer), no leídos (punto verde), buscador, sonido al llegar mensajes,
@@ -73,6 +81,13 @@ export default function BotChatViewer({
   const [busqueda, setBusqueda] = useState("");
   const [leidos, setLeidos] = useState<Record<string, string>>({});
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  // ¿Está el usuario pegado abajo del chat? Si subió a leer mensajes antiguos, NO
+  // le mandamos al fondo cuando llega un mensaje o se refresca. Estilo WhatsApp.
+  const pegadoAbajoRef = useRef(true);
+  const alScrollChat = (e: UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    pegadoAbajoRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  };
   const chatAbiertoRef = useRef<string | null>(null);
   useEffect(() => {
     chatAbiertoRef.current = chatAbierto;
@@ -240,7 +255,9 @@ export default function BotChatViewer({
   }, [cargar]);
 
   useEffect(() => {
-    if (!cargandoChat && chatScrollRef.current) {
+    // Baja al fondo SOLO si el usuario ya estaba abajo (o acaba de abrir el chat).
+    // Si subió a leer mensajes antiguos, lo dejamos donde está.
+    if (!cargandoChat && chatScrollRef.current && pegadoAbajoRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatMsgs, cargandoChat, chatAbierto]);
@@ -266,6 +283,7 @@ export default function BotChatViewer({
       return;
     }
     marcarLeido(clave, j.last_msg_at);
+    pegadoAbajoRef.current = true; // al abrir un chat, empieza abajo (lo más nuevo)
     setChatAbierto(clave);
     setChatMsgs([]);
     setCargandoChat(true);
@@ -394,11 +412,9 @@ export default function BotChatViewer({
                         }`}
                       >
                         <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                            j.origen === "jeffer"
-                              ? "bg-fuchsia-500/25 text-fuchsia-200"
-                              : "bg-emerald-500/25 text-emerald-200"
-                          }`}
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${estiloEtiqueta(
+                            j.origen
+                          )}`}
                         >
                           {j.bot_nombre}
                         </span>
@@ -471,11 +487,9 @@ export default function BotChatViewer({
                     <div className="text-sm text-white truncate leading-tight flex items-center gap-1.5">
                       {chatSel && (
                         <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                            chatSel.origen === "jeffer"
-                              ? "bg-fuchsia-500/25 text-fuchsia-200"
-                              : "bg-emerald-500/25 text-emerald-200"
-                          }`}
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${estiloEtiqueta(
+                            chatSel.origen
+                          )}`}
                         >
                           {chatSel.bot_nombre}
                         </span>
@@ -501,7 +515,11 @@ export default function BotChatViewer({
                     </button>
                   )}
                 </div>
-                <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-1.5">
+                <div
+                  ref={chatScrollRef}
+                  onScroll={alScrollChat}
+                  className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-1.5"
+                >
                   {cargandoChat ? (
                     <p className="text-xs text-slate-400">Cargando…</p>
                   ) : chatMsgs.length === 0 ? (
