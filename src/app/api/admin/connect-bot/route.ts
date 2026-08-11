@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { getBot } from "@/lib/bots";
 import { tgApi } from "@/lib/telegram";
@@ -29,6 +30,15 @@ export async function POST(request: Request) {
         "). Revisa el token en Vercel: pégalo entero, sin espacios ni saltos de línea, y Redeploy.",
     });
   }
+
+  // Al (re)conectar un bot cuyo token cambió (bot nuevo en el mismo hueco),
+  // limpiamos su anti-duplicados: los update_id viejos podrían chocar con los del
+  // bot nuevo y hacer que sus primeros mensajes se descarten como "ya procesado".
+  await supabaseAdmin
+    .from("bot_updates")
+    .delete()
+    .eq("bot", bot.key)
+    .then(() => {}, () => {});
 
   const host =
     request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
