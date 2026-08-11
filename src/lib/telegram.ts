@@ -51,7 +51,7 @@ export const ENLACES_PAUSADOS = false;
 
 // Texto del botón de jugar (llamativo — Telegram no deja cambiar color/tamaño,
 // solo el texto y los emojis).
-const TEXTO_JUGAR = "🟢🎰 JUGAR AHORA 🎰🟢";
+const TEXTO_JUGAR = "🟢🎰 GANAR AHORA 🎰🟢";
 
 // Botones inline: jugar (abre el enlace) y "❓ AYUDA" (el bot invita a escribir
 // su duda y la IA responde). Se añaden como reply_markup. El `enlace` se puede
