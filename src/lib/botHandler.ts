@@ -405,7 +405,7 @@ export async function procesarUpdate(
 
     // ¿Piden el patrón/vídeo, dicen que una forma les falló, o mandan un vídeo?
     const pidePatron =
-      /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (le das|lo hac|juega|jueg[oa])|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
+      /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (se |lo |le |te )?(juega|juego|jueg[oa]|da\b|das|doy|hac|hago)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nd|env[ií]|p[aá]s|dame|tienes|quiero ver|quiero un|ver el|ver un|en cu[aá]l|d[oó]nde|esperando)\w*[^.\n]{0,15}v[ií]deos?/i.test(
         textoJ
       );
     const mandoVideo = !!(msg.video || msg.animation);
