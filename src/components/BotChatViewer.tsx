@@ -63,12 +63,17 @@ const estiloEtiqueta = (origen: Jugador["origen"]) =>
 //  - onDinero: si se pasa, además pide el dinero del bot y lo reporta (para la
 //    tarjeta del panel de Yaiza). El admin no lo usa.
 //  - admin: muestra el botón de silenciar/reactivar dentro del chat abierto.
+//  - contadorTitulo: pone el nº de no leídos en el título de la pestaña. SOLO en
+//    el panel de Yaiza; en el admin NO, porque ahí la campana ya usa el título
+//    (si no, se pelean y el contador de notificaciones parpadea).
 export default function BotChatViewer({
   onDinero,
   admin = false,
+  contadorTitulo = false,
 }: {
   onDinero?: (d: DineroBot) => void;
   admin?: boolean;
+  contadorTitulo?: boolean;
 }) {
   const [autorizado, setAutorizado] = useState<boolean | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
@@ -262,8 +267,12 @@ export default function BotChatViewer({
     }
   }, [chatMsgs, cargandoChat, chatAbierto]);
 
-  // Contador en el título de la pestaña (estilo WhatsApp Web).
+  // Contador en el título de la pestaña (estilo WhatsApp Web). SOLO si nadie más
+  // usa el título en esta página (en el admin lo lleva la campana, así que ahí
+  // NO lo tocamos para que no se peleen y parpadee).
   useEffect(() => {
+    if (!contadorTitulo) return;
+    const previo = document.title;
     const sinLeer = (jugadores ?? []).filter((j) => {
       const k = claveDe(j);
       return (
@@ -272,9 +281,9 @@ export default function BotChatViewer({
     }).length;
     document.title = sinLeer > 0 ? `(${sinLeer}) Chats del bot` : "Chats del bot";
     return () => {
-      document.title = "Chats del bot";
+      document.title = previo;
     };
-  }, [jugadores, leidos, chatAbierto]);
+  }, [contadorTitulo, jugadores, leidos, chatAbierto]);
 
   async function verChat(j: Jugador) {
     const clave = claveDe(j);

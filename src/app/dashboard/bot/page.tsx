@@ -40,7 +40,7 @@ export default function BotLectorPage() {
         </div>
       )}
 
-      <BotChatViewer onDinero={setDinero} />
+      <BotChatViewer onDinero={setDinero} contadorTitulo />
     </main>
   );
 }
