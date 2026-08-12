@@ -440,8 +440,11 @@ export async function procesarUpdate(
 
     let videoEnviado = false;
     if (
-      !ENLACES_PAUSADOS && // PAUSA: no mandamos vídeos de "cómo juego yo" (ahora no va)
-      (pidePatron || falloForma || mandoVideo) &&
+      !ENLACES_PAUSADOS &&
+      // SOLO cuando lo PIDEN de verdad (patrón/vídeo/otro ejemplo). NO en automático
+      // ante una duda cualquiera, ni cuando dicen que PIERDEN/no les va (falloForma):
+      // ahí toca una respuesta personalizada con empatía, no soltar el mismo vídeo.
+      (pidePatron || pideOtro) &&
       !problemaReal &&
       !limitado &&
       (!ejemploReciente || pideOtro)

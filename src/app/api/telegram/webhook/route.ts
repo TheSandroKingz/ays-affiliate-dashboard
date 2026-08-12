@@ -527,8 +527,10 @@ export async function POST(request: Request) {
       // problema real (pago/cuenta/bono), ni si ya le mandamos uno hace poco (salvo
       // que pidan otro explícitamente).
       if (
-        !ENLACES_PAUSADOS && // PAUSA: no mandamos vídeos de "cómo juego yo" (ahora no va)
-        (pidePatron || falloForma || mandoVideo) &&
+        !ENLACES_PAUSADOS &&
+        // SOLO cuando lo PIDEN (patrón/vídeo/otro). NO en automático ante una duda
+        // ni cuando dicen que PIERDEN/no les va: ahí, respuesta personalizada.
+        (pidePatron || pideOtro) &&
         !problemaReal &&
         !limitado &&
         (!ejemploReciente || pideOtro)
