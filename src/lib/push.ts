@@ -129,10 +129,12 @@ export async function notificarEvento(
   userId: string | null | undefined,
   tipo: TipoNotif,
   monto?: number,
-  esBot = false,
+  afp = "",
   isocountry?: string
 ): Promise<void> {
   if (!userId) return;
+  const esBot = !!afp && afp.startsWith("bot");
+  const botNombre = BOT_NOMBRE[afp] ?? "el bot";
   const esFtd = tipo === "ftd";
   const hayMonto = esFtd && typeof monto === "number" && monto > 0;
   try {
@@ -194,10 +196,10 @@ export async function notificarEvento(
           enviarPush(ADMIN_USER_ID, {
             title: esFtd
               ? esBot
-                ? "🤖 ¡FTD del bot! 🎉"
+                ? `🤖 FTD del bot de ${botNombre}`
                 : `💰 Nuevo FTD de ${nombre}`
               : esBot
-                ? "🤖 Nuevo registro del bot"
+                ? `🤖 Registro del bot de ${botNombre}`
                 : `Nuevo registro de ${nombre}`,
             body: esFtd
               ? montoAdmin != null

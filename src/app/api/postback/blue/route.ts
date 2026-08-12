@@ -395,7 +395,7 @@ export async function GET(request: Request) {
         target.user_id,
         "ftd",
         comisionPagada,
-        afpDeCampana(tag).startsWith("bot"),
+        afpDeCampana(tag),
         isocountry
       );
       // Aviso a Yaiza: FTD NUEVO por este bot (diciendo de qué bot es).
