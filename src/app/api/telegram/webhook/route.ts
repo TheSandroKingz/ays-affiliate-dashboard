@@ -518,14 +518,12 @@ export async function POST(request: Request) {
       // varios en una charla (antes 6h y "no mandaba" cuando pedían). Si piden OTRO
       // explícitamente, se salta el cooldown.
       const COOLDOWN_EJEMPLO_MS = 20 * 60 * 1000;
-      const ejemploReciente =
-        !!contacto?.last_example_at &&
-        Date.now() - new Date(contacto.last_example_at as string).getTime() <
-          COOLDOWN_EJEMPLO_MS;
-      // Mandamos un EJEMPLO si: piden el patrón/vídeo, O dicen que no les va / les
-      // falló, O mandan un vídeo de su jugada → le damos OTRA forma. Nunca en un
-      // problema real (pago/cuenta/bono), ni si ya le mandamos uno hace poco (salvo
-      // que pidan otro explícitamente).
+      const msDesdeEjemplo = contacto?.last_example_at
+        ? Date.now() - new Date(contacto.last_example_at as string).getTime()
+        : Infinity;
+      const ejemploReciente = msDesdeEjemplo < COOLDOWN_EJEMPLO_MS;
+      // "Justo antes": vídeo hace <3 min → NUNCA otro seguido (ni pidiendo "otro").
+      const ejemploJustoAntes = msDesdeEjemplo < 3 * 60 * 1000;
       if (
         !ENLACES_PAUSADOS &&
         // SOLO cuando lo PIDEN (patrón/vídeo/otro). NO en automático ante una duda
@@ -533,6 +531,7 @@ export async function POST(request: Request) {
         (pidePatron || pideOtro) &&
         !problemaReal &&
         !limitado &&
+        !ejemploJustoAntes && // nunca dos vídeos seguidos
         (!ejemploReciente || pideOtro)
       ) {
         // Vídeo a mandar. Si PIDEN el patrón (p. ej. "el patrón nuevo"), mandamos

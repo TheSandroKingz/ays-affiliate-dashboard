@@ -434,9 +434,13 @@ export async function procesarUpdate(
     // Cooldown corto (20 min): no repetir el ejemplo a cada mensaje, pero sí
     // mandar varios en una charla (antes eran 6h y "no mandaba" cuando pedían).
     const COOLDOWN_EJEMPLO_MS = 20 * 60 * 1000;
-    const ejemploReciente =
-      !!contacto?.last_example_at &&
-      Date.now() - new Date(contacto.last_example_at as string).getTime() < COOLDOWN_EJEMPLO_MS;
+    const msDesdeEjemplo = contacto?.last_example_at
+      ? Date.now() - new Date(contacto.last_example_at as string).getTime()
+      : Infinity;
+    const ejemploReciente = msDesdeEjemplo < COOLDOWN_EJEMPLO_MS;
+    // "Justo antes": el vídeo anterior fue hace <3 min → NUNCA mandar otro seguido
+    // (ni aunque pidan "otro"), para no soltar el vídeo dos veces consecutivas.
+    const ejemploJustoAntes = msDesdeEjemplo < 3 * 60 * 1000;
 
     let videoEnviado = false;
     if (
@@ -447,6 +451,7 @@ export async function procesarUpdate(
       (pidePatron || pideOtro) &&
       !problemaReal &&
       !limitado &&
+      !ejemploJustoAntes && // nunca dos vídeos seguidos
       (!ejemploReciente || pideOtro)
     ) {
       // Un ejemplo al azar de la biblioteca del bot; si no hay, el /diario del bot.
