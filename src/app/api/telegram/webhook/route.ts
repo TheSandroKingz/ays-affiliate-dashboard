@@ -508,6 +508,12 @@ export async function POST(request: Request) {
         /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
           textoJ
         );
+      // Reenvío EXPLÍCITO del vídeo/patrón ("mándamelo otra vez"): salta el candado
+      // de "no dos seguidos" (una duda no, pero si lo piden claro, sí).
+      const reenvioExplicito =
+        /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
+          textoJ
+        );
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
@@ -531,8 +537,9 @@ export async function POST(request: Request) {
         (pidePatron || pideOtro) &&
         !problemaReal &&
         !limitado &&
-        !ejemploJustoAntes && // nunca dos vídeos seguidos
-        (!ejemploReciente || pideOtro)
+        // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.
+        (!ejemploJustoAntes || reenvioExplicito) &&
+        (!ejemploReciente || pideOtro || reenvioExplicito)
       ) {
         // Vídeo a mandar. Si PIDEN el patrón (p. ej. "el patrón nuevo"), mandamos
         // SIEMPRE el vídeo del DIARIO = el patrón ACTUAL que el dueño dejó en

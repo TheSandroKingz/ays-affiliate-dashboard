@@ -417,6 +417,12 @@ export async function procesarUpdate(
       /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (se |lo |le |te )?(juega|juego|jueg[oa]|da\b|das|doy|hac|hago)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nd|env[ií]|p[aá]s|dame|tienes|hay|quiero ver|quiero un|ver el|ver un|en cu[aá]l|d[oó]nde|esperando)\w*[^.\n]{0,15}v[ií]deos?/i.test(
         textoJ
       );
+    // Reenvío EXPLÍCITO: piden claramente que les mandes el vídeo/patrón otra vez
+    // (no una duda). Esto SÍ salta el candado de "no dos seguidos".
+    const reenvioExplicito =
+      /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
+        textoJ
+      );
     const mandoVideo = !!(msg.video || msg.animation);
     const falloForma =
       /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
@@ -451,8 +457,10 @@ export async function procesarUpdate(
       (pidePatron || pideOtro) &&
       !problemaReal &&
       !limitado &&
-      !ejemploJustoAntes && // nunca dos vídeos seguidos
-      (!ejemploReciente || pideOtro)
+      // No dos vídeos seguidos ante una DUDA; PERO si lo piden EXPLÍCITAMENTE
+      // ("mándame el vídeo otra vez"), se lo mandamos igual.
+      (!ejemploJustoAntes || reenvioExplicito) &&
+      (!ejemploReciente || pideOtro || reenvioExplicito)
     ) {
       // Un ejemplo al azar de la biblioteca del bot; si no hay, el /diario del bot.
       let dv: { media_type: string | null; file_id: string | null } | null = null;
