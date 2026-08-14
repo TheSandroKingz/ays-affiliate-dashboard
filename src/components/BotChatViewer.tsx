@@ -239,7 +239,7 @@ export default function BotChatViewer({
         if (abierto != null) {
           const jj = nuevos.find((j) => claveDe(j) === abierto);
           if (jj?.last_msg_at) marcarLeido(abierto, jj.last_msg_at);
-          if (silent && jj) cargarChat(jj);
+          if (jj) cargarChat(jj);
         }
         if (pideDinero && rm) {
           const bm = await rm.json().catch(() => ({}));

@@ -494,7 +494,7 @@ export async function POST(request: Request) {
       // dispararse con quejas ("problema con el sistema de pago", "no me llega el
       // vídeo") ni silenciar a la IA cuando la persona necesita ayuda.
       const pidePatron =
-        /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (le das|lo hac|juega|jueg[oa])|(ens[eé][ñn]a|mu[eé]stra|m[aá]nda|quiero ver|ver el|en cu[aá]l|d[oó]nde|esperando)\s*(me|el|tu)?\s*(el|tu)?\s*v[ií]deo/i.test(
+        /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btips?\b|(?<!por )ejemplo|c[oó]mo (le das|lo hac|juega|jueg[oa])|(ens[eé][ñn]a|mu[eé]stra|m[aá]nd|env[ií]|p[aá]s|dame|tienes|hay|quiero ver|quiero un|ver el|ver un|en cu[aá]l|d[oó]nde|esperando)\w*[^.\n]{0,15}v[ií]deos?/i.test(
           textoJ
         );
       const mandoVideo = !!(msg.video || msg.animation);
@@ -517,7 +517,7 @@ export async function POST(request: Request) {
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
-        /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
+        /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
           textoJ
         );
       // COOLDOWN corto (20 min): no repetir el vídeo a cada mensaje, pero sí mandar
@@ -534,7 +534,9 @@ export async function POST(request: Request) {
         !ENLACES_PAUSADOS &&
         // SOLO cuando lo PIDEN (patrón/vídeo/otro). NO en automático ante una duda
         // ni cuando dicen que PIERDEN/no les va: ahí, respuesta personalizada.
-        (pidePatron || pideOtro) &&
+        // Nombrar el patrón DENTRO de una queja (falloForma) NO cuenta como petición;
+        // un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
+        ((pidePatron && !falloForma) || pideOtro || reenvioExplicito) &&
         !problemaReal &&
         !limitado &&
         // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.

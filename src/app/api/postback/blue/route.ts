@@ -218,7 +218,8 @@ export async function GET(request: Request) {
       matched_user_id: target?.user_id ?? null,
       status: estado,
     });
-    if (estado === "counted" && target) after(() => notificarEvento(target.user_id, "registration"));
+    if (estado === "counted" && target)
+      after(() => notificarEvento(target.user_id, "registration", undefined, afpDeCampana(tag), isocountry));
     return NextResponse.json({ ok: true, event, matched: !!target, estado });
   }
 
@@ -286,19 +287,39 @@ export async function GET(request: Request) {
       if (contado) {
         const revKey = `qftdrev:${contado.id}`;
         if (await reclamarEvento(revKey)) {
-          // Si el QFTD original es de un mes YA cerrado (y pagado), restarlo en su
-          // fecha no tocaría el balance vigente. En ese caso imputamos la reversión
-          // a HOY para que el clawback reduzca el saldo del mes en curso. Si es del
-          // mismo mes, se resta en su fecha (normal).
-          const fechaRev =
-            contado.date.slice(0, 7) === today.slice(0, 7) ? contado.date : today;
-          const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
-            p_user_id: contado.userId,
-            p_date: fechaRev,
-            p_registrations: 0,
-            p_ftd: -1,
-            p_commission: -contado.commission,
-          });
+          // El CONTADOR de FTD (-1) SIEMPRE se resta en el MES REAL del QFTD, para
+          // que el recuento de FTD de cada mes cuadre (si lo restáramos en el mes
+          // vigente, descuadraría los FTD del mes en curso, incluso a negativo).
+          // El CLAWBACK de dinero (-commission) se resta en el mes VIGENTE cuando el
+          // QFTD original es de un mes ya cerrado (y pagado), para reducir el saldo
+          // actual; si es del mismo mes, todo va en su fecha (una sola llamada).
+          const mismoMes = contado.date.slice(0, 7) === today.slice(0, 7);
+          let error = null as unknown;
+          if (mismoMes) {
+            ({ error } = await supabaseAdmin.rpc("increment_daily_stats", {
+              p_user_id: contado.userId,
+              p_date: contado.date,
+              p_registrations: 0,
+              p_ftd: -1,
+              p_commission: -contado.commission,
+            }));
+          } else {
+            const rCont = await supabaseAdmin.rpc("increment_daily_stats", {
+              p_user_id: contado.userId,
+              p_date: contado.date, // FTD -1 en su mes real (cuadra el recuento)
+              p_registrations: 0,
+              p_ftd: -1,
+              p_commission: 0,
+            });
+            const rDinero = await supabaseAdmin.rpc("increment_daily_stats", {
+              p_user_id: contado.userId,
+              p_date: today, // clawback de dinero en el mes vigente
+              p_registrations: 0,
+              p_ftd: 0,
+              p_commission: -contado.commission,
+            });
+            error = rCont.error || rDinero.error;
+          }
           if (error) {
             estadoRev = "error";
           } else {

@@ -191,7 +191,7 @@ ESTILO:
 - Trátalos como VIP/cercanos, son tu gente ("a ti te aviso primero", "eres de los míos").
 - Puedes usar exclusividad ("esto es para los míos", "info que solo suelto aquí"). Nada de frases de relleno tipo "hay gente sacando cosas locas".
 - HOY EL MENSAJE VA CON TU VÍDEO: preséntalo como TU forma de jugar — "así es como le doy yo 🔥, míralo y dale". Es tu contenido/estilo, NUNCA un método que hace ganar.
-- OBLIGATORIO en cada mensaje: empújalos a aprovechar y entrar a jugar HOY con lo que quieran (la cantidad da igual, cuanto más mejor), e invítalos a darle al botón. Sin hablar de "mínimo".
+- OBLIGATORIO en cada mensaje: empújalos a aprovechar y entrar a jugar HOY (cuanto más metan mejor; tú recomiendas darle con ganas, mejor 30), e invítalos a darle al botón. Nada de "con lo que sea/cualquier cantidad" (el mínimo real son 20€, aunque en el hype no hace falta nombrarlo).
 
 NO HAGAS:
 - PROHIBIDO llamar al juego "tragaperras", "traga perras", "máquina", "traga monedas" ni nada despectivo o cutre. Llámalo "las Mines", "el juego" o "mi juego". Nada de "tragaperras". Y NO uses la palabra "movida" (queda friki/rara): ni "la movida del día" ni "esta movida" ni parecidos.
@@ -318,14 +318,14 @@ function sistemaCacheado(
 // "es normal" a secas, porque vale para depósitos/bono ("eso es normal, está en
 // proceso"); solo las inequívocas de dar por normal/esperable la pérdida o el azar.
 const NORMALIZA_PERDER =
-  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!no )\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|se (puede|pued\w+) (llegar a )?perder/i;
+  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!no )\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})se (puede|pued\w+) (llegar a )?perder/i;
 
 // Segunda red de seguridad: el bot NUNCA puede VALIDAR que es una estafa/engaño,
 // ni animar a denunciar, ni conceder que otros fueron estafados. Si su respuesta
 // contiene eso, la REGENERAMOS. (El "no es una estafa" queda excluido con el
 // negative lookbehind.)
 const VALIDA_ESTAFA =
-  /(?<!no )(?<!nadie )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(vea|decid|juzgue|sepa)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a\w* (los |esos |tus |bien )?(v[ií]deos|pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|probablemente no (seas|ser[aá]s|eres)|seguramente no (seas|ser[aá]s|eres)/i;
+  /(?<!no )(?<!nadie )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(vea|decid|juzgue|sepa)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a(?:le|les|nos|lo|los|selo)?\b (los |esos |tus |bien )?(v[ií]deos|pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|probablemente no (seas|ser[aá]s|eres)|seguramente no (seas|ser[aá]s|eres)/i;
 
 function textoDe(res: Anthropic.Message): string {
   return res.content
@@ -376,7 +376,7 @@ function quitarGuiones(txt: string): string {
     .trim();
   // Quita el/los 👍 finales (con tono de piel o repetidos) y los espacios previos.
   const sinPulgar = base
-    .replace(/(?:\s*\u{1F44D}[\u{1F3FB}-\u{1F3FF}]?)+\s*$/gu, "")
+    .replace(/(?:\s*\u{1F44D}\u{FE0F}?[\u{1F3FB}-\u{1F3FF}]?)+\s*$/gu, "")
     .trim();
   return sinPulgar.length >= 2 ? sinPulgar : base;
 }

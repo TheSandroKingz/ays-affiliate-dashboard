@@ -414,7 +414,7 @@ export async function procesarUpdate(
 
     // ¿Piden el patrón/vídeo, dicen que una forma les falló, o mandan un vídeo?
     const pidePatron =
-      /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btip|\bejemplo|c[oó]mo (se |lo |le |te )?(juega|juego|jueg[oa]|da\b|das|doy|hac|hago)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nd|env[ií]|p[aá]s|dame|tienes|hay|quiero ver|quiero un|ver el|ver un|en cu[aá]l|d[oó]nde|esperando)\w*[^.\n]{0,15}v[ií]deos?/i.test(
+      /patr[oó]n|estrateg|cuadrad|cuadro|\btruco|\btips?\b|(?<!por )ejemplo|c[oó]mo (se |lo |le |te )?(juega|juego|jueg[oa]|da\b|das|doy|hac|hago)|(ens[eé][ñn]a|mu[eé]stra|m[aá]nd|env[ií]|p[aá]s|dame|tienes|hay|quiero ver|quiero un|ver el|ver un|en cu[aá]l|d[oó]nde|esperando)\w*[^.\n]{0,15}v[ií]deos?/i.test(
         textoJ
       );
     // Reenvío EXPLÍCITO: piden claramente que les mandes el vídeo/patrón otra vez
@@ -434,7 +434,7 @@ export async function procesarUpdate(
         textoJ
       );
     const problemaReal =
-      /retir|cobr|\bpag|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
+      /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
         textoJ
       );
     // Cooldown corto (20 min): no repetir el ejemplo a cada mensaje, pero sí
@@ -454,7 +454,9 @@ export async function procesarUpdate(
       // SOLO cuando lo PIDEN de verdad (patrón/vídeo/otro ejemplo). NO en automático
       // ante una duda cualquiera, ni cuando dicen que PIERDEN/no les va (falloForma):
       // ahí toca una respuesta personalizada con empatía, no soltar el mismo vídeo.
-      (pidePatron || pideOtro) &&
+      // Si nombran el patrón DENTRO de una queja (falloForma), NO cuenta como petición;
+      // pero un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
+      ((pidePatron && !falloForma) || pideOtro || reenvioExplicito) &&
       !problemaReal &&
       !limitado &&
       // No dos vídeos seguidos ante una DUDA; PERO si lo piden EXPLÍCITAMENTE
