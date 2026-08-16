@@ -10,7 +10,9 @@ import { getAdminUser } from "@/lib/adminAuth";
 //  - PATCH { id, ...campos }: edita un gasto.
 //  - DELETE ?id=123: borra un gasto.
 
-const CATEGORIAS = new Set(["publicidad", "claude_prog", "claude_bots", "otros"]);
+const CATEGORIAS = new Set([
+  "publicidad", "claude_prog", "claude_bots", "restaurantes", "taxis", "prestamo", "otros",
+]);
 const QUIENES = new Set(["kingz", "prz", "comun"]);
 
 const hoyMadrid = () =>

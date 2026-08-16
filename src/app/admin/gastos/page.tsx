@@ -24,16 +24,32 @@ const MESES = [
 
 // Cada categoría reparte el gasto entre Kingz (tú) y PRZ (socio) por %.
 // Publicidad 65/35 (como el reparto de ganancias); dashboard y bots a medias.
-const CATS = [
+type Cat = {
+  value: string;
+  label: string;
+  color: string;
+  kingz: number;
+  prz: number;
+  prestamo?: boolean; // dinero prestado: lo devuelve ENTERO quien lo recibió (el que NO pagó)
+};
+const CATS: Cat[] = [
   { value: "publicidad", label: "Publicidad", color: "#f59e0b", kingz: 65, prz: 35 },
   { value: "claude_prog", label: "Claude (dashboard)", color: "#a855f7", kingz: 50, prz: 50 },
   { value: "claude_bots", label: "Claude (bots)", color: "#38bdf8", kingz: 50, prz: 50 },
+  { value: "restaurantes", label: "Restaurantes", color: "#ef4444", kingz: 50, prz: 50 },
+  { value: "taxis", label: "Taxis", color: "#eab308", kingz: 50, prz: 50 },
+  { value: "prestamo", label: "Dinero prestado", color: "#22d3ee", kingz: 0, prz: 0, prestamo: true },
   { value: "otros", label: "Otros", color: "#64748b", kingz: 50, prz: 50 },
 ];
-const CAT = Object.fromEntries(CATS.map((c) => [c.value, c])) as Record<
-  string,
-  (typeof CATS)[number]
->;
+const CAT = Object.fromEntries(CATS.map((c) => [c.value, c])) as Record<string, Cat>;
+
+// % que le toca a cada uno para un gasto. En "dinero prestado" el 100% se lo
+// come quien lo recibió (el que NO adelantó el dinero), así lo devuelve entero.
+const pctDe = (categoria: string, quien: string) => {
+  const c = CAT[categoria];
+  if (c?.prestamo) return { k: quien === "prz" ? 100 : 0, p: quien === "kingz" ? 100 : 0 };
+  return { k: c?.kingz ?? 50, p: c?.prz ?? 50 };
+};
 // Quién pagó (de su bolsillo).
 const PAGADORES = [
   { value: "kingz", label: "Kingz", color: "#10b981" },
@@ -46,10 +62,10 @@ const fechaMadrid = (d: Date) =>
 const ddmm = (iso: string) => `${iso.slice(8)}/${iso.slice(5, 7)}`;
 const fechaCorta = (iso: string) =>
   new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short" }).format(new Date(iso));
-const parteKingz = (g: { categoria: string; importe: number }) =>
-  (g.importe * (CAT[g.categoria]?.kingz ?? 50)) / 100;
-const partePrz = (g: { categoria: string; importe: number }) =>
-  (g.importe * (CAT[g.categoria]?.prz ?? 50)) / 100;
+const parteKingz = (g: { categoria: string; importe: number; quien: string }) =>
+  (g.importe * pctDe(g.categoria, g.quien).k) / 100;
+const partePrz = (g: { categoria: string; importe: number; quien: string }) =>
+  (g.importe * pctDe(g.categoria, g.quien).p) / 100;
 
 const cell =
   "w-full rounded-md bg-white/10 border border-white/15 text-white text-sm px-2 py-1.5 [color-scheme:dark] placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
@@ -307,7 +323,8 @@ export default function GastosPage() {
 
       <p className="text-xs text-slate-500">
         Reparto por categoría: <b className="text-slate-400">Publicidad</b> 65% Kingz / 35% PRZ;{" "}
-        <b className="text-slate-400">Claude (dashboard y bots)</b> y <b className="text-slate-400">Otros</b> a medias.
+        <b className="text-slate-400">Claude, restaurantes, taxis y otros</b> a medias;{" "}
+        <b className="text-slate-400">dinero prestado</b> lo devuelve entero quien lo recibió.
       </p>
 
       {error && <p className="text-sm text-amber-300">{error}</p>}
@@ -349,8 +366,8 @@ export default function GastosPage() {
               <td className="px-3 py-2">
                 <input type="text" inputMode="decimal" value={importe} onChange={(e) => setImporte(e.target.value)} onKeyDown={(e) => e.key === "Enter" && añadir()} placeholder="€" className={`${cell} text-right`} />
               </td>
-              <td className="px-3 py-2 text-right text-xs text-slate-500">{CAT[categoria]?.kingz}%</td>
-              <td className="px-3 py-2 text-right text-xs text-slate-500">{CAT[categoria]?.prz}%</td>
+              <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(categoria, quien).k}%</td>
+              <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(categoria, quien).p}%</td>
               <td className="px-2 py-2 text-center">
                 <button onClick={añadir} disabled={guardando} className="rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold w-8 h-8 leading-none" title="Añadir">+</button>
               </td>
@@ -386,8 +403,8 @@ export default function GastosPage() {
                       <td className="px-3 py-2">
                         <input type="text" inputMode="decimal" value={ed.importe ?? g.importe} onChange={(e) => setEd((s) => ({ ...s, importe: e.target.value as unknown as number }))} onKeyDown={(e) => e.key === "Enter" && guardarEd()} className={`${cell} text-right`} />
                       </td>
-                      <td className="px-3 py-2 text-right text-xs text-slate-500">{CAT[ed.categoria ?? g.categoria]?.kingz}%</td>
-                      <td className="px-3 py-2 text-right text-xs text-slate-500">{CAT[ed.categoria ?? g.categoria]?.prz}%</td>
+                      <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(ed.categoria ?? g.categoria, ed.quien ?? g.quien).k}%</td>
+                      <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(ed.categoria ?? g.categoria, ed.quien ?? g.quien).p}%</td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-1">
                           <button onClick={guardarEd} className="text-emerald-400 hover:text-emerald-300 px-1" title="Guardar">✓</button>
@@ -422,10 +439,10 @@ export default function GastosPage() {
                     <td className="px-4 py-3 text-slate-300">{g.concepto || "—"}</td>
                     <td className="px-4 py-3 text-right font-semibold text-white tabular-nums whitespace-nowrap">{eur(g.importe)}</td>
                     <td className="px-4 py-3 text-right text-emerald-300 tabular-nums whitespace-nowrap">
-                      {eur(parteKingz(g))} <span className="text-[10px] text-slate-500">({c?.kingz ?? 50}%)</span>
+                      {eur(parteKingz(g))} <span className="text-[10px] text-slate-500">({pctDe(g.categoria, g.quien).k}%)</span>
                     </td>
                     <td className="px-4 py-3 text-right text-slate-200 tabular-nums whitespace-nowrap">
-                      {eur(partePrz(g))} <span className="text-[10px] text-slate-500">({c?.prz ?? 50}%)</span>
+                      {eur(partePrz(g))} <span className="text-[10px] text-slate-500">({pctDe(g.categoria, g.quien).p}%)</span>
                     </td>
                     <td className="px-2 py-3 text-center">
                       <button onClick={(e) => { e.stopPropagation(); borrar(g.id); }} className="text-slate-600 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition" title="Borrar">×</button>
