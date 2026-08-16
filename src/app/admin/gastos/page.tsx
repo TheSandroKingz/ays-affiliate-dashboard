@@ -239,9 +239,9 @@ export default function GastosPage() {
 
   return (
     <main className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-white">Gastos</h1>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {datos?.saldado ? (
             <button
               onClick={reabrir}
