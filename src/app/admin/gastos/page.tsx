@@ -241,7 +241,22 @@ export default function GastosPage() {
     <main className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Gastos</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {datos?.saldado ? (
+            <button
+              onClick={reabrir}
+              className="rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white text-sm font-medium px-4 py-2 transition"
+            >
+              Reabrir mes
+            </button>
+          ) : hayDeuda ? (
+            <button
+              onClick={() => saldar(detalleSaldo)}
+              className="rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white text-sm font-semibold px-4 py-2 transition"
+            >
+              Marcar como pagado
+            </button>
+          ) : null}
           <button
             onClick={() => { setRefrescando(true); cargar().finally(() => setRefrescando(false)); }}
             disabled={refrescando}
@@ -271,22 +286,9 @@ export default function GastosPage() {
               <p className="text-xs text-slate-400 mt-1">
                 {datos.saldado.detalle || "Cuentas cuadradas"} · {fechaCorta(datos.saldado.saldado_at)}
               </p>
-              <button onClick={reabrir} className="mt-2 text-xs text-slate-400 underline hover:text-white">
-                Reabrir mes
-              </button>
             </>
           ) : (
-            <>
-              <p className={`text-2xl font-bold mt-0.5 ${liquidacion.color}`}>{liquidacion.texto}</p>
-              {hayDeuda && (
-                <button
-                  onClick={() => saldar(detalleSaldo)}
-                  className="mt-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 py-1.5 transition"
-                >
-                  Marcar como pagado
-                </button>
-              )}
-            </>
+            <p className={`text-2xl font-bold mt-0.5 ${liquidacion.color}`}>{liquidacion.texto}</p>
           )}
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm shrink-0">
