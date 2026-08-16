@@ -84,11 +84,24 @@ export async function GET(request: Request) {
     totalAnterior = (ant ?? []).reduce((s, r) => s + Number(r.importe ?? 0), 0);
   }
 
+  // ¿Está saldado este mes? (solo en vista de un mes concreto)
+  let saldado: { mes: string; saldado_at: string; detalle: string | null } | null = null;
+  if (/^\d{4}-\d{2}$/.test(mesVista)) {
+    const { data: s } = await supabaseAdmin
+      .from("gastos_saldos")
+      .select("mes, saldado_at, detalle")
+      .eq("mes", mesVista)
+      .maybeSingle();
+    saldado = s ?? null;
+  }
+
   return NextResponse.json({
     etiqueta,
+    mesVista: /^\d{4}-\d{2}$/.test(mesVista) ? mesVista : null,
     gastos,
     total,
     totalAnterior,
+    saldado,
     porQuien: {
       kingz: suma((g) => g.quien === "kingz"),
       prz: suma((g) => g.quien === "prz"),
@@ -116,6 +129,24 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+
+  // ── Marcar un mes como saldado / reabrirlo ─────────────────────────────────
+  if (body.accion === "saldar" || body.accion === "reabrir") {
+    const mesActual = hoyMadrid().slice(0, 7);
+    const mes = /^\d{4}-\d{2}$/.test(body.mes) ? body.mes : mesActual;
+    if (body.accion === "reabrir") {
+      await supabaseAdmin.from("gastos_saldos").delete().eq("mes", mes);
+      return NextResponse.json({ ok: true, saldado: null });
+    }
+    const detalle = String(body.detalle ?? "").slice(0, 200) || null;
+    const { data, error } = await supabaseAdmin
+      .from("gastos_saldos")
+      .upsert({ mes, detalle }, { onConflict: "mes" })
+      .select("mes, saldado_at, detalle")
+      .single();
+    if (error) return NextResponse.json({ error: "No se pudo saldar" }, { status: 500 });
+    return NextResponse.json({ ok: true, saldado: data });
+  }
 
   // ── Copiar los gastos del mes anterior al mes indicado ──────────────────────
   if (body.accion === "copiar_mes") {

@@ -14,7 +14,8 @@ type Gasto = {
   concepto: string;
   importe: number;
 };
-type Datos = { gastos: Gasto[]; total: number };
+type Saldado = { mes: string; saldado_at: string; detalle: string | null };
+type Datos = { gastos: Gasto[]; total: number; mesVista: string | null; saldado: Saldado | null };
 
 const MESES = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -43,6 +44,8 @@ const PAGO = Object.fromEntries(PAGADORES.map((p) => [p.value, p]));
 const fechaMadrid = (d: Date) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(d);
 const ddmm = (iso: string) => `${iso.slice(8)}/${iso.slice(5, 7)}`;
+const fechaCorta = (iso: string) =>
+  new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short" }).format(new Date(iso));
 const parteKingz = (g: { categoria: string; importe: number }) =>
   (g.importe * (CAT[g.categoria]?.kingz ?? 50)) / 100;
 const partePrz = (g: { categoria: string; importe: number }) =>
@@ -65,6 +68,7 @@ export default function GastosPage() {
   const [concepto, setConcepto] = useState("");
   const [importe, setImporte] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [refrescando, setRefrescando] = useState(false);
 
   const [editId, setEditId] = useState<number | null>(null);
   const [ed, setEd] = useState<Partial<Gasto>>({});
@@ -174,6 +178,33 @@ export default function GastosPage() {
     if (r.ok) await cargar();
   }
 
+  async function saldar(detalle: string) {
+    const mes = datos?.mesVista;
+    if (!mes) return;
+    if (!confirm(`¿Marcar este mes como pagado?\n${detalle}`)) return;
+    const t = await sesion();
+    if (!t) return;
+    const r = await fetch("/api/admin/gastos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + t },
+      body: JSON.stringify({ accion: "saldar", mes, detalle }),
+    });
+    if (r.ok) await cargar();
+  }
+
+  async function reabrir() {
+    const mes = datos?.mesVista;
+    if (!mes) return;
+    const t = await sesion();
+    if (!t) return;
+    const r = await fetch("/api/admin/gastos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + t },
+      body: JSON.stringify({ accion: "reabrir", mes }),
+    });
+    if (r.ok) await cargar();
+  }
+
   const gastos = datos?.gastos ?? [];
   const total = datos?.total ?? 0;
   const kingzTocha = gastos.reduce((s, g) => s + parteKingz(g), 0); // lo que le toca a Kingz
@@ -197,6 +228,9 @@ export default function GastosPage() {
       : saldoKingz > 0
       ? { texto: `PRZ le debe a Kingz ${eur(saldoKingz)}`, color: "text-emerald-300" }
       : { texto: `Kingz le debe a PRZ ${eur(-saldoKingz)}`, color: "text-emerald-300" };
+  const hayDeuda = !!datos?.mesVista && !sinPagador && Math.abs(saldoKingz) >= 0.01;
+  const detalleSaldo =
+    saldoKingz > 0 ? `PRZ pagó ${eur(saldoKingz)} a Kingz` : `Kingz pagó ${eur(-saldoKingz)} a PRZ`;
 
   const th = "px-4 py-3 text-xs font-medium text-slate-400 whitespace-nowrap";
 
@@ -204,22 +238,53 @@ export default function GastosPage() {
     <main className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Gastos</h1>
-        <select
-          value={periodo}
-          onChange={(e) => setPeriodo(e.target.value)}
-          className="rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          {opciones.map((o) => (
-            <option key={o.value} value={o.value} className="bg-black">{o.label}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setRefrescando(true); cargar().finally(() => setRefrescando(false)); }}
+            disabled={refrescando}
+            className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 transition"
+          >
+            {refrescando ? "Actualizando…" : "Actualizar"}
+          </button>
+          <select
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+            className="rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            {opciones.map((o) => (
+              <option key={o.value} value={o.value} className="bg-black">{o.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Liquidación del mes: quién debe a quién (nombrado, porque los dos usan el mismo panel) */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-slate-400">Cuentas del mes</p>
-          <p className={`text-2xl font-bold mt-0.5 ${liquidacion.color}`}>{liquidacion.texto}</p>
+          {datos?.saldado ? (
+            <>
+              <p className="text-2xl font-bold mt-0.5 text-emerald-300">✓ Saldado</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {datos.saldado.detalle || "Cuentas cuadradas"} · {fechaCorta(datos.saldado.saldado_at)}
+              </p>
+              <button onClick={reabrir} className="mt-2 text-xs text-slate-400 underline hover:text-white">
+                Reabrir mes
+              </button>
+            </>
+          ) : (
+            <>
+              <p className={`text-2xl font-bold mt-0.5 ${liquidacion.color}`}>{liquidacion.texto}</p>
+              {hayDeuda && (
+                <button
+                  onClick={() => saldar(detalleSaldo)}
+                  className="mt-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 py-1.5 transition"
+                >
+                  Marcar como pagado
+                </button>
+              )}
+            </>
+          )}
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm shrink-0">
           <span className="font-medium text-emerald-300">Kingz</span>
