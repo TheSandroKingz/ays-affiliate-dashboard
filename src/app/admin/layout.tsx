@@ -56,6 +56,12 @@ export default function AdminLayout({
             Reparto
           </Link>
           <Link
+            href="/admin/gastos"
+            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
+          >
+            Gastos
+          </Link>
+          <Link
             href="/admin/memoria"
             className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
           >
