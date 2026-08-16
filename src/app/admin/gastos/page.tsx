@@ -183,7 +183,20 @@ export default function GastosPage() {
   const sinPagador = gastos.some((g) => g.quien !== "kingz" && g.quien !== "prz");
   // Saldo de Kingz: lo que puso menos lo que le tocaba. >0 = le deben; <0 = debe.
   const saldoKingz = kingzPuso - kingzTocha;
-  const enPaz = Math.abs(saldoKingz) < 0.01;
+  // Texto de liquidación, NOMBRANDO a cada uno (los dos usan el mismo panel).
+  const liquidacion: { texto: string; color: string } =
+    gastos.length === 0
+      ? { texto: "Sin gastos este mes", color: "text-slate-400" }
+      : sinPagador
+      ? {
+          texto: "Marca quién pagó cada gasto (—) para ver quién debe a quién",
+          color: "text-amber-300 !text-lg",
+        }
+      : Math.abs(saldoKingz) < 0.01
+      ? { texto: "Cuentas en paz 👌 nadie debe nada", color: "text-slate-200" }
+      : saldoKingz > 0
+      ? { texto: `PRZ le debe a Kingz ${eur(saldoKingz)}`, color: "text-emerald-300" }
+      : { texto: `Kingz le debe a PRZ ${eur(-saldoKingz)}`, color: "text-emerald-300" };
 
   const th = "px-4 py-3 text-xs font-medium text-slate-400 whitespace-nowrap";
 
@@ -202,29 +215,19 @@ export default function GastosPage() {
         </select>
       </div>
 
-      {/* Liquidación del mes: quién debe a quién */}
+      {/* Liquidación del mes: quién debe a quién (nombrado, porque los dos usan el mismo panel) */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-slate-400">Cuentas del mes</p>
-          <p
-            className={`text-2xl font-bold mt-0.5 ${
-              enPaz ? "text-slate-200" : saldoKingz > 0 ? "text-emerald-300" : "text-amber-300"
-            }`}
-          >
-            {enPaz
-              ? "Estáis en paz 👌"
-              : saldoKingz > 0
-              ? `Tu socio te debe ${eur(saldoKingz)}`
-              : `Le debes a tu socio ${eur(-saldoKingz)}`}
-          </p>
+          <p className={`text-2xl font-bold mt-0.5 ${liquidacion.color}`}>{liquidacion.texto}</p>
         </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm shrink-0">
-          <span className="text-slate-400">Tú (Kingz)</span>
+        <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm shrink-0">
+          <span className="font-medium text-emerald-300">Kingz</span>
           <span className="text-right text-slate-300">
             puso <b className="text-white tabular-nums">{eur(kingzPuso)}</b> · le toca{" "}
             <b className="text-white tabular-nums">{eur(kingzTocha)}</b>
           </span>
-          <span className="text-slate-400">Socio (PRZ)</span>
+          <span className="font-medium text-sky-300">PRZ</span>
           <span className="text-right text-slate-300">
             puso <b className="text-white tabular-nums">{eur(przPuso)}</b> · le toca{" "}
             <b className="text-white tabular-nums">{eur(przToca)}</b>
@@ -233,9 +236,8 @@ export default function GastosPage() {
       </div>
 
       <p className="text-xs text-slate-500">
-        Reparto por categoría: <b className="text-slate-400">Publicidad</b> 65% tú / 35% socio;{" "}
+        Reparto por categoría: <b className="text-slate-400">Publicidad</b> 65% Kingz / 35% PRZ;{" "}
         <b className="text-slate-400">Claude (dashboard y bots)</b> y <b className="text-slate-400">Otros</b> a medias.
-        {sinPagador && <span className="text-amber-400"> · Hay gastos sin marcar quién pagó (—): tócalos y ponlo.</span>}
       </p>
 
       {error && <p className="text-sm text-amber-300">{error}</p>}
