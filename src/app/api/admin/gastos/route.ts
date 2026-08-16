@@ -5,6 +5,9 @@ import { getAdminUser } from "@/lib/adminAuth";
 // Apartado de GASTOS del negocio (publicidad, Claude, etc.). Solo admin.
 //  - GET  ?mes=YYYY-MM | ?mes=historico | (vacío = mes en curso): lista + totales.
 //  - POST { fecha, categoria, quien, concepto, importe }: añade un gasto.
+//  - POST { accion:"copiar_mes", mes:"YYYY-MM" }: copia los gastos del mes ANTERIOR
+//         a ese mes (útil para gastos fijos que se repiten, como Claude).
+//  - PATCH { id, ...campos }: edita un gasto.
 //  - DELETE ?id=123: borra un gasto.
 
 const CATEGORIAS = new Set(["publicidad", "claude_prog", "claude_bots", "otros"]);
@@ -66,10 +69,26 @@ export async function GET(request: Request) {
   const suma = (pred: (g: (typeof gastos)[number]) => boolean) =>
     gastos.filter(pred).reduce((s, g) => s + g.importe, 0);
 
+  // Total del mes anterior (para la comparativa), solo cuando miramos un mes.
+  let totalAnterior: number | null = null;
+  const mesVista = etiqueta === mesActual ? mesActual : param;
+  if (/^\d{4}-\d{2}$/.test(mesVista)) {
+    const prev = mesAnterior(mesVista);
+    const [py, pm] = prev.split("-").map(Number);
+    const { data: ant } = await supabaseAdmin
+      .from("gastos")
+      .select("importe")
+      .gte("fecha", `${prev}-01`)
+      .lte("fecha", new Date(Date.UTC(py, pm, 0)).toISOString().slice(0, 10))
+      .limit(100000);
+    totalAnterior = (ant ?? []).reduce((s, r) => s + Number(r.importe ?? 0), 0);
+  }
+
   return NextResponse.json({
     etiqueta,
     gastos,
     total,
+    totalAnterior,
     porQuien: {
       kingz: suma((g) => g.quien === "kingz"),
       prz: suma((g) => g.quien === "prz"),
@@ -84,12 +103,68 @@ export async function GET(request: Request) {
   });
 }
 
+// Mes anterior a un "YYYY-MM" dado.
+function mesAnterior(mes: string): string {
+  const [y, m] = mes.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function POST(request: Request) {
   const user = await getAdminUser(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+
+  // ── Copiar los gastos del mes anterior al mes indicado ──────────────────────
+  if (body.accion === "copiar_mes") {
+    const mesActual = hoyMadrid().slice(0, 7);
+    const mes = /^\d{4}-\d{2}$/.test(body.mes) ? body.mes : mesActual;
+    const prev = mesAnterior(mes);
+    const [py, pm] = prev.split("-").map(Number);
+    const prevDesde = `${prev}-01`;
+    const prevHasta = new Date(Date.UTC(py, pm, 0)).toISOString().slice(0, 10);
+    const [ty, tm] = mes.split("-").map(Number);
+    const mesDesde = `${mes}-01`;
+    const mesHasta = new Date(Date.UTC(ty, tm, 0)).toISOString().slice(0, 10);
+
+    const { data: origen } = await supabaseAdmin
+      .from("gastos")
+      .select("fecha, categoria, quien, concepto, importe")
+      .gte("fecha", prevDesde)
+      .lte("fecha", prevHasta)
+      .limit(100000);
+    if (!origen || origen.length === 0)
+      return NextResponse.json({ ok: true, copiados: 0 });
+
+    // Dedupe: no dupliques lo que ya esté en el mes destino (misma categoría,
+    // persona, concepto e importe).
+    const { data: yaHay } = await supabaseAdmin
+      .from("gastos")
+      .select("categoria, quien, concepto, importe")
+      .gte("fecha", mesDesde)
+      .lte("fecha", mesHasta)
+      .limit(100000);
+    const clave = (g: { categoria: string; quien: string; concepto: string | null; importe: number }) =>
+      `${g.categoria}|${g.quien}|${(g.concepto ?? "").trim()}|${Number(g.importe)}`;
+    const existentes = new Set((yaHay ?? []).map(clave));
+
+    const nuevos = origen
+      .filter((g) => !existentes.has(clave(g)))
+      .map((g) => ({
+        fecha: `${mes}-01`,
+        categoria: g.categoria,
+        quien: g.quien,
+        concepto: g.concepto,
+        importe: g.importe,
+      }));
+    if (nuevos.length === 0) return NextResponse.json({ ok: true, copiados: 0 });
+
+    const { error } = await supabaseAdmin.from("gastos").insert(nuevos);
+    if (error) return NextResponse.json({ error: "No se pudo copiar" }, { status: 500 });
+    return NextResponse.json({ ok: true, copiados: nuevos.length });
+  }
 
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(body.fecha) ? body.fecha : hoyMadrid();
   const categoria = String(body.categoria ?? "");
@@ -112,6 +187,44 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
   return NextResponse.json({ ok: true, id: data.id });
+}
+
+export async function PATCH(request: Request) {
+  const user = await getAdminUser(request);
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const body = await request.json().catch(() => null);
+  const id = Number(body?.id);
+  if (!body || !Number.isFinite(id) || id <= 0)
+    return NextResponse.json({ error: "id inválido" }, { status: 400 });
+
+  const campos: Record<string, unknown> = {};
+  if (typeof body.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.fecha))
+    campos.fecha = body.fecha;
+  if (typeof body.categoria === "string") {
+    if (!CATEGORIAS.has(body.categoria))
+      return NextResponse.json({ error: "Categoría inválida" }, { status: 400 });
+    campos.categoria = body.categoria;
+  }
+  if (typeof body.quien === "string") {
+    if (!QUIENES.has(body.quien))
+      return NextResponse.json({ error: "Persona inválida" }, { status: 400 });
+    campos.quien = body.quien;
+  }
+  if (body.concepto !== undefined)
+    campos.concepto = String(body.concepto ?? "").trim().slice(0, 200) || null;
+  if (body.importe !== undefined) {
+    const importe = Number(body.importe);
+    if (!Number.isFinite(importe) || importe <= 0)
+      return NextResponse.json({ error: "Importe inválido" }, { status: 400 });
+    campos.importe = Math.round(importe * 100) / 100;
+  }
+  if (Object.keys(campos).length === 0)
+    return NextResponse.json({ error: "Nada que cambiar" }, { status: 400 });
+
+  const { error } = await supabaseAdmin.from("gastos").update(campos).eq("id", id);
+  if (error) return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(request: Request) {
