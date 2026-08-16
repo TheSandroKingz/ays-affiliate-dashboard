@@ -75,12 +75,15 @@ export default function GastosPage() {
 
   const opciones = useMemo(() => {
     const hoy = new Date();
+    const yNow = hoy.getFullYear();
     const outs = [{ value: "", label: "Este mes" }];
     for (let i = 1; i <= 11; i++) {
-      const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const d = new Date(yNow, hoy.getMonth() - i, 1);
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       outs.push({ value: ym, label: `${MESES[d.getMonth()]} ${d.getFullYear()}` });
     }
+    outs.push({ value: String(yNow), label: `Año ${yNow}` });
+    outs.push({ value: String(yNow - 1), label: `Año ${yNow - 1}` });
     outs.push({ value: "historico", label: "Histórico" });
     return outs;
   }, []);

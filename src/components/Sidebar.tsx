@@ -20,6 +20,7 @@ import {
   Shield,
   MessageCircle,
   PieChart,
+  Wallet,
 } from "lucide-react";
 
 const reportLinks = [
@@ -178,6 +179,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <Link href="/admin/reparto" className={linkClass("/admin/reparto")} onClick={onClose}>
             <PieChart size={18} />
             Reparto
+          </Link>
+        )}
+
+        {isAdmin && (
+          <Link href="/admin/gastos" className={linkClass("/admin/gastos")} onClick={onClose}>
+            <Wallet size={18} />
+            Gastos
           </Link>
         )}
 
