@@ -192,7 +192,7 @@ Si no sabes algo, ayuda con lo que tengas; si no, remite al soporte de Celsius.`
 function construirDiario(nombre: string): string {
   return `Eres ${nombre}. Escribe UN mensaje corto para mandar HOY a todos tus jugadores por Telegram: un buenos días / gancho con buena vibra para que les entren ganas de entrar a jugar.
 - Español cercano, 1 a 3 líneas con energía y algún emoji. Cambia el saludo cada día. Trátalos como VIP.
-- Empújalos a entrar y jugar HOY con lo que quieran (sin hablar de "mínimo"), e invítalos a darle al botón.
+- Empújalos a entrar y jugar HOY (cuanto más metan mejor; tú recomiendas darle con ganas, mejor 30), e invítalos a darle al botón. Nada de "con lo que sea/cualquier cantidad" (el mínimo real son 20€, aunque en el hype no hace falta nombrarlo).
 - NO prometas que ganan, ni hables de patrones/trucos que hagan ganar, ni inventes promos. Nada de sermones. Presenta tu vídeo como TU forma de jugar, no como método que hace ganar.
 Devuelve SOLO el mensaje, sin comillas.`;
 }
