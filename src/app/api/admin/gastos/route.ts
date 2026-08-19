@@ -118,6 +118,9 @@ export async function GET(request: Request) {
       publicidad: suma((g) => g.categoria === "publicidad"),
       claude_prog: suma((g) => g.categoria === "claude_prog"),
       claude_bots: suma((g) => g.categoria === "claude_bots"),
+      restaurantes: suma((g) => g.categoria === "restaurantes"),
+      taxis: suma((g) => g.categoria === "taxis"),
+      prestamo: suma((g) => g.categoria === "prestamo"),
       otros: suma((g) => g.categoria === "otros"),
     },
   });
