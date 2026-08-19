@@ -19,22 +19,28 @@ export default function BotLectorPage() {
 
       {/* Tu próximo pago (500€/mes por revisar los chats). */}
       <div
-        className={`rounded-2xl border p-5 ${
-          pago.dias === 0
-            ? "border-amber-400/60 bg-amber-500/15"
-            : "border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5"
+        className={`rounded-2xl border p-5 flex items-center justify-between gap-4 ${
+          pago.dias === 0 ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5"
         }`}
       >
-        <div className="text-sm text-slate-300">
-          💶 Tu pago <span className="text-slate-500">· {pago.importe}€ al mes por revisar los chats</span>
+        <div className="min-w-0">
+          <p className="text-sm text-slate-400">Tu próximo pago</p>
+          <p className="text-2xl font-bold text-white mt-0.5">
+            {pago.dias === 0 ? "¡Hoy te toca cobrar!" : pago.fecha}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Cobras el 11 de cada mes por revisar los chats 💬</p>
         </div>
-        <div className={`mt-1 text-3xl font-extrabold ${pago.dias === 0 ? "text-amber-300" : "text-emerald-300"}`}>
-          {pago.dias === 0 ? `¡Hoy te toca cobrar! ${pago.importe}€` : `Próximo pago: ${pago.fecha}`}
-        </div>
-        <div className="mt-1 text-xs text-slate-400">
-          {pago.dias === 0
-            ? "Hoy es el día."
-            : `Faltan ${pago.dias} día${pago.dias === 1 ? "" : "s"} · cobras el 11 de cada mes.`}
+        <div className="text-right shrink-0">
+          <p className={`text-3xl font-extrabold ${pago.dias === 0 ? "text-amber-300" : "text-emerald-300"}`}>
+            {pago.importe}€
+          </p>
+          <span
+            className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs ${
+              pago.dias === 0 ? "bg-amber-400/20 text-amber-200" : "bg-white/10 text-slate-300"
+            }`}
+          >
+            {pago.dias === 0 ? "hoy 🎉" : `faltan ${pago.dias} día${pago.dias === 1 ? "" : "s"}`}
+          </span>
         </div>
       </div>
 
