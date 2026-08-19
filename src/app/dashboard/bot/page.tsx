@@ -17,30 +17,29 @@ export default function BotLectorPage() {
         </p>
       </div>
 
-      {/* Tu próximo pago (500€/mes por revisar los chats). */}
+      {/* Tu próximo pago (500€/mes por revisar los chats) — intermedio, compacto. */}
       <div
-        className={`rounded-2xl border p-5 flex items-center justify-between gap-4 ${
+        className={`rounded-2xl border px-4 py-3 flex items-center justify-between gap-4 ${
           pago.dias === 0 ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5"
         }`}
       >
         <div className="min-w-0">
-          <p className="text-sm text-slate-400">Tu próximo pago</p>
-          <p className="text-2xl font-bold text-white mt-0.5">
+          <p className="text-xs text-slate-400">Tu próximo pago 💬</p>
+          <p className="text-xl font-bold text-white leading-tight mt-0.5">
             {pago.dias === 0 ? "¡Hoy te toca cobrar!" : pago.fecha}
           </p>
-          <p className="text-xs text-slate-500 mt-1">Cobras el 11 de cada mes por revisar los chats 💬</p>
         </div>
-        <div className="text-right shrink-0">
-          <p className={`text-3xl font-extrabold ${pago.dias === 0 ? "text-amber-300" : "text-emerald-300"}`}>
-            {pago.importe}€
-          </p>
+        <div className="text-right shrink-0 flex items-center gap-3">
           <span
-            className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs ${
+            className={`rounded-full px-2.5 py-0.5 text-xs ${
               pago.dias === 0 ? "bg-amber-400/20 text-amber-200" : "bg-white/10 text-slate-300"
             }`}
           >
-            {pago.dias === 0 ? "hoy 🎉" : `faltan ${pago.dias} día${pago.dias === 1 ? "" : "s"}`}
+            {pago.dias === 0 ? "hoy 🎉" : `faltan ${pago.dias}d`}
           </span>
+          <p className={`text-2xl font-extrabold ${pago.dias === 0 ? "text-amber-300" : "text-emerald-300"}`}>
+            {pago.importe}€
+          </p>
         </div>
       </div>
 
