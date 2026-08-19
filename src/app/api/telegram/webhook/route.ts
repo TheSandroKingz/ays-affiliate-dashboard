@@ -712,7 +712,7 @@ export async function POST(request: Request) {
         .eq("chat_id", chatId)
         .gt("created_at", desde)
         .order("created_at", { ascending: false })
-        .limit(60);
+        .limit(120);
       const prevRows = ((prev ?? []) as { id: number; role: string; content: string; created_at: string }[])
         .filter((m) => m.id !== miMsgId && (m.role === "user" || m.role === "assistant") && !!m.content);
       // Hueco desde el último mensaje hasta AHORA (retoma tras horas/días).
