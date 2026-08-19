@@ -14,7 +14,7 @@ import {
   descargarFoto,
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
-import { responderIABot, iaConfigurada } from "@/lib/telegramAI";
+import { responderIABot, iaConfigurada, marcaHueco } from "@/lib/telegramAI";
 import type { BotDef } from "@/lib/bots";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -526,16 +526,24 @@ export async function procesarUpdate(
     const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
     const { data: prev } = await supabaseAdmin
       .from("bot_messages")
-      .select("role, content")
+      .select("role, content, created_at")
       .eq("bot", bot.key)
       .eq("chat_id", chatId)
       .gt("created_at", desde)
       .order("created_at", { ascending: false })
       .limit(60);
-    const historial: Turno[] = ((prev ?? []) as { role: string; content: string }[])
-      .reverse()
-      .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
-      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    const prevRows = ((prev ?? []) as { role: string; content: string; created_at: string }[])
+      .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content);
+    // Hueco desde el último mensaje hasta AHORA (retoma tras horas/días).
+    const ultimoTs = prevRows.length ? new Date(prevRows[0].created_at).getTime() : null;
+    const huecoAhora = ultimoTs != null ? marcaHueco(Date.now() - ultimoTs) : "";
+    let prevT: number | null = null;
+    const historial: Turno[] = [...prevRows].reverse().map((m) => {
+      const t = new Date(m.created_at).getTime();
+      const marca = prevT != null ? marcaHueco(t - prevT) : "";
+      prevT = t;
+      return { role: m.role as "user" | "assistant", content: marca + m.content };
+    });
 
     // file_id de la media del jugador (para verla en el panel).
     const mediaJ = extraerMedia(msg, true); // media del jugador: miniatura (panel/visión)
@@ -624,7 +632,7 @@ export async function procesarUpdate(
           bot.persona,
           promo,
           historial,
-          entrada,
+          huecoAhora + entrada,
           imagen,
           from.first_name ?? null
         );

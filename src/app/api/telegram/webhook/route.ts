@@ -12,7 +12,7 @@ import {
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
-import { responderIA, iaConfigurada } from "@/lib/telegramAI";
+import { responderIA, iaConfigurada, marcaHueco } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -708,16 +708,23 @@ export async function POST(request: Request) {
       const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
       const { data: prev } = await supabaseAdmin
         .from("telegram_messages")
-        .select("id, role, content")
+        .select("id, role, content, created_at")
         .eq("chat_id", chatId)
         .gt("created_at", desde)
         .order("created_at", { ascending: false })
         .limit(60);
-      const historial: Turno[] = ((prev ?? []) as { id: number; role: string; content: string }[])
-        .filter((m) => m.id !== miMsgId)
-        .reverse()
-        .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content)
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      const prevRows = ((prev ?? []) as { id: number; role: string; content: string; created_at: string }[])
+        .filter((m) => m.id !== miMsgId && (m.role === "user" || m.role === "assistant") && !!m.content);
+      // Hueco desde el último mensaje hasta AHORA (retoma tras horas/días).
+      const ultimoTs = prevRows.length ? new Date(prevRows[0].created_at).getTime() : null;
+      const huecoAhora = ultimoTs != null ? marcaHueco(Date.now() - ultimoTs) : "";
+      let prevT: number | null = null;
+      const historial: Turno[] = [...prevRows].reverse().map((m) => {
+        const t = new Date(m.created_at).getTime();
+        const marca = prevT != null ? marcaHueco(t - prevT) : "";
+        prevT = t;
+        return { role: m.role as "user" | "assistant", content: marca + m.content };
+      });
 
       // La IA responde (si no está limitada, no se pasó el tope diario y no ha
       // quedado "debounced" por un mensaje posterior).
@@ -759,7 +766,7 @@ export async function POST(request: Request) {
           const imagen = visionFileId ? await descargarFoto(visionFileId) : null;
           respuesta = await responderIA(
             historial,
-            entrada,
+            huecoAhora + entrada,
             imagen,
             from.first_name ?? null
           );
