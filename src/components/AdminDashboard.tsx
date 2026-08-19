@@ -9,7 +9,7 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
-import { YAIZA_START } from "@/lib/adminId";
+import { proximoPagoYaiza } from "@/lib/yaizaPago";
 import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react";
 import Confetti from "@/components/Confetti";
 import { reproducirSonido } from "@/lib/sonido";
@@ -258,28 +258,8 @@ export default function AdminDashboard() {
     diaMesHoy < diasMes &&
     proyeccionAdmin > 0;
 
-  // Pago mensual a Yaiza (500€/mes): empezó el día YAIZA_START; le toca cobrar el
-  // MISMO día de cada mes, y el primer pago es un mes después de empezar. Calculamos
-  // el próximo pago (el primer "día 11" que aún no ha pasado, desde el 1er pago).
-  const yaiza = (() => {
-    const hoyStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
-    const [hy, hm, hd] = hoyStr.split("-").map(Number);
-    const hoy = new Date(hy, hm - 1, hd);
-    const [iy, im, id] = YAIZA_START.split("-").map(Number);
-    let pago = new Date(iy, im - 1 + 1, id); // primer pago: 1 mes después de empezar
-    while (pago < hoy) pago = new Date(pago.getFullYear(), pago.getMonth() + 1, id);
-    const dias = Math.round((pago.getTime() - hoy.getTime()) / 86400000);
-    // nº de pagos que le tocan desde que empezó hasta hoy (los "día 11" ya pasados
-    // contando desde el primer pago): útil para saber cuántos meses lleva.
-    const primer = new Date(iy, im - 1 + 1, id);
-    let n = 0, p = new Date(primer);
-    while (p <= hoy) { n++; p = new Date(p.getFullYear(), p.getMonth() + 1, id); }
-    return {
-      fecha: pago.toLocaleDateString("es-ES", { day: "numeric", month: "long" }),
-      dias,
-      pagosVencidos: n, // cuántos pagos de 500€ le han tocado ya (por si hay atrasados)
-    };
-  })();
+  // Pago mensual a Yaiza (500€/mes por revisar los chats): próximo pago y días.
+  const yaiza = proximoPagoYaiza();
 
   return (
     <div className="flex flex-col gap-6">
