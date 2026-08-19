@@ -17,31 +17,23 @@ export default function BotLectorPage() {
         </p>
       </div>
 
-      {/* Tu próximo pago (500€/mes por revisar los chats). */}
+      {/* Tu próximo pago (500€/mes por revisar los chats) — compacto, en una línea. */}
       <div
-        className={`rounded-2xl border p-5 flex items-center justify-between gap-4 ${
-          pago.dias === 0 ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5"
+        className={`rounded-xl border px-4 py-2.5 flex items-center gap-2.5 text-sm ${
+          pago.dias === 0 ? "border-amber-400/50 bg-amber-500/10" : "border-white/10 bg-white/5"
         }`}
       >
-        <div className="min-w-0">
-          <p className="text-sm text-slate-400">Tu próximo pago</p>
-          <p className="text-2xl font-bold text-white mt-0.5">
-            {pago.dias === 0 ? "¡Hoy te toca cobrar!" : pago.fecha}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Cobras el 11 de cada mes por revisar los chats 💬</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className={`text-3xl font-extrabold ${pago.dias === 0 ? "text-amber-300" : "text-emerald-300"}`}>
-            {pago.importe}€
-          </p>
-          <span
-            className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs ${
-              pago.dias === 0 ? "bg-amber-400/20 text-amber-200" : "bg-white/10 text-slate-300"
-            }`}
-          >
-            {pago.dias === 0 ? "hoy 🎉" : `faltan ${pago.dias} día${pago.dias === 1 ? "" : "s"}`}
+        <span className="text-base">💶</span>
+        <span className="text-slate-400">Tu próximo pago</span>
+        <span className={`font-extrabold text-base ${pago.dias === 0 ? "text-amber-300" : "text-emerald-300"}`}>
+          {pago.importe}€
+        </span>
+        <span className="text-slate-500 truncate">· {pago.dias === 0 ? "¡hoy toca!" : pago.fecha}</span>
+        {pago.dias > 0 && (
+          <span className="ml-auto shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
+            faltan {pago.dias}d
           </span>
-        </div>
+        )}
       </div>
 
       {/* Lo que ha depositado la gente por el bot desde que empezó Yaiza. */}
