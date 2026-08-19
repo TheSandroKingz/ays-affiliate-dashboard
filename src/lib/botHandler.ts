@@ -419,10 +419,13 @@ export async function procesarUpdate(
       );
     // Reenvío EXPLÍCITO: piden claramente que les mandes el vídeo/patrón otra vez
     // (no una duda). Esto SÍ salta el candado de "no dos seguidos".
+    // Negación: si DICE que NO quiere el vídeo/ejemplo, NO cuenta como petición.
+    const negPide =
+      /\b(no|nunca|deja de|para de|ya no|dejes de|dej[eé]is de)\b[^.\n]{0,25}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|v[ií]deo|patr|ejemplo|clip)/i.test(textoJ);
     const reenvioExplicito =
       /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
         textoJ
-      );
+      ) && !negPide;
     const mandoVideo = !!(msg.video || msg.animation);
     const falloForma =
       /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
@@ -432,9 +435,9 @@ export async function procesarUpdate(
     const pideOtro =
       /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
         textoJ
-      );
+      ) && !negPide;
     const problemaReal =
-      /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
+      /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|\bcuentas?\b|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
         textoJ
       );
     // Cooldown corto (20 min): no repetir el ejemplo a cada mensaje, pero sí

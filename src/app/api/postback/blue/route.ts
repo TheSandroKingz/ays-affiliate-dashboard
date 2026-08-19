@@ -240,6 +240,18 @@ export async function GET(request: Request) {
         .gte("created_at", hace2min)
         .limit(1);
       if (dup && dup.length) return NextResponse.json({ ok: true, duplicado: true });
+    } else {
+      // Sin player_id: dedup por raw_query (mismo query = reintento de Blue), para no
+      // duplicar filas ni avisos a Yaiza cuando el postback llega sin identificador.
+      const hace2min = new Date(Date.now() - 120000).toISOString();
+      const { data: dup } = await supabaseAdmin
+        .from("postback_events")
+        .select("id")
+        .eq("event_type", et)
+        .eq("raw_query", raw)
+        .gte("created_at", hace2min)
+        .limit(1);
+      if (dup && dup.length) return NextResponse.json({ ok: true, duplicado: true });
     }
     await registrarEvento({
       event_type: et,

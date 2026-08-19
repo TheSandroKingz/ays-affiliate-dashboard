@@ -365,7 +365,7 @@ function sistemaCacheado(
 // "es normal" a secas, porque vale para depósitos/bono ("eso es normal, está en
 // proceso"); solo las inequívocas de dar por normal/esperable la pérdida o el azar.
 const NORMALIZA_PERDER =
-  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!no )\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})se (puede|pued\w+) (llegar a )?perder/i;
+  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})se (puede|pued\w+) (llegar a )?perder/i;
 
 // Segunda red de seguridad: el bot NUNCA puede VALIDAR que es una estafa/engaño,
 // ni animar a denunciar, ni conceder que otros fueron estafados. Si su respuesta
@@ -393,7 +393,7 @@ function limpiarNormaliza(txt: string): string {
     .replace(/\ba veces (no sal\w*( bien)?( y ya( est[aá])?)?|(se )?pierd\w*|toca( petar)?|sale\w*( as[ií])?( y a veces no)?|salen\w*( as[ií])?( las (tiradas|cosas))?)\b[\s.,!¡—-]*/gi, "")
     .replace(/\bel juego (va|es) as[ií]( algunas veces)?\b[\s.,!¡—-]*/gi, "")
     .replace(/\bno siempre (sale|se gana|va)\b[\s.,!¡—-]*/gi, "")
-    .replace(/(?<!no )\b(es|eso es) (azar|suerte)\b[\s.,!¡—-]*/gi, "")
+    .replace(/(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\b(es|eso es) (azar|suerte)\b[\s.,!¡—-]*/gi, "")
     .replace(/\bmala suerte\b[\s.,!¡—-]*/gi, "")
     .replace(/\bcada tirada es[^.!\n]*/gi, "")
     .replace(/\bas[ií] es (el juego|esto|la (cosa|vaina))\b[\s.,!¡—-]*/gi, "")

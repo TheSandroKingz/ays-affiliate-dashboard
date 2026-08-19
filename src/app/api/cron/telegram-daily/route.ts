@@ -49,7 +49,8 @@ async function reactivarDormidos(): Promise<number[]> {
     .from("telegram_contacts")
     .select("chat_id, first_name, last_msg_at, last_poke_at")
     .eq("opted_out", false)
-    .eq("silenced", false);
+    .eq("silenced", false)
+    .limit(100000);
 
   const dormidos = (data ?? []).filter((c) => {
     const inactivo =
@@ -143,7 +144,8 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
         .select("chat_id")
         .eq("bot", bot.key)
         .eq("opted_out", false)
-        .eq("silenced", false);
+        .eq("silenced", false)
+        .limit(100000);
       const ids = (contactos ?? []).map((c) => c.chat_id as number);
       const boton = botonJugar(bot.enlace);
       const bloq: number[] = [];
@@ -367,7 +369,8 @@ export async function GET(request: Request) {
     .from("telegram_contacts")
     .select("chat_id")
     .eq("opted_out", false)
-    .eq("silenced", false);
+    .eq("silenced", false)
+    .limit(100000);
   const yaPicados = new Set(picados);
   const ids = (contactos ?? [])
     .map((c) => c.chat_id as number)

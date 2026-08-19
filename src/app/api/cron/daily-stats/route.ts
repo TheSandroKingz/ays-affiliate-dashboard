@@ -56,6 +56,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Idempotencia de los avisos al admin: los crons de Vercel son at-least-once, así
+  // que reservamos una clave del día; si el cron se dispara dos veces, solo la PRIMERA
+  // manda las notificaciones (resumen, cumple, inactivo, alerta Celsius). Las stats ya
+  // se insertaron arriba (upsert idempotente), esto solo blinda las push duplicadas.
+  const { data: reservaAviso } = await supabaseAdmin
+    .from("telegram_envio_diario")
+    .upsert({ clave: `daily-stats:${today}` }, { onConflict: "clave", ignoreDuplicates: true })
+    .select("clave");
+  if (!reservaAviso || reservaAviso.length === 0) {
+    return NextResponse.json({ inserted: rows.length, date: today, yaAvisado: true });
+  }
+
   // Vigilancia de FreshBet: si lleva días en silencio pese a haber tráfico,
   // avisamos al admin al móvil (fuga de dinero silenciosa). Blindado.
   let freshbetAlerta = false;

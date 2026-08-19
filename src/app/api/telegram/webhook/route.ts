@@ -503,21 +503,25 @@ export async function POST(request: Request) {
         /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
           textoJ
         );
+      // Negación: si DICE que NO quiere el vídeo/ejemplo ("no me mandes el vídeo",
+      // "deja de mandarme el clip"), NO cuenta como petición ni salta candados.
+      const negPide =
+        /\b(no|nunca|deja de|para de|ya no|dejes de|dej[eé]is de)\b[^.\n]{0,25}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|v[ií]deo|patr|ejemplo|clip)/i.test(textoJ);
       // Pide OTRO/MÁS ejemplo explícitamente → se lo mandamos aunque haya cooldown.
       const pideOtro =
         /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
           textoJ
-        );
+        ) && !negPide;
       // Reenvío EXPLÍCITO del vídeo/patrón ("mándamelo otra vez"): salta el candado
       // de "no dos seguidos" (una duda no, pero si lo piden claro, sí).
       const reenvioExplicito =
         /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
           textoJ
-        );
+        ) && !negPide;
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
-        /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|cuenta|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
+        /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|\bcuentas?\b|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
           textoJ
         );
       // COOLDOWN corto (20 min): no repetir el vídeo a cada mensaje, pero sí mandar

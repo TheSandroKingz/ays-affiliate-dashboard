@@ -237,7 +237,11 @@ export default function GastosPage() {
   // Texto de liquidación, NOMBRANDO a cada uno (los dos usan el mismo panel).
   const liquidacion: { texto: string; color: string } =
     gastos.length === 0
-      ? { texto: "Sin gastos este mes", color: "text-slate-400" }
+      ? { texto: "Sin gastos en este período", color: "text-slate-400" }
+      : !datos?.mesVista
+      ? // Año / Histórico: NO es una liquidación mensual (habría meses ya saldados);
+        // mostramos solo el total del período, sin cifra de deuda que confundiría.
+        { texto: `Total del período: ${eur(datos?.total ?? 0)}`, color: "text-slate-200" }
       : sinPagador
       ? {
           texto: "Marca quién pagó cada gasto (—) para ver quién debe a quién",
@@ -315,7 +319,7 @@ export default function GastosPage() {
       {/* Liquidación del mes: quién debe a quién (nombrado, porque los dos usan el mismo panel) */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-slate-400">Cuentas del mes</p>
+          <p className="text-sm text-slate-400">{datos?.mesVista ? "Cuentas del mes" : "Resumen del período"}</p>
           {datos?.saldado ? (
             <>
               <p className="text-2xl font-bold mt-0.5 text-emerald-300">✓ Saldado</p>
