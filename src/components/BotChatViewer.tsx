@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type UIEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type UIEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { esGestorBot } from "@/lib/adminId";
 import { reproducirSonido } from "@/lib/sonido";
@@ -30,6 +30,20 @@ export type DineroBot = {
 // Clave única de un chat: el mismo usuario podría hablar con dos bots, así que
 // combinamos el bot (origen) con su chat_id.
 const claveDe = (j: Jugador) => `${j.origen}:${j.chat_id}`;
+
+// Etiqueta de día para los separadores estilo WhatsApp ("Hoy"/"Ayer"/fecha).
+function etiquetaDia(d: Date): string {
+  const hoy = new Date();
+  const ayer = new Date(Date.now() - 864e5);
+  const mismo = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  if (mismo(d, hoy)) return "Hoy";
+  if (mismo(d, ayer)) return "Ayer";
+  return d.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    ...(d.getFullYear() !== hoy.getFullYear() ? { year: "numeric" } : {}),
+  });
+}
 
 function iniciales(n?: string | null): string {
   const s = (n || "").trim();
@@ -549,41 +563,50 @@ export default function BotChatViewer({
                   ) : (
                     chatMsgs.map((m, i) => {
                       const bot = m.role === "assistant";
+                      const fecha = m.created_at ? new Date(m.created_at) : null;
+                      const fechaPrev =
+                        i > 0 && chatMsgs[i - 1].created_at
+                          ? new Date(chatMsgs[i - 1].created_at as string)
+                          : null;
+                      const nuevoDia =
+                        !!fecha && (i === 0 || !fechaPrev || fecha.toDateString() !== fechaPrev.toDateString());
                       return (
-                        <div key={i} className={`flex ${bot ? "justify-end" : "justify-start"}`}>
-                          <div
-                            className={`max-w-[82%] rounded-2xl px-3 py-1.5 text-xs leading-snug shadow-sm ${
-                              bot
-                                ? "bg-emerald-700/90 text-white rounded-br-sm"
-                                : "bg-white/12 text-slate-100 rounded-bl-sm"
-                            }`}
-                          >
-                            {m.media_url && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={m.media_url}
-                                alt="Imagen enviada"
-                                className="mb-1 max-w-[200px] rounded-lg"
-                                loading="lazy"
-                              />
-                            )}
-                            {m.content}
-                            {m.created_at && (
-                              <div
-                                className={`text-[9px] mt-0.5 text-right ${
-                                  bot ? "text-emerald-100/60" : "text-slate-400"
-                                }`}
-                              >
-                                {new Date(m.created_at).toLocaleString("es-ES", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </div>
-                            )}
+                        <Fragment key={i}>
+                          {nuevoDia && fecha && (
+                            <div className="self-center my-1.5 rounded-full bg-black/50 px-3 py-0.5 text-[10px] font-medium text-slate-300">
+                              {etiquetaDia(fecha)}
+                            </div>
+                          )}
+                          <div className={`flex ${bot ? "justify-end" : "justify-start"}`}>
+                            <div
+                              className={`max-w-[82%] rounded-2xl px-3 py-1.5 text-xs leading-snug shadow-sm ${
+                                bot
+                                  ? "bg-emerald-700/90 text-white rounded-br-sm"
+                                  : "bg-white/12 text-slate-100 rounded-bl-sm"
+                              }`}
+                            >
+                              {m.media_url && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={m.media_url}
+                                  alt="Imagen enviada"
+                                  className="mb-1 max-w-[200px] rounded-lg"
+                                  loading="lazy"
+                                />
+                              )}
+                              {m.content}
+                              {fecha && (
+                                <div
+                                  className={`text-[9px] mt-0.5 text-right ${
+                                    bot ? "text-emerald-100/60" : "text-slate-400"
+                                  }`}
+                                >
+                                  {fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        </Fragment>
                       );
                     })
                   )}
