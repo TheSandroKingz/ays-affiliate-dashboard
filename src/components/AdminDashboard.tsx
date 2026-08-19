@@ -9,7 +9,6 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
-import { proximoPagoYaiza } from "@/lib/yaizaPago";
 import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react";
 import Confetti from "@/components/Confetti";
 import { reproducirSonido } from "@/lib/sonido";
@@ -257,9 +256,6 @@ export default function AdminDashboard() {
     diasTrab > 0 &&
     diaMesHoy < diasMes &&
     proyeccionAdmin > 0;
-
-  // Pago mensual a Yaiza (500€/mes por revisar los chats): próximo pago y días.
-  const yaiza = proximoPagoYaiza();
 
   return (
     <div className="flex flex-col gap-6">
@@ -531,35 +527,6 @@ export default function AdminDashboard() {
             </button>
           );
         })}
-      </div>
-
-      {/* Aviso de pago a Yaiza (500€/mes por revisar los chats). Solo lo ves tú. */}
-      <div
-        className={`animate-in rounded-xl border p-4 flex items-center justify-between gap-3 ${
-          yaiza.dias === 0
-            ? "border-amber-400/60 bg-amber-500/15"
-            : yaiza.dias <= 3
-            ? "border-amber-400/40 bg-amber-500/10"
-            : "border-white/15 bg-white/5"
-        }`}
-        style={{ animationDelay: "0.15s" }}
-      >
-        <div>
-          <p className="text-sm text-slate-300">
-            Pago a Yaiza <span className="text-slate-500">· 500€/mes por revisar los chats</span>
-          </p>
-          <p className={`text-xl font-bold ${yaiza.dias === 0 ? "text-amber-300" : "text-white"}`}>
-            {yaiza.dias === 0
-              ? "¡Hoy toca pagarle 500€! 💶"
-              : `Próximo pago: ${yaiza.fecha}`}
-          </p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {yaiza.dias === 0
-              ? "El día de pago es hoy."
-              : `Faltan ${yaiza.dias} día${yaiza.dias === 1 ? "" : "s"} · le pagas el 11 de cada mes (empezó el 11 ago).`}
-          </p>
-        </div>
-        <span className="text-2xl shrink-0">💶</span>
       </div>
 
       {/* Gráfico de la actividad de mis afiliados (según las tarjetas activas) */}

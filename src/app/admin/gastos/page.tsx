@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { eur } from "@/lib/format";
+import { proximoPagoYaiza } from "@/lib/yaizaPago";
 
 type Gasto = {
   id: number;
@@ -291,6 +292,25 @@ export default function GastosPage() {
           </select>
         </div>
       </div>
+
+      {/* Recordatorio de pago a Yaiza (500€/mes por revisar los chats). */}
+      {(() => {
+        const y = proximoPagoYaiza();
+        return (
+          <div
+            className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 text-sm ${
+              y.dias === 0 ? "border-amber-400/60 bg-amber-500/15" : "border-white/10 bg-white/5"
+            }`}
+          >
+            <span className="text-slate-300">
+              💶 Pago a Yaiza <span className="text-slate-500">· {eur(y.importe)}/mes por revisar los chats</span>
+            </span>
+            <span className={y.dias === 0 ? "font-semibold text-amber-300" : "text-slate-300"}>
+              {y.dias === 0 ? "¡hoy toca pagarle!" : `próximo: ${y.fecha} · faltan ${y.dias} día${y.dias === 1 ? "" : "s"}`}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Liquidación del mes: quién debe a quién (nombrado, porque los dos usan el mismo panel) */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
