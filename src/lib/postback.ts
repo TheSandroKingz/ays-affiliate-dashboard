@@ -156,7 +156,7 @@ export async function buscarQftdContado(
   try {
     const { data } = await supabaseAdmin
       .from("postback_events")
-      .select("id, matched_user_id, commission, created_at")
+      .select("id, matched_user_id, commission, created_at, counted_date")
       .in("event_type", ["ftd", "commission"])
       .eq("counted", true)
       .eq("player_id", playerId)
@@ -164,9 +164,14 @@ export async function buscarQftdContado(
       .limit(1)
       .maybeSingle();
     if (!data || !data.matched_user_id) return null;
-    const date = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Madrid",
-    }).format(new Date(data.created_at as string));
+    // Mes de conteo real: counted_date si existe (p. ej. FTD aprobado a mano en
+    // otra fecha); si no, se deriva de created_at (histórico).
+    const cd = (data as { counted_date?: string | null }).counted_date;
+    const date = cd
+      ? String(cd).slice(0, 10)
+      : new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Europe/Madrid",
+        }).format(new Date(data.created_at as string));
     return {
       id: data.id as number,
       userId: data.matched_user_id as string,
@@ -206,6 +211,12 @@ export async function registrarEvento(e: EventoPostback): Promise<void> {
     matched_user_id: e.matched_user_id,
     commission: e.commission ?? null,
     counted: e.status === "counted",
+    // Fecha REAL de conteo (Madrid): fija el mes en el que restar si luego se
+    // revierte. Solo para eventos que se cuentan aquí (status "counted").
+    counted_date:
+      e.status === "counted"
+        ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
+        : null,
     status: e.status,
   };
   try {

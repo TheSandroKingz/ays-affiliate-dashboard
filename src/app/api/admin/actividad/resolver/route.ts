@@ -132,6 +132,14 @@ export async function POST(request: Request) {
     timeZone: "Europe/Madrid",
   }).format(new Date());
 
+  // Guarda la fecha REAL de conteo (hoy), para que una reversión futura reste el
+  // FTD en el mes de aprobación y no en el de entrada. Best-effort, no bloquea.
+  await supabaseAdmin
+    .from("postback_events")
+    .update({ counted_date: fecha })
+    .eq("id", id)
+    .then(() => {}, () => {});
+
   const { error: incErr } = await supabaseAdmin.rpc("increment_daily_stats", {
     p_user_id: ev.matched_user_id,
     p_date: fecha,

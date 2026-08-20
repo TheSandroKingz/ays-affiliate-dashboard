@@ -306,34 +306,20 @@ export async function GET(request: Request) {
           // QFTD original es de un mes ya cerrado (y pagado), para reducir el saldo
           // actual; si es del mismo mes, todo va en su fecha (una sola llamada).
           const mismoMes = contado.date.slice(0, 7) === today.slice(0, 7);
-          let error = null as unknown;
-          if (mismoMes) {
-            ({ error } = await supabaseAdmin.rpc("increment_daily_stats", {
-              p_user_id: contado.userId,
-              p_date: contado.date,
-              p_registrations: 0,
-              p_ftd: -1,
-              p_commission: -contado.commission,
-            }));
-          } else {
-            const rCont = await supabaseAdmin.rpc("increment_daily_stats", {
-              p_user_id: contado.userId,
-              p_date: contado.date, // FTD -1 en su mes real (cuadra el recuento)
-              p_registrations: 0,
-              p_ftd: -1,
-              p_commission: 0,
-            });
-            const rDinero = await supabaseAdmin.rpc("increment_daily_stats", {
-              p_user_id: contado.userId,
-              p_date: today, // clawback de dinero en el mes vigente
-              p_registrations: 0,
-              p_ftd: 0,
-              p_commission: -contado.commission,
-            });
-            error = rCont.error || rDinero.error;
-          }
+          // Reversión ATÓMICA (una sola transacción): FTD -1 en su mes real y el
+          // clawback de dinero en el mes vigente (o el mismo si es del mes en
+          // curso). Si algo falla, no se aplica NADA → soltamos el candado para
+          // que el reintento lo repita limpio. Antes eran 2 RPC sueltas y un fallo
+          // parcial dejaba el FTD restado y el dinero sin restar, sin reintento.
+          const { error } = await supabaseAdmin.rpc("reverse_qftd", {
+            p_user_id: contado.userId,
+            p_ftd_date: contado.date,
+            p_money_date: mismoMes ? contado.date : today,
+            p_commission: contado.commission,
+          });
           if (error) {
             estadoRev = "error";
+            await liberarEvento(revKey);
           } else {
             estadoRev = "reversed";
             await supabaseAdmin
