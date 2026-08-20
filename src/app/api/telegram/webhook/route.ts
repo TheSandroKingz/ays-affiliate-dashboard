@@ -595,8 +595,7 @@ export async function POST(request: Request) {
           return data && data.enabled && data.file_id
             ? { src: "welcome", id: 1, media_type: data.media_type, file_id: data.file_id } : null;
         };
-        const daily = await cargarDaily();
-        const bienv = await cargarBienv();
+        const [daily, bienv] = await Promise.all([cargarDaily(), cargarBienv()]);
         const cands: Cand[] = pidenPatronNuevo
           ? [daily, ...examples, bienv].filter(Boolean) as Cand[]
           : [...examples, daily, bienv].filter(Boolean) as Cand[];
@@ -697,13 +696,19 @@ export async function POST(request: Request) {
         .maybeSingle();
       const miMsgId = (insertadoUser?.id as number | undefined) ?? undefined;
 
+      // Si el mensaje es SOLO cortesía/cierre ("ok", "gracias", "mañana te digo")
+      // y NO trae media, no respondemos. Se calcula ANTES del debounce para no
+      // gastar 4,5s + "escribiendo…" + query en un mensaje que nunca va a contestar.
+      const soloCierre =
+        esSoloCierre(entrada) && !msg.photo && !msg.video && !msg.animation && !msg.document;
+
       // PIENSA ANTES DE RESPONDER (agrupa mensajes seguidos): esperamos unos
       // segundos; si mientras tanto el jugador manda OTRO mensaje (p. ej. primero
       // un vídeo y luego el texto), ESTE no responde y deja que responda el
       // último, que ya tendrá TODO el contexto. Así el bot no "pasa" del vídeo ni
       // contesta a medias. Solo aplica cuando vamos a responder con la IA.
       let debounced = false;
-      if (entrada && iaConfigurada() && !limitado && !videoEnviado) {
+      if (entrada && iaConfigurada() && !limitado && !videoEnviado && !soloCierre) {
         // "Escribiendo…" para que se vea que está pensando durante la espera.
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(
           () => {}
@@ -712,12 +717,20 @@ export async function POST(request: Request) {
         if (miMsgId) {
           const { data: masNuevos } = await supabaseAdmin
             .from("telegram_messages")
-            .select("id")
+            .select("id, content")
             .eq("chat_id", chatId)
             .eq("role", "user")
             .gt("id", miMsgId)
-            .limit(1);
-          if (masNuevos && masNuevos.length) debounced = true;
+            .limit(5);
+          // Solo nos callamos si hay un mensaje posterior REAL (no una pura
+          // cortesía tipo "gracias"): un cierre posterior NO debe tragarse la
+          // pregunta anterior dejándola sin respuesta.
+          if (
+            masNuevos &&
+            masNuevos.some((m) => !esSoloCierre(String(m.content ?? "")))
+          ) {
+            debounced = true;
+          }
         }
       }
 
@@ -750,10 +763,6 @@ export async function POST(request: Request) {
       // quedado "debounced" por un mensaje posterior).
       const TOPE_DIA = 5000;
       let respuesta: string | null = null;
-      // Si el mensaje es SOLO cortesía/cierre ("ok", "gracias", "mañana te digo")
-      // y NO trae media, no respondemos: no hay nada que aportar.
-      const soloCierre =
-        esSoloCierre(entrada) && !msg.photo && !msg.video && !msg.animation && !msg.document;
       if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",

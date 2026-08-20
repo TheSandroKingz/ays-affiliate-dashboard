@@ -197,14 +197,24 @@ export async function GET(request: Request) {
       .neq("user_id", ADMIN_USER_ID)
       .eq("approved", true);
     const hoyMs = new Date(today + "T00:00:00Z").getTime();
-    for (const a of affs ?? []) {
-      const { data: vis } = await supabaseAdmin
+    // Una sola consulta con todas las visitas (antes: una por afiliado = N+1) y
+    // nos quedamos con la fecha más reciente de cada uno en memoria.
+    const idsAffs = (affs ?? []).map((a) => a.user_id);
+    const ultimaVisita = new Map<string, string>();
+    if (idsAffs.length) {
+      const { data: visitas } = await supabaseAdmin
         .from("dashboard_visits")
-        .select("date")
-        .eq("user_id", a.user_id)
+        .select("user_id, date")
+        .in("user_id", idsAffs)
         .order("date", { ascending: false })
-        .limit(1);
-      const ultima = vis?.[0]?.date;
+        .limit(100000);
+      for (const v of visitas ?? []) {
+        const uid = String(v.user_id);
+        if (!ultimaVisita.has(uid)) ultimaVisita.set(uid, String(v.date)); // la 1ª = más reciente
+      }
+    }
+    for (const a of affs ?? []) {
+      const ultima = ultimaVisita.get(String(a.user_id));
       if (!ultima) continue;
       const dias = Math.round(
         (hoyMs - new Date(String(ultima) + "T00:00:00Z").getTime()) / 86400000

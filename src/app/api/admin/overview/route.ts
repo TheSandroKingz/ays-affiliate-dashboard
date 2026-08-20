@@ -53,25 +53,21 @@ export async function GET(request: Request) {
 
   // Todo lo demás en paralelo. La consulta diaria viene ACOTADA por fecha (mes
   // pasado en adelante); antes traía TODO el histórico en cada carga.
-  const [meRes, dailyRes, histDailyRes, pendRes, seguridad, freshbet, paisesRes] =
+  const [meRes, histDailyRes, pendRes, seguridad, freshbet, paisesRes] =
     await Promise.all([
       supabaseAdmin
         .from("affiliates")
         .select("id, cpa_spain")
         .eq("user_id", user.id)
         .maybeSingle(),
+      // TODO el histórico (sin acotar fecha) para el "Total generado". El mes en
+      // curso ("Lo que me quedo") se saca filtrando este mismo array por fecha en
+      // memoria (antes había una 2ª query idéntica solo acotada por fecha).
       supabaseAdmin
         .from("affiliate_daily_stats")
         .select("user_id, date, commission, clicks, registrations, ftd")
         .in("user_id", idsToLoad)
-        .gte("date", inicioMesPasado)
-        .limit(100000), // sin límite PostgREST corta en 1000 → "Lo que me quedo" saldría corto al crecer
-      // TODO el histórico (sin acotar fecha) para el "Total generado" del tooltip.
-      supabaseAdmin
-        .from("affiliate_daily_stats")
-        .select("user_id, date, commission, clicks, registrations, ftd")
-        .in("user_id", idsToLoad)
-        .limit(100000),
+        .limit(100000), // sin límite PostgREST corta en 1000 → los totales saldrían cortos al crecer
       supabaseAdmin
         .from("affiliates")
         .select("user_id", { count: "exact", head: true })
@@ -103,14 +99,15 @@ export async function GET(request: Request) {
     .map(([code, n]) => ({ code, n }))
     .sort((a, b) => b.n - a.n);
 
-  if (dailyRes.error) {
-    return NextResponse.json({ error: dailyRes.error.message }, { status: 500 });
+  if (histDailyRes.error) {
+    return NextResponse.json({ error: histDailyRes.error.message }, { status: 500 });
   }
 
-  const all = (dailyRes.data ?? []).map((d) => ({
-    ...d,
-    date: String(d.date).slice(0, 10),
-  })) as DailyRow[];
+  // El mes en curso/pasado sale del mismo histórico, filtrado por fecha (enRango
+  // ya acota más adelante; esto solo evita traer la tabla dos veces).
+  const all = (histDailyRes.data ?? [])
+    .map((d) => ({ ...d, date: String(d.date).slice(0, 10) }))
+    .filter((d) => d.date >= inicioMesPasado) as DailyRow[];
   const struct = (structure ?? []) as StructRow[];
 
   const enRango = (a: string, b: string) =>

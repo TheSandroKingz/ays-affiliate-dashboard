@@ -278,8 +278,20 @@ export default function BotChatViewer({
   }, [cargar]);
 
   useEffect(() => {
-    const id = setInterval(() => cargar(true), 20_000);
-    return () => clearInterval(id);
+    // No refrescamos (ni sonamos) con la pestaña oculta; al volver a visible,
+    // una carga inmediata para ponerse al día. Ahorra tráfico y avisos inútiles.
+    const tick = () => {
+      if (!document.hidden) cargar(true);
+    };
+    const id = setInterval(tick, 20_000);
+    const onVis = () => {
+      if (!document.hidden) cargar(true);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [cargar]);
 
   useEffect(() => {

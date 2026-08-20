@@ -35,9 +35,15 @@ export async function POST(request: Request) {
     });
   }
 
+  // Base URL de CONFIANZA (misma que connect-bot): VERCEL_URL/dominio propio, no
+  // el header host del cliente (falsificable). Evita desviar el webhook + secreto.
+  const trustedBase =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
   const host =
     request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
-  const url = `https://${host}/api/telegram/webhook`;
+  const base = trustedBase || `https://${host}`;
+  const url = `${base}/api/telegram/webhook`;
 
   const r = await tgApi("setWebhook", {
     url,

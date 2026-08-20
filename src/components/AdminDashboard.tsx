@@ -10,6 +10,10 @@ import LoadError from "@/components/LoadError";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
 import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react";
+
+// Fuera del componente: objeto estable para no romper el memo de BalanceChart
+// (si fuera un literal en el JSX, cambiaría de referencia en cada render).
+const LABEL_OVERRIDES = { commission: "Margen" };
 import Confetti from "@/components/Confetti";
 import { reproducirSonido } from "@/lib/sonido";
 
@@ -535,7 +539,7 @@ export default function AdminDashboard() {
           data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
           activeMetrics={activeMetrics}
           primaryMetricKey={primaryMetricKey}
-          labelOverrides={{ commission: "Margen" }}
+          labelOverrides={LABEL_OVERRIDES}
         />
         {sinActividad && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

@@ -61,13 +61,15 @@ export async function GET(request: Request) {
 
   // Override que gana cada afiliado por sus subafiliados
   const pctById = new Map<string, number>();
+  const byId = new Map<string, NonNullable<typeof structure>[number]>();
   for (const a of structure ?? []) {
     pctById.set(a.id, Number(a.subaffiliate_percent ?? 0));
+    byId.set(a.id, a); // índice por id para no buscar con .find() dentro del bucle (O(n²)→O(n))
   }
   const overrideByUser = new Map<string, number>();
   for (const child of structure ?? []) {
     if (!child.referred_by || child.referred_by === me?.id) continue;
-    const parent = (structure ?? []).find((p) => p.id === child.referred_by);
+    const parent = byId.get(child.referred_by);
     if (!parent) continue;
     const pct = pctById.get(child.referred_by) ?? 0;
     const childCom = comByUser.get(child.user_id) ?? 0;
