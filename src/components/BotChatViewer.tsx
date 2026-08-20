@@ -104,6 +104,10 @@ export default function BotChatViewer({
   const [cargandoChat, setCargandoChat] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [leidos, setLeidos] = useState<Record<string, string>>({});
+  // Traducciones al español de mensajes del jugador (para Yaiza cuando escriben
+  // en otro idioma). Clave = created_at del mensaje. Se piden a demanda.
+  const [traducciones, setTraducciones] = useState<Record<string, string>>({});
+  const [traduciendo, setTraduciendo] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   // ¿Está el usuario pegado abajo del chat? Si subió a leer mensajes antiguos, NO
   // le mandamos al fondo cuando llega un mensaje o se refresca. Estilo WhatsApp.
@@ -342,6 +346,27 @@ export default function BotChatViewer({
     }
   }
 
+  async function traducir(clave: string, texto: string) {
+    if (traducciones[clave] || traduciendo) return;
+    const { t } = await token();
+    if (!t) return;
+    setTraduciendo(clave);
+    try {
+      const r = await fetch("/api/telegram/traducir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + t },
+        body: JSON.stringify({ text: texto }),
+      });
+      const b = await r.json().catch(() => ({}));
+      if (b?.traduccion)
+        setTraducciones((prev) => ({ ...prev, [clave]: String(b.traduccion) }));
+    } catch {
+      /* si falla, no rompemos nada */
+    } finally {
+      setTraduciendo(null);
+    }
+  }
+
   async function toggleSilencio(j: Jugador) {
     const { t } = await token();
     if (!t) return;
@@ -575,6 +600,8 @@ export default function BotChatViewer({
                   ) : (
                     chatMsgs.map((m, i) => {
                       const bot = m.role === "assistant";
+                      const claveTrad = m.created_at ?? String(i);
+                      const trad = traducciones[claveTrad];
                       const fecha = m.created_at ? new Date(m.created_at) : null;
                       const fechaPrev =
                         i > 0 && chatMsgs[i - 1].created_at
@@ -607,6 +634,22 @@ export default function BotChatViewer({
                                 />
                               )}
                               {m.content}
+                              {/* Traducir: solo en mensajes del jugador con texto */}
+                              {!bot && !!m.content && (
+                                trad ? (
+                                  <div className="mt-1 border-t border-white/15 pt-1 text-[11px] italic text-emerald-200/90">
+                                    🌐 {trad}
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => traducir(claveTrad, m.content)}
+                                    disabled={traduciendo === claveTrad}
+                                    className="mt-0.5 block text-[10px] text-sky-300/80 hover:text-sky-200 disabled:opacity-50"
+                                  >
+                                    {traduciendo === claveTrad ? "traduciendo…" : "🌐 traducir"}
+                                  </button>
+                                )
+                              )}
                               {fecha && (
                                 <div
                                   className={`text-[9px] mt-0.5 text-right ${
