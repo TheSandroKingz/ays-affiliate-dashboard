@@ -48,7 +48,9 @@ export default function DashboardProvider({
           router.replace("/login");
           return;
         }
-        // Límite duro de sesión: a los 3 días se pide la contraseña de nuevo.
+        // Límite duro de sesión (MAX_SESSION_MS = 30 días): se pide la contraseña
+        // de nuevo al pasar ese tiempo. (Refuerzo pendiente: validarlo también en
+        // servidor; hoy la caducidad se comprueba aquí en cliente.)
         const started = Number(localStorage.getItem("authStartAt") || 0);
         const now = Date.now();
         if (!started) {

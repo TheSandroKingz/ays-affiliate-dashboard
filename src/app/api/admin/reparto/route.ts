@@ -103,6 +103,15 @@ export async function GET(request: Request) {
     const cfg = REPARTO_POR_USUARIO[s.user_id] ?? GENERAL;
     sumar(cfg, s.ftd, Number(s.margin ?? 0));
   }
+  // Descontar del pool los OVERRIDES que el admin ya pagó a los afiliados-padre
+  // por sus subafiliados: ese dinero ya salió y NO se reparte con el socio. Se
+  // imputa a "General / directo" para que la suma cuadre con la ganancia limpia
+  // (totalClean también resta overridesPaid). Sin esto el socio cobraba de más.
+  const overridesPaid = Number(mes.totals?.overridesPaid ?? 0);
+  if (overridesPaid > 0) {
+    const g = grupos.get(GENERAL.grupo);
+    if (g) g.ganancia -= overridesPaid;
+  }
   const fuentes = [...grupos.values()].map((f) => ({
     nombre: f.nombre,
     ftd: f.ftd,
