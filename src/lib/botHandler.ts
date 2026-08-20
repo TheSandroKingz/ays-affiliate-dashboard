@@ -15,6 +15,7 @@ import {
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
+import { rateLimitShared } from "@/lib/rateLimit";
 import type { BotDef } from "@/lib/bots";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -674,7 +675,12 @@ export async function procesarUpdate(
         p_day: hoy,
       });
       const dentroTope = typeof usoActual !== "number" || usoActual <= TOPE_DIA;
-      if (dentroTope) {
+      // Cap DIARIO POR CHAT (mismo que Sandro): un solo jugador no acapara el cupo
+      // global de IA del bot. 200/día por chat, holgado para un real, frena el abuso.
+      const dentroCapChat = dentroTope
+        ? await rateLimitShared(`aichat:${bot.key}:${chatId}`, 200, 24 * 60 * 60 * 1000)
+        : false;
+      if (dentroTope && dentroCapChat) {
         const { data: cfg } = await supabaseAdmin
           .from("bot_config")
           .select("promo")

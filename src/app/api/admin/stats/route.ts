@@ -11,18 +11,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { data: me } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, cpa_spain")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
+  // me y structure son independientes → en paralelo (1 round-trip en vez de 2).
+  const [{ data: me }, { data: structure, error: sErr }] = await Promise.all([
+    supabaseAdmin.from("affiliates").select("id, cpa_spain").eq("user_id", user.id).maybeSingle(),
+    supabaseAdmin
+      .from("affiliates")
+      .select("id, user_id, display_name, referred_by, subaffiliate_percent")
+      .neq("user_id", user.id),
+  ]);
   const adminCpa = Number(me?.cpa_spain ?? 0);
-
-  const { data: structure, error: sErr } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, user_id, display_name, referred_by, subaffiliate_percent")
-    .neq("user_id", user.id);
   if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
 
   const structIds = (structure ?? []).map((s) => s.user_id);

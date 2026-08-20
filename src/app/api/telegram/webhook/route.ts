@@ -12,6 +12,7 @@ import {
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
+import { rateLimitShared } from "@/lib/rateLimit";
 import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
@@ -783,7 +784,14 @@ export async function POST(request: Request) {
         // bloqueamos (el bot sigue), pero el tope no protegerá hasta aplicar SQL.
         const dentroTope =
           typeof usoActual !== "number" || usoActual <= TOPE_DIA;
-        if (dentroTope) {
+        // Cap DIARIO POR CHAT: un solo jugador no puede acaparar el cupo global de
+        // IA (antes uno podía agotar el tope del día y dejar a TODOS con respuesta
+        // genérica). 200 respuestas/día por chat es holgadísimo para un usuario
+        // real y frena el abuso. Solo cuenta cuando de verdad vamos a llamar a la IA.
+        const dentroCapChat = dentroTope
+          ? await rateLimitShared(`aichat:${chatId}`, 200, 24 * 60 * 60 * 1000)
+          : false;
+        if (dentroTope && dentroCapChat) {
           // Imagen para la IA: la del mensaje actual si trae; si no, la del último
           // mensaje reciente del jugador con media (para no perder el vídeo/foto
           // que mandó justo antes del texto). En vídeos, file_id ya es la miniatura.

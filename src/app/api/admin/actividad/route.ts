@@ -14,6 +14,37 @@ export async function GET(request: Request) {
 
   const columnas =
     "id, created_at, event_type, status, counted, commission, player_id, tracking_code, afp, isocountry, matched_user_id";
+
+  // Modo LIGERO (campana de notificaciones): solo los eventos recientes con nombre.
+  // Se salta la consulta de RETENIDOS (limit 100000) y deteccionFraude() (3 querys
+  // pesadas) porque la campana solo usa `events`. Mucho más barato en cada carga.
+  const url = new URL(request.url);
+  if (url.searchParams.get("ligero")) {
+    const { data: ev } = await supabaseAdmin
+      .from("postback_events")
+      .select(columnas)
+      .order("created_at", { ascending: false })
+      .limit(80);
+    const uids = [
+      ...new Set((ev ?? []).map((e) => e.matched_user_id).filter(Boolean) as string[]),
+    ];
+    const nm = new Map<string, string | null>();
+    if (uids.length) {
+      const { data: affs } = await supabaseAdmin
+        .from("affiliates")
+        .select("user_id, display_name")
+        .in("user_id", uids);
+      for (const a of affs ?? []) nm.set(a.user_id, a.display_name);
+    }
+    const evs = (ev ?? [])
+      .filter((e) => e.matched_user_id && e.matched_user_id !== ADMIN_USER_ID)
+      .map((e) => ({
+        ...e,
+        name: e.matched_user_id ? nm.get(e.matched_user_id) ?? null : null,
+      }));
+    return NextResponse.json({ events: evs });
+  }
+
   const [{ data: events, error }, { data: heldRaw }, fraude] = await Promise.all([
     supabaseAdmin
       .from("postback_events")

@@ -49,15 +49,14 @@ export async function GET(request: Request) {
     etiqueta = mesActual;
   }
 
-  const { data: me } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, cpa_spain")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const { data: structure } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, user_id, display_name, referred_by, subaffiliate_percent")
-    .neq("user_id", user.id);
+  // me y structure son independientes → en paralelo (1 round-trip en vez de 2).
+  const [{ data: me }, { data: structure }] = await Promise.all([
+    supabaseAdmin.from("affiliates").select("id, cpa_spain").eq("user_id", user.id).maybeSingle(),
+    supabaseAdmin
+      .from("affiliates")
+      .select("id, user_id, display_name, referred_by, subaffiliate_percent")
+      .neq("user_id", user.id),
+  ]);
 
   const adminCpa = Number(me?.cpa_spain ?? 0);
   const meId = me?.id;

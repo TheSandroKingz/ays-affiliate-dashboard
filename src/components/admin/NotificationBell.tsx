@@ -40,7 +40,7 @@ export default function NotificationBell() {
         fetch("/api/admin/pending", { cache: "no-store", headers: h })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
-        fetch("/api/admin/actividad", { cache: "no-store", headers: h })
+        fetch("/api/admin/actividad?ligero=1", { cache: "no-store", headers: h })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
       ]);

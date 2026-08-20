@@ -29,16 +29,14 @@ export async function GET(request: Request) {
 
   const DUMMY = "00000000-0000-0000-0000-000000000000";
 
-  const { data: me } = await supabaseAdmin
-    .from("affiliates")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: structure } = await supabaseAdmin
-    .from("affiliates")
-    .select("id, user_id, referred_by, subaffiliate_percent")
-    .neq("user_id", user.id);
+  // me y structure son independientes → en paralelo (1 round-trip en vez de 2).
+  const [{ data: me }, { data: structure }] = await Promise.all([
+    supabaseAdmin.from("affiliates").select("id").eq("user_id", user.id).maybeSingle(),
+    supabaseAdmin
+      .from("affiliates")
+      .select("id, user_id, referred_by, subaffiliate_percent")
+      .neq("user_id", user.id),
+  ]);
 
   const structIds = (structure ?? []).map((s) => s.user_id);
   const ids = structIds.length ? structIds : [DUMMY];
