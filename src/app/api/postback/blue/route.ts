@@ -107,7 +107,11 @@ async function afpDeUser(userId: string): Promise<string> {
 const AFP_CAMPANA: Record<string, string> = {
   ymijpivpyx: "bot", // BOT AS  (bot de Sandro)
   ishrdbxnke: "botmn", // BOT JEFFER (bot de Jeffer)
-  ahbpxgtaop: "botdm", // bot de Mariam/Alana (su enlace de siempre)
+  // ⚠️ AhBpxgTaoP es el enlace DE SIEMPRE de Mariam, que ELLA usa para mandar por
+  // privado; el bot de Livana también lo reutiliza, así que NO se pueden separar.
+  // Como la mayoría son envíos personales de Mariam, se atribuye a ELLA (afp "web",
+  // FTD normal) y NO como "bot" (antes saltaba "su bot" por error). Para separar el
+  // tráfico del bot habría que darle a Livana un enlace/tracking PROPIO en Blue.
 };
 // Dinero: si el código de un bot pertenece a un afiliado concreto, con qué
 // tracking se empareja para atribuírselo (BOT JEFFER → cuenta de Jeffer).
