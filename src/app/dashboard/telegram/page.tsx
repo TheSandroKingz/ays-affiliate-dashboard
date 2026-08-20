@@ -43,6 +43,7 @@ export default function MiBotTelegramPage() {
   const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
   const [cargandoChat, setCargandoChat] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatPedidoRef = useRef<number | null>(null);
 
   async function token() {
     const {
@@ -114,6 +115,7 @@ export default function MiBotTelegramPage() {
   }
 
   async function verChat(chatId: number) {
+    chatPedidoRef.current = chatId;
     setChatAbierto(chatId);
     setCargandoChat(true);
     setChatMsgs([]);
@@ -125,10 +127,11 @@ export default function MiBotTelegramPage() {
       });
       if (r.ok) {
         const b = await r.json();
-        setChatMsgs(b.history ?? []);
+        // Si mientras cargaba se abrió OTRO chat, no pintamos este (evita mezclar).
+        if (chatPedidoRef.current === chatId) setChatMsgs(b.history ?? []);
       }
     } finally {
-      setCargandoChat(false);
+      if (chatPedidoRef.current === chatId) setCargandoChat(false);
     }
   }
 

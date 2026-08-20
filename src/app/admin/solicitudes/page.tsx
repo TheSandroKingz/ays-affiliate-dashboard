@@ -14,6 +14,7 @@ export default function SolicitudesPage() {
   const [token, setToken] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -39,17 +40,25 @@ export default function SolicitudesPage() {
   async function decidir(userId: string, action: "approve" | "reject") {
     if (!token) return;
     setBusyId(userId);
-    const res = await fetch("/api/admin/pending", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({ userId, action }),
-    });
-    setBusyId(null);
-    if (res.ok) {
-      setPending((prev) => prev.filter((p) => p.user_id !== userId));
+    setErrMsg(null);
+    try {
+      const res = await fetch("/api/admin/pending", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ userId, action }),
+      });
+      if (res.ok) {
+        setPending((prev) => prev.filter((p) => p.user_id !== userId));
+      } else {
+        setErrMsg("No se pudo completar. Revisa la conexión y vuelve a intentarlo.");
+      }
+    } catch {
+      setErrMsg("No se pudo completar. Revisa la conexión y vuelve a intentarlo.");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -68,6 +77,12 @@ export default function SolicitudesPage() {
           aceptes.
         </p>
       </div>
+
+      {errMsg && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-300">
+          {errMsg}
+        </div>
+      )}
 
       {pending.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
