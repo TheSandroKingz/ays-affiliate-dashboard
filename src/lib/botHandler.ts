@@ -428,7 +428,7 @@ export async function procesarUpdate(
       const nAbuso =
         1 +
         (prevAbuso ?? []).filter((m) => ABUSO_RE.test(String(m.content ?? ""))).length;
-      if (nAbuso >= 3) {
+      if (nAbuso >= 2) {
         await supabaseAdmin
           .from("bot_contacts")
           .update({ silenced: true })

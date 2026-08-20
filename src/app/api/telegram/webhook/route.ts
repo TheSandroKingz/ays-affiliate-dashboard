@@ -49,7 +49,7 @@ const BIENVENIDA =
 // "denunciar", "guardia civil", "reportar"… porque son las palabras que usa un
 // jugador CABREADO pero LEGÍTIMO con un retiro que no le llega ("esto es una
 // estafa, no me llega el dinero, voy a denunciar") — a ese hay que AYUDARLE, no
-// silenciarlo. Solo cuentan los insultos personales claros. A los 3, se silencia.
+// silenciarlo. Solo cuentan los insultos personales claros. A los 2 (aviso + reincidencia), se silencia.
 // ABUSO_RE ahora vive en telegramAI (compartido con los bots Jeffer/Livana).
 
 export async function POST(request: Request) {
@@ -471,7 +471,7 @@ export async function POST(request: Request) {
           (prevAbuso ?? []).filter((m) =>
             ABUSO_RE.test(String(m.content ?? ""))
           ).length;
-        if (nAbuso >= 3) {
+        if (nAbuso >= 2) {
           await supabaseAdmin
             .from("telegram_contacts")
             .update({ silenced: true })
