@@ -475,36 +475,42 @@ export async function procesarUpdate(
       (!ejemploJustoAntes || reenvioExplicito) &&
       (!ejemploReciente || pideOtro || reenvioExplicito)
     ) {
-      // Un ejemplo al azar de la biblioteca del bot; si no hay, el /diario del bot.
-      let dv: { media_type: string | null; file_id: string | null } | null = null;
+      // Candidatos a enviar: los ejemplos de la biblioteca del bot (barajados) y,
+      // como último recurso, el /diario. Probamos EN ORDEN hasta que UNO se envíe.
+      // Si Telegram rechaza un file_id (típico cuando el vídeo se subió con OTRO
+      // bot: los file_id son intransferibles entre bots), ese ejemplo se AUTO-
+      // DESACTIVA para no volver a intentarlo y seguimos con el siguiente. Así el
+      // bot no se queda pillado eligiendo al azar un vídeo muerto (que dejaba al
+      // jugador solo con el enlace, sin el vídeo que pidió).
+      type Cand = { id: number | null; media_type: string | null; file_id: string | null };
+      const cands: Cand[] = [];
       const { data: ejs } = await supabaseAdmin
         .from("bot_examples")
-        .select("media_type, file_id")
+        .select("id, media_type, file_id")
         .eq("bot", bot.key)
         .eq("enabled", true)
         .limit(100000);
-      if (ejs && ejs.length) {
-        const pick = ejs[Math.floor(Math.random() * ejs.length)];
-        dv = { media_type: pick.media_type, file_id: pick.file_id };
+      for (const e of (ejs ?? []) as Cand[]) cands.push({ id: e.id, media_type: e.media_type, file_id: e.file_id });
+      // Barajado (Fisher-Yates) para no mandar siempre el mismo primero.
+      for (let i = cands.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cands[i], cands[j]] = [cands[j], cands[i]];
       }
-      if (!dv) {
-        const { data: cfg } = await supabaseAdmin
-          .from("bot_config")
-          .select("daily_media_type, daily_file_id, daily_enabled")
-          .eq("bot", bot.key)
-          .maybeSingle();
-        if (cfg?.daily_enabled !== false && cfg?.daily_file_id)
-          dv = { media_type: cfg.daily_media_type, file_id: cfg.daily_file_id };
-      }
-      if (dv && dv.file_id) {
+      const { data: cfg } = await supabaseAdmin
+        .from("bot_config")
+        .select("daily_media_type, daily_file_id, daily_enabled")
+        .eq("bot", bot.key)
+        .maybeSingle();
+      if (cfg?.daily_enabled !== false && cfg?.daily_file_id)
+        cands.push({ id: null, media_type: cfg.daily_media_type, file_id: cfg.daily_file_id });
+
+      const caption = (mandoVideo || falloForma)
+        ? "Toma, prueba así también 🔥 es OTRA de mis formas. Míralo y hazlo igual."
+        : "Aquí tienes 🔥 así le doy yo. Hazlo igual que en esta y dale.";
+      for (const dv of cands) {
+        if (!dv.file_id) continue;
         const { metodo, campo } = metodoMedia(dv.media_type ?? "");
-        const p: Record<string, unknown> = {
-          chat_id: chatId,
-          caption: (mandoVideo || falloForma)
-            ? "Toma, prueba así también 🔥 es OTRA de mis formas. Míralo y hazlo igual."
-            : "Aquí tienes 🔥 así le doy yo. Hazlo igual que en esta y dale.",
-          reply_markup: botonSoloJugar(bot.enlace),
-        };
+        const p: Record<string, unknown> = { chat_id: chatId, caption, reply_markup: botonSoloJugar(bot.enlace) };
         p[campo] = dv.file_id;
         const rv = await tgApi(metodo, p, tok);
         if (rv?.ok) {
@@ -515,6 +521,20 @@ export async function procesarUpdate(
             .eq("bot", bot.key)
             .eq("chat_id", chatId)
             .then(() => {}, () => {});
+          break;
+        }
+        // Telegram rechaza el file_id (subido con otro bot, o borrado): desactiva
+        // ese ejemplo para que no vuelva a elegirse, y prueba con el siguiente.
+        const desc = (rv?.description ?? "").toLowerCase();
+        if (dv.id != null && /file|identifier|not found|wrong|invalid/.test(desc)) {
+          console.warn(`[bot ${bot.key}] ejemplo ${dv.id} file_id inválido, desactivado: ${rv?.description}`);
+          await supabaseAdmin
+            .from("bot_examples")
+            .update({ enabled: false })
+            .eq("id", dv.id)
+            .then(() => {}, () => {});
+        } else if (!rv?.ok) {
+          console.warn(`[bot ${bot.key}] fallo al enviar media: ${rv?.description ?? "sin respuesta"}`);
         }
       }
     }
