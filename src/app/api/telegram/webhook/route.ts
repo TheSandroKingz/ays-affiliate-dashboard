@@ -575,7 +575,7 @@ export async function POST(request: Request) {
             .from("telegram_examples")
             .select("id, media_type, file_id")
             .eq("enabled", true)
-            .limit(100000);
+            .limit(200); // biblioteca curada por el dueño (decenas); tope holgado
           for (const e of (ejs ?? []) as { id: number; media_type: string | null; file_id: string | null }[])
             examples.push({ src: "example", id: e.id, media_type: e.media_type, file_id: e.file_id });
           for (let i = examples.length - 1; i > 0; i--) {

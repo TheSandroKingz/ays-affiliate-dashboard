@@ -522,7 +522,7 @@ export async function procesarUpdate(
         .select("id, media_type, file_id")
         .eq("bot", bot.key)
         .eq("enabled", true)
-        .limit(100000);
+        .limit(200); // biblioteca curada por el dueño (decenas); tope holgado
       for (const e of (ejs ?? []) as Cand[]) cands.push({ id: e.id, media_type: e.media_type, file_id: e.file_id });
       // Barajado (Fisher-Yates) para no mandar siempre el mismo primero.
       for (let i = cands.length - 1; i > 0; i--) {
