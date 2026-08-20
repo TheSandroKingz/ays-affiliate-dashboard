@@ -284,8 +284,10 @@ export const BOTS: Record<string, BotDef> = {
     key: "jeffer",
     label: "Jeffer",
     username: "@Jeffer17Money_bot",
-    token: process.env.TELEGRAM_BOT_TOKEN_JEFFER || "",
-    secret: process.env.TELEGRAM_WEBHOOK_SECRET_JEFFER || "",
+    token: (process.env.TELEGRAM_BOT_TOKEN_JEFFER || "").trim(),
+    // .trim(): un salto de línea o espacio pegado por error en la env rompía
+    // setWebhook ("secret token contains unallowed characters"). Lo limpiamos.
+    secret: (process.env.TELEGRAM_WEBHOOK_SECRET_JEFFER || "").trim(),
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_JEFFER || "",
     enlace: ENLACE_JEFFER,
     afp: AFP_JEFFER,
@@ -311,12 +313,10 @@ export const BOTS: Record<string, BotDef> = {
     key: "mariam", // clave interna en BD (nunca se muestra al jugador)
     label: "Livana", // nombre visible en el panel (su nombre real NO se usa nunca)
     username: "@LivanaZdrbot", // bot NUEVO (el token va en TELEGRAM_BOT_TOKEN_MARIAM en Vercel)
-    token: process.env.TELEGRAM_BOT_TOKEN_MARIAM || "",
-    // Secreto del webhook: se lee de env (como los demás bots). Fallback al valor
-    // antiguo SOLO para no romper mientras no esté puesta la env; ese valor viejo
-    // está comprometido (quedó en git) → configura TELEGRAM_WEBHOOK_SECRET_MARIAM
-    // en Vercel con uno NUEVO y re-lanza setWebhook para rotarlo.
-    secret: process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "livanaWH_9f3a2b7c8e1d4506ab",
+    token: (process.env.TELEGRAM_BOT_TOKEN_MARIAM || "").trim(),
+    // Secreto del webhook desde env (ya rotado en Vercel). .trim() por si se cuela
+    // un salto de línea al pegarlo (rompía setWebhook con "unallowed characters").
+    secret: (process.env.TELEGRAM_WEBHOOK_SECRET_MARIAM || "").trim(),
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_MARIAM || "",
     enlace: ENLACE_MARIAM,
     afp: AFP_MARIAM,
