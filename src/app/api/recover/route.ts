@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { rateLimitShared, getClientIp } from "@/lib/rateLimit";
 
 // Recuperar contraseña en el SERVIDOR. Resuelve usuario→email aquí (nunca se
 // devuelve) y dispara el email de reseteo. SIEMPRE responde igual (ok genérico),
 // exista o no la cuenta: así no se puede enumerar quién tiene cuenta.
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
-  if (!rateLimit(`recover:${ip}`, 20, 10 * 60 * 1000)) {
+  if (!(await rateLimitShared(`recover:${ip}`, 20, 10 * 60 * 1000))) {
     return NextResponse.json(
       { error: "Demasiados intentos. Espera unos minutos." },
       { status: 429 }

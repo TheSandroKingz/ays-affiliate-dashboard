@@ -1,6 +1,7 @@
 // Límite de peticiones sencillo en memoria por clave (p. ej. IP + ruta).
 // Frena ráfagas de fuerza bruta / enumeración / spam en los endpoints
 // públicos. No sustituye a un WAF, pero añade una capa real de defensa.
+import { supabaseAdmin } from "./supabaseAdmin";
 
 type Entry = { count: number; reset: number };
 const store = new Map<string, Entry>();
@@ -30,6 +31,31 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   if (entry.count >= limit) return false;
   entry.count++;
   return true;
+}
+
+/**
+ * Rate limit COMPARTIDO entre instancias (Vercel serverless): usa la BD para que
+ * el contador NO se pierda en cold starts ni sea por-instancia (antes el tope real
+ * se multiplicaba). Reutiliza el RPC atómico `login_fallo` (incrementa y devuelve
+ * el nº de peticiones de la ventana). BLINDADO: si el RPC falla o el SQL no está,
+ * cae al limitador en memoria — siempre queda algo de defensa, nunca rompe.
+ * @returns true si se permite, false si supera el límite.
+ */
+export async function rateLimitShared(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc("login_fallo", {
+      p_key: `rl:${key}`,
+      p_ventana_ms: windowMs,
+    });
+    if (error || typeof data !== "number") return rateLimit(key, limit, windowMs);
+    return data <= limit; // data = peticiones en la ventana (incluida esta)
+  } catch {
+    return rateLimit(key, limit, windowMs);
+  }
 }
 
 // Obtiene la IP del cliente. Preferimos `x-real-ip` (Vercel la pone con la IP

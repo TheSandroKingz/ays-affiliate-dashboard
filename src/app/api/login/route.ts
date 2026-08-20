@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { rateLimitShared, getClientIp } from "@/lib/rateLimit";
 
 // Login en el SERVIDOR. Resuelve usuario→email AQUÍ (nunca se devuelve el email
 // al navegador, así nadie puede sonsacar el correo de otro adivinando su
@@ -10,7 +10,7 @@ import { rateLimit, getClientIp } from "@/lib/rateLimit";
 // "usuario no existe" de "contraseña incorrecta" (no se puede enumerar).
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
-  if (!rateLimit(`login:${ip}`, 20, 5 * 60 * 1000)) {
+  if (!(await rateLimitShared(`login:${ip}`, 20, 5 * 60 * 1000))) {
     return NextResponse.json(
       { error: "Demasiados intentos. Espera unos minutos." },
       { status: 429 }

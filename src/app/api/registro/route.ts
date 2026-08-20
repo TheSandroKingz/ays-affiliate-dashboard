@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { rateLimit, getClientIp } from '@/lib/rateLimit'
+import { rateLimitShared, getClientIp } from '@/lib/rateLimit'
 import { enviarPush } from '@/lib/push'
 import { ADMIN_USER_ID } from '@/lib/adminAuth'
 import { contieneEmoji } from '@/lib/texto'
@@ -11,7 +11,7 @@ const DEFAULT_PROMO_LINK = 'https://blue2affiliates.com/g/rNotVFJl'
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  if (!rateLimit(`registro:${ip}`, 25, 10 * 60 * 1000)) {
+  if (!(await rateLimitShared(`registro:${ip}`, 25, 10 * 60 * 1000))) {
     return NextResponse.json(
       { error: 'Demasiados intentos. Espera unos minutos.' },
       { status: 429 }

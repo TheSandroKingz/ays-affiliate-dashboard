@@ -21,6 +21,15 @@ export async function GET(request: Request) {
     .lt("created_at", cutoff)
     .then(() => {}, () => {});
 
+  // Limpieza de contadores de rate-limit/lockout viejos (ventanas de minutos; a
+  // 1 día ya están caducados). Evita que login_intentos crezca sin parar.
+  const cutoffRL = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await supabaseAdmin
+    .from("login_intentos")
+    .delete()
+    .lt("primer", cutoffRL)
+    .then(() => {}, () => {});
+
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Madrid",
   }).format(new Date());
