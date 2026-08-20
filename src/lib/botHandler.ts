@@ -14,7 +14,7 @@ import {
   descargarFoto,
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
-import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre } from "@/lib/telegramAI";
+import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
 import type { BotDef } from "@/lib/bots";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -411,6 +411,39 @@ export async function procesarUpdate(
     const limitado = typeof nUsuario === "number" && nUsuario > LIMITE_IA;
 
     const textoJ = text || caption;
+
+    // ── ANTI-TROLL: si insulta o acusa de estafa ("estafador", "scammer"…) de
+    // forma PERSISTENTE, dejamos de contestarle para no gastar IA. A los 3 se
+    // auto-silencia; un uso suelto NO silencia. El dueño lo reactiva en el panel.
+    if (textoJ && ABUSO_RE.test(textoJ)) {
+      const { data: prevAbuso } = await supabaseAdmin
+        .from("bot_messages")
+        .select("content")
+        .eq("bot", bot.key)
+        .eq("chat_id", chatId)
+        .eq("role", "user")
+        .order("created_at", { ascending: false })
+        .limit(12);
+      const nAbuso =
+        1 +
+        (prevAbuso ?? []).filter((m) => ABUSO_RE.test(String(m.content ?? ""))).length;
+      if (nAbuso >= 3) {
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced: true })
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId);
+        if (owner) {
+          await tgEnviar(
+            String(owner),
+            `🔇 Silenciado ${from.first_name ?? "un usuario"} (chat ${chatId}) en ${bot.label}: varios insultos/acusaciones, dejé de contestarle. Reactívalo quitándole el silencio en el panel.`,
+            {},
+            tok
+          ).catch(() => {});
+        }
+        return;
+      }
+    }
 
     // ¿Piden el patrón/vídeo, dicen que una forma les falló, o mandan un vídeo?
     const pidePatron =

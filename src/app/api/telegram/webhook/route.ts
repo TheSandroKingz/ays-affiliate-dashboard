@@ -12,7 +12,7 @@ import {
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
-import { responderIA, iaConfigurada, marcaHueco, esSoloCierre } from "@/lib/telegramAI";
+import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -49,8 +49,7 @@ const BIENVENIDA =
 // jugador CABREADO pero LEGÍTIMO con un retiro que no le llega ("esto es una
 // estafa, no me llega el dinero, voy a denunciar") — a ese hay que AYUDARLE, no
 // silenciarlo. Solo cuentan los insultos personales claros. A los 3, se silencia.
-const ABUSO_RE =
-  /gilipollas|cabr[oó]n|subnormal|imb[eé]cil|payaso|farsante|mentiros[oa]|sinverg[uü]enza|malnacido|escoria|maric[oó]n|\bhdp\b|hijo ?de ?puta|hijoputa|no eres (un )?hombre|s[eé] un (puto )?hombre|eres (un|una) (puto|puta|fraude|mentiros[oa]|estafador|payaso|rata|mierda|basura|in[uú]til|escoria)|tu puta madre|tus muertos|me cago en (ti|tu madre|tus muertos)/i;
+// ABUSO_RE ahora vive en telegramAI (compartido con los bots Jeffer/Livana).
 
 export async function POST(request: Request) {
   // Verificación del secreto del webhook (comparación en tiempo constante).

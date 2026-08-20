@@ -237,6 +237,13 @@ export function esSoloCierre(texto: string | null | undefined): boolean {
   return soloEmojiPunt || RE_SOLO_CIERRE.test(t);
 }
 
+// Insultos/acusaciones al bot que, REPETIDOS, hacen que dejemos de contestarle
+// (auto-silencio a los 3). Incluye acusaciones de estafa sueltas ("estafador",
+// "scammer", "scam") además de en marco personal ("eres un estafador"). Un uso
+// suelto NO silencia (hacen falta 3); protege al cliente puntual cabreado.
+export const ABUSO_RE =
+  /gilipollas|cabr[oó]n|subnormal|imb[eé]cil|payaso|farsante|mentiros[oa]|sinverg[uü]enza|malnacido|escoria|maric[oó]n|\bhdp\b|hijo ?de ?puta|hijoputa|no eres (un )?hombre|s[eé] un (puto )?hombre|eres (un|una) (puto|puta|fraude|mentiros[oa]|estafador|payaso|rata|mierda|basura|in[uú]til|escoria)|estafador(?:es)?|scammers?|\bscam\b|tu puta madre|tus muertos|me cago en (ti|tu madre|tus muertos)/i;
+
 // Personalidad para el MENSAJE DIARIO que la IA genera sola cada día.
 const SYSTEM_DIARIO = `Eres Sandro. Escribe UN mensaje corto para mandar HOY a todos tus jugadores por Telegram: un buenos días / gancho con buena vibra para que les entren ganas de entrar a jugar.
 
