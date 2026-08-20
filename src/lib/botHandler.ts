@@ -436,6 +436,14 @@ export async function procesarUpdate(
       /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
         textoJ
       ) && !negPide;
+    // Pregunta CONCEPTUAL/escéptica sobre el patrón ("¿tiene sentido?", "¿funciona
+    // de verdad?", "¿es mentira?", "¿vale la pena?"): quiere una RESPUESTA, no un
+    // vídeo mudo. No dispares el clip aquí; deja que la IA conteste (evita que el
+    // jugador tenga que escribir "responde" tras recibir el vídeo sin contestación).
+    const dudaConceptoPatron =
+      /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad/i.test(
+        textoJ
+      );
     const problemaReal =
       /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|\bcuentas?\b|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
         textoJ
@@ -459,7 +467,7 @@ export async function procesarUpdate(
       // ahí toca una respuesta personalizada con empatía, no soltar el mismo vídeo.
       // Si nombran el patrón DENTRO de una queja (falloForma), NO cuenta como petición;
       // pero un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-      ((pidePatron && !falloForma) || pideOtro || reenvioExplicito) &&
+      ((pidePatron && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) &&
       !problemaReal &&
       !limitado &&
       // No dos vídeos seguidos ante una DUDA; PERO si lo piden EXPLÍCITAMENTE

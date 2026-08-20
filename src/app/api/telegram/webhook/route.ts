@@ -518,6 +518,14 @@ export async function POST(request: Request) {
         /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
           textoJ
         ) && !negPide;
+      // Pregunta CONCEPTUAL/escéptica sobre el patrón ("¿tiene sentido?", "¿funciona
+      // de verdad?", "¿es mentira?", "¿vale la pena?"): quiere una RESPUESTA, no un
+      // vídeo mudo. No dispares el clip aquí; deja que la IA conteste (evita que el
+      // jugador tenga que escribir "responde" tras recibir el vídeo sin contestación).
+      const dudaConceptoPatron =
+        /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad/i.test(
+          textoJ
+        );
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
@@ -540,7 +548,7 @@ export async function POST(request: Request) {
         // ni cuando dicen que PIERDEN/no les va: ahí, respuesta personalizada.
         // Nombrar el patrón DENTRO de una queja (falloForma) NO cuenta como petición;
         // un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-        ((pidePatron && !falloForma) || pideOtro || reenvioExplicito) &&
+        ((pidePatron && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) &&
         !problemaReal &&
         !limitado &&
         // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.
