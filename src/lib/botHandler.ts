@@ -14,7 +14,7 @@ import {
   descargarFoto,
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
-import { responderIABot, iaConfigurada, marcaHueco } from "@/lib/telegramAI";
+import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre } from "@/lib/telegramAI";
 import type { BotDef } from "@/lib/bots";
 
 type Turno = { role: "user" | "assistant"; content: string };
@@ -588,7 +588,11 @@ export async function procesarUpdate(
     const TOPE_DIA = 5000;
     let respuesta: string | null = null;
     let promo = "";
-    if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced) {
+    // Si el mensaje es SOLO cortesía/cierre ("ok", "gracias", "mañana te digo") y
+    // NO trae media, no respondemos: no hay nada que aportar.
+    const soloCierre =
+      esSoloCierre(entrada) && !msg.photo && !msg.video && !msg.animation && !msg.document;
+    if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre) {
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
       const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(
         new Date()

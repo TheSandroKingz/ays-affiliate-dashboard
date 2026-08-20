@@ -12,7 +12,7 @@ import {
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
-import { responderIA, iaConfigurada, marcaHueco } from "@/lib/telegramAI";
+import { responderIA, iaConfigurada, marcaHueco, esSoloCierre } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -734,7 +734,11 @@ export async function POST(request: Request) {
       // quedado "debounced" por un mensaje posterior).
       const TOPE_DIA = 5000;
       let respuesta: string | null = null;
-      if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced) {
+      // Si el mensaje es SOLO cortesía/cierre ("ok", "gracias", "mañana te digo")
+      // y NO trae media, no respondemos: no hay nada que aportar.
+      const soloCierre =
+        esSoloCierre(entrada) && !msg.photo && !msg.video && !msg.animation && !msg.document;
+      if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
         }).format(new Date());
