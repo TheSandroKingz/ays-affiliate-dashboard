@@ -686,7 +686,7 @@ export async function procesarUpdate(
     );
 
     const intencionJugar =
-      /jug|entr|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|min[ae]s?|casino|promo|bono|empez|quiero|gan[ao]|d[oó]nde|m[aá]ndame|p[aá]same|\b20\b|\b30\b|\b100\b|\b150\b/i;
+      /jug|entr|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|\bmin[ae]s?\b|casino|promo|bono|empez|quiero|gan[ao]|d[oó]nde|m[aá]ndame|p[aá]same|\b20\b|\b30\b|\b100\b|\b150\b/i;
     if (respuesta) {
       const invita = intencionJugar.test(respuesta) || intencionJugar.test(textoJ);
       await tgEnviar(
@@ -695,7 +695,8 @@ export async function procesarUpdate(
         { parse_mode: undefined, ...(invita ? { reply_markup: botonSoloJugar(bot.enlace) } : {}) },
         tok
       );
-    } else if (entrada && !limitado && !videoEnviado && !debounced) {
+    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
+      // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
       await tgEnviar(
         chatId,
         "¡Dale! 🔥 Recarga y entra a jugar 👇",

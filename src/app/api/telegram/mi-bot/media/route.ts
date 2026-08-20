@@ -49,6 +49,8 @@ export async function GET(request: Request) {
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
       "content-type": img.mediaType,
+      // Evita MIME sniffing de los bytes que sube el jugador.
+      "x-content-type-options": "nosniff",
       "cache-control": "private, max-age=3600",
     },
   });

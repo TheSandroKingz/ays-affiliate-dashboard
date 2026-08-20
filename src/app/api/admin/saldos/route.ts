@@ -83,7 +83,9 @@ export async function GET(request: Request) {
     .select("user_id, amount")
     .in("user_id", ids)
     .gte("date", from)
-    .lte("date", hasta);
+    .lte("date", hasta)
+    // Sin límite explícito PostgREST corta en 1000 filas y descuadraría los saldos.
+    .limit(100000);
   const paidByUser = new Map<string, number>();
   for (const p of pagos ?? []) {
     paidByUser.set(

@@ -130,6 +130,10 @@ export async function descargarFoto(
     const filePath = (info?.result as { file_path?: string } | undefined)
       ?.file_path;
     if (!filePath) return null;
+    // Defensa en profundidad: file_path viene de Telegram (confiable), pero lo
+    // validamos con un patrón conservador (sin "..", solo ruta simple) antes de
+    // interpolarlo en la URL, por si un cambio futuro devolviera algo raro.
+    if (!/^[\w./-]+$/.test(filePath) || filePath.includes("..")) return null;
     const res = await fetch(
       `https://api.telegram.org/file/bot${token}/${filePath}`
     );

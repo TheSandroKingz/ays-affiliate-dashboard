@@ -48,6 +48,8 @@ export async function GET(request: Request) {
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
       "content-type": img.mediaType,
+      // Evita que el navegador reinterprete (MIME sniffing) los bytes del jugador.
+      "x-content-type-options": "nosniff",
       // Cache privada corta: el navegador la reusa mientras ves el chat.
       "cache-control": "private, max-age=3600",
     },
