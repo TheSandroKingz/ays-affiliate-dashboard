@@ -560,60 +560,59 @@ export async function POST(request: Request) {
         // "información". Así quien tenga un patrón viejo recibe el de AHORA. Para
         // "otra forma" (les falló, o mandan su jugada) rotamos por la biblioteca
         // de ejemplos. En ambos casos, si falta la fuente, caemos a las otras.
-        let dv:
-          | { media_type: string | null; file_id: string | null; enabled: boolean | null }
-          | null = null;
-        const cargarDiario = async () => {
-          const { data } = await supabaseAdmin
-            .from("telegram_daily")
-            .select("media_type, file_id, enabled")
-            .eq("id", 1)
-            .maybeSingle();
-          return data && data.enabled && data.file_id ? data : null;
-        };
-        const cargarEjemplo = async () => {
+        // "Piden el patrón" (y NO es un caso de otra-forma / su vídeo) → el DIARIO
+        // (el patrón actual de "información") primero. El resto → ejemplos primero.
+        const pidenPatronNuevo = pidePatron && !falloForma && !mandoVideo;
+        // Candidatos a enviar, con su ORIGEN (para poder auto-desactivar el que
+        // Telegram rechace). Probamos EN ORDEN hasta que UNO se envíe: si un
+        // file_id está muerto (típico cuando el vídeo se subió con OTRO bot; en
+        // Telegram los file_id son intransferibles), se salta al siguiente en vez
+        // de dejar al jugador solo con el enlace. Los ejemplos con file_id inválido
+        // se AUTO-DESACTIVAN para no reintentarlos.
+        type Cand = { src: "daily" | "example" | "welcome"; id: number | null; media_type: string | null; file_id: string | null };
+        const examples: Cand[] = [];
+        {
           const { data: ejs } = await supabaseAdmin
             .from("telegram_examples")
-            .select("media_type, file_id")
+            .select("id, media_type, file_id")
             .eq("enabled", true)
             .limit(100000);
-          if (ejs && ejs.length) {
-            const pick = ejs[Math.floor(Math.random() * ejs.length)];
-            return { media_type: pick.media_type, file_id: pick.file_id, enabled: true };
+          for (const e of (ejs ?? []) as { id: number; media_type: string | null; file_id: string | null }[])
+            examples.push({ src: "example", id: e.id, media_type: e.media_type, file_id: e.file_id });
+          for (let i = examples.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [examples[i], examples[j]] = [examples[j], examples[i]];
           }
-          return null;
-        };
-        const cargarBienv = async () => {
-          const { data } = await supabaseAdmin
-            .from("telegram_welcome")
-            .select("media_type, file_id, enabled")
-            .eq("id", 1)
-            .maybeSingle();
-          return data && data.enabled && data.file_id ? data : null;
-        };
-        // "Piden el patrón" (y NO es un caso de otra-forma / su vídeo) → el DIARIO
-        // (el patrón actual de "información"). El resto → rotación de ejemplos.
-        const pidenPatronNuevo = pidePatron && !falloForma && !mandoVideo;
-        if (pidenPatronNuevo) {
-          dv = (await cargarDiario()) || (await cargarEjemplo()) || (await cargarBienv());
-        } else {
-          dv = (await cargarEjemplo()) || (await cargarDiario()) || (await cargarBienv());
         }
-        if (dv && dv.enabled && dv.file_id) {
+        const cargarDaily = async (): Promise<Cand | null> => {
+          const { data } = await supabaseAdmin
+            .from("telegram_daily").select("media_type, file_id, enabled").eq("id", 1).maybeSingle();
+          return data && data.enabled && data.file_id
+            ? { src: "daily", id: 1, media_type: data.media_type, file_id: data.file_id } : null;
+        };
+        const cargarBienv = async (): Promise<Cand | null> => {
+          const { data } = await supabaseAdmin
+            .from("telegram_welcome").select("media_type, file_id, enabled").eq("id", 1).maybeSingle();
+          return data && data.enabled && data.file_id
+            ? { src: "welcome", id: 1, media_type: data.media_type, file_id: data.file_id } : null;
+        };
+        const daily = await cargarDaily();
+        const bienv = await cargarBienv();
+        const cands: Cand[] = pidenPatronNuevo
+          ? [daily, ...examples, bienv].filter(Boolean) as Cand[]
+          : [...examples, daily, bienv].filter(Boolean) as Cand[];
+
+        const caption = pidenPatronNuevo
+          ? "Este es el patrón que va AHORA 🔥 usa este, míralo y hazlo IGUAL. Si tienes uno más viejo, ese ya no vale."
+          : (mandoVideo || falloForma)
+          ? "Toma, prueba así también 🔥 es OTRA de mis formas. Tengo varias — mándame cómo te va y te paso la siguiente. Míralo y hazlo igual."
+          : "Aquí tienes 🔥 así le doy yo. Tengo varias formas; hazlo igual que en esta y si acaso me enseñas cómo te fue y te paso otra.";
+        for (const dv of cands) {
+          if (!dv.file_id) continue;
           const m = dv.media_type;
           const metodo =
             m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";
-          const p: Record<string, unknown> = {
-            chat_id: chatId,
-            // Si dice que no le va o manda su vídeo, se lo damos como OTRA forma.
-            // En ambos casos dejamos con ganas de ver MÁS (tengo varias formas).
-            caption: pidenPatronNuevo
-              ? "Este es el patrón que va AHORA 🔥 usa este, míralo y hazlo IGUAL. Si tienes uno más viejo, ese ya no vale."
-              : (mandoVideo || falloForma)
-              ? "Toma, prueba así también 🔥 es OTRA de mis formas. Tengo varias — mándame cómo te va y te paso la siguiente. Míralo y hazlo igual."
-              : "Aquí tienes 🔥 así le doy yo. Tengo varias formas; hazlo igual que en esta y si acaso me enseñas cómo te fue y te paso otra.",
-            reply_markup: botonSoloJugar(),
-          };
+          const p: Record<string, unknown> = { chat_id: chatId, caption, reply_markup: botonSoloJugar() };
           if (m === "video") p.video = dv.file_id;
           else if (m === "animation") p.animation = dv.file_id;
           else if (m === "photo") p.photo = dv.file_id;
@@ -622,12 +621,22 @@ export async function POST(request: Request) {
           if (rv?.ok) {
             await guardarMsg(chatId, midDe(rv));
             videoEnviado = true;
-            // Marcamos cuándo mandamos el ejemplo (para el cooldown de arriba).
             await supabaseAdmin
               .from("telegram_contacts")
               .update({ last_example_at: new Date().toISOString() })
               .eq("chat_id", chatId)
               .then(() => {}, () => {});
+            break;
+          }
+          // Telegram rechaza el file_id → si es un EJEMPLO, desactívalo (subido con
+          // otro bot o borrado) y sigue con el siguiente. El diario/bienvenida solo
+          // se loguean (son la pieza única del dueño, no se tocan solas).
+          const desc = (rv?.description ?? "").toLowerCase();
+          if (dv.src === "example" && dv.id != null && /file|identifier|not found|wrong|invalid/.test(desc)) {
+            console.warn(`[sandro] ejemplo ${dv.id} file_id inválido, desactivado: ${rv?.description}`);
+            await supabaseAdmin.from("telegram_examples").update({ enabled: false }).eq("id", dv.id).then(() => {}, () => {});
+          } else if (!rv?.ok) {
+            console.warn(`[sandro] fallo al enviar media (${dv.src}): ${rv?.description ?? "sin respuesta"}`);
           }
         }
       }
