@@ -9,10 +9,14 @@ import { getAdminUser } from "@/lib/adminAuth";
 export async function POST(request: Request) {
   const admin = await getAdminUser(request);
   if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const { error } = await supabaseAdmin
-    .from("telegram_contacts")
-    .update({ memory_reset_at: new Date().toISOString() })
-    .neq("chat_id", 0);
+  const ahora = new Date().toISOString();
+  // Corte de memoria para el bot de Sandro (telegram_contacts) Y para los bots
+  // nuevos Jeffer/Livana (bot_contacts): antes solo se reiniciaba Sandro.
+  const [rS, rB] = await Promise.all([
+    supabaseAdmin.from("telegram_contacts").update({ memory_reset_at: ahora }).neq("chat_id", 0),
+    supabaseAdmin.from("bot_contacts").update({ memory_reset_at: ahora }).neq("chat_id", 0),
+  ]);
+  const error = rS.error || rB.error;
   if (error) return NextResponse.json({ ok: false, error: error.message });
   return NextResponse.json({ ok: true });
 }

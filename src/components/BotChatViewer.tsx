@@ -545,6 +545,7 @@ export default function BotChatViewer({
                 <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-white/10 bg-black/40">
                   <button
                     onClick={() => setChatAbierto(null)}
+                    aria-label="Volver a la lista"
                     className="sm:hidden text-slate-300 hover:text-white shrink-0"
                   >
                     <ChevronLeft size={18} />
