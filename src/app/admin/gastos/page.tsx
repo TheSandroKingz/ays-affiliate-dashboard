@@ -469,7 +469,7 @@ export default function GastosPage() {
                       {eur(partePrz(g))} <span className="text-[10px] text-slate-500">({pctDe(g.categoria, g.quien).p}%)</span>
                     </td>
                     <td className="px-2 py-3 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); borrar(g.id); }} className="text-slate-600 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition" title="Borrar">×</button>
+                      <button onClick={(e) => { e.stopPropagation(); borrar(g.id); }} className="text-slate-500 hover:text-red-400 text-lg leading-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition" title="Borrar">×</button>
                     </td>
                   </tr>
                 );

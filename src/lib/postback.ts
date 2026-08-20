@@ -225,7 +225,14 @@ export async function registrarEvento(e: EventoPostback): Promise<void> {
       .insert({ ...base, amount: e.amount ?? null });
     // Por si la columna 'amount' aún no existe: reintenta sin ella.
     if (error) {
-      await supabaseAdmin.from("postback_events").insert(base);
+      const { error: e2 } = await supabaseAdmin.from("postback_events").insert(base);
+      // Por si tampoco existe 'counted_date' (SQL sin aplicar): reintenta sin ella,
+      // para no perder NUNCA el registro de auditoría del postback.
+      if (e2) {
+        const sinCd = { ...base };
+        delete (sinCd as { counted_date?: unknown }).counted_date;
+        await supabaseAdmin.from("postback_events").insert(sinCd);
+      }
     }
   } catch {
     // Un fallo del log NUNCA debe romper el postback.

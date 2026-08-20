@@ -717,17 +717,22 @@ export async function POST(request: Request) {
         if (miMsgId) {
           const { data: masNuevos } = await supabaseAdmin
             .from("telegram_messages")
-            .select("id, content")
+            .select("id, content, media_type")
             .eq("chat_id", chatId)
             .eq("role", "user")
             .gt("id", miMsgId)
-            .limit(5);
-          // Solo nos callamos si hay un mensaje posterior REAL (no una pura
-          // cortesía tipo "gracias"): un cierre posterior NO debe tragarse la
-          // pregunta anterior dejándola sin respuesta.
+            .order("id", { ascending: true })
+            .limit(10);
+          // Solo nos callamos si hay un mensaje posterior REAL: con MEDIA (foto/
+          // vídeo, aunque su pie sea "gracias" — ese sí se responde) o con texto
+          // que NO es pura cortesía. Un "gracias" de texto suelto NO cuenta (así
+          // no deja sin respuesta la pregunta anterior); una foto SÍ (así no se
+          // responde dos veces).
           if (
             masNuevos &&
-            masNuevos.some((m) => !esSoloCierre(String(m.content ?? "")))
+            masNuevos.some(
+              (m) => m.media_type || !esSoloCierre(String(m.content ?? ""))
+            )
           ) {
             debounced = true;
           }
@@ -861,7 +866,7 @@ export async function POST(request: Request) {
       }
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
-      // Si el jugador está LIMITADO (spam, >8/min), no te reenviamos cada mensaje
+      // Si el jugador está LIMITADO (spam, >15/min), no te reenviamos cada mensaje
       // a Telegram: así nadie puede inundarte escribiendo muy rápido.
       if (OWNER_CHAT_ID && !limitado) {
         const quien = esc(

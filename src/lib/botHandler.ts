@@ -642,16 +642,20 @@ export async function procesarUpdate(
       await new Promise((r) => setTimeout(r, 4500));
       const { data: masNuevos } = await supabaseAdmin
         .from("bot_messages")
-        .select("id, content")
+        .select("id, content, media_type")
         .eq("bot", bot.key)
         .eq("chat_id", chatId)
         .eq("role", "user")
         .gt("id", miMsgId)
-        .limit(5);
-      // Solo nos callamos si hay un mensaje posterior REAL (no una pura cortesía
-      // tipo "gracias"): un cierre posterior NO debe dejar sin respuesta la
-      // pregunta anterior.
-      if (masNuevos && masNuevos.some((m) => !esSoloCierre(String(m.content ?? "")))) {
+        .order("id", { ascending: true })
+        .limit(10);
+      // Nos callamos solo si hay un mensaje posterior REAL: con MEDIA (foto/vídeo,
+      // aunque su pie sea "gracias") o con texto que NO es pura cortesía. Un
+      // "gracias" de texto suelto NO cuenta; una foto SÍ (para no responder dos veces).
+      if (
+        masNuevos &&
+        masNuevos.some((m) => m.media_type || !esSoloCierre(String(m.content ?? "")))
+      ) {
         debounced = true;
       }
     }

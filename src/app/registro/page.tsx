@@ -190,7 +190,7 @@ export default function RegistroPage() {
               minLength={8}
               autoComplete="new-password"
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 8 caracteres"
             />
             <button
               type="button"

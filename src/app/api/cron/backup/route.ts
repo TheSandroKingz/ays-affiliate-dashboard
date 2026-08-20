@@ -13,11 +13,16 @@ export async function GET(request: Request) {
   }
 
   const tablas = ["affiliates", "affiliate_daily_stats", "payments"];
+  // .limit(100000): sin límite PostgREST corta a 1000 filas y la copia quedaría
+  // TRUNCADA sin error (affiliate_daily_stats crece 1 fila/afiliado/día). En
+  // paralelo (las 3 tablas son independientes).
   const data: Record<string, unknown[]> = {};
-  for (const t of tablas) {
-    const { data: rows } = await supabaseAdmin.from(t).select("*");
-    data[t] = rows ?? [];
-  }
+  const res = await Promise.all(
+    tablas.map((t) => supabaseAdmin.from(t).select("*").limit(100000))
+  );
+  tablas.forEach((t, i) => {
+    data[t] = res[i].data ?? [];
+  });
 
   const { error } = await supabaseAdmin.from("data_snapshots").insert({ data });
   if (error) {
