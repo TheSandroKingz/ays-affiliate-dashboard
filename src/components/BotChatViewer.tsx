@@ -13,7 +13,7 @@ export type Jugador = {
   last_msg_at: string | null;
   opted_out: boolean;
   silenced: boolean;
-  origen: "as" | "jeffer" | "mariam";
+  origen: "as" | "jeffer" | "mariam" | "blackkp";
   bot_nombre: string;
   ultimo: string | null; // texto del último mensaje (vista previa)
   ultimo_rol: string | null; // "user" (jugador) o "assistant" (bot)
@@ -73,7 +73,9 @@ const estiloEtiqueta = (origen: Jugador["origen"]) =>
     ? "bg-fuchsia-500/25 text-fuchsia-200"
     : origen === "mariam"
       ? "bg-sky-500/25 text-sky-200"
-      : "bg-emerald-500/25 text-emerald-200";
+      : origen === "blackkp"
+        ? "bg-amber-500/25 text-amber-200"
+        : "bg-emerald-500/25 text-emerald-200";
 
 // Visor de chats de Telegram estilo WhatsApp (compartido entre el panel de Yaiza
 // y el admin): lista con vista previa del último mensaje, etiqueta del bot

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   // "as" = bot de Sandro (telegram_messages). Los demás son bots nuevos
   // (bot_messages): "jeffer" y "mariam" (persona Livana).
   const origenRaw = url.searchParams.get("origen") || "as";
-  const esBotNuevo = origenRaw === "jeffer" || origenRaw === "mariam";
+  const esBotNuevo = origenRaw === "jeffer" || origenRaw === "mariam" || origenRaw === "blackkp";
   if (!chatId) return NextResponse.json({ error: "Falta chat_id." }, { status: 400 });
 
   const query = esBotNuevo

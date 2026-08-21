@@ -7,6 +7,7 @@ import { getAdminUser, getGestorBot } from "@/lib/adminAuth";
 const BOTS_EXTRA = [
   { key: "jeffer", nombre: "Jeffer" },
   { key: "mariam", nombre: "Livana" },
+  { key: "blackkp", nombre: "Black KP" },
 ];
 
 type Fila = {
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const chatId = Number(body?.chat_id);
   const silenced = !!body?.silenced;
-  const origen = body?.origen === "jeffer" || body?.origen === "mariam" ? body.origen : "as";
+  const origen = body?.origen === "jeffer" || body?.origen === "mariam" || body?.origen === "blackkp" ? body.origen : "as";
   if (!chatId) {
     return NextResponse.json({ error: "Falta chat_id." }, { status: 400 });
   }

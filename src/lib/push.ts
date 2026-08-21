@@ -242,6 +242,7 @@ const BOT_NOMBRE: Record<string, string> = {
   bot: "Sandro",
   botmn: "Jeffer",
   botdm: "Livana",
+  botbk: "Black KP",
 };
 
 // Aviso a Yaiza (gestora del bot) de un depósito por uno de los bots, diciendo
