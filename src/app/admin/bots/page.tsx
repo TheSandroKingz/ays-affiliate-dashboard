@@ -125,6 +125,39 @@ export default function EstadoBotsPage() {
     cargar();
   }
 
+  // Reapunta el webhook del bot PRINCIPAL (A&S / Sandro), que usa la ruta antigua
+  // /api/telegram/setup (no connect-bot). Lo manda al dominio actual (asafiliados.com
+  // vía NEXT_PUBLIC_SITE_URL) con el mismo diagnóstico que los otros.
+  async function conectarSandro() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const r = await fetch("/api/telegram/setup", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + session.access_token },
+    });
+    const j = await r.json().catch(() => ({}));
+    if (j.ok) {
+      const i = j.info || {};
+      alert(
+        [
+          `Conectado a @${j.bot}.`,
+          i.url ? `URL: ${i.url}` : null,
+          `Pendientes: ${i.pending_update_count ?? "?"}`,
+          i.last_error_message
+            ? `Último error Telegram: ${i.last_error_message}`
+            : "Sin errores de Telegram.",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+    } else {
+      alert(`No se pudo conectar: ${j.error || "error"}`);
+    }
+    cargar();
+  }
+
   return (
     <main className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -163,14 +196,16 @@ export default function EstadoBotsPage() {
                         >
                           ✏️ Renombrar en Telegram
                         </button>
-                        {b.key !== "as" && b.key !== "sandro" && (
-                          <button
-                            onClick={() => conectar(b.key)}
-                            className="text-[10px] text-sky-300 hover:text-sky-200 underline underline-offset-2"
-                          >
-                            🔌 Conectar webhook
-                          </button>
-                        )}
+                        <button
+                          onClick={() =>
+                            b.key === "as" || b.key === "sandro"
+                              ? conectarSandro()
+                              : conectar(b.key)
+                          }
+                          className="text-[10px] text-sky-300 hover:text-sky-200 underline underline-offset-2"
+                        >
+                          🔌 Conectar webhook
+                        </button>
                       </div>
                     )}
                   </div>
