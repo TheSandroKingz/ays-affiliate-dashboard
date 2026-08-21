@@ -33,8 +33,22 @@ export default function PendientePage() {
   }, [router]);
 
   async function salir() {
-    await supabase.auth.signOut();
-    router.replace("/login");
+    // Robusto para móvil: timeout por si la red se cuelga y limpieza local segura,
+    // con recarga dura para que salga de verdad al login.
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((r) => setTimeout(r, 2000)),
+      ]);
+    } catch {
+      /* da igual */
+    }
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      /* ignorar */
+    }
+    window.location.href = "/login";
   }
 
   return (

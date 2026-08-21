@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID, esCuentaPropia, esSoloBot } from "@/lib/adminId";
@@ -34,7 +34,6 @@ type SidebarProps = {
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith("/dashboard/reports"));
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -68,19 +67,38 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   }, []);
 
   async function handleLogout() {
-    // Soltamos la suscripción push del navegador antes de cerrar sesión: si en
-    // este mismo navegador entra otra cuenta, generará una suscripción nueva sin
-    // colisionar con la del usuario anterior (evita que los avisos ajenos, con su
-    // importe, lleguen al siguiente usuario). En móvil (una cuenta por PWA) es
-    // inocuo. Blindado: nunca bloquea el cierre de sesión.
+    // Soltamos la suscripción push del navegador antes de cerrar sesión (evita que
+    // los avisos del usuario anterior lleguen al siguiente). ⚠️ En móvil (PWA)
+    // `navigator.serviceWorker.ready` puede COLGARSE para siempre, así que lo
+    // corremos con timeout: la limpieza de push NUNCA debe bloquear el logout.
     try {
       const { desactivarPush } = await import("@/lib/pushClient");
-      await desactivarPush();
+      await Promise.race([
+        desactivarPush(),
+        new Promise((r) => setTimeout(r, 1500)),
+      ]);
     } catch {
       /* si falla, seguimos con el logout igual */
     }
-    await supabase.auth.signOut();
-    router.push("/login");
+    // Cerrar sesión: intentamos revocar en el servidor (con timeout por si la red
+    // móvil se cuelga) y SIEMPRE limpiamos la sesión local, para que el logout
+    // funcione aunque la petición de red falle o tarde.
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((r) => setTimeout(r, 2000)),
+      ]);
+    } catch {
+      /* da igual: limpiamos local abajo */
+    }
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      /* ignorar */
+    }
+    // Redirección DURA (recarga completa): así el guard de sesión no rehidrata la
+    // sesión vieja y el móvil sale de verdad al login.
+    window.location.href = "/login";
   }
 
   const linkClass = (href: string) =>
