@@ -485,6 +485,54 @@ function quitarGuiones(txt: string): string {
   return out.length >= 2 ? out : base;
 }
 
+// Texto del ÚLTIMO mensaje del bot en el historial (para el anti-repetición).
+function ultimoAssistantTexto(messages: Anthropic.MessageParam[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "assistant") continue;
+    if (typeof m.content === "string") return m.content;
+    if (Array.isArray(m.content))
+      return m.content
+        .map((b) => (b && typeof b === "object" && "text" in b ? (b as { text?: string }).text ?? "" : ""))
+        .join(" ");
+    return "";
+  }
+  return "";
+}
+// Normaliza para comparar (fuera números, puntuación y emojis; solo letras).
+function normRep(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/[0-9]+/g, " ")
+    .replace(/[^\p{L}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+// ¿La respuesta nueva es casi IGUAL al último mensaje del bot? (repetición que
+// canta a bot: "dale a PLACE BET y sigue la Z" una y otra vez). Combina overlap
+// de palabras (Jaccard) con "mismo final" (por si el prefijo/tablero varía).
+function esRepeticion(a: string, b: string): boolean {
+  const na = normRep(a),
+    nb = normRep(b);
+  if (na.length < 25 || nb.length < 25) return false;
+  const pa = na.split(" ").filter((w) => w.length > 2);
+  const pb = nb.split(" ").filter((w) => w.length > 2);
+  const wa = new Set(pa),
+    wb = new Set(pb);
+  if (wa.size < 4 || wb.size < 4) return false;
+  let inter = 0;
+  for (const w of wa) if (wb.has(w)) inter++;
+  const jac = inter / new Set([...pa, ...pb]).size;
+  if (jac >= 0.55) return true;
+  // Mismo final (últimas ~6 palabras significativas casi iguales).
+  const sa = pa.slice(-6),
+    sb = pb.slice(-6);
+  let m = 0;
+  for (const w of sa) if (sb.includes(w)) m++;
+  return m >= Math.min(5, sa.length);
+}
+
 // Genera la respuesta y, si normaliza perder, la REGENERA con un aviso tajante;
 // si el reintento TAMBIÉN falla, limpia la frase a la fuerza (o responde algo
 // seguro). Garantiza que NUNCA le llega "eso pasa" a quien perdió. Blindado.
@@ -499,7 +547,24 @@ async function crearConGuardia(
     system,
     messages,
   });
-  const txt = textoDe(res);
+  let txt = textoDe(res);
+  // ANTI-REPETICIÓN: si la respuesta es casi igual al ÚLTIMO mensaje del bot,
+  // regenera UNA vez pidiendo algo distinto (lo que más canta a bot: repetir
+  // "dale a PLACE BET y sigue la Z" describiendo el mismo tablero cada vez).
+  if (txt && esRepeticion(txt, ultimoAssistantTexto(messages))) {
+    const avisoRep: Anthropic.TextBlockParam = {
+      type: "text",
+      text: "⛔ TU RESPUESTA ES CASI IGUAL A TU MENSAJE ANTERIOR. NO repitas lo mismo ni vuelvas a describir el mismo tablero/estado; NO sueltes otra vez 'dale a place bet'/'sigue la Z'. Di algo DISTINTO: avanza, aporta algo nuevo o pregúntale otra cosa concreta, breve y natural.",
+    };
+    const resR = await client.messages.create({
+      model: MODELO,
+      max_tokens: 200,
+      system: [...system, avisoRep],
+      messages,
+    });
+    const txtR = textoDe(resR);
+    if (txtR) txt = txtR;
+  }
   const malPerder = !!txt && NORMALIZA_PERDER.test(txt);
   const malEstafa = !!txt && VALIDA_ESTAFA.test(txt);
   if (!txt || (!malPerder && !malEstafa)) return txt;
