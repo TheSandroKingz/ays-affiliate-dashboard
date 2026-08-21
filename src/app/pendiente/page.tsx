@@ -44,7 +44,10 @@ export default function PendientePage() {
       /* da igual */
     }
     try {
-      await supabase.auth.signOut({ scope: "local" });
+      await Promise.race([
+        supabase.auth.signOut({ scope: "local" }),
+        new Promise((r) => setTimeout(r, 2000)),
+      ]);
     } catch {
       /* ignorar */
     }

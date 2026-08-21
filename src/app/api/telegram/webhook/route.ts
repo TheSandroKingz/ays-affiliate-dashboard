@@ -126,7 +126,13 @@ export async function POST(request: Request) {
         else if (m === "animation") params.animation = bienv.file_id;
         else if (m === "photo") params.photo = bienv.file_id;
         else if (m === "document") params.document = bienv.file_id;
-        await tgApi(metodo, params);
+        const rb = await tgApi(metodo, params);
+        // Si el file_id está muerto (p.ej. subido con otro bot), Telegram devuelve
+        // ok:false y el nuevo jugador se quedaría SIN bienvenida ni botón → caemos
+        // al texto para no perder el gancho/conversión.
+        if (!rb?.ok) {
+          await tgEnviar(chatId, BIENVENIDA, { reply_markup: boton });
+        }
       } else {
         await tgEnviar(chatId, BIENVENIDA, { reply_markup: boton });
       }
@@ -518,16 +524,18 @@ export async function POST(request: Request) {
       // pedirlo dos veces seguidas.
       const reenvioExplicito =
         /(otra vez|de nuevo|de vuelta|nuevamente|reenv[ií]|rep[ií]t|vu[eé]lve a|m[aá]ndamelo otra)/i.test(textoJ) &&
-        /(v[ií]deo|patr[oó]n|clip|ejemplo|lo\b|melo\b|mela\b)/i.test(textoJ) &&
+        /(v[ií]deo|patr[oó]n|clip|ejemplo|\blo\b|[aá]melo\b|[aá]mela\b)/i.test(textoJ) &&
         !negPide;
       // Pregunta CONCEPTUAL/escéptica sobre el patrón ("¿tiene sentido?", "¿funciona
       // de verdad?", "¿es mentira?", "¿vale la pena?"): quiere una RESPUESTA, no un
       // vídeo mudo. No dispares el clip aquí; deja que la IA conteste (evita que el
       // jugador tenga que escribir "responde" tras recibir el vídeo sin contestación).
+      // Peticion EXPLICITA de envio ("mandame/pasame/dame el video/patron"): aunque
+      // lleve "?", NO es duda conceptual -> debe recibir el recurso.
+      const pideEnvioExplicito =
+        /\b(m[aá]nd|env[ií]|p[aá]s|dame|reenv|quiero (el|un|ver))\w*/i.test(textoJ) && !negPide;
       const dudaConceptoPatron =
-        /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(
-          textoJ
-        );
+        /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(textoJ) && !pideEnvioExplicito;
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =

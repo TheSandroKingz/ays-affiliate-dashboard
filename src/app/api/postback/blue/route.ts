@@ -431,6 +431,16 @@ export async function GET(request: Request) {
         url: "/admin/actividad",
       });
     }
+    // Si el RPC falló, el candado queda puesto a propósito (para no arriesgar doble
+    // pago) y el QFTD NO se cuenta: sin aviso, ese CPA legítimo se perdería en
+    // silencio. Avisamos al admin para revisarlo/contarlo a mano.
+    if (estado === "error") {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ CPA sin contar (revisar)",
+        body: "Un QFTD falló al sumar y quedó sin pagar. Revísalo en Actividad y cuéntalo a mano si procede.",
+        url: "/admin/actividad",
+      });
+    }
     return NextResponse.json({ ok: true, matched: !!target, estado });
   }
 

@@ -462,7 +462,7 @@ export async function procesarUpdate(
     // anti-doble; si no, mandaba el vídeo dos veces al pedirlo dos veces seguidas.
     const reenvioExplicito =
       /(otra vez|de nuevo|de vuelta|nuevamente|reenv[ií]|rep[ií]t|vu[eé]lve a|m[aá]ndamelo otra)/i.test(textoJ) &&
-      /(v[ií]deo|patr[oó]n|clip|ejemplo|lo\b|melo\b|mela\b)/i.test(textoJ) &&
+      /(v[ií]deo|patr[oó]n|clip|ejemplo|\blo\b|[aá]melo\b|[aá]mela\b)/i.test(textoJ) &&
       !negPide;
     const mandoVideo = !!(msg.video || msg.animation);
     const falloForma =
@@ -478,10 +478,12 @@ export async function procesarUpdate(
     // de verdad?", "¿es mentira?", "¿vale la pena?"): quiere una RESPUESTA, no un
     // vídeo mudo. No dispares el clip aquí; deja que la IA conteste (evita que el
     // jugador tenga que escribir "responde" tras recibir el vídeo sin contestación).
+    // Peticion EXPLICITA de envio ("mandame/pasame/dame el video/patron"): aunque
+    // lleve "?", NO es duda conceptual -> debe recibir el recurso.
+    const pideEnvioExplicito =
+      /\b(m[aá]nd|env[ií]|p[aá]s|dame|reenv|quiero (el|un|ver))\w*/i.test(textoJ) && !negPide;
     const dudaConceptoPatron =
-      /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(
-        textoJ
-      );
+      /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(textoJ) && !pideEnvioExplicito;
     const problemaReal =
       /retir|cobr|\bpag(?:o|u|ar|a\b|as\b|and|ad)|dep[oó]sito|\bcuentas?\b|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(
         textoJ
