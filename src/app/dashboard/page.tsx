@@ -113,17 +113,13 @@ export default function DashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [ranking, setRanking] = useState<{ puesto: number; total: number } | null>(null);
   // Histórico crudo (todas las fechas) para meta, mejores días y aviso del día 1.
   const [rawDaily, setRawDaily] = useState<DailyPoint[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [welcomeCerrado, setWelcomeCerrado] = useState(true);
   const [celebrar, setCelebrar] = useState(false);
   // Si el FTD nuevo convierte HOY en tu mejor día, guardamos el nº para celebrar
   // un "récord" (si no, es un FTD normal). null = no es récord.
   const [recordHoy, setRecordHoy] = useState<number | null>(null);
   const prevFtdRef = useRef<number | null>(null);
-  const [subioPuesto, setSubioPuesto] = useState<number | null>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -139,8 +135,6 @@ export default function DashboardPage() {
         setRefreshing(false);
         return;
       }
-
-      setUserId(user.id);
 
       // Cuenta de admin: tiene su propio panel dedicado (AdminDashboard).
       if (user.id === ADMIN_USER_ID) {
@@ -229,20 +223,6 @@ export default function DashboardPage() {
       );
       setTotalGenerado(propiaHist + Number(subRes?.totalHistorico ?? 0));
 
-      // Puesto en el ranking (en paralelo, sin bloquear el panel).
-      fetch("/api/account/ranking", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((b) =>
-          setRanking(
-            b && typeof b.puesto === "number"
-              ? { puesto: b.puesto, total: b.total }
-              : null
-          )
-        )
-        .catch(() => {});
-
       setLastUpdated(new Date());
       setLoading(false);
       setRefreshing(false);
@@ -252,34 +232,6 @@ export default function DashboardPage() {
     loadStats();
   }, [loadStats]);
 
-  // Bienvenida SOLO la primera vez en esa cuenta. La marcamos como vista en
-  // cuanto se muestra (no solo al pulsar la ×), así no vuelve a aparecer aunque
-  // no la cierre a mano. Clave por usuario.
-  useEffect(() => {
-    if (!userId) return;
-    const key = "welcomeCerrado:" + userId;
-    const yaVista = localStorage.getItem(key) === "1";
-    setWelcomeCerrado(yaVista);
-    if (!yaVista) localStorage.setItem(key, "1"); // se muestra ahora, nunca más
-  }, [userId]);
-  const cerrarWelcome = () => {
-    if (userId) localStorage.setItem("welcomeCerrado:" + userId, "1");
-    setWelcomeCerrado(true);
-  };
-
-  // Aviso si sube de puesto en el ranking (comparado con la última vez). Clave
-  // por usuario (para no cruzar avisos entre cuentas en un mismo dispositivo).
-  useEffect(() => {
-    if (!ranking || ranking.total < 2 || !userId) return;
-    const key = "ultimoPuesto:" + userId;
-    const prev = Number(localStorage.getItem(key) || 0);
-    localStorage.setItem(key, String(ranking.puesto));
-    if (prev > 0 && ranking.puesto < prev) {
-      setSubioPuesto(ranking.puesto);
-      const t = setTimeout(() => setSubioPuesto(null), 5000);
-      return () => clearTimeout(t);
-    }
-  }, [ranking, userId]);
 
   // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
   // una cada 30 min para no inflar con recargas. El admin no cuenta.
@@ -468,13 +420,6 @@ export default function DashboardPage() {
           </div>
         </>
       )}
-      {subioPuesto !== null && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
-            <span className="text-xl">⬆️</span> ¡Has subido al #{subioPuesto}!
-          </div>
-        </div>
-      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
             <h1 className="text-2xl font-semibold text-white">{saludo()}{displayName && <>, <span className="text-emerald-400">{displayName}</span></>} {saludoEmoji()}</h1>
@@ -497,26 +442,6 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-
-      {/* Bienvenida (solo la primera vez). Explica lo básico sin agobiar. */}
-      {!isAdmin && !welcomeCerrado && (
-        <div className="animate-in relative bg-emerald-500/10 border border-emerald-400/40 rounded-xl p-5 pr-10">
-          <button
-            onClick={cerrarWelcome}
-            aria-label="Cerrar"
-            className="absolute top-3 right-3 text-slate-400 hover:text-white text-lg leading-none"
-          >
-            ×
-          </button>
-          <p className="text-white font-semibold mb-1">¡Bienvenido/a{displayName ? `, ${displayName}` : ""}! 👋</p>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Comparte tu enlace y ganas por cada jugador que se registre y haga su
-            primer depósito. Encuentra tu enlace en{" "}
-            <b className="text-emerald-300">Plan de comisiones</b>. Aquí verás tus
-            clics, registros, FTD y lo que llevas ganado este mes.
-          </p>
-        </div>
-      )}
 
       {/* ¡Feliz cumpleaños! (con confeti). */}
       {esCumple && (
@@ -542,15 +467,6 @@ export default function DashboardPage() {
             pasado (<b className="text-white">{eur(mesAnterior.commission)}</b>) se
             te paga aparte, no lo pierdes.
           </p>
-        </div>
-      )}
-
-      {!isAdmin && ranking && ranking.total >= 2 && (
-        <div className="animate-in inline-flex items-center gap-1.5 self-start rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs">
-          <span aria-hidden className="text-sm">🏆</span>
-          <span className="text-amber-100">
-            Vas <b className="text-white">#{ranking.puesto}</b> este mes
-          </span>
         </div>
       )}
 
