@@ -288,6 +288,7 @@ const EXTRA_JEFFER =
 // Códigos afp NEUTROS (no revelan el nombre). Únicos por bot; empiezan por "bot".
 const AFP_JEFFER = "botmn"; // Jeffer → Mines
 const AFP_MARIAM = "botdm"; // Mariam → Diamond Mines
+const AFP_BLACKKP = "botbk"; // Black KP → Mines
 // Enlaces de Celsius (Blue) de cada bot, con su campaña propia. Se ponen aquí
 // (no en env) para no depender de una variable de Vercel que traía el de FreshBet.
 // Jeffer → campaña "Mine" (cZahjDgQoR); Mariam/Alana → campaña "Patron" (AhBpxgTaoP).
@@ -295,6 +296,9 @@ const AFP_MARIAM = "botdm"; // Mariam → Diamond Mines
 // se atribuye a la cuenta de Jeffer y su tráfico sale como afp "botmn".
 const ENLACE_JEFFER = "https://celsius.games/iSHRdbxNKE";
 const ENLACE_MARIAM = "https://celsius.games/AhBpxgTaoP";
+// Enlace DEDICADO del bot de Black KP (código WHWAhAVgwx). El dinero se atribuye a
+// la cuenta de Black KP (tracking ecUGAqtfld, su link de IG) y sale como afp "botbk".
+const ENLACE_BLACKKP = "https://celsius.games/WHWAhAVgwx";
 
 export const BOTS: Record<string, BotDef> = {
   jeffer: {
@@ -353,6 +357,33 @@ export const BOTS: Record<string, BotDef> = {
       extra: EXTRA_MARIAM,
     }),
     diario: construirDiario("Livana"),
+  },
+  blackkp: {
+    key: "blackkp",
+    label: "Black KP",
+    username: "@BlackKPBot",
+    token: (process.env.TELEGRAM_BOT_TOKEN_BLACKKP || "").trim(),
+    secret: (process.env.TELEGRAM_WEBHOOK_SECRET_BLACKKP || "").trim(),
+    owner: process.env.TELEGRAM_OWNER_CHAT_ID_BLACKKP || "",
+    enlace: ENLACE_BLACKKP,
+    afp: AFP_BLACKKP,
+    trackingCode: "ecUGAqtfld", // link de IG de Black KP = su cuenta; el dinero del bot (WHWAhAVgwx) se mapea aquí
+    nombre: "Black KP",
+    juego: "las Mines",
+    bienvenida: bienvenidaJuego("las Mines"),
+    saludo: "¡Klk! 👋",
+    persona: construirPersona({
+      nombre: "Black KP",
+      juego: "las Mines",
+      enlace: ENLACE_BLACKKP,
+      comoLlegar:
+        "en el menú entra a JUEGOS ORIGINALES (no 'minijuegos') y ahí tienes las Mines",
+      genero: "m",
+      estrategias: ESTRATEGIAS_JEFFER,
+      extra: EXTRA_JEFFER,
+      dialecto: DIALECTO_JEFFER,
+    }),
+    diario: construirDiario("Black KP"),
   },
 };
 
