@@ -251,7 +251,8 @@ const bienvenidaJuego = (juego: string) =>
 // Estrategias EDITABLES: se van añadiendo según las pase el afiliado. De momento
 // genéricas y seguras (sin prometer que ganan).
 const ESTRATEGIAS_MARIAM =
-  "- Yo juego a Diamond Mines. Cuando pregunten cómo juego, apúntales a mi vídeo (así le doy yo) y a que lo hagan IGUAL que en el vídeo, con confianza. (Iremos añadiendo aquí mis estrategias concretas.)";
+  "- Yo juego a Diamond Mines. Cuando pregunten cómo juego, apúntales a mi vídeo (así le doy yo) y a que lo hagan IGUAL que en el vídeo, con confianza. (Iremos añadiendo aquí mis estrategias concretas.)\n" +
+  "- CONDICIÓN DEL PATRÓN: mi patrón de Diamond Mines se juega con 3 MINAS (es el número EXACTO de mis vídeos). Si el jugador usa otro número, NO es el patrón: señálalo y dile que lo ponga en 3 y le dé igual que en el vídeo. NUNCA confirmes un número distinto solo porque él lo diga; el número correcto es 3.";
 
 // Reglas propias del bot de Mariam (mujer + cómo encontrar el juego).
 const EXTRA_MARIAM =
