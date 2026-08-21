@@ -842,6 +842,15 @@ export async function POST(request: Request) {
       // Guardamos el mensaje del jugador para la limpieza automática de chats.
       await guardarMsg(chatId, msg.message_id);
       if (respuesta) {
+        // ⏳ Retardo "humano" VARIABLE antes de enviar: una persona lee, piensa y
+        // escribe; un bot clava siempre el mismo tiempo y eso se nota (a Daniel le
+        // chocó "¿por qué respondes tan rápido?"). Metemos una espera aleatoria +
+        // algo proporcional a lo que "escribe", con "escribiendo…" visible. La
+        // función aguanta 60s, así que hay margen de sobra.
+        const escribir =
+          2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
+        tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
+        await new Promise((r) => setTimeout(r, escribir));
         const invita =
           intencionJugar.test(respuesta) || intencionJugar.test(textoJ);
         const rEnv = await tgEnviar(chatId, respuesta, {

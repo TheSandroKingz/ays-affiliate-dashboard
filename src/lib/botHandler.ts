@@ -738,6 +738,13 @@ export async function procesarUpdate(
     const intencionJugar =
       /jug|entr|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|\bmin[ae]s?\b|casino|promo|bono|empez|quiero|gan[ao]|d[oó]nde|m[aá]ndame|p[aá]same|\b20\b|\b30\b|\b100\b|\b150\b/i;
     if (respuesta) {
+      // ⏳ Retardo "humano" VARIABLE antes de enviar (ver webhook de Sandro):
+      // aleatorio + proporcional al texto, con "escribiendo…", para no clavar
+      // siempre el mismo tiempo (eso canta a bot).
+      const escribir =
+        2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
+      tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
+      await new Promise((r) => setTimeout(r, escribir));
       const invita = intencionJugar.test(respuesta) || intencionJugar.test(textoJ);
       await tgEnviar(
         chatId,
