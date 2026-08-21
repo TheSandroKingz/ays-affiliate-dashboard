@@ -91,10 +91,15 @@ export default function BotChatViewer({
   onDinero,
   admin = false,
   contadorTitulo = false,
+  afiliado = false,
 }: {
   onDinero?: (d: DineroBot) => void;
   admin?: boolean;
   contadorTitulo?: boolean;
+  // afiliado: modo para el dashboard del propio afiliado. Usa los endpoints
+  // /api/telegram/mi-bot/* (que filtran solo SU bot) en vez de los de admin, y no
+  // exige ser gestor/admin (getApprovedUser lo controla en el servidor).
+  afiliado?: boolean;
 }) {
   const [autorizado, setAutorizado] = useState<boolean | null>(null);
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
@@ -193,7 +198,9 @@ export default function BotChatViewer({
       const { t } = await token();
       if (!t) return;
       const r = await fetch(
-        `/api/telegram/chat?chat_id=${j.chat_id}&origen=${j.origen}`,
+        afiliado
+          ? `/api/telegram/mi-bot/chat?chat_id=${j.chat_id}`
+          : `/api/telegram/chat?chat_id=${j.chat_id}&origen=${j.origen}`,
         { headers: { Authorization: "Bearer " + t } }
       );
       const b = await r.json().catch(() => ({}));
@@ -206,22 +213,25 @@ export default function BotChatViewer({
       if (chatAbiertoRef.current !== clave) return;
       setChatMsgs(b.history);
     },
-    [token]
+    [token, afiliado]
   );
 
   const cargar = useCallback(
     async (silent = false) => {
       const { t, uid } = await token();
-      if (!t || !esGestorBot(uid)) {
+      if (!t || (!afiliado && !esGestorBot(uid))) {
         setAutorizado(false);
         return;
       }
       setAutorizado(true);
       if (!silent) setCargandoJug(true);
       try {
-        const pideDinero = !!onDineroRef.current;
+        const pideDinero = !afiliado && !!onDineroRef.current;
         const peticiones = [
-          fetch("/api/telegram/contacts", { headers: { Authorization: "Bearer " + t }, cache: "no-store" }),
+          fetch(afiliado ? "/api/telegram/mi-bot/chats" : "/api/telegram/contacts", {
+            headers: { Authorization: "Bearer " + t },
+            cache: "no-store",
+          }),
         ];
         if (pideDinero)
           peticiones.push(
@@ -280,7 +290,7 @@ export default function BotChatViewer({
         if (!silent) setCargandoJug(false);
       }
     },
-    [token, marcarLeido, cargarChat]
+    [token, marcarLeido, cargarChat, afiliado]
   );
 
   useEffect(() => {

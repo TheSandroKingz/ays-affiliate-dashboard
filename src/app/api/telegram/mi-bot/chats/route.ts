@@ -3,8 +3,13 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 import { botPorTracking } from "@/lib/bots";
 
-// Lista de conversaciones del BOT del afiliado (Jeffer, Mariam). Cada afiliado ve
-// SOLO los chats de su bot (se filtra por bot.key). Sin datos de otros bots.
+// Lista de conversaciones del BOT del afiliado (Jeffer, Mariam/Livana, Black KP).
+// Cada afiliado ve SOLO los chats de su bot (se filtra por bot.key). Devuelve la
+// MISMA forma que /api/telegram/contacts (con vista previa del último mensaje,
+// origen y etiqueta) para que el afiliado use el mismo visor estilo WhatsApp que
+// el admin y Yaiza, pero limitado a su propio bot.
+type MsgFila = { chat_id: number; role: string; content: string | null; media_type: string | null };
+
 export async function GET(request: Request) {
   const user = await getApprovedUser(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -17,11 +22,40 @@ export async function GET(request: Request) {
   const bot = botPorTracking(aff?.freshaffs_tracking_code);
   if (!bot) return NextResponse.json({ tieneBot: false, jugadores: [] });
 
-  const { data } = await supabaseAdmin
+  const { data: contactos } = await supabaseAdmin
     .from("bot_contacts")
-    .select("chat_id, first_name, username, last_msg_at, opted_out")
+    .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
     .eq("bot", bot.key)
     .order("last_msg_at", { ascending: false, nullsFirst: false })
-    .limit(100);
-  return NextResponse.json({ tieneBot: true, jugadores: data ?? [] });
+    .limit(150);
+
+  // Vista previa del último mensaje de cada chat (estilo WhatsApp).
+  const ids = (contactos ?? []).map((c) => c.chat_id as number);
+  const { data: msgs } = ids.length
+    ? await supabaseAdmin
+        .from("bot_messages")
+        .select("chat_id, role, content, media_type")
+        .eq("bot", bot.key)
+        .in("chat_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(4000)
+    : { data: [] as MsgFila[] };
+
+  const prev = new Map<number, { texto: string; rol: string }>();
+  for (const x of (msgs ?? []) as MsgFila[]) {
+    if (prev.has(x.chat_id)) continue; // el más nuevo (vienen desc)
+    const media = x.media_type ? (x.media_type === "photo" ? "📷 Foto" : "🎬 Vídeo") : "";
+    const texto = (x.content || media || "").replace(/\s+/g, " ").trim().slice(0, 70);
+    prev.set(x.chat_id, { texto, rol: x.role });
+  }
+
+  const jugadores = (contactos ?? []).map((f) => ({
+    ...f,
+    origen: bot.key,
+    bot_nombre: bot.label,
+    ultimo: prev.get(f.chat_id as number)?.texto ?? null,
+    ultimo_rol: prev.get(f.chat_id as number)?.rol ?? null,
+  }));
+
+  return NextResponse.json({ tieneBot: true, jugadores });
 }
