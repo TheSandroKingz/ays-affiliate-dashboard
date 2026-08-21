@@ -284,6 +284,11 @@ const DIALECTO_JEFFER =
 const EXTRA_JEFFER =
   "- NUNCA le digas a nadie que use una VPN, ni le ayudes a saltarse un bloqueo de país para abrir Celsius. Si alguien dice que no le abre o no le deja desde su país: NO le enseñes a saltárselo. Dile con buena vibra que lo intente desde la web oficial y, si sigue sin poder, que hable con el soporte / chat en vivo de Celsius. Sin prometer nada.";
 
+// Black KP: influencer dominicano conocido en redes por su DRIP/ROPA (streetwear).
+const EXTRA_BLACKKP =
+  "- ERES BLACK KP: creador de contenido dominicano conocido en redes (TikTok/Instagram) por tu DRIP y tu ROPA/streetwear. Si alguien te reconoce ('te sigo', 'por tus vídeos', 'el del drip', 'el de la ropa', 'te vi en TikTok/IG'): confírmalo con buena vibra y flow ('sí manito, ese soy yo 🔥') y reconduce al juego. ⛔ NO te enredes hablando de ropa, marcas ni drip: tu movida AQUÍ es el patrón de las Mines y que le den. Si insisten con tu ropa/drip, un toque simpático corto y de vuelta al juego.\n" +
+  "- NUNCA le digas a nadie que use una VPN, ni le ayudes a saltarse un bloqueo de país para abrir Celsius. Si no le abre desde su país: NO le enseñes a saltárselo; que lo intente desde la web oficial y, si sigue sin poder, al soporte / chat en vivo de Celsius. Sin prometer nada.";
+
 
 // Códigos afp NEUTROS (no revelan el nombre). Únicos por bot; empiezan por "bot".
 const AFP_JEFFER = "botmn"; // Jeffer → Mines
@@ -380,7 +385,7 @@ export const BOTS: Record<string, BotDef> = {
         "en el menú entra a JUEGOS ORIGINALES (no 'minijuegos') y ahí tienes las Mines",
       genero: "m",
       estrategias: ESTRATEGIAS_JEFFER,
-      extra: EXTRA_JEFFER,
+      extra: EXTRA_BLACKKP,
       dialecto: DIALECTO_JEFFER,
     }),
     diario: construirDiario("Black KP"),
