@@ -475,7 +475,7 @@ export async function procesarUpdate(
     // vídeo mudo. No dispares el clip aquí; deja que la IA conteste (evita que el
     // jugador tenga que escribir "responde" tras recibir el vídeo sin contestación).
     const dudaConceptoPatron =
-      /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)/i.test(
+      /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(
         textoJ
       );
     const problemaReal =
