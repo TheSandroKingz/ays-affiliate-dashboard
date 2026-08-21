@@ -108,11 +108,20 @@ export default function EstadoBotsPage() {
       body: JSON.stringify({ key }),
     });
     const j = await r.json().catch(() => ({}));
-    alert(
-      j.ok
-        ? `Conectado a @${j.bot}. Ya recibe mensajes.`
-        : `No se pudo conectar: ${j.error || "error"}`
-    );
+    if (j.ok) {
+      const i = j.info || {};
+      const partes = [
+        `Conectado a @${j.bot}.`,
+        i.url ? `URL: ${i.url}` : null,
+        `Pendientes: ${i.pending_update_count ?? "?"}`,
+        i.last_error_message
+          ? `Último error Telegram: ${i.last_error_message}`
+          : "Sin errores de Telegram.",
+      ].filter(Boolean);
+      alert(partes.join("\n"));
+    } else {
+      alert(`No se pudo conectar: ${j.error || "error"}`);
+    }
     cargar();
   }
 
