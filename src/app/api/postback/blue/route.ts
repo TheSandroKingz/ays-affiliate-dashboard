@@ -54,7 +54,7 @@ type Afiliado = {
 
 const SEL = "user_id, cpa_spain, cpa_other, freshaffs_tracking_code";
 
-async function matchAfiliado(tag: string): Promise<Afiliado | null> {
+async function matchAfiliado(tag: string, permitirDefault = true): Promise<Afiliado | null> {
   if (tag) {
     // 1) por tracking code (insensible a mayúsculas, escapando comodines)
     const { data } = await supabaseAdmin
@@ -71,6 +71,10 @@ async function matchAfiliado(tag: string): Promise<Afiliado | null> {
       .limit(1);
     if (d2?.[0]) return d2[0];
   }
+  // ⛔ Enlace de bot con dueño definido: si NO empareja con su afiliado, NO cae a la
+  // casa (eso pagaría a Sandro el dinero del bot en silencio). Devolvemos null →
+  // no_match, y el llamador avisa al admin para revisar el tracking del afiliado.
+  if (!permitirDefault) return null;
   // 3) POR DEFECTO: si no hay etiqueta o no empareja con ningún afiliado, va a la
   // cuenta de la casa/bot (tracking code "Default" = Mongolitos), igual que antes
   // (el tráfico del bot entraba como trackingcode=Default). Así TU tráfico sale en
@@ -129,6 +133,11 @@ function afpDeCampana(tag: string): string {
 function codigoParaMatch(tag: string): string {
   return DUENO_CAMPANA[(tag || "").trim().toLowerCase()] ?? tag;
 }
+// ¿El tag es el enlace de un BOT con dueño definido? (para no atribuir su dinero a
+// la casa si falta la fila del afiliado dueño).
+function esCodigoDeBot(tag: string): boolean {
+  return Boolean(DUENO_CAMPANA[(tag || "").trim().toLowerCase()]);
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -184,7 +193,7 @@ export async function GET(request: Request) {
 
   // ── REGISTRO ──────────────────────────────────────────────────────────────
   if (event === "registration" || event === "register" || event === "signup") {
-    const target = await matchAfiliado(codigoParaMatch(tag));
+    const target = await matchAfiliado(codigoParaMatch(tag), !esCodigoDeBot(tag));
     let estado: EstadoEvento = "no_match";
     if (target) {
       let contar: boolean;
@@ -231,7 +240,7 @@ export async function GET(request: Request) {
 
   // ── FTD / RECARGA (log, NO paga) ──────────────────────────────────────────
   if (event === "ftd" || event === "deposit" || event === "redeposit") {
-    const target = await matchAfiliado(codigoParaMatch(tag));
+    const target = await matchAfiliado(codigoParaMatch(tag), !esCodigoDeBot(tag));
     const et: "ftd" | "redeposit" = event === "ftd" ? "ftd" : "redeposit";
     // Anti-reintento (mismo jugador + mismo tipo + mismo importe en 2 min = reintento
     // de Blue). Vale para ftd y recarga: no suma dinero pero evita inflar contadores.
@@ -343,7 +352,7 @@ export async function GET(request: Request) {
         event_type: "commission",
         raw_query: raw,
         tracking_code: tag,
-        afp: contado ? await afpDeUser(contado.userId) : "bot",
+        afp: contado?.afp ?? "bot", // hereda el canal REAL del QFTD original (web/botbk/…), no lo recalcula
         player_id: playerid,
         isocountry,
         matched_user_id: contado?.userId ?? null,
@@ -362,7 +371,16 @@ export async function GET(request: Request) {
 
     // QFTD normal: emparejar, candado por jugador, retener si ya estaba contado,
     // y pagar el CPA (nuestro plan, no la comisión de la red).
-    const target = await matchAfiliado(codigoParaMatch(tag));
+    const target = await matchAfiliado(codigoParaMatch(tag), !esCodigoDeBot(tag));
+    // Enlace de bot cuyo afiliado dueño no aparece: NO se cuenta a nadie (mejor que
+    // pagárselo a la casa). Avisamos al admin para que revise el tracking del afiliado.
+    if (esCodigoDeBot(tag) && !target) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ QFTD de bot sin afiliado dueño",
+        body: "Un depósito por un enlace de bot no encontró la cuenta del afiliado (revisa su tracking code). No se ha contado a nadie.",
+        url: "/admin/actividad",
+      });
+    }
     let estado: EstadoEvento = "no_match";
     let comisionPagada = 0;
     let heldReason: "double_pay" | null = null;

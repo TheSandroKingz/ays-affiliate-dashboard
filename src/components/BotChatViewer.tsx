@@ -197,10 +197,14 @@ export default function BotChatViewer({
         { headers: { Authorization: "Bearer " + t } }
       );
       const b = await r.json().catch(() => ({}));
+      // Un error transitorio (5xx/timeout) NO debe BORRAR la conversación abierta:
+      // el refresco silencioso cada 20s reejecuta esto, y pintar [] dejaría el chat
+      // en blanco hasta el siguiente refresco. Solo pintamos con respuesta válida.
+      if (!r.ok || !Array.isArray(b.history)) return;
       // Si mientras cargaba el usuario cambió de chat (clic o refresco silencioso),
       // NO pintamos: evitaría mostrar los mensajes de un chat en la cabecera de otro.
       if (chatAbiertoRef.current !== clave) return;
-      setChatMsgs(Array.isArray(b.history) ? b.history : []);
+      setChatMsgs(b.history);
     },
     [token]
   );

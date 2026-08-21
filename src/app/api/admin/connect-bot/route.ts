@@ -43,12 +43,18 @@ export async function POST(request: Request) {
   // Base URL de CONFIANZA: en Vercel usamos VERCEL_URL (la fija la plataforma, no
   // el cliente) o un dominio propio de env; solo caemos al header host en local.
   // Así el header x-forwarded-host del cliente no puede desviar el webhook.
-  const trustedBase =
+  // Base de CONFIANZA: solo NEXT_PUBLIC_SITE_URL o VERCEL_URL (las fija la
+  // plataforma, no el cliente). NO usamos el header host: es falsificable y con
+  // esto se construye la URL del webhook + su secret_token.
+  const base =
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
-  const host =
-    request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
-  const base = trustedBase || `https://${host}`;
+  if (!base) {
+    return NextResponse.json(
+      { error: "Falta NEXT_PUBLIC_SITE_URL/VERCEL_URL (base de confianza)." },
+      { status: 500 }
+    );
+  }
   const url = `${base}/api/telegram/webhook/${bot.key}`;
   const r = await tgApi(
     "setWebhook",

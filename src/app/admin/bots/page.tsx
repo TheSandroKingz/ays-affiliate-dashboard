@@ -173,7 +173,7 @@ export default function EstadoBotsPage() {
 
       {cargando && !bots ? (
         <p className="text-sm text-slate-400">Cargando…</p>
-      ) : error ? (
+      ) : error && !bots ? (
         <p className="text-sm text-amber-300">No se pudo cargar.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

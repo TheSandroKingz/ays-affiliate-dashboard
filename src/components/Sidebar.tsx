@@ -56,12 +56,27 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       // el apartado "Telegram" para ver los depósitos de su bot.
       const token = data.session?.access_token;
       if (user && user.id !== ADMIN_USER_ID && token) {
-        fetch("/api/telegram/mi-bot", {
-          headers: { Authorization: "Bearer " + token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((b) => setTieneBot(!!b?.tieneBot))
-          .catch(() => {});
+        // Un fallo transitorio de esta petición NO debe ocultar el apartado
+        // "Telegram" del afiliado: reintentamos un par de veces antes de rendirnos
+        // (si no, un 500/timeout puntual dejaría tieneBot=false toda la sesión).
+        const cargarTieneBot = async (intentos = 3) => {
+          for (let i = 0; i < intentos; i++) {
+            try {
+              const r = await fetch("/api/telegram/mi-bot", {
+                headers: { Authorization: "Bearer " + token },
+              });
+              if (r.ok) {
+                const b = await r.json();
+                setTieneBot(!!b?.tieneBot);
+                return;
+              }
+            } catch {
+              /* reintenta */
+            }
+            await new Promise((res) => setTimeout(res, 1500));
+          }
+        };
+        cargarTieneBot();
       }
     });
   }, []);
