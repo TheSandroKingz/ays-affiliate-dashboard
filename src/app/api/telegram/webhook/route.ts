@@ -537,6 +537,10 @@ export async function POST(request: Request) {
        /\b(das|tienes|ten[eé]s|hay|d[oó]nde)\b[^.\n]{0,20}(v[ií]deo|patr[oó]n|clip|ejemplo)/i.test(textoJ)) && !negPide;
       const dudaConceptoPatron =
         /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(textoJ) && !pideEnvioExplicito;
+      // Petición sobre un patrón FUTURO/NUEVO o CAMBIAR el patrón: NO es pedir ver el
+      // actual → NO auto-enviamos el vídeo; que responda la IA a esa petición concreta.
+      const patronFuturoOCambio =
+        /(av[ií]sa\w*|me avisas|avisadme)[^.\n]{0,30}(patr[oó]n|\bz\b|m[eé]todo)|cuando\s+(haya|salga|saques|tengas|exista|pongas|est[eé]|subas|cambi\w*|haga[sn]?)[^.\n]{0,25}(patr[oó]n|\bz\b|m[eé]todo)|patr[oó]n\s+(nuevo|distinto|diferente)|nuevo\s+patr[oó]n|cambi\w*\s+(de\s+|el\s+|mi\s+|tu\s+)?patr/i.test(textoJ);
       // Problema REAL (pagos, cuenta, verificación, bono…): eso va a la IA, NO se
       // le manda un ejemplo. Incluye el error de saldo de bono ("can not make a bet").
       const problemaReal =
@@ -559,7 +563,7 @@ export async function POST(request: Request) {
         // ni cuando dicen que PIERDEN/no les va: ahí, respuesta personalizada.
         // Nombrar el patrón DENTRO de una queja (falloForma) NO cuenta como petición;
         // un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-        ((pidePatron && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) &&
+        ((pidePatron && !falloForma && !dudaConceptoPatron && !patronFuturoOCambio) || pideOtro || reenvioExplicito) &&
         !problemaReal &&
         !limitado &&
         // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.
