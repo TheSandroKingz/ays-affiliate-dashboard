@@ -457,6 +457,9 @@ function limpiarNormaliza(txt: string): string {
 //    bot): se quita si hay más texto delante. Si el mensaje fuese solo 👍, se
 //    deja tal cual.
 function quitarGuiones(txt: string): string {
+  // Tope de emojis: como mucho UNO por mensaje (deja el primero, quita el resto).
+  // Las reglas del prompt piden moderación pero el modelo abusa; esto lo garantiza.
+  let nEmoji = 0;
   const base = txt
     // Marca interna de hueco de tiempo ("[⏱ +2d]"): nunca debe salir al jugador.
     .replace(/\[⏱[^\]]*\]\s*/gu, "")
@@ -470,6 +473,14 @@ function quitarGuiones(txt: string): string {
     .replace(/\b(?:desv[ií]a|desv[ií]o|(?:voy a|hay que|toca|debo|tengo que)\s+desviar)\s+(?:la\s+)?pregunta(?:\s+hacia[^.,:\n]*)?\s*[:,.—-]?\s*/giu, "")
     // "vaya palo"/"qué palo" (vetados) -> "qué putada".
     .replace(/\b(?:vaya|qu[eé]) palo\b/giu, "qué putada")
+    // Signo de interrogación de APERTURA "¿": en chat informal solo se pone el de
+    // cierre "?" al final. Lo quitamos (Sandro lo pidió); el "?" final se queda.
+    .replace(/¿/gu, "")
+    // Máximo UN emoji por mensaje: deja el primero y quita los demás (incluye
+    // selector de variación y tonos de piel). Menos robótico.
+    .replace(/\p{Extended_Pictographic}(?:\u{FE0F}|[\u{1F3FB}-\u{1F3FF}])*/gu, (m) =>
+      nEmoji++ === 0 ? m : ""
+    )
     // Rangos numéricos (0–24h, 30 - 40): guion normal pegado, NO coma (si no,
     // "0–24h" salía "0, 24h").
     .replace(/(\d)\s*[—–-]\s*(\d)/g, "$1-$2")

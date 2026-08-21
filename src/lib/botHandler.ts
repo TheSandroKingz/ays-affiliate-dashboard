@@ -456,10 +456,14 @@ export async function procesarUpdate(
     // Negación: si DICE que NO quiere el vídeo/ejemplo, NO cuenta como petición.
     const negPide =
       /\b(no|nunca|deja de|para de|ya no|dejes de|dej[eé]is de)\b[^.\n]{0,25}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|v[ií]deo|patr|ejemplo|clip)/i.test(textoJ);
+    // Reenvío EXPLÍCITO = pide el vídeo/patrón OTRA VEZ (con señal clara de "de
+    // nuevo": otra vez, reenvía, repite, vuelve a mandar). "pásame un patrón" a
+    // secas NO es reenvío (es una 1ª petición normal) y NO debe saltar el candado
+    // anti-doble; si no, mandaba el vídeo dos veces al pedirlo dos veces seguidas.
     const reenvioExplicito =
-      /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
-        textoJ
-      ) && !negPide;
+      /(otra vez|de nuevo|de vuelta|nuevamente|reenv[ií]|rep[ií]t|vu[eé]lve a|m[aá]ndamelo otra)/i.test(textoJ) &&
+      /(v[ií]deo|patr[oó]n|clip|ejemplo|lo\b|melo\b|mela\b)/i.test(textoJ) &&
+      !negPide;
     const mandoVideo = !!(msg.video || msg.animation);
     const falloForma =
       /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(

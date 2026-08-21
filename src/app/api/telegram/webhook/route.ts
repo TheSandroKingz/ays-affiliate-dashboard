@@ -512,12 +512,14 @@ export async function POST(request: Request) {
         /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(
           textoJ
         ) && !negPide;
-      // Reenvío EXPLÍCITO del vídeo/patrón ("mándamelo otra vez"): salta el candado
-      // de "no dos seguidos" (una duda no, pero si lo piden claro, sí).
+      // Reenvío EXPLÍCITO = pide el vídeo/patrón OTRA VEZ (con señal clara de "de
+      // nuevo"). "pásame un patrón" a secas NO es reenvío (1ª petición normal) y NO
+      // debe saltar el candado anti-doble; si no, mandaba el vídeo dos veces al
+      // pedirlo dos veces seguidas.
       const reenvioExplicito =
-        /(m[aá]nd|env[ií]|p[aá]s|reenv[ií]|repit)\w*[^.\n]{0,18}(v[ií]deo|patr[oó]n|clip|ejemplo)|(v[ií]deo|patr[oó]n|clip|ejemplo)[^.\n]{0,18}(otra vez|de nuevo|de vuelta|reenv|repit)/i.test(
-          textoJ
-        ) && !negPide;
+        /(otra vez|de nuevo|de vuelta|nuevamente|reenv[ií]|rep[ií]t|vu[eé]lve a|m[aá]ndamelo otra)/i.test(textoJ) &&
+        /(v[ií]deo|patr[oó]n|clip|ejemplo|lo\b|melo\b|mela\b)/i.test(textoJ) &&
+        !negPide;
       // Pregunta CONCEPTUAL/escéptica sobre el patrón ("¿tiene sentido?", "¿funciona
       // de verdad?", "¿es mentira?", "¿vale la pena?"): quiere una RESPUESTA, no un
       // vídeo mudo. No dispares el clip aquí; deja que la IA conteste (evita que el
