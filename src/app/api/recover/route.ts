@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     // no está, usamos el dominio de producción hardcodeado.
     const origin =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      "https://ays-affiliate-dashboard.vercel.app";
+      "https://asafiliados.com";
     await authClient.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/reset-password`,
     });
