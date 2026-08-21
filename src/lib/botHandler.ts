@@ -462,7 +462,7 @@ export async function procesarUpdate(
     // anti-doble; si no, mandaba el vídeo dos veces al pedirlo dos veces seguidas.
     const reenvioExplicito =
       /(otra vez|de nuevo|de vuelta|nuevamente|reenv[ií]|rep[ií]t|vu[eé]lve a|m[aá]ndamelo otra)/i.test(textoJ) &&
-      /(v[ií]deo|patr[oó]n|clip|ejemplo|\blo\b|[aá]melo\b|[aá]mela\b)/i.test(textoJ) &&
+      /(v[ií]deo|patr[oó]n|clip|ejemplo|m[aá]ndamelo|p[aá]samelo|reenv[ií]amelo|env[ií]amelo|m[aá]ndamela|p[aá]samela)/i.test(textoJ) &&
       !negPide;
     const mandoVideo = !!(msg.video || msg.animation);
     const falloForma =
@@ -481,7 +481,8 @@ export async function procesarUpdate(
     // Peticion EXPLICITA de envio ("mandame/pasame/dame el video/patron"): aunque
     // lleve "?", NO es duda conceptual -> debe recibir el recurso.
     const pideEnvioExplicito =
-      /\b(m[aá]nd|env[ií]|p[aá]s|dame|reenv|quiero (el|un|ver))\w*/i.test(textoJ) && !negPide;
+      (/\b(m[aá]nd|env[ií]|p[aá]s|dame|reenv|quiero (el|un|ver))\w*/i.test(textoJ) ||
+       /\b(das|tienes|ten[eé]s|hay|d[oó]nde)\b[^.\n]{0,20}(v[ií]deo|patr[oó]n|clip|ejemplo)/i.test(textoJ)) && !negPide;
     const dudaConceptoPatron =
       /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(textoJ) && !pideEnvioExplicito;
     const problemaReal =
