@@ -563,7 +563,7 @@ export async function POST(request: Request) {
         // ni cuando dicen que PIERDEN/no les va: ahí, respuesta personalizada.
         // Nombrar el patrón DENTRO de una queja (falloForma) NO cuenta como petición;
         // un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-        ((pidePatron && !falloForma && !dudaConceptoPatron && !patronFuturoOCambio) || pideOtro || reenvioExplicito) &&
+        ((((pidePatron || pideEnvioExplicito) && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) && !patronFuturoOCambio) &&
         !problemaReal &&
         !limitado &&
         // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.

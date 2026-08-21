@@ -651,8 +651,10 @@ export default function BotChatViewer({
                                 />
                               )}
                               {m.content}
-                              {/* Traducir: solo en mensajes del jugador con texto */}
-                              {!bot && !!m.content && (
+                              {/* Traducir: solo en mensajes del jugador con texto. En modo
+                                  afiliado NO (el endpoint /traducir es solo gestor → botón
+                                  muerto con 401 para el afiliado). */}
+                              {!bot && !afiliado && !!m.content && (
                                 trad ? (
                                   <div className="mt-1 border-t border-white/15 pt-1 text-[11px] italic text-emerald-200/90">
                                     🌐 {trad}

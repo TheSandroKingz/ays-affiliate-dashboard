@@ -512,7 +512,7 @@ export async function procesarUpdate(
       // ahí toca una respuesta personalizada con empatía, no soltar el mismo vídeo.
       // Si nombran el patrón DENTRO de una queja (falloForma), NO cuenta como petición;
       // pero un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-      ((pidePatron && !falloForma && !dudaConceptoPatron && !patronFuturoOCambio) || pideOtro || reenvioExplicito) &&
+      ((((pidePatron || pideEnvioExplicito) && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) && !patronFuturoOCambio) &&
       !problemaReal &&
       !limitado &&
       // No dos vídeos seguidos ante una DUDA; PERO si lo piden EXPLÍCITAMENTE
