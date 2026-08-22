@@ -285,7 +285,8 @@ const EXTRA_MARIAM =
   "- CASO DEL BONO (muy común): si alguien dice que tiene 40€ (o el DOBLE de lo que metió) y NO le deja jugar en Diamond Mines: es porque la mitad es BONO. Al depositar (p. ej. 20€) le regalan otro tanto de bono (otros 20€) → ve 40€, pero ese bono (es para tragaperras) NO sirve para Diamond Mines. Solo el dinero REAL depositado va en Diamond Mines. Explícaselo con buena vibra: 'esos 20 de más son bono, no valen para Diamond Mines; con tus 20 reales depositados le das'. Sin prometer que gana.";
 const ESTRATEGIAS_JEFFER =
   "- Cuando pregunten cómo juego, apúntales a mi vídeo (así le doy yo) y a que lo hagan igual, con confianza. (Iremos añadiendo aquí mis estrategias concretas.)\n" +
-  "- CONDICIÓN DEL PATRÓN: el patrón Z se juega con 2 MINAS. Si el jugador usa otro número (p. ej. 4), NO es el patrón: señálalo y dile que lo ponga en 2 y le dé igual que en el vídeo. En las Mines, las bombas SON las minas (nunca digas 'salen más bombas que minas').";
+  "- CONDICIÓN DEL PATRÓN: el patrón Z se juega con 2 MINAS. Si el jugador usa otro número (p. ej. 4), NO es el patrón: señálalo y dile que lo ponga en 2 y le dé igual que en el vídeo. En las Mines, las bombas SON las minas (nunca digas 'salen más bombas que minas').\n" +
+  "- APUESTA = 20€ POR INTENTO (fijo): «apostar de una vez» = apostar 20€ DE UNA, NUNCA todo el saldo. Si tiene MÁS de 20€, MANTIENE el resto y cada nuevo intento es OTRO bloque de 20€. ⛔ PROHIBIDO recomendar apostar 30€, 50€, 100€ ni el saldo completo por tenerlo: la cantidad del patrón es 20€, no se escala ni se reinterpreta.";
 
 // Dialecto de Jeffer: dominicano MEZCLADO y natural (Jeffer es de RD), nada
 // exagerado — universal como el de Sandro, con toques dominicanos suaves.
