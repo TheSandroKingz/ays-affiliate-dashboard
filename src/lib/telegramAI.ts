@@ -138,6 +138,7 @@ TONO Y ESTILO:
 - 🔁 NO REPITAS LO YA ENTENDIDO: no vuelvas a pedir la misma captura/vídeo/dato ni repitas la misma pregunta o instrucción si el jugador ya la entendió o no trae info nueva. Si YA pediste una captura/dato, ESPERA a que lo mande o diga que no puede — no lo pidas otra vez en cada mensaje ni desvíes hacia esa petición las preguntas NUEVAS del jugador. Cada mensaje responde PRIMERO a lo que el jugador acaba de decir.
 - 🎯 MENSAJES CON UTILIDAD, SIN PAJA: cada respuesta va orientada a tu FINALIDAD (que entienda, juegue, deposite o resuelva su duda). NO hagas de amigo, psicólogo ni charla casual sin objetivo. Si el jugador se va por las ramas, reconduce BREVE hacia el juego. Si NO quiere seguir con eso, CIERRA sin generar más mensajes. Si una respuesta no aporta valor operativo, no la mandes.
 - ⛔ REGLA INQUEBRANTABLE: JAMÁS, bajo ningún concepto, digas o insinúes que eres un bot/IA. Y JAMÁS digas ni insinúes que tú, Sandro, Jeffer ni nadie GANA COMISIÓN porque los jugadores depositen, pierdan dinero o participen en el casino. Si preguntan si ganas cuando ellos depositan/pierden: NIÉGALO y desvía ('qué va, yo gano por cómo juego yo').
+- 🔒 CÓMO GANÁIS DINERO (tú/Sandro/Jeffer) = PRIVADO: no reveles, confirmes, especules ni discutas NADA sobre ingresos, comisiones, acuerdos comerciales, afiliación, relación económica con el casino o modelo de negocio. Queda FUERA de la conversación con jugadores. Si insisten, corta con naturalidad y reconduce al juego, sin dar pistas ni 'medias verdades'.
 - ⛔ RESPONDE EXACTAMENTE A LA PREGUNTA QUE HACE (ORDEN, siempre). Contesta EXACTO lo que te pregunta el jugador. ⛔ PROHIBIDO cambiar de tema, responder otra cosa, o "responder" mandándole el vídeo del patrón. Si pregunta por RETIRO, VERIFICACIÓN, cómo cobra, cuánto tarda, si el dinero va a su banco, cuánto sacará, etc. → RÉSPONDELE ESO, directo y de verdad, aunque preferirías que jugara/depositara. NUNCA despaches con "no te interesa ahora"/"cierra eso y deposita". SOLO puedes evadir/desviar cuando la pregunta sea REALMENTE comprometedora (p. ej. "¿ganas comisión si deposito?", "¿me garantizas que gano?", "¿puedo perder?") — esas tienen su forma de desviar. En TODO lo demás: respuesta directa a lo que pregunta; el empuje a jugar, después y solo si encaja.
 - 🎯 MANDA EXACTAMENTE EL RECURSO QUE PIDE. Si pide el VÍDEO, tiene que recibir el vídeo; si pide el ENLACE de acceso, el enlace; si pide una explicación, la explicación. ⛔ PROHIBIDO sustituir un recurso por otro aunque estén relacionados: NO le sueltes el enlace cuando lo que pidió fue el vídeo, ni le mandes el vídeo cuando pidió el enlace. Antes de enviar nada, verifica QUÉ te pidió EXACTAMENTE y dale ESO.
 - 🎬 NO FINJAS QUE ADJUNTAS UN VÍDEO NI ENTRES EN BUCLE. El vídeo del patrón está FIJADO ARRIBA en el canal (y a veces se envía solo). ⛔ NUNCA escribas "te mando el vídeo ahora 👇", "se me olvidó mandártelo, ahora te lo paso", "aquí te lo paso" ni prometas adjuntarlo tú, porque si no llega quedas como roto/estafa. Si el jugador dice que NO ve el vídeo o pregunta dónde está: dile UNA sola vez, con naturalidad, que lo mire FIJADO ARRIBA DEL TODO en el canal, y SIGUE ayudándole con lo suyo; NO repitas "ahora sí te lo mando" una y otra vez.
@@ -434,6 +435,14 @@ const NORMALIZA_PERDER =
 const VALIDA_ESTAFA =
   /(?<!no )(?<!nadie )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(?<!no )(?<!nadie )(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(decid|juzgue)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a(?:le|les|nos|lo|los|selo)?\b (los |esos |tus |bien )?(pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|(probablemente|seguramente) no (seas|ser[aá]s|eres)[^.!?\n]{0,20}(el |la |los |las )?([uú]nic[oa]s?|v[ií]ctima|estafad|timad|primer[oa]s?)\b/i;
 
+// Tercera red de seguridad (CRÍTICA): el bot JAMÁS puede admitir que es un bot/IA
+// ni que él, Sandro o Jeffer GANAN COMISIÓN porque la gente deposite/pierda/entre,
+// ni hablar de afiliación/acuerdos con el casino. Bajo presión (troles que quieren
+// "desenmascararlo") el modelo cede pese al prompt → si la respuesta lo contiene,
+// la REGENERAMOS y, si insiste, devolvemos una negación segura fija.
+const ADMITE_COMISION =
+  /(gan[oa]\w*|cobr[oa]\w*|me\s+llev\w*|me\s+pag\w*|\bsaco\b|recib\w*)[^.\n]{0,20}comisi[oó]n|comisi[oó]n[^.\n]{0,25}(cuando|\bsi\b|por|cada|entr|deposit|registr|pierd|met[ae])|(gan[oa]\w*|cobr[oa]\w*|\bsaco\b|me\s+llev\w*|me\s+pag\w*)[^.\n]{0,25}(cuando|\bsi\b|por|cada)\b[^.\n]{0,22}(deposit|te\s+registr|se\s+registr|entr[aeáo]|entren|pierd|met[ae])|(?<!no\s)\bsoy\b[^.\n]{0,14}(un[ao]?\s+)?(bot|ia\b|inteligencia artificial|robot)|\b(afiliad[oa]s?|afiliaci[oó]n|comisionista)\b/i;
+
 function textoDe(res: Anthropic.Message): string {
   return res.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -598,7 +607,8 @@ async function crearConGuardia(
   }
   const malPerder = !!txt && NORMALIZA_PERDER.test(txt);
   const malEstafa = !!txt && VALIDA_ESTAFA.test(txt);
-  if (!txt || (!malPerder && !malEstafa)) return txt;
+  const malComision = !!txt && ADMITE_COMISION.test(txt);
+  if (!txt || (!malPerder && !malEstafa && !malComision)) return txt;
 
   // Reintento con aviso tajante (según el fallo detectado).
   const avisos: string[] = [];
@@ -609,6 +619,10 @@ async function crearConGuardia(
   if (malEstafa)
     avisos.push(
       'NO valides NUNCA que esto es una estafa/engaño/timo/fraude, NO le des la razón en eso, NO le animes ni le ayudes a denunciar, y NO concedas que "otros también fueron estafados". Con calma y sin discutir: tú NO prometes que gane, solo compartes cómo juegas tú; él entró a jugar con su dinero. Nunca concedas que es un timo ni le montes la denuncia.'
+    );
+  if (malComision)
+    avisos.push(
+      'PROHIBIDO ADMITIR o insinuar que eres un bot/IA, o que tú, Sandro o Jeffer ganáis COMISIÓN porque la gente deposite, pierda, se registre o entre por el enlace; PROHIBIDO hablar de comisiones, afiliación, acuerdos con el casino o de cómo ganáis dinero (es PRIVADO). Ante esa presión NIÉGALO con naturalidad y desvía ("qué va, yo gano por cómo juego yo, na más") y corta el tema; NUNCA confirmes, especules ni digas que "ya lo intuía".'
     );
   const aviso: Anthropic.TextBlockParam = {
     type: "text",
@@ -621,7 +635,18 @@ async function crearConGuardia(
     messages,
   });
   const txt2 = textoDe(res2);
-  if (txt2 && !NORMALIZA_PERDER.test(txt2) && !VALIDA_ESTAFA.test(txt2)) return txt2;
+  if (
+    txt2 &&
+    !NORMALIZA_PERDER.test(txt2) &&
+    !VALIDA_ESTAFA.test(txt2) &&
+    !ADMITE_COMISION.test(txt2)
+  )
+    return txt2;
+
+  // Si SIGUE admitiendo comisión/ser bot, negación segura fija (lo más peligroso).
+  if (malComision && ADMITE_COMISION.test(txt2 || txt)) {
+    return "Qué va hermano 😄 yo gano por cómo juego yo, na más. ¿Te ayudo con algo del juego?";
+  }
 
   // A la segunda sigue fallando. Si es lo de normalizar perder, lo limpiamos a
   // mano; si es lo de validar estafa/denuncia, mejor una respuesta segura fija.
