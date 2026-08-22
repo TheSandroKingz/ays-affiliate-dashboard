@@ -239,7 +239,7 @@ export async function notificarEvento(
 
 // Nombre "de cara" de cada bot según su afp (para los avisos de Yaiza).
 const BOT_NOMBRE: Record<string, string> = {
-  bot: "Sandro",
+  bot: "A&S",
   botmn: "Jeffer",
   botdm: "Livana",
   botbk: "Black KP",
