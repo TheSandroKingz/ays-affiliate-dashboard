@@ -27,9 +27,17 @@ export default function ResetPasswordPage() {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') markReady()
     })
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) markReady()
-    })
+    // ⛔ SOLO habilitamos el cambio si venimos de un enlace de RECUPERACIÓN real
+    // (el correo trae "type=recovery" en el hash). Una sesión normal NO basta:
+    // si no, un token robado permitiría cambiar la contraseña por aquí sin la
+    // actual (toma de cuenta). El cambio con sesión normal va por la cuenta, que
+    // exige la contraseña actual.
+    if (
+      typeof window !== 'undefined' &&
+      /type=recovery/.test(window.location.hash)
+    ) {
+      markReady()
+    }
     // Si en unos segundos no hay sesión ni evento de recuperación, el enlace
     // es inválido o caducó: mostramos error en vez de quedarnos colgados.
     const timer = setTimeout(() => {

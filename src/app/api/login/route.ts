@@ -59,23 +59,14 @@ export async function POST(request: NextRequest) {
   // aunque el atacante cambie de IP. Tras 8 fallos en 15 min, la cuenta queda
   // bloqueada el resto de la ventana. BLINDADO: si la tabla/función aún no
   // existe (SQL sin aplicar), no bloquea (el login sigue funcionando).
-  const LIMITE = 8;
   const VENTANA_MS = 15 * 60 * 1000;
   const claveCuenta = `login:${email.toLowerCase()}`;
-  const { data: intento } = await supabaseAdmin
-    .from("login_intentos")
-    .select("fallos, primer")
-    .eq("k", claveCuenta)
-    .maybeSingle();
-  if (intento) {
-    const dentroVentana =
-      Date.now() - new Date(intento.primer).getTime() < VENTANA_MS;
-    if (dentroVentana && (intento.fallos ?? 0) >= LIMITE) {
-      // Mismo mensaje/estado genérico que una contraseña incorrecta: así el
-      // bloqueo no revela que esa cuenta existe (evita enumeración de usuarios).
-      return generico();
-    }
-  }
+  // ⚠️ NO bloqueamos ANTES de validar la contraseña. Hacerlo permitía a alguien
+  // que conociera el usuario de la víctima dejarla FUERA a base de fallos (DoS),
+  // negándole el acceso incluso con la contraseña correcta. Ahora validamos
+  // primero: una contraseña CORRECTA siempre entra (y limpia el contador). Solo
+  // se cuentan los FALLOS; la fuerza bruta la frenan el rate-limit por IP y los
+  // límites propios de Supabase.
 
   // Cliente anónimo efímero (valida la contraseña; no persiste sesión).
   const authClient = createClient(

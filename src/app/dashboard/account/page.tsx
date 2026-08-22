@@ -5,7 +5,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 import { esSoloBot } from "@/lib/adminId";
 import { CardsSkeleton } from "@/components/Skeletons";
-import { traducirError } from "@/lib/authErrors";
+import { validarPassword } from "@/lib/authErrors";
 import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
@@ -296,19 +296,40 @@ export default function AccountPage() {
 
   async function savePassword() {
     setMessage(null);
-    if (newPassword.length < 6) {
-      setMessage("La contraseña debe tener al menos 6 caracteres");
+    const pwErr = validarPassword(newPassword);
+    if (pwErr) {
+      setMessage(pwErr);
       return;
     }
     if (newPassword !== confirmPassword) {
       setMessage("Las contraseñas no coinciden");
       return;
     }
+    // Re-autenticación: pedimos la contraseña ACTUAL. Sin esto, un token de sesión
+    // robado bastaría para cambiar la contraseña y robar la cuenta.
+    const actual = window.prompt(
+      "Por seguridad, escribe tu contraseña ACTUAL para cambiarla:"
+    );
+    if (!actual) {
+      setMessage("Necesitas tu contraseña actual para cambiarla.");
+      return;
+    }
     setSaving(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const res = await fetch("/api/account/password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (session?.access_token ?? ""),
+      },
+      body: JSON.stringify({ currentPassword: actual, newPassword }),
+    });
     setSaving(false);
-    if (error) {
-      setMessage(traducirError(error.message));
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMessage(j?.error || "No se pudo cambiar la contraseña");
     } else {
       setMessage("Contraseña actualizada");
       setNewPassword("");
