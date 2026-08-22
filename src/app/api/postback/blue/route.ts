@@ -342,7 +342,10 @@ export async function GET(request: Request) {
               .update({ counted: false })
               .eq("id", contado.id)
               .then(() => {}, () => {});
-            await liberarEvento(`qftd:${playerid}`);
+            // ⛔ NO soltamos el candado qftd:<jugador>: si el casino REENVÍA el evento
+            // original tras la reversión, con el candado puesto NO se vuelve a pagar
+            // (evita el doble pago de una comisión ya revertida). Una re-cualificación
+            // legítima futura del mismo jugador, si la hubiera, se gestiona a mano.
           }
         } else {
           estadoRev = "duplicate";
