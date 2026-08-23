@@ -7,6 +7,7 @@ import { generarMensajeDiario } from "@/lib/telegramAI";
 import { BOTS } from "@/lib/bots";
 import { resumenSeguridad } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
+import { revisarSaludBots } from "@/lib/botHealth";
 
 // Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
 export const maxDuration = 60;
@@ -222,6 +223,16 @@ export async function GET(request: Request) {
     }
   } catch {
     /* la vigilancia nunca rompe el cron */
+  }
+
+  // VIGILANTE DE CAÍDAS: en cada disparo del cron (varias veces al día) revisa
+  // que los webhooks de los bots sigan vivos y avisa al admin si alguno está
+  // caído (throttle interno 1/bot/hora). Enganchado aquí porque el plan gratis de
+  // Vercel no permite un cron propio frecuente. BLINDADO: nunca rompe el cron.
+  try {
+    await revisarSaludBots();
+  } catch {
+    /* la vigilancia de salud nunca rompe el cron */
   }
 
   if (!telegramConfigurado()) {
