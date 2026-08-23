@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 import { compararSecreto } from "@/lib/secreto";
 import { tgApi, telegramConfigurado, botonJugar, guardarMsg, midDe, ENLACES_PAUSADOS } from "@/lib/telegram";
-import { generarMensajeDiario } from "@/lib/telegramAI";
+import { generarMensajeDiario, generarMensajeDiarioBot } from "@/lib/telegramAI";
 import { BOTS } from "@/lib/bots";
 import { resumenSeguridad } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
@@ -135,10 +135,16 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
         .select("daily_media_type, daily_file_id, daily_caption, daily_enabled")
         .eq("bot", bot.key)
         .maybeSingle();
-      if (!cfg || cfg.daily_enabled === false) continue;
-      const tieneMedia = !!cfg.daily_file_id;
-      const caption = (cfg.daily_caption as string) || undefined;
-      if (!tieneMedia && !caption) continue; // nada configurado para este bot
+      if (cfg?.daily_enabled === false) continue; // el dueño lo apagó a propósito
+      const tieneMedia = !!cfg?.daily_file_id;
+      let caption = (cfg?.daily_caption as string) || undefined;
+      // Si el dueño no configuró NADA, generamos el gancho por IA con la PERSONA
+      // del bot (su prompt `diario`), para que Jeffer/Livana/Black KP manden su
+      // mensaje diario en su voz sin depender de configuración manual.
+      if (!tieneMedia && !caption) {
+        caption = (await generarMensajeDiarioBot(bot.diario)) || undefined;
+        if (!caption) continue; // sin IA disponible ni config → nada que mandar hoy
+      }
 
       const { data: contactos } = await supabaseAdmin
         .from("bot_contacts")
@@ -154,7 +160,7 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
         const tanda = ids.slice(i, i + 25);
         await Promise.all(
           tanda.map(async (chatId) => {
-            const t = cfg.daily_media_type;
+            const t = cfg?.daily_media_type;
             const metodo = tieneMedia
               ? t === "video" ? "sendVideo" : t === "animation" ? "sendAnimation" : t === "photo" ? "sendPhoto" : t === "document" ? "sendDocument" : "sendMessage"
               : "sendMessage";
@@ -163,7 +169,7 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
               : { chat_id: chatId, text: caption, disable_web_page_preview: true, reply_markup: boton };
             if (tieneMedia) {
               const campo = t === "video" ? "video" : t === "animation" ? "animation" : t === "photo" ? "photo" : "document";
-              p[campo] = cfg.daily_file_id;
+              p[campo] = cfg?.daily_file_id;
             }
             const r = await tgApi(metodo, p, bot.token);
             if (r && !r.ok && /blocked|deactivated|kicked/i.test(r.description ?? "")) {
