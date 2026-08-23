@@ -14,6 +14,9 @@ import { Info, UserPlus, TrendingUp, TrendingDown, ShieldAlert } from "lucide-re
 // Fuera del componente: objeto estable para no romper el memo de BalanceChart
 // (si fuera un literal en el JSX, cambiaría de referencia en cada render).
 const LABEL_OVERRIDES = { commission: "Margen" };
+// Fallback ESTABLE para cuando aún no hay datos (si fuera un literal en el JSX,
+// cambiaría de referencia en cada render y BalanceChart re-renderizaría siempre).
+const EMPTY_CHART = [{ date: "", commission: 0 }];
 import Confetti from "@/components/Confetti";
 import { reproducirSonido } from "@/lib/sonido";
 
@@ -536,7 +539,7 @@ export default function AdminDashboard() {
       {/* Gráfico de la actividad de mis afiliados (según las tarjetas activas) */}
       <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.18s" }}>
         <BalanceChart
-          data={chartData.length ? chartData : [{ date: "", commission: 0 }]}
+          data={chartData.length ? chartData : EMPTY_CHART}
           activeMetrics={activeMetrics}
           primaryMetricKey={primaryMetricKey}
           labelOverrides={LABEL_OVERRIDES}

@@ -222,30 +222,38 @@ export async function resumenSeguridad(): Promise<ResumenSeguridad> {
     //  - retenidos: nº de FTD/QFTD en "held" (head count, barato).
     //  - dobles: jugadores con MÁS de un FTD contado AUTOMÁTICAMENTE (status
     //    "counted"; los aprobados a mano son "resolved" y no dan falsa alarma).
-    const [heldRes, countedRes] = await Promise.all([
-      supabaseAdmin
-        .from("postback_events")
-        .select("id", { count: "exact", head: true })
-        .in("event_type", ["ftd", "commission"])
-        .eq("status", "held"),
-      supabaseAdmin
+    const heldRes = await supabaseAdmin
+      .from("postback_events")
+      .select("id", { count: "exact", head: true })
+      .in("event_type", ["ftd", "commission"])
+      .eq("status", "held");
+    const retenidos = heldRes.count ?? 0;
+
+    // dobles: preferimos el RPC eventos_dobles() (AGREGA en Postgres y transfiere
+    // 0 filas en el caso normal, en vez de bajar TODO el histórico de player_id y
+    // contarlo en memoria en cada carga del panel y cada tick del cron). Si el RPC
+    // aún no existe (SQL sin aplicar), caemos al cálculo en memoria de siempre.
+    let dobles = 0;
+    const rpc = await supabaseAdmin.rpc("eventos_dobles");
+    if (!rpc.error && Array.isArray(rpc.data)) {
+      dobles = rpc.data.length;
+    } else {
+      const countedRes = await supabaseAdmin
         .from("postback_events")
         .select("player_id")
         .in("event_type", ["ftd", "commission"])
         .eq("status", "counted")
         .eq("counted", true) // OJO: una reversión pone counted=false pero DEJA status="counted".
         .not("player_id", "is", null) // Sin esto, un QFTD revertido + recualificado daba doble FALSO.
-        .limit(100000),
-    ]);
-    if (countedRes.error) return { retenidos: 0, dobles: 0, ok: true };
-
-    const retenidos = heldRes.count ?? 0;
-    const cnt = new Map<string, number>();
-    for (const r of countedRes.data ?? []) {
-      const p = r.player_id as string;
-      cnt.set(p, (cnt.get(p) ?? 0) + 1);
+        .limit(100000);
+      if (countedRes.error) return { retenidos, dobles: 0, ok: retenidos === 0 };
+      const cnt = new Map<string, number>();
+      for (const r of countedRes.data ?? []) {
+        const p = r.player_id as string;
+        cnt.set(p, (cnt.get(p) ?? 0) + 1);
+      }
+      dobles = [...cnt.values()].filter((n) => n > 1).length;
     }
-    const dobles = [...cnt.values()].filter((n) => n > 1).length;
 
     return { retenidos, dobles, ok: retenidos === 0 && dobles === 0 };
   } catch {
