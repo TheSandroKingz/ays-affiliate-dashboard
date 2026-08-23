@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { descargarFoto, descargarMedia, firmarMediaBot, mediaKeyConfigurada } from "@/lib/telegram";
 import { respuestaMedia } from "@/lib/mediaResponse";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { getBot } from "@/lib/bots";
 
 // Sirve una imagen que un jugador envió a un BOT (Jeffer/Mariam), para verla en
@@ -30,6 +31,12 @@ export async function GET(request: Request) {
   const b = Buffer.from(esperada);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return NextResponse.json({ error: "firma inválida" }, { status: 403 });
+  }
+
+  // Rate-limit por IP (ver /api/telegram/media): frena repetir una URL firmada
+  // en bucle para forzar descargas desde Telegram.
+  if (!rateLimit(`mibotmedia:${getClientIp(request)}`, 200, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
   }
 
   // Resiliente a que full_file_id aún no exista (migración sin aplicar).

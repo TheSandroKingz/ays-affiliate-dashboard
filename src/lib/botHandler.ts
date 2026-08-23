@@ -455,7 +455,7 @@ export async function procesarUpdate(
     // (no una duda). Esto SÍ salta el candado de "no dos seguidos".
     // Negación: si DICE que NO quiere el vídeo/ejemplo, NO cuenta como petición.
     const negPide =
-      /\b(no|nunca|deja de|para de|ya no|dejes de|dej[eé]is de)\b[^.\n]{0,25}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|v[ií]deo|patr|ejemplo|clip)/i.test(textoJ);
+      /\b(no|nunca|ya no|deja de|para de|dejad? de|dej[eé]is de|dejes de)\b\s*(?:(?:me|te|lo|la|los|las|melo|mela)\s*){0,2}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|manda|quiero (?:el|un|ver))\w*/i.test(textoJ);
     // Reenvío EXPLÍCITO = pide el vídeo/patrón OTRA VEZ (con señal clara de "de
     // nuevo": otra vez, reenvía, repite, vuelve a mandar). "pásame un patrón" a
     // secas NO es reenvío (es una 1ª petición normal) y NO debe saltar el candado

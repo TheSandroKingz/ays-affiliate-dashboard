@@ -119,17 +119,9 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
   for (const bot of Object.values(BOTS)) {
     if (!bot.token) continue;
     try {
-      // Idempotencia por bot y día (misma tabla que el de Sandro). El envío
-      // MANUAL (force) del dueño no se frena, para poder reenviar a mano.
-      if (!force) {
-        const clave = `botdiario:${bot.key}:${diaMadrid}`;
-        const { data: ins, error } = await supabaseAdmin
-          .from("telegram_envio_diario")
-          .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
-          .select("clave");
-        if (!error && ins && ins.length === 0) continue; // ya enviado hoy
-      }
-
+      // Determinar QUÉ enviar (config del dueño o gancho por IA) ANTES de reservar
+      // el día: si no hay nada que mandar (p. ej. la IA falla un instante), NO
+      // quemamos la clave de idempotencia y el próximo disparo reintenta.
       const { data: cfg } = await supabaseAdmin
         .from("bot_config")
         .select("daily_media_type, daily_file_id, daily_caption, daily_enabled")
@@ -143,7 +135,18 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
       // mensaje diario en su voz sin depender de configuración manual.
       if (!tieneMedia && !caption) {
         caption = (await generarMensajeDiarioBot(bot.diario)) || undefined;
-        if (!caption) continue; // sin IA disponible ni config → nada que mandar hoy
+        if (!caption) continue; // sin IA ni config → nada que mandar; se reintenta en el próximo disparo
+      }
+
+      // Idempotencia por bot y día (misma tabla que el de Sandro), reservada SOLO
+      // cuando YA tenemos algo que enviar. El envío MANUAL (force) no se frena.
+      if (!force) {
+        const clave = `botdiario:${bot.key}:${diaMadrid}`;
+        const { data: ins, error } = await supabaseAdmin
+          .from("telegram_envio_diario")
+          .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
+          .select("clave");
+        if (!error && ins && ins.length === 0) continue; // ya enviado hoy
       }
 
       const { data: contactos } = await supabaseAdmin

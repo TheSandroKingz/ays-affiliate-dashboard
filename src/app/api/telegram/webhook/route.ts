@@ -514,7 +514,7 @@ export async function POST(request: Request) {
       // Negación: si DICE que NO quiere el vídeo/ejemplo ("no me mandes el vídeo",
       // "deja de mandarme el clip"), NO cuenta como petición ni salta candados.
       const negPide =
-        /\b(no|nunca|deja de|para de|ya no|dejes de|dej[eé]is de)\b[^.\n]{0,25}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|v[ií]deo|patr|ejemplo|clip)/i.test(textoJ);
+        /\b(no|nunca|ya no|deja de|para de|dejad? de|dej[eé]is de|dejes de)\b\s*(?:(?:me|te|lo|la|los|las|melo|mela)\s*){0,2}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|manda|quiero (?:el|un|ver))\w*/i.test(textoJ);
       // Pide OTRO/MÁS ejemplo explícitamente → se lo mandamos aunque haya cooldown.
       const pideOtro =
         /(otro|otra|m[aá]s|siguiente)\s*(ejemplo|forma|v[ií]deo|truco|patr[oó]n)|otro ejemplo|otra forma/i.test(

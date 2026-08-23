@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimitShared, getClientIp } from "@/lib/rateLimit";
+import { estaBloqueado, registrarFallo, limpiarFallos } from "@/lib/lockout";
 
 // Login en el SERVIDOR. Resuelve usuario→email AQUÍ (nunca se devuelve el email
 // al navegador, así nadie puede sonsacar el correo de otro adivinando su
@@ -59,7 +60,6 @@ export async function POST(request: NextRequest) {
   // aunque el atacante cambie de IP. Tras 8 fallos en 15 min, la cuenta queda
   // bloqueada el resto de la ventana. BLINDADO: si la tabla/función aún no
   // existe (SQL sin aplicar), no bloquea (el login sigue funcionando).
-  const VENTANA_MS = 15 * 60 * 1000;
   const claveCuenta = `login:${email.toLowerCase()}`;
   // ⚠️ NO bloqueamos ANTES de validar la contraseña. Hacerlo permitía a alguien
   // que conociera el usuario de la víctima dejarla FUERA a base de fallos (DoS),
@@ -79,19 +79,23 @@ export async function POST(request: NextRequest) {
     password,
   });
   if (error || !data.session) {
-    // Cuenta el fallo (atómico, compartido entre servidores).
-    await supabaseAdmin
-      .rpc("login_fallo", { p_key: claveCuenta, p_ventana_ms: VENTANA_MS })
-      .then(() => {}, () => {});
+    // Cuenta el fallo (atómico, compartido entre servidores) y, si la cuenta
+    // acumula demasiados fallos en la ventana, CORTA con 429 (freno anti-fuerza-
+    // bruta POR CUENTA, que aguanta aunque el atacante rote de IP). ⚠️ Una
+    // contraseña CORRECTA se valida ARRIBA (signInWithPassword) y nunca llega
+    // aquí: el usuario legítimo JAMÁS queda bloqueado, solo se frena el probado.
+    await registrarFallo(claveCuenta);
+    if (await estaBloqueado(claveCuenta)) {
+      return NextResponse.json(
+        { error: "Demasiados intentos. Espera unos minutos." },
+        { status: 429 }
+      );
+    }
     return generico();
   }
 
   // Éxito: limpiamos el contador de fallos de esta cuenta.
-  await supabaseAdmin
-    .from("login_intentos")
-    .delete()
-    .eq("k", claveCuenta)
-    .then(() => {}, () => {});
+  await limpiarFallos(claveCuenta);
 
   return NextResponse.json({
     access_token: data.session.access_token,

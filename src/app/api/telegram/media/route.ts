@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { descargarFoto, descargarMedia, firmarMedia, mediaKeyConfigurada } from "@/lib/telegram";
 import { respuestaMedia } from "@/lib/mediaResponse";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 // Sirve una imagen que un jugador envió por Telegram, para verla en el visor de
 // chats del panel. NO usa sesión (un <img> no manda cabeceras): se protege con
@@ -32,6 +33,13 @@ export async function GET(request: Request) {
   const b = Buffer.from(esperada);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return NextResponse.json({ error: "firma inválida" }, { status: 403 });
+  }
+
+  // Rate-limit por IP: una URL firmada vive 12h; sin esto se podría repetir en
+  // bucle y forzar descargas desde Telegram (coste/ancho de banda). 200/min es
+  // holgado para ver un chat con muchas imágenes; frena el abuso.
+  if (!rateLimit(`media:${getClientIp(request)}`, 200, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
   }
 
   // Resiliente a que full_file_id aún no exista (migración sin aplicar).
