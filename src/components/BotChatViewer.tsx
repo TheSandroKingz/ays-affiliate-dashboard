@@ -106,7 +106,7 @@ export default function BotChatViewer({
   const [cargandoJug, setCargandoJug] = useState(false);
   const [chatAbierto, setChatAbierto] = useState<string | null>(null);
   const [chatMsgs, setChatMsgs] = useState<
-    { role: string; content: string; created_at?: string; media_url?: string | null }[]
+    { role: string; content: string; created_at?: string; media_url?: string | null; media_kind?: "video" | "image" | null }[]
   >([]);
   const [cargandoChat, setCargandoChat] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -642,13 +642,22 @@ export default function BotChatViewer({
                               }`}
                             >
                               {m.media_url && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={m.media_url}
-                                  alt="Imagen enviada"
-                                  className="mb-1 max-w-[200px] rounded-lg"
-                                  loading="lazy"
-                                />
+                                m.media_kind === "video" ? (
+                                  <video
+                                    src={m.media_url}
+                                    controls
+                                    preload="metadata"
+                                    className="mb-1 max-w-[200px] rounded-lg"
+                                  />
+                                ) : (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={m.media_url}
+                                    alt="Imagen enviada"
+                                    className="mb-1 max-w-[200px] rounded-lg"
+                                    loading="lazy"
+                                  />
+                                )
                               )}
                               {m.content}
                               {/* Traducir: solo en mensajes del jugador con texto. En modo

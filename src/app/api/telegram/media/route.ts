@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { descargarFoto, firmarMedia, mediaKeyConfigurada } from "@/lib/telegram";
+import { descargarFoto, descargarMedia, firmarMedia, mediaKeyConfigurada } from "@/lib/telegram";
 
 // Sirve una imagen que un jugador envió por Telegram, para verla en el visor de
 // chats del panel. NO usa sesión (un <img> no manda cabeceras): se protege con
@@ -33,15 +33,31 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "firma inválida" }, { status: 403 });
   }
 
-  const { data: msg } = await supabaseAdmin
+  // Resiliente a que full_file_id aún no exista (migración sin aplicar).
+  const first = await supabaseAdmin
     .from("telegram_messages")
-    .select("file_id")
+    .select("file_id, full_file_id, media_type")
     .eq("id", id)
     .maybeSingle();
+  let msg = first.data as { file_id?: string; full_file_id?: string; media_type?: string } | null;
+  if (first.error) {
+    const second = await supabaseAdmin
+      .from("telegram_messages")
+      .select("file_id, media_type")
+      .eq("id", id)
+      .maybeSingle();
+    msg = second.data as typeof msg;
+  }
   const fileId = msg?.file_id as string | undefined;
-  if (!fileId) return NextResponse.json({ error: "no existe" }, { status: 404 });
+  const fullId = msg?.full_file_id as string | undefined;
+  const tipo = msg?.media_type as string | undefined;
+  if (!fileId && !fullId) return NextResponse.json({ error: "no existe" }, { status: 404 });
 
-  const img = await descargarFoto(fileId);
+  // Vídeo/animación → reproducible (mime de vídeo, tope 20MB); si no, imagen.
+  const esVideo = tipo === "video" || tipo === "animation";
+  const img = esVideo
+    ? await descargarMedia((fullId ?? fileId)!)
+    : await descargarFoto(fileId!);
   if (!img) return NextResponse.json({ error: "no disponible" }, { status: 502 });
 
   const bytes = Buffer.from(img.base64, "base64");

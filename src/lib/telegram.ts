@@ -156,6 +156,52 @@ export async function descargarFoto(
   }
 }
 
+// Descarga un archivo COMPLETO de Telegram (vídeo/animación/foto/documento) por
+// su file_id, para REPRODUCIRLO en el visor de chats del panel. A diferencia de
+// descargarFoto (solo imagen, 4MB, para la visión de la IA), aquí admitimos
+// vídeo con su mime real y un tope mayor (Telegram deja descargar hasta ~20MB
+// por la API del bot). BLINDADO: cualquier fallo devuelve null.
+export async function descargarMedia(
+  fileId: string,
+  token: string = TOKEN
+): Promise<{ base64: string; mediaType: string } | null> {
+  if (!token || !fileId) return null;
+  try {
+    const info = await tgApi("getFile", { file_id: fileId }, token);
+    const filePath = (info?.result as { file_path?: string } | undefined)
+      ?.file_path;
+    if (!filePath) return null;
+    if (!/^[\w./-]+$/.test(filePath) || filePath.includes("..")) return null;
+    const res = await fetch(
+      `https://api.telegram.org/file/bot${token}/${filePath}`
+    );
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    // Tope de seguridad ~20MB (límite práctico de descarga por bot en Telegram).
+    if (buf.length > 20_000_000) return null;
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    const mediaType =
+      ext === "mp4"
+        ? "video/mp4"
+        : ext === "mov"
+        ? "video/quicktime"
+        : ext === "webm"
+        ? "video/webm"
+        : ext === "png"
+        ? "image/png"
+        : ext === "webp"
+        ? "image/webp"
+        : ext === "gif"
+        ? "image/gif"
+        : ext === "jpg" || ext === "jpeg"
+        ? "image/jpeg"
+        : "application/octet-stream";
+    return { base64: buf.toString("base64"), mediaType };
+  } catch {
+    return null;
+  }
+}
+
 // Envía un mensaje de texto a un chat. `reply_markup` opcional (botones). El
 // `token` se puede pasar (bots nuevos); por defecto usa el de Sandro.
 export async function tgEnviar(

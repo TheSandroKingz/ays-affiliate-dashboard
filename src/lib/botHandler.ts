@@ -505,6 +505,8 @@ export async function procesarUpdate(
     const ejemploJustoAntes = msDesdeEjemplo < 3 * 60 * 1000;
 
     let videoEnviado = false;
+    let videoEnviadoFileId: string | null = null; // para reproducirlo en el panel
+    let videoEnviadoTipo: string | null = null;
     if (
       !ENLACES_PAUSADOS &&
       // SOLO cuando lo PIDEN de verdad (patrón/vídeo/otro ejemplo). NO en automático
@@ -560,6 +562,8 @@ export async function procesarUpdate(
         const rv = await tgApi(metodo, p, tok);
         if (rv?.ok) {
           videoEnviado = true;
+          videoEnviadoFileId = dv.file_id;
+          videoEnviadoTipo = dv.media_type ?? "video";
           await supabaseAdmin
             .from("bot_contacts")
             .update({ last_example_at: new Date().toISOString() })
@@ -621,8 +625,11 @@ export async function procesarUpdate(
       return { role: m.role as "user" | "assistant", content: marca + m.content };
     });
 
-    // file_id de la media del jugador (para verla en el panel).
-    const mediaJ = extraerMedia(msg, true); // media del jugador: miniatura (panel/visión)
+    // file_id de la media del jugador = miniatura (la usa la visión de la IA y como
+    // fotograma). Para vídeos guardamos aparte el archivo REAL en `full_file_id`
+    // (best-effort más abajo) para poder REPRODUCIRLO en el panel.
+    const mediaJ = extraerMedia(msg, true); // miniatura (panel/visión)
+    const mediaJreal = extraerMedia(msg, false); // archivo real (reproducir)
 
     const { data: insUser } = await supabaseAdmin
       .from("bot_messages")
@@ -637,6 +644,20 @@ export async function procesarUpdate(
       .select("id")
       .maybeSingle();
     const miMsgId = (insUser?.id as number | undefined) ?? null;
+
+    // Vídeo/animación: guarda el archivo REAL para reproducirlo en el panel.
+    // Best-effort: si la columna full_file_id aún no existe, se ignora sin romper.
+    if (
+      miMsgId &&
+      mediaJreal &&
+      (mediaJreal.media_type === "video" || mediaJreal.media_type === "animation")
+    ) {
+      await supabaseAdmin
+        .from("bot_messages")
+        .update({ full_file_id: mediaJreal.file_id })
+        .eq("id", miMsgId)
+        .then(() => {}, () => {});
+    }
 
     // SOLO cortesía/cierre ("ok", "gracias", "mañana te digo") sin media: no
     // respondemos. Se calcula ANTES del debounce para no gastar 4,5s + query en
@@ -774,7 +795,7 @@ export async function procesarUpdate(
     }
 
     if (respuesta || videoEnviado) {
-      await supabaseAdmin
+      const { data: insA } = await supabaseAdmin
         .from("bot_messages")
         .insert({
           bot: bot.key,
@@ -782,7 +803,18 @@ export async function procesarUpdate(
           role: "assistant",
           content: respuesta || "(le envié el vídeo: así juego yo)",
         })
-        .then(() => {}, () => {});
+        .select("id")
+        .maybeSingle();
+      // Si le mandé el vídeo del patrón, guardo su file_id para verlo en el panel.
+      // Best-effort: si full_file_id aún no existe como columna, se ignora.
+      const insAId = insA?.id as number | undefined;
+      if (videoEnviado && videoEnviadoFileId && insAId) {
+        await supabaseAdmin
+          .from("bot_messages")
+          .update({ full_file_id: videoEnviadoFileId, media_type: videoEnviadoTipo })
+          .eq("id", insAId)
+          .then(() => {}, () => {});
+      }
     }
 
     // Copia al dueño del bot para que vea la conversación y pueda intervenir.

@@ -493,6 +493,8 @@ export async function POST(request: Request) {
       }
 
       let videoEnviado = false;
+      let videoEnviadoFileId: string | null = null; // para reproducirlo en el panel
+      let videoEnviadoTipo: string | null = null;
       // Detecta que piden el patrón/método O que piden VER el vídeo o están
       // esperándolo (para no dejarlos colgados esperando: se lo mandamos).
       // Detecta que piden EL PATRÓN o piden VER el vídeo de forma clara. Ojo:
@@ -635,6 +637,8 @@ export async function POST(request: Request) {
           if (rv?.ok) {
             await guardarMsg(chatId, midDe(rv));
             videoEnviado = true;
+            videoEnviadoFileId = dv.file_id;
+            videoEnviadoTipo = m ?? "video";
             await supabaseAdmin
               .from("telegram_contacts")
               .update({ last_example_at: new Date().toISOString() })
@@ -887,14 +891,25 @@ export async function POST(request: Request) {
       // Guardamos la respuesta del bot en el transcript (el mensaje del jugador
       // ya se guardó antes de responder, arriba).
       if (respuesta || videoEnviado) {
-        await supabaseAdmin
+        const { data: insA } = await supabaseAdmin
           .from("telegram_messages")
           .insert({
             chat_id: chatId,
             role: "assistant",
             content: respuesta || "(le envié el vídeo: así juego yo)",
           })
-          .then(() => {}, () => {});
+          .select("id")
+          .maybeSingle();
+        // Si le mandé el vídeo del patrón, guardo su file_id para verlo en el panel.
+        // Best-effort: si full_file_id aún no existe como columna, se ignora.
+        const insAId = insA?.id as number | undefined;
+        if (videoEnviado && videoEnviadoFileId && insAId) {
+          await supabaseAdmin
+            .from("telegram_messages")
+            .update({ full_file_id: videoEnviadoFileId, media_type: videoEnviadoTipo })
+            .eq("id", insAId)
+            .then(() => {}, () => {});
+        }
       }
 
       // Copia al dueño para que veas la conversación y puedas intervenir.
