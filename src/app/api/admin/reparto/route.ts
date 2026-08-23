@@ -104,13 +104,24 @@ export async function GET(request: Request) {
     sumar(cfg, s.ftd, Number(s.margin ?? 0));
   }
   // Descontar del pool los OVERRIDES que el admin ya pagó a los afiliados-padre
-  // por sus subafiliados: ese dinero ya salió y NO se reparte con el socio. Se
-  // imputa a "General / directo" para que la suma cuadre con la ganancia limpia
-  // (totalClean también resta overridesPaid). Sin esto el socio cobraba de más.
-  const overridesPaid = Number(mes.totals?.overridesPaid ?? 0);
-  if (overridesPaid > 0) {
-    const g = grupos.get(GENERAL.grupo);
-    if (g) g.ganancia -= overridesPaid;
+  // por sus subafiliados: ese dinero ya salió y NO se reparte con el socio. ⚠️ El
+  // override es un COSTE del tráfico del HIJO (nace de SU comisión), así que se
+  // resta del grupo del HIJO que lo origina, NO de "General/directo". La SUMA es
+  // la misma que mes.totals.overridesPaid (así el total sigue cuadrando con
+  // totalClean); solo cambia el reparto por grupo (antes sesgaba el Kingz/socio).
+  const percentById = new Map(struct.map((a) => [a.id, Number(a.subaffiliate_percent ?? 0)]));
+  const commissionByUser = new Map(
+    mes.stats.map((s) => [s.user_id, Number(s.commission ?? 0)])
+  );
+  for (const child of struct) {
+    if (!child.referred_by || child.referred_by === meId) continue;
+    const parentPct = percentById.get(child.referred_by) ?? 0;
+    if (!parentPct) continue;
+    const override = (parentPct / 100) * (commissionByUser.get(child.user_id) ?? 0);
+    if (override <= 0) continue;
+    const cfg = REPARTO_POR_USUARIO[child.user_id] ?? GENERAL;
+    const g = grupos.get(cfg.grupo);
+    if (g) g.ganancia -= override;
   }
   const fuentes = [...grupos.values()].map((f) => ({
     nombre: f.nombre,

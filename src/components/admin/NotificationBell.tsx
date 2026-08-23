@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, UserPlus, Coins } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchPending } from "@/lib/adminPending";
 
 type Ev = {
   id: number;
@@ -37,14 +38,12 @@ export default function NotificationBell() {
       if (!session) return;
       const h = { Authorization: "Bearer " + session.access_token };
       const [p, a] = await Promise.all([
-        fetch("/api/admin/pending", { cache: "no-store", headers: h })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
+        fetchPending(), // compartido con SolicitudesNavLink (dedup)
         fetch("/api/admin/actividad?ligero=1", { cache: "no-store", headers: h })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
       ]);
-      setPendingList(Array.isArray(p?.pending) ? p.pending : []);
+      setPendingList(p.pending);
       const all: Ev[] = Array.isArray(a?.events) ? a.events : [];
       // Los QFTD (que pagan) son event_type "commission"; los "ftd" antiguos
       // también cuentan. El badge avisa de QFTD contados en las últimas 24h.

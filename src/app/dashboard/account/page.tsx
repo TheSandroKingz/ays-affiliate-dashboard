@@ -13,6 +13,31 @@ import { useProfile } from "@/components/DashboardProvider";
 import { TONOS, getTono, setTono, reproducirSonido, type TonoNotif } from "@/lib/sonido";
 import { contieneEmoji } from "@/lib/texto";
 
+// Guarda campos de perfil por el ENDPOINT DE SERVIDOR (whitelist + service role),
+// en vez de escribir directo en `affiliates` con la anon key. Así la seguridad no
+// depende de recordar los privilegios de columna en la BD. Devuelve true si OK.
+async function guardarPerfil(
+  campos: Record<string, unknown>
+): Promise<{ ok: boolean; duplicate?: boolean }> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return { ok: false };
+  try {
+    const r = await fetch("/api/account/profile", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + session.access_token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(campos),
+    });
+    return { ok: r.ok, duplicate: r.status === 409 };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export default function AccountPage() {
   const { birthdate: perfilBirthdate } = useProfile();
   const [activeTab, setActiveTab] = useState<
@@ -127,11 +152,7 @@ export default function AccountPage() {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
-    await supabase
-      .from("affiliates")
-      .update({ [campo]: valor })
-      .eq("user_id", session.user.id)
-      .then(() => {}, () => {});
+    await guardarPerfil({ [campo]: valor });
   }
 
   // Fecha de nacimiento inicial desde el perfil compartido (sin consulta extra).
@@ -176,7 +197,7 @@ export default function AccountPage() {
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
     const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-    await supabase.from("affiliates").update({ avatar_url: publicUrl }).eq("user_id", user.id);
+    await guardarPerfil({ avatar_url: publicUrl });
 
     setAvatarUrl(publicUrl);
     // El menú lateral refleja la nueva foto al instante, sin recargar.
@@ -220,16 +241,12 @@ export default function AccountPage() {
       display_name: firstName.trim(),
     };
     if (birthdate) upd.birthdate = birthdate;
-    let { error } = await supabase
-      .from("affiliates")
-      .update(upd)
-      .eq("user_id", user.id);
-    // Por si la columna 'birthdate' aún no existe: reintenta sin ella.
-    if (error && birthdate) {
-      delete upd.birthdate;
-      const r = await supabase.from("affiliates").update(upd).eq("user_id", user.id);
-      error = r.error;
-    }
+    // Guardado por el SERVIDOR (whitelist + service role). El reintento sin
+    // 'birthdate' si la columna no existe lo hace el propio endpoint.
+    const resPerfil = await guardarPerfil(upd);
+    const error: { code?: string } | null = resPerfil.ok
+      ? null
+      : { code: resPerfil.duplicate ? "23505" : "other" };
 
     let emailError = false;
     let emailMsg = "";

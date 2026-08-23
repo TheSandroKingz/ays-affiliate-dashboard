@@ -2,26 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { fetchPending } from "@/lib/adminPending";
 
 // Enlace "Solicitudes" con un contador de cuántas hay pendientes.
 export default function SolicitudesNavLink() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    async function load() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch("/api/admin/pending", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      })
-        .then((r) => (r.ok ? r.json() : { pending: [] }))
-        .catch(() => ({ pending: [] }));
-      setCount((res.pending ?? []).length);
-    }
-    load();
+    fetchPending().then((res) => setCount(res.pending.length));
   }, []);
 
   return (
