@@ -396,23 +396,11 @@ export async function GET(request: Request) {
         url: "/admin/actividad",
       });
     }
-    // ⚠️ Enlace de AFILIADO NORMAL cuyo código NO empareja: cae a "Default" (la casa)
-    // y el afiliado real se queda SIN su QFTD sin que nadie se entere. Avisamos al
-    // admin para que corrija el tracking code y no le pierda ni un depósito.
-    const tagLimpio = codigoParaMatch(tag).trim();
-    const cayoADefault =
-      !esCodigoDeBot(tag) &&
-      !!target &&
-      (target.freshaffs_tracking_code ?? "").toLowerCase() === "default" &&
-      !!tagLimpio &&
-      tagLimpio.toLowerCase() !== "default";
-    if (cayoADefault) {
-      await enviarPush(ADMIN_USER_ID, {
-        title: "⚠️ QFTD sin afiliado (fue a la casa)",
-        body: `Un depósito con el código "${tagLimpio}" no emparejó con ningún afiliado y se contó a la casa. Revisa su tracking code para no perderle el QFTD.`,
-        url: "/admin/actividad",
-      });
-    }
+    // (Antes había aquí un aviso "QFTD sin afiliado" para el caso de un afiliado
+    // cuyo código no empareja y cae a Default. Se QUITÓ: tu propio tráfico web
+    // llega con códigos de campaña que tampoco emparejan y caen a Default/Mongolitos
+    // —correcto, es tu cuenta—, así que el aviso disparaba falsos positivos en cada
+    // QFTD tuyo. El de "QFTD de BOT sin dueño" (arriba) sí se queda, ese sí es real.)
     let estado: EstadoEvento = "no_match";
     let comisionPagada = 0;
     let heldReason: "double_pay" | null = null;
