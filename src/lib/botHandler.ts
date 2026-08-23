@@ -319,13 +319,21 @@ export async function procesarUpdate(
         await tgEnviar(chatId, "Mándame /todos con un vídeo o foto en el pie, o /todos seguido de un texto.", {}, tok);
         return;
       }
-      const { data: cs } = await supabaseAdmin
-        .from("bot_contacts")
-        .select("chat_id")
-        .eq("bot", bot.key)
-        .eq("opted_out", false)
-        .eq("silenced", false);
-      const ids = (cs ?? []).map((c) => c.chat_id as number);
+      // Paginado: PostgREST corta a 1000 filas → sin esto, a partir del contacto
+      // 1000 nadie recibe el envío masivo. Traemos TODOS en páginas de 1000.
+      const ids: number[] = [];
+      for (let off = 0; ; off += 1000) {
+        const { data: cs } = await supabaseAdmin
+          .from("bot_contacts")
+          .select("chat_id")
+          .eq("bot", bot.key)
+          .eq("opted_out", false)
+          .eq("silenced", false)
+          .range(off, off + 999);
+        const tanda = (cs ?? []).map((c) => c.chat_id as number);
+        ids.push(...tanda);
+        if (tanda.length < 1000) break;
+      }
       const boton = botonJugar(bot.enlace);
       let env = 0;
       const bloq: number[] = [];

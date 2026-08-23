@@ -396,6 +396,23 @@ export async function GET(request: Request) {
         url: "/admin/actividad",
       });
     }
+    // ⚠️ Enlace de AFILIADO NORMAL cuyo código NO empareja: cae a "Default" (la casa)
+    // y el afiliado real se queda SIN su QFTD sin que nadie se entere. Avisamos al
+    // admin para que corrija el tracking code y no le pierda ni un depósito.
+    const tagLimpio = codigoParaMatch(tag).trim();
+    const cayoADefault =
+      !esCodigoDeBot(tag) &&
+      !!target &&
+      (target.freshaffs_tracking_code ?? "").toLowerCase() === "default" &&
+      !!tagLimpio &&
+      tagLimpio.toLowerCase() !== "default";
+    if (cayoADefault) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ QFTD sin afiliado (fue a la casa)",
+        body: `Un depósito con el código "${tagLimpio}" no emparejó con ningún afiliado y se contó a la casa. Revisa su tracking code para no perderle el QFTD.`,
+        url: "/admin/actividad",
+      });
+    }
     let estado: EstadoEvento = "no_match";
     let comisionPagada = 0;
     let heldReason: "double_pay" | null = null;

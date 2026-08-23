@@ -98,6 +98,11 @@ export function computeAdminStats(
         };
       }
       const owed = s.commission + overrideEarned;
+      // ⚠️ El margen del admin usa su cpa_spain para TODOS los FTD. Hoy es EXACTO
+      // porque el cpa_spain y el cpa_other del admin son iguales; solo se
+      // desviaría (en FTD extranjeros) si algún día se pone un cpa_other distinto.
+      // Si eso pasa, hay que guardar el país por FTD y calcular el término del
+      // admin por país. Mientras cpa_spain==cpa_other, esto es correcto.
       const margin = adminCpa * s.ftd - s.commission;
       return {
         user_id: a.user_id,

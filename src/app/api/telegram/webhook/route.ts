@@ -319,12 +319,21 @@ export async function POST(request: Request) {
         );
         return NextResponse.json({ ok: true });
       }
-      const { data: cs } = await supabaseAdmin
-        .from("telegram_contacts")
-        .select("chat_id")
-        .eq("opted_out", false)
-        .eq("silenced", false);
-      const ids = (cs ?? []).map((c) => c.chat_id as number);
+      // Paginado: PostgREST corta a 1000 filas. Sin esto, a partir del contacto
+      // 1000 nadie recibiría el envío masivo y el resumen "Enviado a X de Y" lo
+      // ocultaría (Y≤1000). Traemos TODOS en páginas de 1000.
+      const ids: number[] = [];
+      for (let off = 0; ; off += 1000) {
+        const { data: cs } = await supabaseAdmin
+          .from("telegram_contacts")
+          .select("chat_id")
+          .eq("opted_out", false)
+          .eq("silenced", false)
+          .range(off, off + 999);
+        const tanda = (cs ?? []).map((c) => c.chat_id as number);
+        ids.push(...tanda);
+        if (tanda.length < 1000) break;
+      }
       const boton = botonJugar();
       let env = 0;
       const bloq: number[] = [];
