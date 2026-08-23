@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const { data: structure } = await supabaseAdmin
     .from("affiliates")
-    .select("user_id, display_name")
+    .select("id, user_id, display_name, referred_by, subaffiliate_percent")
     .neq("user_id", user.id);
 
   // Afiliados REALES a los que pagas (no tus cuentas propias tipo Mongolitos).
@@ -39,12 +39,31 @@ export async function GET(request: Request) {
       .limit(100000),
   ]);
 
-  // Ganado por (afiliado, mes).
-  const ganado = new Map<string, number>();
+  // Comisión PROPIA por (afiliado, mes).
+  const propia = new Map<string, number>();
   for (const d of dailyRes.data ?? []) {
     const mes = String(d.date).slice(0, 7);
     const k = `${d.user_id}|${mes}`;
-    ganado.set(k, (ganado.get(k) ?? 0) + Number(d.commission ?? 0));
+    propia.set(k, (propia.get(k) ?? 0) + Number(d.commission ?? 0));
+  }
+  // Ganado = comisión propia + OVERRIDE de subafiliados (lo que un PADRE gana por
+  // sus hijos ese mes: pct_padre × comisión_del_hijo). MISMA fórmula que
+  // adminStats/saldos (owed = commission + overrideEarned). Sin esto, el
+  // "Pendiente por mes" salía CORTO y podías pagar de MENOS a un padre.
+  const ganado = new Map(propia);
+  const byId = new Map((structure ?? []).map((a) => [a.id as string, a]));
+  for (const child of structure ?? []) {
+    const parent = child.referred_by ? byId.get(child.referred_by as string) : null;
+    if (!parent) continue;
+    const pct = Number(parent.subaffiliate_percent ?? 0);
+    if (!pct || !nombre.has(parent.user_id as string)) continue;
+    for (const [k, com] of propia) {
+      const barra = k.indexOf("|");
+      if (k.slice(0, barra) !== child.user_id) continue;
+      const mes = k.slice(barra + 1);
+      const pk = `${parent.user_id}|${mes}`;
+      ganado.set(pk, (ganado.get(pk) ?? 0) + (pct / 100) * com);
+    }
   }
   // Pagado por (afiliado, mes) — según la fecha del pago.
   const pagado = new Map<string, number>();

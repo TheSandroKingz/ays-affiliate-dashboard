@@ -56,11 +56,13 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
       supabaseAdmin
         .from("affiliate_daily_stats")
         .select("clicks")
-        .gte("date", hace7),
+        .gte("date", hace7)
+        .limit(100000),
       supabaseAdmin
         .from("postback_events")
         .select("event_type, counted, afp, player_id")
-        .gte("created_at", hace3),
+        .gte("created_at", hace3)
+        .limit(100000),
     ]);
 
     const ultimoEvento = (ultRes.data?.created_at as string | undefined) ?? null;
@@ -150,8 +152,9 @@ export async function deteccionFraude(): Promise<Fraude> {
       supabaseAdmin
         .from("affiliate_daily_stats")
         .select("user_id, clicks, ftd")
-        .gte("date", inicioMes),
-      supabaseAdmin.from("affiliates").select("user_id, display_name"),
+        .gte("date", inicioMes)
+        .limit(100000),
+      supabaseAdmin.from("affiliates").select("user_id, display_name").limit(100000),
     ]);
 
     const nombres = new Map<string, string | null>();

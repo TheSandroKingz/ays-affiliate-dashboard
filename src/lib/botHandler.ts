@@ -445,7 +445,7 @@ export async function procesarUpdate(
         if (owner) {
           await tgEnviar(
             String(owner),
-            `🔇 Silenciado ${from.first_name ?? "un usuario"} (chat ${chatId}) en ${bot.label}: varios insultos/acusaciones, dejé de contestarle. Reactívalo quitándole el silencio en el panel.`,
+            `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: varios insultos/acusaciones, dejé de contestarle. Reactívalo quitándole el silencio en el panel.`,
             {},
             tok
           ).catch(() => {});

@@ -494,7 +494,7 @@ export async function POST(request: Request) {
           if (OWNER_CHAT_ID) {
             await tgEnviar(
               String(OWNER_CHAT_ID),
-              `🔇 Silenciado ${from.first_name ?? "un usuario"} (chat ${chatId}): lleva varios insultos/amenazas, dejé de contestarle para no gastar IA. Para reactivarlo, quítale el silencio en el panel.`
+              `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): lleva varios insultos/amenazas, dejé de contestarle para no gastar IA. Para reactivarlo, quítale el silencio en el panel.`
             ).catch(() => {});
           }
           return NextResponse.json({ ok: true, silenced: "troll" });

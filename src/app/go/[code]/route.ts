@@ -29,6 +29,12 @@ async function getAffiliate(code: string): Promise<CacheEntry> {
   const aff = data?.[0];
   const value: CacheEntry =
     aff && aff.promo_link ? { user_id: aff.user_id, promo_link: aff.promo_link } : null;
+  // Poda: tope de tamaño para que enumerar códigos aleatorios (cada uno una clave
+  // nueva) NO haga crecer el Map sin límite (fuga de memoria en la Lambda).
+  if (linkCache.size > 2000) {
+    const oldest = linkCache.keys().next().value;
+    if (oldest !== undefined) linkCache.delete(oldest);
+  }
   linkCache.set(key, { value, exp: now + CACHE_TTL });
   return value;
 }
