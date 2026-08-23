@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { compararSecreto } from "@/lib/secreto";
 
+// Margen de tiempo: copiar las tablas completas puede tardar; que no se corte.
+export const maxDuration = 60;
+
 // Copia de seguridad automática (cron diario): guarda una "foto" de las tablas
 // de datos en `data_snapshots`. Permite restaurar si un día se corrompe o se
 // borra algo por error. Conserva las últimas 14 copias. Protegido por CRON_SECRET.

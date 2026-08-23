@@ -86,13 +86,22 @@ export async function GET(
       // apps (Instagram/TikTok cargan la página dos veces). Si la tabla de
       // deduplicación aún no existe, contamos igualmente (no perdemos clics).
       const bucket = Math.floor(Date.now() / 45000);
-      const dedupKey = `${code.toLowerCase()}:${ip}:${bucket}`;
+      const base = `${code.toLowerCase()}:${ip}`;
+      const dedupKey = `${base}:${bucket}`;
+      // Borde de ventana: si ya contamos en el bucket ANTERIOR (hace <45s), es el
+      // mismo clic a caballo del cambio de bucket → no lo contamos dos veces.
+      const { data: prevHit } = await supabaseAdmin
+        .from("click_dedup")
+        .select("key")
+        .eq("key", `${base}:${bucket - 1}`)
+        .maybeSingle();
       const { data: inserted, error: dedupErr } = await supabaseAdmin
         .from("click_dedup")
         .upsert({ key: dedupKey }, { onConflict: "key", ignoreDuplicates: true })
         .select();
 
-      const yaContado = !dedupErr && Array.isArray(inserted) && inserted.length === 0;
+      const yaContado =
+        !!prevHit || (!dedupErr && Array.isArray(inserted) && inserted.length === 0);
       if (!yaContado) {
         await supabaseAdmin.rpc("increment_daily_stats", {
           p_user_id: userId,

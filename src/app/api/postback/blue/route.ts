@@ -337,11 +337,23 @@ export async function GET(request: Request) {
             await liberarEvento(revKey);
           } else {
             estadoRev = "reversed";
-            await supabaseAdmin
+            // Marcar counted=false es IMPORTANTE: si no, el índice único deja al
+            // jugador con sus QFTD futuros "held" para siempre. Si el UPDATE falla,
+            // reintentamos una vez y avisamos (no lo tragamos en silencio).
+            const { error: uncountErr } = await supabaseAdmin
               .from("postback_events")
               .update({ counted: false })
-              .eq("id", contado.id)
-              .then(() => {}, () => {});
+              .eq("id", contado.id);
+            if (uncountErr) {
+              await supabaseAdmin
+                .from("postback_events")
+                .update({ counted: false })
+                .eq("id", contado.id)
+                .then(() => {}, () => {});
+              console.warn(
+                `[postback] no se pudo marcar counted=false en el evento ${contado.id}: ${uncountErr.message}`
+              );
+            }
             // ⛔ NO soltamos el candado qftd:<jugador>: si el casino REENVÍA el evento
             // original tras la reversión, con el candado puesto NO se vuelve a pagar
             // (evita el doble pago de una comisión ya revertida). Una re-cualificación

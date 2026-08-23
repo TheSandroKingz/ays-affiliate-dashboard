@@ -607,28 +607,12 @@ export async function procesarUpdate(
         ? "[el jugador te ha enviado un archivo]"
         : "");
 
-    // Memoria de la charla desde el transcript (respetando el corte de memoria).
-    const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
-    const { data: prev } = await supabaseAdmin
-      .from("bot_messages")
-      .select("role, content, created_at")
-      .eq("bot", bot.key)
-      .eq("chat_id", chatId)
-      .gt("created_at", desde)
-      .order("created_at", { ascending: false })
-      .limit(120);
-    const prevRows = ((prev ?? []) as { role: string; content: string; created_at: string }[])
-      .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content);
-    // Hueco desde el último mensaje hasta AHORA (retoma tras horas/días).
-    const ultimoTs = prevRows.length ? new Date(prevRows[0].created_at).getTime() : null;
-    const huecoAhora = ultimoTs != null ? marcaHueco(Date.now() - ultimoTs) : "";
-    let prevT: number | null = null;
-    const historial: Turno[] = [...prevRows].reverse().map((m) => {
-      const t = new Date(m.created_at).getTime();
-      const marca = prevT != null ? marcaHueco(t - prevT) : "";
-      prevT = t;
-      return { role: m.role as "user" | "assistant", content: marca + m.content };
-    });
+    // La memoria de la charla se lee MÁS ABAJO, DESPUÉS del debounce, para que
+    // incluya los mensajes que el jugador manda AGRUPADOS (foto + texto seguidos):
+    // si se leyera aquí, el que responde no vería el mensaje/captura hermano. Y así
+    // tampoco se carga cuando el chat está limitado o queda debounced (no responde).
+    let historial: Turno[] = [];
+    let huecoAhora = "";
 
     // file_id de la media del jugador = miniatura (la usa la visión de la IA y como
     // fotograma). Para vídeos guardamos aparte el archivo REAL en `full_file_id`
@@ -718,6 +702,30 @@ export async function procesarUpdate(
         ? await rateLimitShared(`aichat:${bot.key}:${chatId}`, 200, 24 * 60 * 60 * 1000)
         : false;
       if (dentroTope && dentroCapChat) {
+        // Memoria de la charla (AHORA, tras el debounce → incluye los mensajes que
+        // el jugador mandó agrupados). Filtramos el mensaje ACTUAL (miMsgId): ese
+        // va aparte como `entrada` para no duplicarlo.
+        const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
+        const { data: prev } = await supabaseAdmin
+          .from("bot_messages")
+          .select("id, role, content, created_at")
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId)
+          .gt("created_at", desde)
+          .order("created_at", { ascending: false })
+          .limit(120);
+        const prevRows = ((prev ?? []) as { id: number; role: string; content: string; created_at: string }[])
+          .filter((m) => (m.role === "user" || m.role === "assistant") && !!m.content && m.id !== miMsgId);
+        const ultimoTs = prevRows.length ? new Date(prevRows[0].created_at).getTime() : null;
+        huecoAhora = ultimoTs != null ? marcaHueco(Date.now() - ultimoTs) : "";
+        let prevT: number | null = null;
+        historial = [...prevRows].reverse().map((m) => {
+          const t = new Date(m.created_at).getTime();
+          const marca = prevT != null ? marcaHueco(t - prevT) : "";
+          prevT = t;
+          return { role: m.role as "user" | "assistant", content: marca + m.content };
+        });
+
         const { data: cfg } = await supabaseAdmin
           .from("bot_config")
           .select("promo")

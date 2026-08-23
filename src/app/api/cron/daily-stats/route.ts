@@ -4,6 +4,10 @@ import { compararSecreto } from "@/lib/secreto";
 import { saludFreshbet } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
+
+// Margen de tiempo: el cálculo + los 5 bloques de avisos no deben cortarse a
+// medias (si no, la clave del día queda puesta y no se reintenta).
+export const maxDuration = 60;
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
 
 export async function GET(request: Request) {
