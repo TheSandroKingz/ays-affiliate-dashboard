@@ -117,6 +117,15 @@ export async function tgApi(
   }
 }
 
+// Caché corta de fotos ya descargadas (las imágenes son inmutables). Evita
+// re-descargar de Telegram la misma foto en visiones repetidas de la IA y en
+// recargas del visor de media (menos latencia y menos egress facturable). Tope
+// de pocas entradas para no comernos la memoria del serverless.
+type FotoCache = { base64: string; mediaType: string };
+const fotoCache = new Map<string, { value: FotoCache; exp: number }>();
+const FOTO_TTL = 90 * 1000;
+const FOTO_CACHE_MAX = 8;
+
 // Descarga un archivo de Telegram (foto/documento) por su file_id y lo devuelve
 // en base64 para pasárselo a la IA con visión. null si falla o es muy grande.
 // BLINDADO: cualquier fallo devuelve null y el flujo sigue con solo texto.
@@ -125,6 +134,8 @@ export async function descargarFoto(
   token: string = TOKEN
 ): Promise<{ base64: string; mediaType: string } | null> {
   if (!token || !fileId) return null;
+  const hit = fotoCache.get(fileId);
+  if (hit && hit.exp > Date.now()) return hit.value;
   try {
     const info = await tgApi("getFile", { file_id: fileId }, token);
     const filePath = (info?.result as { file_path?: string } | undefined)
@@ -150,7 +161,13 @@ export async function descargarFoto(
         : ext === "gif"
         ? "image/gif"
         : "image/jpeg";
-    return { base64: buf.toString("base64"), mediaType };
+    const value: FotoCache = { base64: buf.toString("base64"), mediaType };
+    fotoCache.set(fileId, { value, exp: Date.now() + FOTO_TTL });
+    if (fotoCache.size > FOTO_CACHE_MAX) {
+      const primera = fotoCache.keys().next().value;
+      if (primera !== undefined) fotoCache.delete(primera);
+    }
+    return value;
   } catch {
     return null;
   }
