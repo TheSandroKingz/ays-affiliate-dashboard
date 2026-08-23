@@ -612,6 +612,22 @@ function esRepeticion(a: string, b: string): boolean {
 // Genera la respuesta y, si normaliza perder, la REGENERA con un aviso tajante;
 // si el reintento TAMBIÉN falla, limpia la frase a la fuerza (o responde algo
 // seguro). Garantiza que NUNCA le llega "eso pasa" a quien perdió. Blindado.
+// Fallbacks variados para el cierre "dale otra vuelta" (cuando la cadena de
+// guardas agota reintentos). Evita soltar SIEMPRE la MISMA frase canned, que es
+// justo lo que hacía parecer al bot un robot repitiendo lo mismo 5 veces seguidas.
+// Elige uno DISTINTO al último mensaje del bot. Todos son neutros (no normalizan
+// perder ni validan estafa) y sin muletillas prohibidas ("con calma"/"sin prisa").
+const FALLBACKS_DALE = [
+  "Tranqui, tú dale otra vuelta y a por ello 💪 ¿cuánto llevas?",
+  "Venga, dale otra vuelta y me dices cómo va 💪",
+  "Sigue con el patrón y cuéntame qué saldo llevas 👊",
+  "Dale otra y me cuentas, ¿cuánto tienes ahora? 😉",
+];
+function fallbackDale(messages: Anthropic.MessageParam[]): string {
+  const ultimo = ultimoAssistantTexto(messages);
+  return FALLBACKS_DALE.find((f) => !esRepeticion(f, ultimo)) ?? FALLBACKS_DALE[0];
+}
+
 async function crearConGuardia(
   client: Anthropic,
   system: Anthropic.TextBlockParam[],
@@ -692,7 +708,7 @@ async function crearConGuardia(
   const limpio = limpiarNormaliza(txt2 || txt);
   if (limpio && limpio.length >= 8 && !NORMALIZA_PERDER.test(limpio) && !VALIDA_ESTAFA.test(limpio))
     return limpio;
-  return "Tranqui, tú dale otra vuelta y a por ello 💪 ¿cuánto llevas?";
+  return fallbackDale(messages);
 }
 
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
