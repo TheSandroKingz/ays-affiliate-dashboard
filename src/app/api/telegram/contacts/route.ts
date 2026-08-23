@@ -64,26 +64,37 @@ export async function GET(request: Request) {
   const idsBots = BOTS_EXTRA.map(
     (_, i) => ((contactos[i + 1].data as Fila[] | null) ?? []).map((f) => f.chat_id)
   );
+  // Última línea por chat. Preferimos el RPC (distinct on → 1 fila por chat, sin
+  // bajar miles); si el RPC aún no existe, caemos a la consulta antigua (limit
+  // 4000 reducido en memoria). Así es seguro desplegar antes de aplicar el SQL.
+  const ultimosTg = async (ids: number[]): Promise<{ data: MsgFila[] }> => {
+    if (!ids.length) return { data: [] };
+    const rpc = await supabaseAdmin.rpc("tg_ultimos", { p_ids: ids });
+    if (!rpc.error && Array.isArray(rpc.data)) return { data: rpc.data as MsgFila[] };
+    const q = await supabaseAdmin
+      .from("telegram_messages")
+      .select("chat_id, role, content, media_type")
+      .in("chat_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(4000);
+    return { data: (q.data as MsgFila[] | null) ?? [] };
+  };
+  const ultimosBot = async (bot: string, ids: number[]): Promise<{ data: MsgFila[] }> => {
+    if (!ids.length) return { data: [] };
+    const rpc = await supabaseAdmin.rpc("bot_ultimos", { p_bot: bot, p_ids: ids });
+    if (!rpc.error && Array.isArray(rpc.data)) return { data: rpc.data as MsgFila[] };
+    const q = await supabaseAdmin
+      .from("bot_messages")
+      .select("chat_id, role, content, media_type")
+      .eq("bot", bot)
+      .in("chat_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(4000);
+    return { data: (q.data as MsgFila[] | null) ?? [] };
+  };
   const previews = await Promise.all([
-    idsSandro.length
-      ? supabaseAdmin
-          .from("telegram_messages")
-          .select("chat_id, role, content, media_type")
-          .in("chat_id", idsSandro)
-          .order("created_at", { ascending: false })
-          .limit(4000)
-      : Promise.resolve({ data: [] as MsgFila[] }),
-    ...BOTS_EXTRA.map((b, i) =>
-      idsBots[i].length
-        ? supabaseAdmin
-            .from("bot_messages")
-            .select("chat_id, role, content, media_type")
-            .eq("bot", b.key)
-            .in("chat_id", idsBots[i])
-            .order("created_at", { ascending: false })
-            .limit(4000)
-        : Promise.resolve({ data: [] as MsgFila[] })
-    ),
+    ultimosTg(idsSandro),
+    ...BOTS_EXTRA.map((b, i) => ultimosBot(b.key, idsBots[i])),
   ]);
 
   const marcar = (

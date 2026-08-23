@@ -29,17 +29,26 @@ export async function GET(request: Request) {
     .order("last_msg_at", { ascending: false, nullsFirst: false })
     .limit(150);
 
-  // Vista previa del último mensaje de cada chat (estilo WhatsApp).
+  // Vista previa del último mensaje de cada chat (estilo WhatsApp). Preferimos el
+  // RPC bot_ultimos (1 fila por chat, sin bajar miles); si no existe aún, fallback
+  // a la consulta antigua (limit 4000 reducido en memoria).
   const ids = (contactos ?? []).map((c) => c.chat_id as number);
-  const { data: msgs } = ids.length
-    ? await supabaseAdmin
+  let msgs: MsgFila[] = [];
+  if (ids.length) {
+    const rpc = await supabaseAdmin.rpc("bot_ultimos", { p_bot: bot.key, p_ids: ids });
+    if (!rpc.error && Array.isArray(rpc.data)) {
+      msgs = rpc.data as MsgFila[];
+    } else {
+      const q = await supabaseAdmin
         .from("bot_messages")
         .select("chat_id, role, content, media_type")
         .eq("bot", bot.key)
         .in("chat_id", ids)
         .order("created_at", { ascending: false })
-        .limit(4000)
-    : { data: [] as MsgFila[] };
+        .limit(4000);
+      msgs = (q.data as MsgFila[] | null) ?? [];
+    }
+  }
 
   const prev = new Map<number, { texto: string; rol: string }>();
   for (const x of (msgs ?? []) as MsgFila[]) {
