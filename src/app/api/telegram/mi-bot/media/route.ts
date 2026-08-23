@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { descargarFoto, descargarMedia, firmarMediaBot, mediaKeyConfigurada } from "@/lib/telegram";
+import { respuestaMedia } from "@/lib/mediaResponse";
 import { getBot } from "@/lib/bots";
 
 // Sirve una imagen que un jugador envió a un BOT (Jeffer/Mariam), para verla en
@@ -57,18 +58,23 @@ export async function GET(request: Request) {
   // Vídeo/animación con archivo real guardado → lo servimos REPRODUCIBLE (mime de
   // vídeo, tope 20MB). Si no, servimos la imagen/miniatura como hasta ahora.
   const esVideo = (tipo === "video" || tipo === "animation") && !!fullId;
-  const img = esVideo
-    ? await descargarMedia(fullId!, bot.token)
-    : await descargarFoto(fileId!, bot.token);
-  if (!img) return NextResponse.json({ error: "no disponible" }, { status: 502 });
+  let bytes: Buffer | null = null;
+  let mime = "application/octet-stream";
+  if (esVideo) {
+    const media = await descargarMedia(fullId!, bot.token);
+    if (media) {
+      bytes = media.bytes;
+      mime = media.mediaType;
+    }
+  } else {
+    const img = await descargarFoto(fileId!, bot.token);
+    if (img) {
+      bytes = Buffer.from(img.base64, "base64");
+      mime = img.mediaType;
+    }
+  }
+  if (!bytes) return NextResponse.json({ error: "no disponible" }, { status: 502 });
 
-  const bytes = Buffer.from(img.base64, "base64");
-  return new NextResponse(new Uint8Array(bytes), {
-    headers: {
-      "content-type": img.mediaType,
-      // Evita MIME sniffing de los bytes que sube el jugador.
-      "x-content-type-options": "nosniff",
-      "cache-control": "private, max-age=3600",
-    },
-  });
+  // Con soporte de Range (206) para poder avanzar/rebobinar el vídeo.
+  return respuestaMedia(bytes, mime, request.headers.get("range"));
 }

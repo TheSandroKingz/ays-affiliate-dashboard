@@ -158,14 +158,27 @@ export async function descargarFoto(
 
 // Descarga un archivo COMPLETO de Telegram (vídeo/animación/foto/documento) por
 // su file_id, para REPRODUCIRLO en el visor de chats del panel. A diferencia de
-// descargarFoto (solo imagen, 4MB, para la visión de la IA), aquí admitimos
-// vídeo con su mime real y un tope mayor (Telegram deja descargar hasta ~20MB
-// por la API del bot). BLINDADO: cualquier fallo devuelve null.
+// descargarFoto (solo imagen, 4MB, base64 para la visión de la IA), aquí
+// devolvemos los bytes crudos con su mime real y un tope mayor (Telegram deja
+// descargar hasta ~20MB por la API del bot). BLINDADO: cualquier fallo → null.
+//
+// Caché corta en memoria por file_id: al hacer SEEK en un vídeo el navegador pide
+// varios tramos (Range) seguidos; sin caché re-descargaríamos el archivo entero
+// de Telegram en cada tramo. Con ella, el primero lo baja y los demás salen al
+// instante. Tope de pocas entradas para no comernos la memoria del serverless.
+type MediaCacheEntry = { bytes: Buffer; mediaType: string };
+const mediaCache = new Map<string, { value: MediaCacheEntry; exp: number }>();
+const MEDIA_TTL = 90 * 1000; // 90s
+const MEDIA_CACHE_MAX = 3;
+
 export async function descargarMedia(
   fileId: string,
   token: string = TOKEN
-): Promise<{ base64: string; mediaType: string } | null> {
+): Promise<MediaCacheEntry | null> {
   if (!token || !fileId) return null;
+  const now = Date.now();
+  const hit = mediaCache.get(fileId);
+  if (hit && hit.exp > now) return hit.value;
   try {
     const info = await tgApi("getFile", { file_id: fileId }, token);
     const filePath = (info?.result as { file_path?: string } | undefined)
@@ -176,9 +189,9 @@ export async function descargarMedia(
       `https://api.telegram.org/file/bot${token}/${filePath}`
     );
     if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
+    const bytes = Buffer.from(await res.arrayBuffer());
     // Tope de seguridad ~20MB (límite práctico de descarga por bot en Telegram).
-    if (buf.length > 20_000_000) return null;
+    if (bytes.length > 20_000_000) return null;
     const ext = filePath.split(".").pop()?.toLowerCase();
     const mediaType =
       ext === "mp4"
@@ -196,7 +209,14 @@ export async function descargarMedia(
         : ext === "jpg" || ext === "jpeg"
         ? "image/jpeg"
         : "application/octet-stream";
-    return { base64: buf.toString("base64"), mediaType };
+    const value: MediaCacheEntry = { bytes, mediaType };
+    // Guarda en caché y poda las entradas más viejas si nos pasamos del tope.
+    mediaCache.set(fileId, { value, exp: now + MEDIA_TTL });
+    if (mediaCache.size > MEDIA_CACHE_MAX) {
+      const primera = mediaCache.keys().next().value;
+      if (primera !== undefined) mediaCache.delete(primera);
+    }
+    return value;
   } catch {
     return null;
   }

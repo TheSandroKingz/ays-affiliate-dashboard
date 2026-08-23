@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { descargarFoto, descargarMedia, firmarMedia, mediaKeyConfigurada } from "@/lib/telegram";
+import { respuestaMedia } from "@/lib/mediaResponse";
 
 // Sirve una imagen que un jugador envió por Telegram, para verla en el visor de
 // chats del panel. NO usa sesión (un <img> no manda cabeceras): se protege con
@@ -55,19 +56,23 @@ export async function GET(request: Request) {
 
   // Vídeo/animación → reproducible (mime de vídeo, tope 20MB); si no, imagen.
   const esVideo = tipo === "video" || tipo === "animation";
-  const img = esVideo
-    ? await descargarMedia((fullId ?? fileId)!)
-    : await descargarFoto(fileId!);
-  if (!img) return NextResponse.json({ error: "no disponible" }, { status: 502 });
+  let bytes: Buffer | null = null;
+  let mime = "application/octet-stream";
+  if (esVideo) {
+    const media = await descargarMedia((fullId ?? fileId)!);
+    if (media) {
+      bytes = media.bytes;
+      mime = media.mediaType;
+    }
+  } else {
+    const img = await descargarFoto(fileId!);
+    if (img) {
+      bytes = Buffer.from(img.base64, "base64");
+      mime = img.mediaType;
+    }
+  }
+  if (!bytes) return NextResponse.json({ error: "no disponible" }, { status: 502 });
 
-  const bytes = Buffer.from(img.base64, "base64");
-  return new NextResponse(new Uint8Array(bytes), {
-    headers: {
-      "content-type": img.mediaType,
-      // Evita que el navegador reinterprete (MIME sniffing) los bytes del jugador.
-      "x-content-type-options": "nosniff",
-      // Cache privada corta: el navegador la reusa mientras ves el chat.
-      "cache-control": "private, max-age=3600",
-    },
-  });
+  // Con soporte de Range (206) para poder avanzar/rebobinar el vídeo.
+  return respuestaMedia(bytes, mime, request.headers.get("range"));
 }
