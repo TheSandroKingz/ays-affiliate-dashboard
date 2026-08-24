@@ -912,8 +912,15 @@ export async function POST(request: Request) {
           2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
         await new Promise((r) => setTimeout(r, escribir));
+        // ⛔ El botón "GANAR AHORA" es un pitch para JUGAR/DEPOSITAR: NO debe salir
+        // cuando el jugador está RETIRANDO, tiene un PROBLEMA o pide SOPORTE (ahí molesta
+        // y canta a bot). Antes salía casi siempre porque intencionJugar es muy amplio.
+        const noPitch =
+          /retir|withdraw|sacar|reintegr|rechaz|reject|deneg|no me deja|no puedo|no funciona|\berror\b|soporte|chat en vivo|verific|\bkyc\b|documento/i;
         const invita =
-          intencionJugar.test(respuesta) || intencionJugar.test(textoJ);
+          (intencionJugar.test(respuesta) || intencionJugar.test(textoJ)) &&
+          !noPitch.test(respuesta) &&
+          !noPitch.test(textoJ);
         const rEnv = await tgEnviar(chatId, respuesta, {
           parse_mode: undefined,
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
