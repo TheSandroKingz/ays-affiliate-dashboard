@@ -454,10 +454,6 @@ export default function AdminDashboard() {
               }`}
             >
               <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">Mi link propio</span>
-                <span className="font-medium text-white">{eur(totals.ownEarnings)}</span>
-              </div>
-              <div className="flex items-center justify-between py-1 text-sm">
                 <span className="text-slate-300">Mi estructura</span>
                 <span className="font-medium text-white">{eur(totals.structureMarginNet)}</span>
               </div>
