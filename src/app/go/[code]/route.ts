@@ -21,11 +21,15 @@ async function getAffiliate(code: string): Promise<CacheEntry> {
   const hit = linkCache.get(key);
   if (hit && hit.exp > now) return hit.value;
 
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("affiliates")
     .select("user_id, promo_link")
     .ilike("freshaffs_tracking_code", code.replace(/[\\%_*]/g, "\\$&"))
     .limit(1);
+  // Fallo transitorio de BD: NO cacheamos null (envenenaría 5 min y mandaría a home a
+  // TODOS los /go de ese código). Devolvemos null solo para ESTA petición; la siguiente
+  // reintenta la BD. Los códigos de bot van por BOT_LINKS (destino fijo), inmunes a esto.
+  if (error) return null;
   const aff = data?.[0];
   const value: CacheEntry =
     aff && aff.promo_link ? { user_id: aff.user_id, promo_link: aff.promo_link } : null;
@@ -51,8 +55,10 @@ const BOT_LINKS: Record<string, { destino: string; dueno: string }> = {
   ishrdbxnke: { destino: "https://celsius.games/iSHRdbxNKE", dueno: "cZahjDgQoR" }, // BOT JEFFER → Jeffer
   whwahavgwx: { destino: "https://celsius.games/WHWAhAVgwx", dueno: "ecUGAqtfld" }, // BOT BLACK KP → Black KP
   nairiroica: { destino: "https://celsius.games/naIRiroIcA", dueno: "werECqYvPP" }, // BOT iAFRIKA → iAfrika
-  // Mariam/Livana usa AhBpxgTaoP (su código personal = el del bot) → ya resuelve por
-  // la vía de afiliado normal; no necesita entrada aquí.
+  // Mariam/Livana: su código personal = el del bot. Lo pinneamos IGUAL que los demás
+  // para que su botón NUNCA dependa de la BD (si su fila faltara/fallara iría a home
+  // = QFTD perdido). Destino fijo a celsius; el click se atribuye a su tracking propio.
+  ahbpxgtaop: { destino: "https://celsius.games/AhBpxgTaoP", dueno: "AhBpxgTaoP" }, // BOT LIVANA/Mariam → Mariam
 };
 
 export async function GET(

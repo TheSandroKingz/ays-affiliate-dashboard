@@ -338,8 +338,8 @@ const AFP_AFRIKA = "botaf"; // Afrika → Mines
 // Enlace DEDICADO del bot de Jeffer (BOT JEFFER, código iSHRdbxNKE). El dinero
 // se atribuye a la cuenta de Jeffer y su tráfico sale como afp "botmn".
 const ENLACE_JEFFER = "https://asafiliados.com/go/iSHRdbxNKE";
-// Mariam/Livana: AhBpxgTaoP es su código personal = el del bot (ya resuelve en /go
-// por la vía de afiliado normal → su promo_link de celsius).
+// Mariam/Livana: AhBpxgTaoP es su código personal = el del bot. Pinneado en BOT_LINKS
+// (/go) con destino FIJO a celsius, igual que los demás → nunca depende de la BD.
 const ENLACE_MARIAM = "https://asafiliados.com/go/AhBpxgTaoP";
 // Enlace DEDICADO del bot de Black KP (código WHWAhAVgwx). El dinero se atribuye a
 // la cuenta de Black KP (tracking ecUGAqtfld, su link de IG) y sale como afp "botbk".
