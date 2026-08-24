@@ -529,7 +529,7 @@ export default function DashboardPage() {
         )}
         {mostrarProyeccion && (
           <p className="mt-2 text-xs text-slate-500">
-            Proyección fin de mes{" "}
+            Proyección{" "}
             <span className="text-slate-300 font-medium">~{eur(proyeccion)}</span>
           </p>
         )}
@@ -542,7 +542,7 @@ export default function DashboardPage() {
             <span>💶 Depósito medio: <b className="text-slate-300">{eur(mediaDep)}</b></span>
           )}
           {diasRestantesMes > 0 && (
-            <span>🗓️ Quedan <b className="text-slate-300">{diasRestantesMes} días</b> de mes</span>
+            <span>🗓️ <b className="text-slate-300">{diasRestantesMes} días</b> de mes</span>
           )}
           {hist.mejorMes > 0 && (
             <span>🏆 Récord: <b className="text-slate-300">{hist.mejorMes} FTD/mes</b></span>
