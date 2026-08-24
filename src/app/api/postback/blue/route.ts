@@ -483,6 +483,17 @@ export async function GET(request: Request) {
         url: "/admin/actividad",
       });
     }
+    // Afiliado SÍ identificado pero el depósito llegó SIN player_id → no se pudo
+    // contar (queda no_match) y sin este aviso se perdería en silencio. NO es el
+    // falso positivo de antes (ese era código que NO empareja y cae a la casa):
+    // aquí el afiliado dueño está claro, es un QFTD suyo que hay que revisar a mano.
+    if (estado === "no_match" && target && !playerid) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ QFTD sin identificador de jugador",
+        body: "Un depósito cualificado de un afiliado llegó sin player_id y no se pudo contar. Revísalo en Actividad y cuéntalo a mano.",
+        url: "/admin/actividad",
+      });
+    }
     return NextResponse.json({ ok: true, matched: !!target, estado });
   }
 

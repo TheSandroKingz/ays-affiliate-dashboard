@@ -688,6 +688,12 @@ export async function POST(request: Request) {
           ? "[el jugador te ha enviado un sticker]"
           : msg.document
           ? "[el jugador te ha enviado un archivo]"
+          : msg.video_note
+          ? "[el jugador te ha enviado una nota de vídeo]"
+          : msg.location
+          ? "[el jugador te ha enviado una ubicación]"
+          : msg.contact
+          ? "[el jugador te ha compartido un contacto]"
           : "");
 
       // Si el jugador manda una foto/vídeo, guardamos su file_id + tipo para
