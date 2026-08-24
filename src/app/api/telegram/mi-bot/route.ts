@@ -58,9 +58,15 @@ export async function GET(request: Request) {
       ganado: Number(e.commission ?? 0),
     }));
 
+  // Enlace directo para ABRIR el bot en el móvil (abre la app de Telegram).
+  const botUsername = bot.username; // p. ej. "@iAfriikaBot"
+  const botLink = "https://t.me/" + botUsername.replace(/^@/, "");
+
   return NextResponse.json({
     tieneBot: true,
     bot: bot.label,
+    botUsername,
+    botLink,
     ftd,
     qftd,
     ganado,

@@ -8,6 +8,8 @@ import BotChatViewer from "@/components/BotChatViewer";
 type MiBot = {
   tieneBot: boolean;
   bot?: string;
+  botUsername?: string;
+  botLink?: string;
   ftd?: number;
   qftd?: number;
   ganado?: number;
@@ -70,6 +72,19 @@ export default function MiBotTelegramPage() {
         <p className="text-sm text-slate-400">Aún no tienes un bot asignado.</p>
       ) : (
         <>
+          {/* Abrir el bot en el móvil (abre la app de Telegram) para probar cosas. */}
+          {data.botLink && (
+            <a
+              href={data.botLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-2xl bg-sky-500 hover:bg-sky-400 text-white font-semibold px-4 py-2.5 mb-6 transition"
+            >
+              <span aria-hidden>✈️</span>
+              Abrir mi bot{data.botUsername ? ` (${data.botUsername})` : ""}
+            </a>
+          )}
+
           {/* Depósitos */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4">
