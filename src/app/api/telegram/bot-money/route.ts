@@ -4,10 +4,17 @@ import { getGestorBot } from "@/lib/adminAuth";
 import { YAIZA_START } from "@/lib/adminId";
 import { BOTS } from "@/lib/bots";
 
-// afps de TODOS los bots que gestiona Yaiza: Sandro ("bot") + los nuevos
-// (Jeffer/Livana/Black KP/iAfrika, cada uno con su afp). Así el dinero y los
-// depósitos que ve son los de los 5, para saber cómo va su trabajo con todos.
-const AFPS_BOTS = ["bot", ...Object.values(BOTS).map((b) => b.afp)];
+// afps de los bots que gestiona Yaiza: Sandro ("bot") + los nuevos
+// (Jeffer/Black KP/iAfrika, cada uno con su afp). ⛔ Livana/Mariam (afp "botdm") se
+// EXCLUYE a propósito: su enlace de bot es el MISMO que Mariam usa para hablar por
+// privado, así que esos depósitos no son realmente trabajo del bot y falsearían el
+// dato de Yaiza. Se cuentan solo los bots cuyo tráfico SÍ es del bot.
+const AFPS_BOTS = [
+  "bot",
+  ...Object.values(BOTS)
+    .filter((b) => b.key !== "mariam")
+    .map((b) => b.afp),
+];
 
 // Dinero que ha DEPOSITADO la gente por LOS BOTS (los 5) desde que Yaiza empezó,
 // y el de hoy — el importe del depósito (amount), NO la comisión.
