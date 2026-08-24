@@ -494,6 +494,30 @@ export async function GET(request: Request) {
         url: "/admin/actividad",
       });
     }
+    // Jugador que tuvo una REVERSIÓN (chargeback) y vuelve a cualificar: el candado
+    // por jugador sigue puesto a propósito (para no arriesgar doble pago), así que
+    // este QFTD legítimo sale "duplicate" y no se cuenta. Antes se perdía en silencio;
+    // ahora avisamos para revisarlo. Best-effort (no bloquea la respuesta). Una
+    // reversión deja status="counted" pero counted=false → esa es la firma que buscamos.
+    if (estado === "duplicate" && playerid) {
+      after(async () => {
+        const { data: rev } = await supabaseAdmin
+          .from("postback_events")
+          .select("id")
+          .eq("player_id", playerid)
+          .in("event_type", ["ftd", "commission"])
+          .eq("status", "counted")
+          .eq("counted", false)
+          .limit(1);
+        if (rev && rev.length) {
+          await enviarPush(ADMIN_USER_ID, {
+            title: "⚠️ Posible QFTD tras una reversión",
+            body: "Un jugador que tuvo una reversión volvió a cualificar y no se contó (candado de seguridad). Revísalo en Actividad y cuéntalo a mano si procede.",
+            url: "/admin/actividad",
+          });
+        }
+      });
+    }
     return NextResponse.json({ ok: true, matched: !!target, estado });
   }
 

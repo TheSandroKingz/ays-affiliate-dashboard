@@ -68,6 +68,9 @@ export async function procesarUpdate(
   const owner = bot.owner;
   try {
     // ── Anti-duplicados por bot (el update_id no es único entre bots) ──
+    // Igual que en el bot de Sandro: si el update ya existía pero es ANTIGUO (un
+    // intento anterior murió sin responder), lo RE-procesamos para no dejar al
+    // jugador sin respuesta; si es reciente, lo saltamos (no responder dos veces).
     const updateId = update?.update_id as number | undefined;
     if (typeof updateId === "number") {
       const { data: ins, error } = await supabaseAdmin
@@ -77,7 +80,24 @@ export async function procesarUpdate(
           { onConflict: "bot,update_id", ignoreDuplicates: true }
         )
         .select("update_id");
-      if (!error && ins && ins.length === 0) return; // ya procesado
+      if (!error && ins && ins.length === 0) {
+        const { data: prev } = await supabaseAdmin
+          .from("bot_updates")
+          .select("created_at")
+          .eq("bot", bot.key)
+          .eq("update_id", updateId)
+          .maybeSingle();
+        const antiguoMs = prev?.created_at
+          ? Date.now() - new Date(prev.created_at as string).getTime()
+          : 0;
+        const REPROCESAR_TRAS = 120_000; // 120s > duración máx. función → sin doble respuesta
+        if (antiguoMs < REPROCESAR_TRAS) return; // duplicado reciente → no re-responder
+        await supabaseAdmin
+          .from("bot_updates")
+          .update({ created_at: new Date().toISOString() })
+          .eq("bot", bot.key)
+          .eq("update_id", updateId);
+      }
     }
 
     // ── Botón inline (❓ AYUDA) ──

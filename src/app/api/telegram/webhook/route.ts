@@ -63,6 +63,12 @@ export async function POST(request: Request) {
   const update = await request.json().catch(() => null);
 
   // ── Anti-duplicados: si Telegram reintenta el mismo update, lo ignoramos ──
+  // OJO: marcamos el update ANTES de procesar (evita responder 2 veces a reintentos
+  // casi simultáneos). Pero si un intento anterior se quedó a medias (timeout de la
+  // IA, reciclado de instancia) y NUNCA respondió, un reintento de Telegram no debe
+  // descartarse para siempre o el jugador se queda sin respuesta. Solución: si el
+  // update ya existía pero es ANTIGUO (más que lo máximo que puede durar la función),
+  // asumimos que aquel intento murió y RE-procesamos; si es reciente, lo saltamos.
   const updateId = update?.update_id;
   if (typeof updateId === "number") {
     const { data: ins, error } = await supabaseAdmin
@@ -70,7 +76,23 @@ export async function POST(request: Request) {
       .upsert({ update_id: updateId }, { onConflict: "update_id", ignoreDuplicates: true })
       .select("update_id");
     if (!error && ins && ins.length === 0) {
-      return NextResponse.json({ ok: true }); // ya procesado antes
+      const { data: prev } = await supabaseAdmin
+        .from("telegram_updates")
+        .select("created_at")
+        .eq("update_id", updateId)
+        .maybeSingle();
+      const antiguoMs = prev?.created_at
+        ? Date.now() - new Date(prev.created_at).getTime()
+        : 0;
+      const REPROCESAR_TRAS = 120_000; // 120s > duración máx. de la función → sin doble respuesta
+      if (antiguoMs < REPROCESAR_TRAS) {
+        return NextResponse.json({ ok: true }); // duplicado reciente → no re-responder
+      }
+      // Intento antiguo que murió sin responder: re-reclamamos y seguimos.
+      await supabaseAdmin
+        .from("telegram_updates")
+        .update({ created_at: new Date().toISOString() })
+        .eq("update_id", updateId);
     }
   }
 
