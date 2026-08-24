@@ -22,6 +22,7 @@ type BotEstado = {
   registros: number;
   qftd: number;
   ganado: number;
+  comisionAfiliado: number;
   recargas: number;
   depositado: number;
   mensajes: number;
@@ -270,7 +271,12 @@ export default function EstadoBotsPage() {
                 <div className="rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-2.5 grid grid-cols-3 gap-1 text-center">
                   <div>
                     <p className="text-base font-bold text-emerald-300">{eur(b.ganado)}</p>
-                    <p className="text-[10px] text-slate-400">has ganado</p>
+                    <p className="text-[10px] text-slate-400">te quedas tú</p>
+                    {b.comisionAfiliado > 0 && b.comisionAfiliado !== b.ganado && (
+                      <p className="text-[10px] text-slate-500">
+                        afiliado: {eur(b.comisionAfiliado)}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-base font-bold text-white">{eur(b.depositado)}</p>
@@ -303,9 +309,10 @@ export default function EstadoBotsPage() {
       )}
 
       <p className="text-xs text-slate-500">
-        "Depósitos que pagan" son los que ya te generan comisión (los cualificados).
-        "Conversión" = de los que se registraron, cuántos han hecho un depósito que
-        paga. El dinero de cada bot depende de que Celsius lo marque bien.
+        "Depósitos que pagan" son los cualificados (QFTD). "Te quedas tú" = tu margen
+        real: en los bots de afiliados es tu CPA por QFTD menos lo que cobra el afiliado
+        (se muestra debajo); en tu cuenta propia es la comisión entera. "Conversión" = de
+        los registrados, cuántos han hecho un depósito que paga.
       </p>
     </main>
   );

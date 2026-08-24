@@ -56,6 +56,7 @@ export async function GET(request: Request) {
     regs,
     tgMsgCount,
     botMsgs,
+    meCpa,
   ] = await Promise.all([
       supabaseAdmin
         .from("telegram_contacts")
@@ -105,7 +106,13 @@ export async function GET(request: Request) {
             .then((r) => [b.key, r.count ?? 0] as [string, number])
         )
       ),
+      // Tu CPA (el que te paga Celsius). Sirve para calcular TU margen por afiliado.
+      supabaseAdmin.from("affiliates").select("cpa_spain").eq("user_id", user.id).maybeSingle(),
     ]);
+
+  // Tu CPA propio. Con él, "lo que ganas TÚ" por un bot de afiliado = tu CPA × QFTD
+  // − lo que cobra el afiliado (mismo criterio que el panel de admin, adminStats.ts).
+  const adminCpa = Number(meCpa?.data?.cpa_spain ?? 0);
 
   type Contacto = {
     opted_out: boolean | null;
@@ -174,6 +181,12 @@ export async function GET(request: Request) {
     const ia = d.key === "sandro" ? Number(tgAi.data?.count ?? 0) : aiByBot.get(d.key) ?? 0;
     const promo =
       d.key === "sandro" ? tgConfig.data?.promo ?? "" : promoByBot.get(d.key) ?? "";
+    const qftdBot = qftd.get(d.afp) ?? 0;
+    const comisionAfiliado = ganado.get(d.afp) ?? 0; // lo que cobra el AFILIADO (su CPA)
+    // "has ganado" = lo que te quedas TÚ. Para tu cuenta propia (afp "bot" =
+    // Mongolitos) es la comisión entera (el dinero es tuyo). Para un bot de AFILIADO,
+    // tu margen = tu CPA × QFTD − lo que cobra el afiliado (idéntico a adminStats.ts).
+    const tuyo = d.afp === "bot" ? comisionAfiliado : adminCpa * qftdBot - comisionAfiliado;
     return {
       key: d.key,
       label: d.label,
@@ -183,8 +196,9 @@ export async function GET(request: Request) {
       ia,
       topeIa: TOPE_IA,
       registros: registros.get(d.afp) ?? 0,
-      qftd: qftd.get(d.afp) ?? 0,
-      ganado: ganado.get(d.afp) ?? 0,
+      qftd: qftdBot,
+      ganado: tuyo, // lo que te quedas tú (margen), NO el CPA del afiliado
+      comisionAfiliado, // lo que cobra el afiliado (por si se quiere mostrar aparte)
       recargas: recargas.get(d.afp) ?? 0,
       depositado: depositado.get(d.afp) ?? 0,
       mensajes: d.key === "sandro" ? mensajesSandro : msgsByBot.get(d.key) ?? 0,
