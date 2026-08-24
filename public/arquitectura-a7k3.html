@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitectura A&S Afiliados</title>
+<style>
+  :root{
+    --bg:#f5f8f6; --surface:#ffffff; --surface-2:#eef3f0; --surface-3:#e6ede9;
+    --ink:#15201b; --muted:#586a61; --faint:#7d8f86; --line:#dde6e1;
+    --accent:#0d8a5f; --accent-ink:#0a5f43; --accent-soft:#e2f3eb;
+    --warn:#9a6a12; --crit:#b23b30;
+    --shadow:0 1px 2px rgba(20,40,32,.04),0 8px 24px rgba(20,40,32,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b1310; --surface:#111b16; --surface-2:#16221d; --surface-3:#1c2a24;
+      --ink:#e7efea; --muted:#96a79d; --faint:#6f8177; --line:#243129;
+      --accent:#37d39c; --accent-ink:#8fe9c6; --accent-soft:#122720;
+      --warn:#d8a53f; --crit:#e8776b;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1310; --surface:#111b16; --surface-2:#16221d; --surface-3:#1c2a24;
+    --ink:#e7efea; --muted:#96a79d; --faint:#6f8177; --line:#243129;
+    --accent:#37d39c; --accent-ink:#8fe9c6; --accent-soft:#122720;
+    --warn:#d8a53f; --crit:#e8776b;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,"Segoe UI",system-ui,Roboto,Helvetica,Arial,sans-serif;
+    font-size:16.5px; line-height:1.62; letter-spacing:-.003em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,"Cascadia Code",Consolas,monospace}
+
+  /* ---- header ---- */
+  header.top{padding:64px 0 40px; border-bottom:1px solid var(--line)}
+  .eyebrow{
+    font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent-ink);
+    display:flex; align-items:center; gap:9px;
+  }
+  .eyebrow::before{content:""; width:22px; height:2px; background:var(--accent); border-radius:2px}
+  h1{
+    font-size:clamp(32px,6vw,50px); line-height:1.03; font-weight:720;
+    letter-spacing:-.025em; text-wrap:balance; margin:20px 0 14px;
+  }
+  .lede{font-size:19px; color:var(--muted); max-width:60ch; margin:0}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:26px;
+    font-family:ui-monospace,Menlo,monospace; font-size:12.5px;
+  }
+  .meta span{
+    padding:5px 11px; border:1px solid var(--line); border-radius:999px;
+    color:var(--muted); background:var(--surface); white-space:nowrap;
+  }
+  .meta span b{color:var(--ink); font-weight:600}
+
+  /* ---- sections ---- */
+  section{padding:52px 0; border-bottom:1px solid var(--line)}
+  section:last-of-type{border-bottom:0}
+  .kicker{
+    font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:600;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--faint);
+  }
+  h2{font-size:clamp(23px,3.4vw,29px); font-weight:680; letter-spacing:-.02em; margin:10px 0 6px; text-wrap:balance}
+  h2 + .sub{color:var(--muted); margin:0 0 26px; max-width:62ch}
+  h3{font-size:16px; font-weight:650; margin:0 0 8px; letter-spacing:-.01em}
+  p{margin:0 0 15px; max-width:66ch}
+  a{color:var(--accent-ink); text-decoration-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+  strong{font-weight:650}
+
+  /* ---- component grid ---- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px; margin-top:8px}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:18px 18px 16px; box-shadow:var(--shadow);
+  }
+  .card .tag{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--accent-ink); font-weight:600;
+  }
+  .card h3{margin:9px 0 5px}
+  .card p{font-size:14.5px; color:var(--muted); margin:0; max-width:none}
+
+  /* ---- pipeline / flow ---- */
+  .flowbox{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:16px;
+    padding:22px; margin:6px 0 8px; overflow-x:auto;
+  }
+  .flowbox .flabel{font-family:ui-monospace,Menlo,monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-bottom:14px}
+  .flow{display:flex; align-items:stretch; gap:0; min-width:max-content}
+  .node{
+    display:flex; flex-direction:column; justify-content:center;
+    background:var(--surface); border:1px solid var(--line); border-radius:11px;
+    padding:11px 15px; min-width:118px; text-align:center;
+  }
+  .node b{font-size:14px; font-weight:620; letter-spacing:-.01em}
+  .node small{font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--faint); margin-top:2px}
+  .node.hl{border-color:var(--accent); background:var(--accent-soft)}
+  .node.hl b{color:var(--accent-ink)}
+  .arrow{display:flex; align-items:center; padding:0 4px; color:var(--faint); font-size:19px; flex:0 0 auto}
+  .flow-note{margin-top:13px; font-size:13.5px; color:var(--muted)}
+  .flow-note .mono{color:var(--accent-ink)}
+
+  /* ---- ordered steps ---- */
+  ol.steps{list-style:none; counter-reset:s; margin:6px 0 0; padding:0}
+  ol.steps li{counter-increment:s; position:relative; padding:0 0 20px 46px}
+  ol.steps li::before{
+    content:counter(s,decimal-leading-zero); position:absolute; left:0; top:-2px;
+    font-family:ui-monospace,Menlo,monospace; font-size:13px; font-weight:600; color:var(--accent-ink);
+    width:32px; height:32px; display:grid; place-items:center;
+    background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:9px;
+  }
+  ol.steps li:not(:last-child)::after{content:""; position:absolute; left:15.5px; top:32px; bottom:2px; width:1px; background:var(--line)}
+  ol.steps b{font-weight:640}
+  ol.steps span{color:var(--muted); font-size:14.5px}
+
+  /* ---- table ---- */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:14px; margin-top:6px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; min-width:520px; font-size:14.5px; background:var(--surface)}
+  th,td{text-align:left; padding:12px 15px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{font-family:ui-monospace,Menlo,monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:600; background:var(--surface-2)}
+  tbody tr:last-child td{border-bottom:0}
+  td b{font-weight:620}
+  td .mono{font-size:13px; color:var(--muted)}
+  .pill{display:inline-block; font-family:ui-monospace,Menlo,monospace; font-size:11px; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent-ink); border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}
+
+  /* ---- role cards ---- */
+  .roles{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:8px}
+  .role{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px; box-shadow:var(--shadow)}
+  .role .who{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px}
+  .role .who b{font-size:16.5px; font-weight:660}
+  .role .who .r{font-family:ui-monospace,Menlo,monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
+  .role ul{margin:0; padding-left:17px}
+  .role li{font-size:14px; color:var(--muted); margin-bottom:5px}
+  .role li b{color:var(--ink); font-weight:600}
+
+  /* ---- feature list ---- */
+  ul.feat{list-style:none; margin:8px 0 0; padding:0; display:grid; gap:11px}
+  ul.feat li{position:relative; padding-left:26px; color:var(--muted); font-size:15px; max-width:70ch}
+  ul.feat li::before{content:""; position:absolute; left:2px; top:9px; width:8px; height:8px; border-radius:3px; background:var(--accent); transform:rotate(45deg)}
+  ul.feat li b{color:var(--ink); font-weight:600}
+
+  /* ---- glossary ---- */
+  dl.gloss{margin:8px 0 0; display:grid; grid-template-columns:auto 1fr; gap:0}
+  dl.gloss div{display:contents}
+  dl.gloss dt{
+    font-family:ui-monospace,Menlo,monospace; font-weight:600; font-size:13.5px; color:var(--accent-ink);
+    padding:12px 20px 12px 0; border-top:1px solid var(--line); white-space:nowrap;
+  }
+  dl.gloss dd{margin:0; padding:12px 0; border-top:1px solid var(--line); color:var(--muted); font-size:14.5px}
+  dl.gloss dd b{color:var(--ink); font-weight:600}
+
+  .callout{
+    margin-top:24px; padding:16px 18px; border-radius:12px;
+    background:var(--surface-2); border:1px solid var(--line);
+    font-size:14px; color:var(--muted);
+  }
+  .callout b{color:var(--ink)}
+
+  footer{padding:40px 0 64px; color:var(--faint); font-size:13px; font-family:ui-monospace,Menlo,monospace}
+  footer .rule{height:1px; background:var(--line); margin-bottom:20px}
+
+  @media (max-width:560px){
+    body{font-size:16px}
+    .wrap{padding:0 18px}
+    dl.gloss{grid-template-columns:1fr; gap:0}
+    dl.gloss dt{border-top:1px solid var(--line); padding-bottom:0}
+    dl.gloss dd{border-top:0; padding-top:4px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Documento interno · Contexto técnico</div>
+    <h1>Arquitectura del sistema A&amp;S Afiliados</h1>
+    <p class="lede">Cómo está construido y cómo funciona el conjunto: el panel web de afiliados y los bots de Telegram que atienden a los jugadores.</p>
+    <div class="meta">
+      <span><b>Versión</b> · agosto 2026</span>
+      <span><b>Ámbito</b> · bots + dashboard</span>
+      <span><b>Confidencial</b> · uso interno</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="kicker">Visión general</div>
+    <h2>Qué es</h2>
+    <p class="sub">A&amp;S Afiliados es una plataforma de marketing de afiliados para un casino online. Tiene dos piezas que comparten la misma base de datos y el mismo dinero.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="tag">Pieza 1</div>
+        <h3>Panel web (dashboard)</h3>
+        <p>Cada afiliado ve lo suyo (clicks, depósitos, comisión, pagos, su enlace). El administrador lo ve todo y reparte el margen con el socio.</p>
+      </div>
+      <div class="card">
+        <div class="tag">Pieza 2</div>
+        <h3>Bots de Telegram</h3>
+        <p>Bots que atienden por chat a los jugadores de cada afiliado: resuelven dudas, guían el registro y el depósito, y comparten el patrón del juego.</p>
+      </div>
+      <div class="card">
+        <div class="tag">Nexo</div>
+        <h3>El dinero</h3>
+        <p>Cuando un jugador deposita, la red de afiliados avisa; el sistema atribuye ese depósito al afiliado correcto y lo suma a sus estadísticas.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Arquitectura</div>
+    <h2>De qué está hecho</h2>
+    <p class="sub">Todo funciona sobre servicios gestionados (sin servidores propios que mantener). Estas son las tecnologías y qué papel cumple cada una.</p>
+    <div class="grid">
+      <div class="card"><div class="tag">Frontend + Backend</div><h3>Next.js en Vercel</h3><p>La web y las funciones de servidor (API). Desplegado en Vercel; cada cambio de código se publica solo.</p></div>
+      <div class="card"><div class="tag">Base de datos</div><h3>Supabase (PostgreSQL)</h3><p>Guarda afiliados, estadísticas, pagos, contactos y mensajes de los bots. Protegida por reglas de acceso por fila (RLS).</p></div>
+      <div class="card"><div class="tag">Inteligencia</div><h3>API de Claude (Anthropic)</h3><p>El modelo de IA que redacta las respuestas de los bots siguiendo la persona y las reglas de cada uno.</p></div>
+      <div class="card"><div class="tag">Mensajería</div><h3>Telegram (webhooks)</h3><p>Cada mensaje de un jugador llega al sistema al instante por un webhook; el bot responde por la API de Telegram.</p></div>
+      <div class="card"><div class="tag">Red de afiliados</div><h3>Blue Affiliates + Celsius</h3><p>El casino (Celsius) y su red (Blue) envían avisos (postbacks) de registros, depósitos y comisiones.</p></div>
+      <div class="card"><div class="tag">Avisos</div><h3>Notificaciones push (PWA)</h3><p>El panel manda notificaciones al móvil (registro, depósito, bot caído) sin necesidad de app nativa.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Flujo · Conversación</div>
+    <h2>Cómo responde un bot</h2>
+    <p class="sub">De extremo a extremo, cada mensaje de un jugador recorre este camino. Todo ocurre en segundos.</p>
+    <div class="flowbox">
+      <div class="flabel">Recorrido de un mensaje</div>
+      <div class="flow">
+        <div class="node"><b>Jugador</b><small>Telegram</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Webhook</b><small>/api/telegram</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>IA · Claude</b><small>persona + reglas</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Respuesta</b><small>al jugador</small></div>
+      </div>
+      <div class="flow-note">En paralelo: el mensaje se <b>guarda</b> en la base de datos y se envía una <b>copia al gestor</b> (para poder leerlo e intervenir desde el panel).</div>
+    </div>
+    <ol class="steps">
+      <li><b>Llega el mensaje.</b> <span>Telegram avisa al webhook del bot correspondiente. Se comprueba un secreto para asegurar que el aviso es legítimo.</span></li>
+      <li><b>Se agrupan mensajes seguidos.</b> <span>Espera unos segundos: si el jugador manda varios mensajes (una foto y luego texto), responde una sola vez teniéndolos todos en cuenta.</span></li>
+      <li><b>La IA redacta la respuesta.</b> <span>Se le pasa el historial del chat y las reglas de esa persona (Sandro, Livana…); la IA contesta con su voz y tono.</span></li>
+      <li><b>Filtros de seguridad.</b> <span>Antes de enviar, unos guardarraíles revisan la respuesta y la corrigen si hiciera falta.</span></li>
+      <li><b>Se envía, se guarda y se avisa.</b> <span>La respuesta va al jugador; el chat queda registrado y aparece en el panel del gestor con copia por Telegram.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="kicker">Los bots</div>
+    <h2>Las personas</h2>
+    <p class="sub">Todos comparten el mismo motor y las mismas reglas base; lo que cambia es la persona, el juego y el afiliado al que pertenece cada uno.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Bot</th><th>Persona</th><th>Juego</th><th>Afiliado</th></tr></thead>
+        <tbody>
+          <tr><td><b>Sandro</b><br><span class="mono">bot principal</span></td><td>Sandro / Kingz</td><td>Mines · patrón Z</td><td>Cuenta propia</td></tr>
+          <tr><td><b>Jeffer</b></td><td>Jeffer (dominicano)</td><td>Mines · patrón Z</td><td>Jeffer</td></tr>
+          <tr><td><b>Livana</b></td><td>Livana (chica)</td><td>Diamond Mines</td><td>Livana</td></tr>
+          <tr><td><b>Black KP</b></td><td>Creador de drip/ropa</td><td>Mines · patrón Z</td><td>Black KP</td></tr>
+          <tr><td><b>iAfrika</b></td><td>Chica creadora (iafrikaa)</td><td>Mines · patrón Z</td><td>iAfrika</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">Cada bot tiene su propio <b>token</b>, su <b>enlace</b> de afiliado y sus <b>notificaciones</b>. Los chats de todos ellos se centralizan en el panel para poder revisarlos e intervenir.</div>
+
+    <h2 style="margin-top:40px">Guardarraíles</h2>
+    <p class="sub">Reglas que se aplican a las respuestas de los bots para que sean útiles, coherentes y responsables.</p>
+    <ul class="feat">
+      <li><b>Coherencia y memoria.</b> Tienen en cuenta todo el hilo; no repiten lo ya dicho ni piden dos veces el mismo dato.</li>
+      <li><b>Naturalidad.</b> Evitan muletillas y respuestas robóticas; reaccionan a lo concreto de cada mensaje.</li>
+      <li><b>No inventar.</b> No se inventan datos de la cuenta del jugador, identidades de fotos ni vías de contacto; ante la duda, derivan al soporte oficial de Celsius.</li>
+      <li><b>Juego responsable.</b> Si alguien dice que perdió dinero prestado, se quedó sin nada o quiere parar, priorizan su bienestar y no le empujan a seguir jugando ni a depositar.</li>
+      <li><b>Ahorro.</b> No responden a reacciones vacías ("jaja", "ok"): cada mensaje del bot tiene un coste.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="kicker">Flujo · Dinero</div>
+    <h2>Cómo se cuenta un depósito</h2>
+    <p class="sub">El punto donde se conectan las dos piezas: un jugador que deposita se convierte en dinero atribuido al afiliado correcto.</p>
+    <div class="flowbox">
+      <div class="flabel">Atribución de un QFTD</div>
+      <div class="flow">
+        <div class="node"><b>Enlace</b><small>del afiliado</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Depósito</b><small>en Celsius</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Postback</b><small>Blue avisa</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Atribución</b><small>al afiliado</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Estadísticas</b><small>+ reparto</small></div>
+      </div>
+      <div class="flow-note">Cada depósito cualificado (<span class="mono">QFTD</span>) se cuenta una sola vez (candado anti-duplicado), acredita su <span class="mono">CPA</span> al afiliado y el margen restante se reparte con el socio.</div>
+    </div>
+    <p>El sistema reconoce por el <strong>código del enlace</strong> a qué afiliado pertenece cada depósito. Si el depósito llega por el <strong>bot</strong> de un afiliado, su dinero va a la cuenta de ese afiliado; el resto del tráfico directo va a la cuenta propia.</p>
+  </section>
+
+  <section>
+    <div class="kicker">Dashboard</div>
+    <h2>Quién ve qué</h2>
+    <p class="sub">El mismo panel muestra cosas distintas según el rol de quien entra. El acceso a los datos está protegido en el servidor y en la base de datos.</p>
+    <div class="roles">
+      <div class="role">
+        <div class="who"><b>Administrador</b><span class="r">Sandro</span></div>
+        <ul>
+          <li>Todos los afiliados y su <b>dinero</b></li>
+          <li><b>Reparto</b> con el socio y gastos</li>
+          <li>Todos los <b>chats</b> de los bots</li>
+          <li>Solicitudes, pagos, actividad</li>
+        </ul>
+      </div>
+      <div class="role">
+        <div class="who"><b>Afiliado</b><span class="r">cada uno</span></div>
+        <ul>
+          <li>Solo <b>lo suyo</b>: clicks, FTD, comisión</li>
+          <li>Su <b>enlace</b> y sus pagos</li>
+          <li>Sus <b>subafiliados</b></li>
+          <li>Los chats de <b>su</b> bot</li>
+        </ul>
+      </div>
+      <div class="role">
+        <div class="who"><b>Gestora</b><span class="r">Yaiza</span></div>
+        <ul>
+          <li>Los <b>chats de los bots</b> (todos)</li>
+          <li>Leerlos e <b>intervenir</b> si hace falta</li>
+          <li>Avisos de mensajes y depósitos por bot</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Automatización y seguridad</div>
+    <h2>Lo que corre solo</h2>
+    <p class="sub">Tareas programadas y protecciones que funcionan en segundo plano.</p>
+    <ul class="feat">
+      <li><b>Mensaje diario.</b> Cada bot manda un gancho de "buenos días" a sus jugadores, generado en su propia voz.</li>
+      <li><b>Estadísticas y copia de seguridad.</b> Se calculan a diario y se guarda una foto de las tablas por si hay que restaurar.</li>
+      <li><b>Vigilante de caídas.</b> Comprueba varias veces al día que los webhooks de los bots siguen vivos y avisa al momento si uno se cae.</li>
+      <li><b>Cortafuegos y límites.</b> Una capa de borde limita el tamaño de las peticiones y frena inundaciones; los enlaces de fotos van firmados y caducan.</li>
+      <li><b>Secretos fuera del código.</b> Tokens y claves viven solo en el entorno de Vercel, nunca en el repositorio.</li>
+      <li><b>Acceso por rol.</b> Cada afiliado solo puede leer sus propios datos (reglas RLS + validación en cada endpoint).</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="kicker">Referencia</div>
+    <h2>Glosario</h2>
+    <p class="sub">Los términos que más aparecen, en cristiano.</p>
+    <dl class="gloss">
+      <div><dt>FTD</dt><dd><b>First Time Deposit.</b> El primer depósito de un jugador.</dd></div>
+      <div><dt>QFTD</dt><dd>El FTD <b>cualificado</b> (cumple el mínimo): el que cuenta y paga comisión.</dd></div>
+      <div><dt>CPA</dt><dd>Lo que cobra el afiliado <b>por cada QFTD</b> (una cantidad fija).</dd></div>
+      <div><dt>Postback</dt><dd>El <b>aviso</b> que manda la red de afiliados cuando ocurre un evento (registro, depósito…).</dd></div>
+      <div><dt>Tracking code</dt><dd>El <b>código del enlace</b> que identifica a qué afiliado pertenece un jugador.</dd></div>
+      <div><dt>afp</dt><dd>Etiqueta interna de la <b>fuente</b> del tráfico (web, bot de Jeffer, bot de Livana…).</dd></div>
+      <div><dt>Reparto</dt><dd>Cómo se divide el <b>margen</b> (lo que queda tras pagar al afiliado) entre Sandro y el socio.</dd></div>
+      <div><dt>Override</dt><dd>Lo que gana un afiliado <b>por sus subafiliados</b> (un % de la comisión del hijo).</dd></div>
+      <div><dt>RLS</dt><dd><b>Row-Level Security.</b> Reglas de la base de datos: cada quien solo ve sus filas.</dd></div>
+      <div><dt>Webhook</dt><dd>La <b>URL</b> a la que Telegram/Blue mandan los avisos en tiempo real.</dd></div>
+    </dl>
+  </section>
+
+  <footer>
+    <div class="rule"></div>
+    A&amp;S Afiliados · Documento técnico interno · agosto 2026 · No compartir fuera del equipo.
+  </footer>
+
+</div>
+</body>
+</html>
