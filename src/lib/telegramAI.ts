@@ -573,18 +573,29 @@ function quitarGuiones(txt: string): string {
 }
 
 // Texto del ÚLTIMO mensaje del bot en el historial (para el anti-repetición).
+function textoDeMsg(m: Anthropic.MessageParam): string {
+  if (typeof m.content === "string") return m.content;
+  if (Array.isArray(m.content))
+    return m.content
+      .map((b) => (b && typeof b === "object" && "text" in b ? (b as { text?: string }).text ?? "" : ""))
+      .join(" ");
+  return "";
+}
 function ultimoAssistantTexto(messages: Anthropic.MessageParam[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    if (m.role !== "assistant") continue;
-    if (typeof m.content === "string") return m.content;
-    if (Array.isArray(m.content))
-      return m.content
-        .map((b) => (b && typeof b === "object" && "text" in b ? (b as { text?: string }).text ?? "" : ""))
-        .join(" ");
-    return "";
+    if (messages[i].role === "assistant") return textoDeMsg(messages[i]);
   }
   return "";
+}
+// Los últimos N mensajes del bot (para detectar que repite la MISMA idea a lo
+// largo de varios turnos, no solo respecto al último — típico en los bucles de
+// "cancela el bono / ve al chat en vivo" repetidos 4-5 veces reformulados).
+function ultimosAssistantTextos(messages: Anthropic.MessageParam[], n: number): string[] {
+  const out: string[] = [];
+  for (let i = messages.length - 1; i >= 0 && out.length < n; i--) {
+    if (messages[i].role === "assistant") out.push(textoDeMsg(messages[i]));
+  }
+  return out;
 }
 // Normaliza para comparar (fuera números, puntuación y emojis; solo letras).
 function normRep(s: string): string {
@@ -651,13 +662,14 @@ async function crearConGuardia(
     messages,
   });
   let txt = textoDe(res);
-  // ANTI-REPETICIÓN: si la respuesta es casi igual al ÚLTIMO mensaje del bot,
-  // regenera UNA vez pidiendo algo distinto (lo que más canta a bot: repetir
-  // "dale a PLACE BET y sigue la Z" describiendo el mismo tablero cada vez).
-  if (txt && esRepeticion(txt, ultimoAssistantTexto(messages))) {
+  // ANTI-REPETICIÓN: si la respuesta es casi igual a ALGUNO de los últimos 3
+  // mensajes del bot, regenera UNA vez pidiendo algo distinto. Miramos 3 (no solo
+  // el último) porque el caso que más canta es repetir la misma idea turno tras
+  // turno reformulada — típico en los bucles de "cancela el bono / chat en vivo".
+  if (txt && ultimosAssistantTextos(messages, 3).some((a) => esRepeticion(txt, a))) {
     const avisoRep: Anthropic.TextBlockParam = {
       type: "text",
-      text: "⛔ TU RESPUESTA ES CASI IGUAL A TU MENSAJE ANTERIOR. NO repitas lo mismo ni vuelvas a describir el mismo tablero/estado; NO sueltes otra vez 'dale a place bet'/'sigue la Z'. Di algo DISTINTO: avanza, aporta algo nuevo o pregúntale otra cosa concreta, breve y natural.",
+      text: "⛔ TU RESPUESTA REPITE LO QUE YA DIJISTE EN TUS ÚLTIMOS MENSAJES. NO vuelvas a soltar la misma idea/instrucción reformulada (p. ej. 'cancela el bono'/'ve al chat en vivo'/'dale a place bet'/'sigue la Z') ni a describir el mismo estado. Si eso YA no le funcionó, CAMBIA de táctica: da un paso NUEVO y concreto, escala al siguiente canal, o pregúntale algo distinto. Breve y natural.",
     };
     const resR = await client.messages.create({
       model: MODELO,
