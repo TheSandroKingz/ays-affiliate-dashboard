@@ -337,9 +337,10 @@ const ENLACE_MARIAM = "https://celsius.games/AhBpxgTaoP";
 // Enlace DEDICADO del bot de Black KP (código WHWAhAVgwx). El dinero se atribuye a
 // la cuenta de Black KP (tracking ecUGAqtfld, su link de IG) y sale como afp "botbk".
 const ENLACE_BLACKKP = "https://celsius.games/WHWAhAVgwx";
-// ⏳ Afrika: PLACEHOLDER — actualizar con el enlace REAL de Celsius de su bot en
-// cuanto lo dé (y añadir su código de campaña a los mapas de dinero de blue/route).
-const ENLACE_AFRIKA = "https://celsius.games/";
+// Enlace DEDICADO del bot de iAfrika (código naIRiroIcA, "África - Anuncio"). El
+// dinero se atribuye a la cuenta de iAfrika (tracking werECqYvPP, su link de
+// "Registro" que ella usa por privado) y sale como afp "botaf".
+const ENLACE_AFRIKA = "https://celsius.games/naIRiroIcA";
 
 export const BOTS: Record<string, BotDef> = {
   jeffer: {
@@ -435,7 +436,7 @@ export const BOTS: Record<string, BotDef> = {
     owner: process.env.TELEGRAM_OWNER_CHAT_ID_AFRIKA || "",
     enlace: ENLACE_AFRIKA,
     afp: AFP_AFRIKA,
-    trackingCode: "", // ⏳ PENDIENTE: tracking code de iAfrika (cuando dé su enlace)
+    trackingCode: "werECqYvPP", // link "Registro" de iAfrika = su cuenta; el dinero del bot (naIRiroIcA) se mapea aquí
     nombre: "Afrika",
     juego: "las Mines",
     bienvenida: bienvenidaJuego("las Mines"),

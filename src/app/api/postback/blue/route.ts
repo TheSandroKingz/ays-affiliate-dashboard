@@ -112,6 +112,7 @@ const AFP_CAMPANA: Record<string, string> = {
   ymijpivpyx: "bot", // BOT AS  (bot de Sandro)
   ishrdbxnke: "botmn", // BOT JEFFER (bot de Jeffer)
   whwahavgwx: "botbk", // BOT BLACK KP (bot de Black KP)
+  nairiroica: "botaf", // BOT iAFRIKA (bot de Afrika, "África - Anuncio")
   // ⚠️ AhBpxgTaoP es el enlace DE SIEMPRE de Mariam, que ELLA usa para mandar por
   // privado; el bot de Livana también lo reutiliza, así que NO se pueden separar.
   // Como la mayoría son envíos personales de Mariam, se atribuye a ELLA (afp "web",
@@ -123,6 +124,7 @@ const AFP_CAMPANA: Record<string, string> = {
 const DUENO_CAMPANA: Record<string, string> = {
   ishrdbxnke: "cZahjDgQoR", // el dinero de BOT JEFFER va a la cuenta de Jeffer
   whwahavgwx: "ecUGAqtfld", // el dinero de BOT BLACK KP va a la cuenta de Black KP
+  nairiroica: "werECqYvPP", // el dinero de BOT iAFRIKA va a la cuenta de iAfrika (link "Registro")
 };
 // afp para los PANELES de bot, a partir del código del enlace. Lo que no sea un
 // enlace de bot conocido (Instagram del socio, directos, etc.) → "web" (no bot).
