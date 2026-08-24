@@ -202,6 +202,10 @@ export type EventoPostback = {
 // freshbet (p. ej. si trae player_id), revisar cuadres y detectar fraude.
 // BLINDADO: cualquier fallo aquí se ignora; NUNCA debe romper el postback.
 export async function registrarEvento(e: EventoPostback): Promise<void> {
+  // Columnas base SIEMPRE presentes. `amount` (importe del depósito) va aquí porque
+  // NUNCA debe perderse: es un dato de dinero. `counted_date` es OPCIONAL (puede que
+  // su migración no esté aplicada), así que va aparte y es lo PRIMERO que se descarta
+  // si el insert falla — antes se descartaba amount por error y se perdía el importe.
   const base = {
     event_type: e.event_type,
     raw_query: e.raw_query,
@@ -212,28 +216,27 @@ export async function registrarEvento(e: EventoPostback): Promise<void> {
     matched_user_id: e.matched_user_id,
     commission: e.commission ?? null,
     counted: e.status === "counted",
-    // Fecha REAL de conteo (Madrid): fija el mes en el que restar si luego se
-    // revierte. Solo para eventos que se cuentan aquí (status "counted").
-    counted_date:
-      e.status === "counted"
-        ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
-        : null,
+    amount: e.amount ?? null,
     status: e.status,
   };
+  // Fecha REAL de conteo (Madrid): fija el mes en el que restar si luego se revierte.
+  const countedDate =
+    e.status === "counted"
+      ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
+      : null;
   try {
-    const { error } = await supabaseAdmin
+    // 1) Completo (con counted_date).
+    let { error } = await supabaseAdmin
       .from("postback_events")
-      .insert({ ...base, amount: e.amount ?? null });
-    // Por si la columna 'amount' aún no existe: reintenta sin ella.
+      .insert({ ...base, counted_date: countedDate });
+    // 2) Sin counted_date (por si esa columna no existe) — MANTIENE amount.
+    if (error) ({ error } = await supabaseAdmin.from("postback_events").insert(base));
+    // 3) Último recurso: sin amount tampoco (por si esa columna faltara), para no
+    //    perder NUNCA el registro de auditoría del postback.
     if (error) {
-      const { error: e2 } = await supabaseAdmin.from("postback_events").insert(base);
-      // Por si tampoco existe 'counted_date' (SQL sin aplicar): reintenta sin ella,
-      // para no perder NUNCA el registro de auditoría del postback.
-      if (e2) {
-        const sinCd = { ...base };
-        delete (sinCd as { counted_date?: unknown }).counted_date;
-        await supabaseAdmin.from("postback_events").insert(sinCd);
-      }
+      const sinAmount = { ...base };
+      delete (sinAmount as { amount?: unknown }).amount;
+      await supabaseAdmin.from("postback_events").insert(sinAmount);
     }
   } catch {
     // Un fallo del log NUNCA debe romper el postback.
