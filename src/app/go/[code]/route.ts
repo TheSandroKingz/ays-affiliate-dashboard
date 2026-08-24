@@ -39,22 +39,50 @@ async function getAffiliate(code: string): Promise<CacheEntry> {
   return value;
 }
 
+// ── Códigos DEDICADOS de los BOTS de Telegram. Antes el botón del bot iba DIRECTO
+// a celsius (no contaba clicks). Ahora pasa por /go para CONTAR el click, pero el
+// destino sigue siendo el MISMO enlace de celsius del bot: mismo código de campaña
+// ⇒ el postback de Blue atribuye IGUAL la comisión (no se toca el dinero). El
+// destino va FIJO aquí: aunque la BD falle, /go SIEMPRE redirige a celsius y NUNCA
+// deja tirado al jugador (no se pierde ningún QFTD). `dueno` = tracking del afiliado
+// al que se le suma el CLICK (solo el conteo; el dinero lo resuelve el postback).
+const BOT_LINKS: Record<string, { destino: string; dueno: string }> = {
+  ymijpivpyx: { destino: "https://celsius.games/YmIjpivpyx", dueno: "Default" }, // BOT AS (Sandro) → casa/Mongolitos
+  ishrdbxnke: { destino: "https://celsius.games/iSHRdbxNKE", dueno: "cZahjDgQoR" }, // BOT JEFFER → Jeffer
+  whwahavgwx: { destino: "https://celsius.games/WHWAhAVgwx", dueno: "ecUGAqtfld" }, // BOT BLACK KP → Black KP
+  nairiroica: { destino: "https://celsius.games/naIRiroIcA", dueno: "werECqYvPP" }, // BOT iAFRIKA → iAfrika
+  // Mariam/Livana usa AhBpxgTaoP (su código personal = el del bot) → ya resuelve por
+  // la vía de afiliado normal; no necesita entrada aquí.
+};
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
 
-  const affiliate = await getAffiliate(code);
-
-  if (!affiliate || !affiliate.promo_link) {
-    return NextResponse.redirect(new URL("/", request.url));
+  // ¿Es el código dedicado de un BOT? Destino FIJO (celsius) y el click se atribuye
+  // al afiliado dueño. Si no, es un enlace de afiliado normal (por su promo_link).
+  const botLink = BOT_LINKS[code.toLowerCase()];
+  let promoLink: string;
+  let clickUserId: string | undefined;
+  if (botLink) {
+    promoLink = botLink.destino;
+    const dueno = await getAffiliate(botLink.dueno); // solo para atribuir el click
+    clickUserId = dueno?.user_id;
+  } else {
+    const affiliate = await getAffiliate(code);
+    if (!affiliate || !affiliate.promo_link) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    promoLink = affiliate.promo_link;
+    clickUserId = affiliate.user_id;
   }
 
   // Defensa en profundidad: solo redirigimos a una URL https válida.
   let destino: URL;
   try {
-    destino = new URL(affiliate.promo_link);
+    destino = new URL(promoLink);
   } catch {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -79,8 +107,8 @@ export async function GET(
     request.headers.get("x-moz") === "prefetch" ||
     !!request.headers.get("next-router-prefetch");
 
-  if (!esBot && !esPrefetch) {
-    const userId = affiliate.user_id;
+  if (!esBot && !esPrefetch && clickUserId) {
+    const userId = clickUserId;
     const ip = getClientIp(request);
     after(async () => {
       const today = new Intl.DateTimeFormat("en-CA", {

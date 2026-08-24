@@ -330,17 +330,24 @@ const AFP_AFRIKA = "botaf"; // Afrika → Mines
 // Enlaces de Celsius (Blue) de cada bot, con su campaña propia. Se ponen aquí
 // (no en env) para no depender de una variable de Vercel que traía el de FreshBet.
 // Jeffer → campaña "Mine" (cZahjDgQoR); Mariam/Alana → campaña "Patron" (AhBpxgTaoP).
+// ⚙️ Los enlaces de los bots pasan por NUESTRO /go (asafiliados.com) para CONTAR el
+// click; /go redirige al enlace de celsius del bot (destino FIJO en el mapa BOT_LINKS
+// de src/app/go/[code]/route.ts). Mismo código de campaña ⇒ el postback de Blue
+// atribuye IGUAL el dinero/comisión; solo se añade el conteo de clicks. Si /go fallara
+// por lo que sea, su destino está fijo en código y SIEMPRE llega a celsius (0 QFTD perdidos).
 // Enlace DEDICADO del bot de Jeffer (BOT JEFFER, código iSHRdbxNKE). El dinero
 // se atribuye a la cuenta de Jeffer y su tráfico sale como afp "botmn".
-const ENLACE_JEFFER = "https://celsius.games/iSHRdbxNKE";
-const ENLACE_MARIAM = "https://celsius.games/AhBpxgTaoP";
+const ENLACE_JEFFER = "https://asafiliados.com/go/iSHRdbxNKE";
+// Mariam/Livana: AhBpxgTaoP es su código personal = el del bot (ya resuelve en /go
+// por la vía de afiliado normal → su promo_link de celsius).
+const ENLACE_MARIAM = "https://asafiliados.com/go/AhBpxgTaoP";
 // Enlace DEDICADO del bot de Black KP (código WHWAhAVgwx). El dinero se atribuye a
 // la cuenta de Black KP (tracking ecUGAqtfld, su link de IG) y sale como afp "botbk".
-const ENLACE_BLACKKP = "https://celsius.games/WHWAhAVgwx";
+const ENLACE_BLACKKP = "https://asafiliados.com/go/WHWAhAVgwx";
 // Enlace DEDICADO del bot de iAfrika (código naIRiroIcA, "África - Anuncio"). El
 // dinero se atribuye a la cuenta de iAfrika (tracking werECqYvPP, su link de
 // "Registro" que ella usa por privado) y sale como afp "botaf".
-const ENLACE_AFRIKA = "https://celsius.games/naIRiroIcA";
+const ENLACE_AFRIKA = "https://asafiliados.com/go/naIRiroIcA";
 
 export const BOTS: Record<string, BotDef> = {
   jeffer: {

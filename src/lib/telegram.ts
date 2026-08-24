@@ -33,14 +33,13 @@ export function firmarMediaBot(id: number, exp: number): string {
 }
 export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 
-// Enlace de registro/depósito del bot. USamos el enlace de tracking S2S de Blue
-// (blue2affiliates.com/g/…), NO el directo de celsius.games: el directo no genera
-// clickid y el postback podría no dispararse. El g/ redirige a Celsius añadiendo
-// click_id (y el sub1 si lo lleva). Sin sub1 = tráfico del bot = va a tu cuenta
-// por defecto (Mongolitos). Los afiliados usan el mismo g/ con su ?s1=<código>.
-// Enlace DEDICADO del bot de Sandro (BOT AS, código YmIjpivpyx). Al ser propio
-// del bot, su tráfico se separa del Instagram del socio en el panel (afp "bot").
-export const ENLACE_JUGAR = "https://celsius.games/YmIjpivpyx";
+// Enlace de registro/depósito del bot. Pasa por NUESTRO /go (asafiliados.com) para
+// CONTAR el click, y /go redirige al enlace de celsius del bot (código YmIjpivpyx).
+// El destino va FIJO en el mapa BOT_LINKS de /go: aunque falle la BD, SIEMPRE llega
+// a celsius (no se pierde ningún depósito). El código de campaña no cambia, así que
+// el postback de Blue atribuye IGUAL: tráfico del bot de Sandro (afp "bot"), y sin
+// sub1 propio va a la casa/Mongolitos por defecto. Los afiliados usan su /go/<código>.
+export const ENLACE_JUGAR = "https://asafiliados.com/go/YmIjpivpyx";
 
 // ⛔ PAUSA (FreshBet cortó el tráfico — ya no trabajamos con ellos). Mientras
 // esto sea true, NO se envía NINGÚN enlace/botón en ningún mensaje (chat, diario,
