@@ -10,19 +10,11 @@ export default function BotLectorPage() {
 
   return (
     <main className="flex flex-col gap-5 max-w-3xl mx-auto">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-white">Conversaciones del bot</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Lee todas las charlas con los jugadores. Anota lo que veas para mejorarlo.
-          </p>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="shrink-0 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
-        >
-          🔄 Actualizar
-        </button>
+      <div>
+        <h1 className="text-2xl font-semibold text-white">Conversaciones del bot</h1>
+        <p className="text-sm text-slate-400 mt-1">
+          Lee todas las charlas con los jugadores. Anota lo que veas para mejorarlo.
+        </p>
       </div>
 
       {/* Tu próximo pago (500€/mes por revisar los chats) — intermedio, compacto. */}
