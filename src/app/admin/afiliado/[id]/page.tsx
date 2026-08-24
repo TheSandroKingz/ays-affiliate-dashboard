@@ -53,6 +53,7 @@ export default function AfiliadoDetallePage() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [daily, setDaily] = useState<DailyRow[]>([]);
   const [visitas, setVisitas] = useState<{ hoy: number; semana: number } | null>(null);
+  const [deposito, setDeposito] = useState<{ media: number | null; num: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -134,6 +135,7 @@ export default function AfiliadoDetallePage() {
       setPerfil(body.perfil);
       setDaily(Array.isArray(body.daily) ? body.daily : []);
       setVisitas(body.visitas ?? null);
+      setDeposito(body.deposito ?? null);
       setLastUpdated(new Date());
     } catch {
       if (reqId === reqRef.current) setError(true);
@@ -238,6 +240,14 @@ export default function AfiliadoDetallePage() {
       value:
         totals.clicks > 0
           ? `${((totals.ftd / totals.clicks) * 100).toFixed(1)}%`
+          : "—",
+      destacar: false,
+    },
+    {
+      label: "Depósito medio",
+      value:
+        deposito?.media != null
+          ? eur(deposito.media)
           : "—",
       destacar: false,
     },

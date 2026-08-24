@@ -110,6 +110,7 @@ export default function DashboardPage() {
   const { displayName, birthdate } = useProfile(); // perfil compartido
   const [subCommission, setSubCommission] = useState(0);
   const [totalGenerado, setTotalGenerado] = useState(0);
+  const [mediaDep, setMediaDep] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -147,7 +148,7 @@ export default function DashboardPage() {
       // Las consultas son independientes entre sí: las lanzamos en paralelo.
       // El nombre ya lo tiene el almacén compartido, así que aquí solo pedimos
       // los datos diarios y la comisión de subafiliados (una consulta menos).
-      const [dailyRes, subRes] = await Promise.all([
+      const [dailyRes, subRes, calidadRes] = await Promise.all([
         supabase
           .from("affiliate_daily_stats")
           .select("date, commission, clicks, registrations, ftd")
@@ -164,7 +165,16 @@ export default function DashboardPage() {
         })
           .then((r) => (r.ok ? r.json() : { rows: [] }))
           .catch(() => ({ rows: [] })),
+        // Depósito medio del afiliado (media depositante). No bloquea.
+        fetch("/api/account/calidad", {
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
       ]);
+      setMediaDep(
+        calidadRes?.deposito?.media != null ? Number(calidadRes.deposito.media) : null
+      );
 
       // Solo bloqueamos si falla la carga de DATOS (lo que importa).
       if (dailyRes.error) {
@@ -507,6 +517,12 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between py-1 text-sm">
                   <span className="text-slate-300">Total generado</span>
                   <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
+                </div>
+              )}
+              {!isAdmin && mediaDep != null && (
+                <div className="flex items-center justify-between py-1 text-sm">
+                  <span className="text-slate-300">Depósito medio</span>
+                  <span className="font-medium text-white">{eur(mediaDep)}</span>
                 </div>
               )}
             </div>

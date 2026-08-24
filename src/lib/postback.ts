@@ -269,6 +269,25 @@ export async function depositoMedio(
   }
 }
 
+// Depósito medio GLOBAL (de TODOS los afiliados): media del importe de todos los
+// primeros depósitos con importe > 0. Para el panel del admin. BLINDADO.
+export async function depositoMedioGlobal(): Promise<{ media: number | null; num: number }> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("postback_events")
+      .select("amount")
+      .eq("event_type", "ftd")
+      .not("amount", "is", null)
+      .gt("amount", 0)
+      .limit(100000);
+    if (error || !data || !data.length) return { media: null, num: 0 };
+    const sum = data.reduce((s, d) => s + Number(d.amount ?? 0), 0);
+    return { media: sum / data.length, num: data.length };
+  } catch {
+    return { media: null, num: 0 };
+  }
+}
+
 // Quita el secreto (?key=) de la query cruda antes de guardarla en el log.
 export function queryLimpia(url: URL): string {
   const p = new URLSearchParams(url.search);

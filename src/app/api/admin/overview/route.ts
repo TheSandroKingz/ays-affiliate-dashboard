@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
 import { resumenSeguridad, saludFreshbet } from "@/lib/seguridad";
+import { depositoMedioGlobal } from "@/lib/postback";
 
 // Vista consolidada del INICIO del admin: mes en curso + mes pasado (para la
 // comparativa "a estas alturas") + seguridad + solicitudes pendientes. La
@@ -153,12 +154,16 @@ export async function GET(request: Request) {
   // (El REPARTO con el socio se calcula en su endpoint dedicado /api/admin/reparto,
   // que la página de Reparto usa. Aquí ya NO se duplica.)
 
+  // Depósito medio GLOBAL (media depositante de todos los afiliados juntos).
+  const mediaTotal = await depositoMedioGlobal();
+
   return NextResponse.json({
     adminCpa,
     seguridad,
     freshbet,
     lastMonthToDateClean,
     totalGenerado,
+    mediaTotal,
     paises,
     month: { stats: mes.stats, totals: mes.totals, daily: mes.daily },
     pending: pendRes.count ?? 0,

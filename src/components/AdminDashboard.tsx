@@ -68,6 +68,7 @@ export default function AdminDashboard() {
   const { displayName } = useProfile(); // nombre desde el almacén compartido
   const [totals, setTotals] = useState<Totals>(emptyTotals);
   const [totalGenerado, setTotalGenerado] = useState(0); // histórico total (todo el tiempo)
+  const [mediaTotal, setMediaTotal] = useState<number | null>(null); // depósito medio global
   const [daily, setDaily] = useState<DailyRow[]>([]);
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(
     () => new Set(["commission"])
@@ -138,6 +139,9 @@ export default function AdminDashboard() {
           typeof res.lastMonthToDateClean === "number" ? res.lastMonthToDateClean : null
         );
         setTotalGenerado(typeof res.totalGenerado === "number" ? res.totalGenerado : 0);
+        setMediaTotal(
+          res.mediaTotal?.media != null ? Number(res.mediaTotal.media) : null
+        );
         setPaises(Array.isArray(res.paises) ? res.paises : []);
 
         // Hitos de beneficio: confeti al pasar 100/250/500/1000... por primera
@@ -465,6 +469,12 @@ export default function AdminDashboard() {
                 <span className="text-slate-300">Total generado</span>
                 <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
               </div>
+              {mediaTotal != null && (
+                <div className="flex items-center justify-between py-1 text-sm">
+                  <span className="text-slate-300">Depósito medio (global)</span>
+                  <span className="font-medium text-white">{eur(mediaTotal)}</span>
+                </div>
+              )}
             </div>
         </div>
         <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
