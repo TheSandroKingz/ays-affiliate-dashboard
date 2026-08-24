@@ -469,12 +469,6 @@ export default function AdminDashboard() {
                 <span className="text-slate-300">Total generado</span>
                 <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
               </div>
-              {mediaTotal != null && (
-                <div className="flex items-center justify-between py-1 text-sm">
-                  <span className="text-slate-300">Depósito medio (global)</span>
-                  <span className="font-medium text-white">{eur(mediaTotal)}</span>
-                </div>
-              )}
             </div>
         </div>
         <p className="text-3xl sm:text-4xl font-bold text-white">{eur(totals.totalClean)}</p>
@@ -516,6 +510,12 @@ export default function AdminDashboard() {
           <p className="mt-2 text-xs text-slate-500">
             Proyección fin de mes{" "}
             <span className="text-slate-300 font-medium">~{eur(proyeccionAdmin)}</span>
+          </p>
+        )}
+        {mediaTotal != null && (
+          <p className="mt-1 text-xs text-slate-500">
+            💶 Depósito medio (global){" "}
+            <span className="text-slate-300 font-medium">{eur(mediaTotal)}</span>
           </p>
         )}
       </div>

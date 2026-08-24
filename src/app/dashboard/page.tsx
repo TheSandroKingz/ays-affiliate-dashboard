@@ -501,12 +501,6 @@ export default function DashboardPage() {
                   <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
                 </div>
               )}
-              {!isAdmin && mediaDep != null && (
-                <div className="flex items-center justify-between py-1 text-sm">
-                  <span className="text-slate-300">Depósito medio</span>
-                  <span className="font-medium text-white">{eur(mediaDep)}</span>
-                </div>
-              )}
             </div>
         </div>
         </div>
@@ -541,9 +535,12 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Días de mes y récord (detalles pequeños). */}
-      {!isAdmin && (diasRestantesMes > 0 || hist.mejorMes > 0) && (
+      {/* Depósito medio, días de mes y récord (detalles pequeños). */}
+      {!isAdmin && (mediaDep != null || diasRestantesMes > 0 || hist.mejorMes > 0) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 -mt-3">
+          {mediaDep != null && (
+            <span>💶 Depósito medio: <b className="text-slate-300">{eur(mediaDep)}</b></span>
+          )}
           {diasRestantesMes > 0 && (
             <span>🗓️ Quedan <b className="text-slate-300">{diasRestantesMes} días</b> de mes</span>
           )}
