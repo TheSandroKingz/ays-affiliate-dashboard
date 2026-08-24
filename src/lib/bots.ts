@@ -315,11 +315,18 @@ const EXTRA_BLACKKP =
   "- NUNCA le digas a nadie que use una VPN, ni le ayudes a saltarse un bloqueo de país para abrir Celsius. Si no le abre desde su país: NO le enseñes a saltárselo; que lo intente desde la web oficial y, si sigue sin poder, al soporte / chat en vivo de Celsius. Sin prometer nada.\n" +
   "- SALUDO: al INICIO de la conversación, saluda BREVE antes de atender el problema, adaptándote a su tono (ej. jugador: 'necesito ayuda bro, dice que no está disponible en mi región' → tú: 'ey bro claro, pásame una captura de lo que te aparece y lo miramos'). ⛔ Solo saludas al PRINCIPIO: en los siguientes mensajes NO repitas saludos ni abuses de 'bro'/'hermano' — al grano y natural.";
 
+// Afrika: chica creadora de contenido; en redes es "iafrikaa" y en sus vídeos
+// sale con la cara tapada (pasamontañas). Tráfico de TikTok/Instagram.
+const EXTRA_AFRIKA =
+  "- ERES AFRIKA: chica creadora de contenido; en TikTok e Instagram te conocen como **iafrikaa** y en tus vídeos sales con la CARA TAPADA (pasamontañas), es tu sello. Si alguien te reconoce ('te sigo', 'la del pasamontañas', 'te vi en TikTok/IG', 'iafrikaa'): buena vibra y reconduce al juego. ⛔ NO te enredes hablando de tu cara, el pasamontañas ni tus redes: tu movida AQUÍ es el patrón de las Mines y que le den; si insisten, un toque corto y de vuelta al juego.\n" +
+  "- NUNCA le digas a nadie que use una VPN, ni le ayudes a saltarse un bloqueo de país para abrir Celsius. Si no le abre desde su país: NO le enseñes a saltárselo; que lo intente desde la web oficial y, si sigue sin poder, al soporte / chat en vivo de Celsius. Sin prometer nada.";
+
 
 // Códigos afp NEUTROS (no revelan el nombre). Únicos por bot; empiezan por "bot".
 const AFP_JEFFER = "botmn"; // Jeffer → Mines
 const AFP_MARIAM = "botdm"; // Mariam → Diamond Mines
 const AFP_BLACKKP = "botbk"; // Black KP → Mines
+const AFP_AFRIKA = "botaf"; // Afrika → Mines
 // Enlaces de Celsius (Blue) de cada bot, con su campaña propia. Se ponen aquí
 // (no en env) para no depender de una variable de Vercel que traía el de FreshBet.
 // Jeffer → campaña "Mine" (cZahjDgQoR); Mariam/Alana → campaña "Patron" (AhBpxgTaoP).
@@ -330,6 +337,9 @@ const ENLACE_MARIAM = "https://celsius.games/AhBpxgTaoP";
 // Enlace DEDICADO del bot de Black KP (código WHWAhAVgwx). El dinero se atribuye a
 // la cuenta de Black KP (tracking ecUGAqtfld, su link de IG) y sale como afp "botbk".
 const ENLACE_BLACKKP = "https://celsius.games/WHWAhAVgwx";
+// ⏳ Afrika: PLACEHOLDER — actualizar con el enlace REAL de Celsius de su bot en
+// cuanto lo dé (y añadir su código de campaña a los mapas de dinero de blue/route).
+const ENLACE_AFRIKA = "https://celsius.games/";
 
 export const BOTS: Record<string, BotDef> = {
   jeffer: {
@@ -415,6 +425,32 @@ export const BOTS: Record<string, BotDef> = {
       dialecto: DIALECTO_JEFFER,
     }),
     diario: construirDiario("Black KP"),
+  },
+  afrika: {
+    key: "afrika",
+    label: "iAfrika",
+    username: "@iAfriikaBot",
+    token: (process.env.TELEGRAM_BOT_TOKEN_AFRIKA || "").trim(),
+    secret: (process.env.TELEGRAM_WEBHOOK_SECRET_AFRIKA || "").trim(),
+    owner: process.env.TELEGRAM_OWNER_CHAT_ID_AFRIKA || "",
+    enlace: ENLACE_AFRIKA,
+    afp: AFP_AFRIKA,
+    trackingCode: "", // ⏳ PENDIENTE: tracking code de iAfrika (cuando dé su enlace)
+    nombre: "Afrika",
+    juego: "las Mines",
+    bienvenida: bienvenidaJuego("las Mines"),
+    saludo: "¡Hey! 👋",
+    persona: construirPersona({
+      nombre: "Afrika",
+      juego: "las Mines",
+      enlace: ENLACE_AFRIKA,
+      comoLlegar:
+        "en el menú entra a JUEGOS ORIGINALES (no 'minijuegos') y ahí tienes las Mines",
+      genero: "f",
+      estrategias: ESTRATEGIAS_JEFFER,
+      extra: EXTRA_AFRIKA,
+    }),
+    diario: construirDiario("Afrika"),
   },
 };
 
