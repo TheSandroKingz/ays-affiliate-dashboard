@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getGestorBot } from "@/lib/adminAuth";
 import { YAIZA_START } from "@/lib/adminId";
+import { BOTS } from "@/lib/bots";
 
-// Dinero que ha DEPOSITADO la gente por el BOT de Sandro (afp="bot") desde que
-// Yaiza empezó, y el de hoy — el importe del depósito (amount), NO la comisión.
+// afps de TODOS los bots que gestiona Yaiza: Sandro ("bot") + los nuevos
+// (Jeffer/Livana/Black KP/iAfrika, cada uno con su afp). Así el dinero y los
+// depósitos que ve son los de los 5, para saber cómo va su trabajo con todos.
+const AFPS_BOTS = ["bot", ...Object.values(BOTS).map((b) => b.afp)];
+
+// Dinero que ha DEPOSITADO la gente por LOS BOTS (los 5) desde que Yaiza empezó,
+// y el de hoy — el importe del depósito (amount), NO la comisión.
 // Solo lectura, para el gestor del bot. Blindado.
 export async function GET(request: Request) {
   const user = await getGestorBot(request);
@@ -28,7 +34,7 @@ export async function GET(request: Request) {
   const { data } = await supabaseAdmin
     .from("postback_events")
     .select("amount, created_at")
-    .eq("afp", "bot")
+    .in("afp", AFPS_BOTS)
     .eq("event_type", "redeposit")
     .gte("created_at", desde)
     .limit(100000);

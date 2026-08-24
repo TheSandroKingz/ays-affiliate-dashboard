@@ -48,7 +48,7 @@ export default function BotLectorPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
             <div className="text-sm text-emerald-200/80">
-              💰 Depositado por el bot
+              💰 Depositado por los bots
             </div>
             <div className="mt-1 text-4xl font-extrabold text-emerald-300">
               {Math.round(dinero.total).toLocaleString("es-ES")} €
