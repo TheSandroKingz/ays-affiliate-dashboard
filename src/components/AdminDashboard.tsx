@@ -499,18 +499,18 @@ export default function AdminDashboard() {
               {pctMes >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
               {eur(Math.abs(totals.totalClean - lastMonthToDate))}
             </span>{" "}
-            <span className="text-slate-500">que el mes pasado a estas alturas</span>
+            <span className="text-slate-500">vs mes pasado</span>
           </div>
         )}
         {mostrarProyeccionAdmin && (
           <p className="mt-2 text-xs text-slate-500">
-            Proyección fin de mes{" "}
+            Proyección{" "}
             <span className="text-slate-300 font-medium">~{eur(proyeccionAdmin)}</span>
           </p>
         )}
         {mediaTotal != null && (
           <p className="mt-1 text-xs text-slate-500">
-            💶 Depósito medio (global){" "}
+            💶 Depósito medio{" "}
             <span className="text-slate-300 font-medium">{eur(mediaTotal)}</span>
           </p>
         )}
