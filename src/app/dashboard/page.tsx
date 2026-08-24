@@ -329,24 +329,6 @@ export default function DashboardPage() {
     return { commission, ftd };
   }, [rawDaily]);
 
-  // Racha: días seguidos con FTD (cuenta hacia atrás desde hoy; si hoy aún no
-  // hay, sigue viva contando desde ayer). Solo se muestra si es de 2 o más.
-  const racha = useMemo(() => {
-    const conFtd = new Set(
-      rawDaily.filter((r) => Number(r.ftd ?? 0) > 0).map((r) => String(r.date).slice(0, 10))
-    );
-    if (conFtd.size === 0) return 0;
-    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
-    const d = new Date(hoy + "T00:00:00Z");
-    if (!conFtd.has(hoy)) d.setUTCDate(d.getUTCDate() - 1);
-    let count = 0;
-    while (conFtd.has(d.toISOString().slice(0, 10))) {
-      count++;
-      d.setUTCDate(d.getUTCDate() - 1);
-    }
-    return count;
-  }, [rawDaily]);
-
   // Histórico para el récord: total de FTD y mejor mes.
   const hist = useMemo(() => {
     let total = 0;
@@ -559,12 +541,9 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Racha, días de mes y récord (detalles pequeños y motivadores). */}
-      {!isAdmin && (racha >= 2 || diasRestantesMes > 0 || hist.mejorMes > 0) && (
+      {/* Días de mes y récord (detalles pequeños). */}
+      {!isAdmin && (diasRestantesMes > 0 || hist.mejorMes > 0) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 -mt-3">
-          {racha >= 2 && (
-            <span>🔥 <b className="text-slate-300">{racha} días</b> seguidos con FTD</span>
-          )}
           {diasRestantesMes > 0 && (
             <span>🗓️ Quedan <b className="text-slate-300">{diasRestantesMes} días</b> de mes</span>
           )}
