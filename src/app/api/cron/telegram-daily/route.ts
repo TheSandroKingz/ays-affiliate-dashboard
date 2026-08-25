@@ -301,9 +301,13 @@ export async function GET(request: Request) {
   }
 
   // Idempotencia: los cron de Vercel pueden dispararse dos veces (at-least-once).
-  // Reservamos la franja del día (atómico) para no reenviar el masivo por
-  // duplicado. El envío MANUAL (force) no se frena. BLINDADO: si la tabla aún no
-  // existe, no bloquea (se envía igual).
+  // Reservamos la franja del día (atómico). Antes, si estaba reservada, se CORTABA
+  // TODO — pero si el primer disparo se cortó a mitad del masivo (timeout 60s), el
+  // reintento no reanudaba y media lista se quedaba sin el diario. Ahora: la franja
+  // ya reservada (franjaYaHecha) solo evita repetir las partes de UNA vez (bots,
+  // dormidos); el masivo de Sandro SÍ continúa, pero salta a los que YA lo recibieron
+  // hoy (columna last_daily_at), así que un reintento RESUME en vez de reenviar.
+  let franjaYaHecha = false;
   if (!force) {
     const diaMadrid = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Europe/Madrid",
@@ -313,9 +317,7 @@ export async function GET(request: Request) {
       .from("telegram_envio_diario")
       .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
       .select("clave");
-    if (!insErr && ins && ins.length === 0) {
-      return NextResponse.json({ ok: true, enviado: false, motivo: "ya enviado esta franja" });
-    }
+    if (!insErr && ins && ins.length === 0) franjaYaHecha = true;
   }
 
   // Limpieza: borramos los update_id anti-duplicados de más de 1 día.
@@ -335,15 +337,17 @@ export async function GET(request: Request) {
   // SOLO en el envío de la noche (hora===20) o forzado, para que salga a las
   // 20:00 como el de Sandro (no a mediodía en el envío extra de findes) y no se
   // duplique. Blindado (no rompe nada si falla).
-  if (hora === 20 || force) {
+  if ((hora === 20 || force) && !franjaYaHecha) {
     const diaMadrid = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Europe/Madrid",
     }).format(new Date());
     await procesarBotsDiario(diaMadrid, force).catch(() => {});
   }
 
-  // Reactivamos dormidos solo en el envío de la noche (1 vez/día), no en el extra.
-  const picados = hora === 20 || force ? await reactivarDormidos() : [];
+  // Reactivamos dormidos solo en el envío de la noche (1 vez/día), no en el extra ni
+  // en un reintento de franja ya hecha (evita re-picar a los dormidos dos veces).
+  const picados =
+    (hora === 20 || force) && !franjaYaHecha ? await reactivarDormidos() : [];
   const reactivados = picados.length;
 
   // La IA genera el texto del día (distinto cada vez). En finde/cobro, aprovecha.
@@ -385,12 +389,40 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, enviado: false, reactivados, motivo: "sin texto (IA) ni video" });
   }
 
-  const { data: contactos } = await supabaseAdmin
-    .from("telegram_contacts")
-    .select("chat_id")
-    .eq("opted_out", false)
-    .eq("silenced", false)
-    .limit(100000);
+  // Solo a quien NO haya recibido el diario HOY (para poder REANUDAR tras un timeout
+  // en vez de reenviar a todos). Si la columna last_daily_at aún no existe en la BD,
+  // caemos al comportamiento antiguo (todos) — así es seguro desplegar antes del SQL.
+  const hoyDia = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const traerTodos = async () =>
+    (
+      await supabaseAdmin
+        .from("telegram_contacts")
+        .select("chat_id")
+        .eq("opted_out", false)
+        .eq("silenced", false)
+        .limit(100000)
+    ).data as { chat_id: number }[] | null;
+  // usaLastDaily: filtra a los que aún NO recibieron el diario hoy (resume). El envío
+  // manual (force) va a TODOS. Si la columna no existe, cae a "todos".
+  let usaLastDaily = !force;
+  let contactos: { chat_id: number }[] | null;
+  if (usaLastDaily) {
+    const rDest = await supabaseAdmin
+      .from("telegram_contacts")
+      .select("chat_id")
+      .eq("opted_out", false)
+      .eq("silenced", false)
+      .or(`last_daily_at.is.null,last_daily_at.neq.${hoyDia}`)
+      .limit(100000);
+    if (rDest.error) {
+      usaLastDaily = false;
+      contactos = await traerTodos();
+    } else {
+      contactos = rDest.data as { chat_id: number }[] | null;
+    }
+  } else {
+    contactos = await traerTodos();
+  }
   const yaPicados = new Set(picados);
   const ids = (contactos ?? [])
     .map((c) => c.chat_id as number)
@@ -427,12 +459,14 @@ export async function GET(request: Request) {
 
   for (let i = 0; i < ids.length; i += 25) {
     const tanda = ids.slice(i, i + 25);
+    const okTanda: number[] = [];
     await Promise.all(
       tanda.map(async (chatId) => {
         const { metodo, params } = payload(chatId);
         const r = await tgApi(metodo, params);
         if (r?.ok) {
           enviados++;
+          okTanda.push(chatId);
           await guardarMsg(chatId, midDe(r));
         } else {
           fallos++;
@@ -442,6 +476,15 @@ export async function GET(request: Request) {
         }
       })
     );
+    // Marca a los enviados de ESTA tanda como "diario recibido hoy". Así, si la
+    // función se corta antes de acabar la lista, el reintento reanuda por los que faltan.
+    if (usaLastDaily && okTanda.length) {
+      await supabaseAdmin
+        .from("telegram_contacts")
+        .update({ last_daily_at: hoyDia })
+        .in("chat_id", okTanda)
+        .then(() => {}, () => {});
+    }
     // Pausa entre tandas para que Telegram no nos frene en listas grandes.
     if (i + 25 < ids.length) await new Promise((r) => setTimeout(r, 1000));
   }
