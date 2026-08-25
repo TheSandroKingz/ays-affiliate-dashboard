@@ -224,16 +224,32 @@ export async function registrarEvento(e: EventoPostback): Promise<void> {
     e.status === "counted"
       ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
       : null;
+  // ⚠️ Los reintentos SOLO se disparan si el error es por una COLUMNA que no existe
+  // (migración sin aplicar). NUNCA ante un error cualquiera: un "commit-then-timeout"
+  // devuelve error pero la fila SÍ se guardó, y reintentar a ciegas crearía una fila
+  // DUPLICADA que infla el importe depositado y la media (aunque NO el pago del CPA,
+  // que va aparte con su candado). Mejor una fila perdida en un fallo raro que un duplicado.
+  const faltaColumna = (
+    err: { code?: string; message?: string } | null,
+    col: string
+  ): boolean => {
+    if (!err) return false;
+    const code = err.code || "";
+    const msg = (err.message || "").toLowerCase();
+    // 42703 = columna inexistente (Postgres); PGRST204 = fuera de la caché de esquema.
+    return code === "42703" || code === "PGRST204" || msg.includes(col.toLowerCase());
+  };
   try {
     // 1) Completo (con counted_date).
     let { error } = await supabaseAdmin
       .from("postback_events")
       .insert({ ...base, counted_date: countedDate });
-    // 2) Sin counted_date (por si esa columna no existe) — MANTIENE amount.
-    if (error) ({ error } = await supabaseAdmin.from("postback_events").insert(base));
-    // 3) Último recurso: sin amount tampoco (por si esa columna faltara), para no
-    //    perder NUNCA el registro de auditoría del postback.
-    if (error) {
+    // 2) Solo si FALTA la columna counted_date → reintenta sin ella (MANTIENE amount).
+    if (faltaColumna(error, "counted_date")) {
+      ({ error } = await supabaseAdmin.from("postback_events").insert(base));
+    }
+    // 3) Solo si FALTA la columna amount → último recurso sin ella (no perder el log).
+    if (faltaColumna(error, "amount")) {
       const sinAmount = { ...base };
       delete (sinAmount as { amount?: unknown }).amount;
       await supabaseAdmin.from("postback_events").insert(sinAmount);
