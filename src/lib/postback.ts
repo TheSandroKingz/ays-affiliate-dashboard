@@ -269,17 +269,33 @@ export async function depositoMedio(
   userId: string
 ): Promise<{ media: number | null; num: number }> {
   try {
+    // Excluimos de la media los jugadores con REVERSIÓN (chargeback): al revertir, su
+    // commission queda status="counted" pero counted=false. Sin esto, un depósito
+    // reembolsado seguiría inflando la "calidad de tráfico". Reversiones = raras.
+    const { data: rev } = await supabaseAdmin
+      .from("postback_events")
+      .select("player_id")
+      .eq("matched_user_id", userId)
+      .eq("event_type", "commission")
+      .eq("status", "counted")
+      .eq("counted", false)
+      .not("player_id", "is", null)
+      .limit(100000);
+    const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
+
     const { data, error } = await supabaseAdmin
       .from("postback_events")
-      .select("amount")
+      .select("amount, player_id")
       .eq("matched_user_id", userId)
       .eq("event_type", "ftd")
       .not("amount", "is", null)
       .gt("amount", 0)
       .limit(100000); // sin límite PostgREST corta en 1000 y la media saldría sesgada
     if (error || !data || !data.length) return { media: null, num: 0 };
-    const sum = data.reduce((s, d) => s + Number(d.amount ?? 0), 0);
-    return { media: sum / data.length, num: data.length };
+    const validos = data.filter((d) => !revertidos.has(d.player_id as string));
+    if (!validos.length) return { media: null, num: 0 };
+    const sum = validos.reduce((s, d) => s + Number(d.amount ?? 0), 0);
+    return { media: sum / validos.length, num: validos.length };
   } catch {
     return { media: null, num: 0 };
   }
@@ -289,16 +305,29 @@ export async function depositoMedio(
 // primeros depósitos con importe > 0. Para el panel del admin. BLINDADO.
 export async function depositoMedioGlobal(): Promise<{ media: number | null; num: number }> {
   try {
+    // Igual que depositoMedio pero global: excluimos jugadores con reversión.
+    const { data: rev } = await supabaseAdmin
+      .from("postback_events")
+      .select("player_id")
+      .eq("event_type", "commission")
+      .eq("status", "counted")
+      .eq("counted", false)
+      .not("player_id", "is", null)
+      .limit(100000);
+    const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
+
     const { data, error } = await supabaseAdmin
       .from("postback_events")
-      .select("amount")
+      .select("amount, player_id")
       .eq("event_type", "ftd")
       .not("amount", "is", null)
       .gt("amount", 0)
       .limit(100000);
     if (error || !data || !data.length) return { media: null, num: 0 };
-    const sum = data.reduce((s, d) => s + Number(d.amount ?? 0), 0);
-    return { media: sum / data.length, num: data.length };
+    const validos = data.filter((d) => !revertidos.has(d.player_id as string));
+    if (!validos.length) return { media: null, num: 0 };
+    const sum = validos.reduce((s, d) => s + Number(d.amount ?? 0), 0);
+    return { media: sum / validos.length, num: validos.length };
   } catch {
     return { media: null, num: 0 };
   }

@@ -141,6 +141,23 @@ function esCodigoDeBot(tag: string): boolean {
   return Boolean(DUENO_CAMPANA[(tag || "").trim().toLowerCase()]);
 }
 
+// País del jugador para elegir el tramo de CPA (ES vs otros). La cualificación a
+// veces llega SIN país; en ese caso recuperamos el país que YA se guardó en su
+// evento de FTD/registro, para no pagar el CPA equivocado a un extranjero (o al
+// revés). Best-effort: si no hay dato, devuelve "". Hoy es no-op (todos los
+// afiliados tienen cpa_spain == cpa_other), pero blinda por si algún día difieren.
+async function paisRegistrado(playerid: string): Promise<string> {
+  if (!playerid) return "";
+  const { data } = await supabaseAdmin
+    .from("postback_events")
+    .select("isocountry")
+    .eq("player_id", playerid)
+    .not("isocountry", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  return ((data?.[0]?.isocountry as string) || "").toUpperCase();
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   if (!compararSecreto(url.searchParams.get("key"), process.env.POSTBACK_SECRET)) {
@@ -413,7 +430,9 @@ export async function GET(request: Request) {
           estado = "held";
           heldReason = "double_pay";
         } else {
-          const esOtro = isocountry && isocountry !== "ES";
+          // Si la cualificación no trae país, usa el país guardado en el FTD/registro.
+          const isoEfectivo = isocountry || (await paisRegistrado(playerid));
+          const esOtro = isoEfectivo && isoEfectivo !== "ES";
           const commission = Number(
             (esOtro ? target.cpa_other ?? target.cpa_spain : target.cpa_spain) ?? 0
           );
