@@ -29,20 +29,26 @@ export async function GET(request: Request) {
   const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  // Tope de chats a listar por bot. Antes eran 150 y en un día con mucho tráfico
+  // los chats más viejos se caían de la lista (se perdían conversaciones cuando el
+  // gestor/socio no estaba). Lo subimos a 5000: son los 5000 MÁS RECIENTES por bot,
+  // así que en la práctica no se escapa ninguna conversación con vuestro volumen.
+  const TOPE_CHATS = 5000;
+
   // Contactos: Sandro (telegram_contacts) + cada bot nuevo (bot_contacts).
   const contactos = await Promise.all([
     supabaseAdmin
       .from("telegram_contacts")
       .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
       .order("last_msg_at", { ascending: false, nullsFirst: false })
-      .limit(150),
+      .limit(TOPE_CHATS),
     ...BOTS_EXTRA.map((b) =>
       supabaseAdmin
         .from("bot_contacts")
         .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
         .eq("bot", b.key)
         .order("last_msg_at", { ascending: false, nullsFirst: false })
-        .limit(150)
+        .limit(TOPE_CHATS)
     ),
   ]);
 

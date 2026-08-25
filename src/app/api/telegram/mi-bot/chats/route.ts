@@ -27,7 +27,8 @@ export async function GET(request: Request) {
     .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
     .eq("bot", bot.key)
     .order("last_msg_at", { ascending: false, nullsFirst: false })
-    .limit(150);
+    // Tope alto (antes 150): con mucho tráfico no se pierden chats del afiliado.
+    .limit(5000);
 
   // Vista previa del último mensaje de cada chat (estilo WhatsApp). Preferimos el
   // RPC bot_ultimos (1 fila por chat, sin bajar miles); si no existe aún, fallback
