@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
@@ -74,6 +74,7 @@ const cell =
 export default function GastosPage() {
   const router = useRouter();
   const [datos, setDatos] = useState<Datos | null>(null);
+  const cargarReqRef = useRef(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodo, setPeriodo] = useState("");
@@ -120,11 +121,15 @@ export default function GastosPage() {
     setError(null);
     const t = await sesion();
     if (!t) return;
+    // Token de petición: al cambiar de mes rápido, una respuesta vieja NO debe pisar
+    // la del mes seleccionado (mostraría gastos/saldos de otro mes).
+    const reqId = ++cargarReqRef.current;
     try {
       const q = periodo ? `?mes=${periodo}` : "";
       const r = await fetch(`/api/admin/gastos${q}`, {
         headers: { Authorization: "Bearer " + t },
       });
+      if (reqId !== cargarReqRef.current) return; // respuesta obsoleta
       if (!r.ok) return setError("No autorizado.");
       setDatos(await r.json());
     } catch {

@@ -119,7 +119,10 @@ export async function GET(request: Request) {
     const parentPct = percentById.get(child.referred_by) ?? 0;
     if (!parentPct) continue;
     const override = (parentPct / 100) * (commissionByUser.get(child.user_id) ?? 0);
-    if (override <= 0) continue;
+    // Solo saltamos el caso NEUTRO (0). Un override NEGATIVO (comisión del hijo
+    // negativa por una reversión) también debe ajustar el grupo, para que la suma
+    // por grupo siga cuadrando con overridesPaid/totalClean.
+    if (override === 0) continue;
     const cfg = REPARTO_POR_USUARIO[child.user_id] ?? GENERAL;
     const g = grupos.get(cfg.grupo);
     if (g) g.ganancia -= override;

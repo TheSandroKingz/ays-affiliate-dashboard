@@ -292,13 +292,32 @@ export async function depositoMedio(
       .gt("amount", 0)
       .limit(100000); // sin límite PostgREST corta en 1000 y la media saldría sesgada
     if (error || !data || !data.length) return { media: null, num: 0 };
-    const validos = data.filter((d) => !revertidos.has(d.player_id as string));
+    const validos = dedupFtd(data, revertidos);
     if (!validos.length) return { media: null, num: 0 };
     const sum = validos.reduce((s, d) => s + Number(d.amount ?? 0), 0);
     return { media: sum / validos.length, num: validos.length };
   } catch {
     return { media: null, num: 0 };
   }
+}
+
+// Filtra los FTD para la media: quita jugadores REVERTIDOS y DEDUPLICA por player_id
+// (un FTD reenviado por Blue crearía 2 filas del mismo jugador; se cuenta UNA vez).
+// Las filas sin player_id se cuentan cada una (no hay forma fiable de agruparlas).
+function dedupFtd(
+  rows: { amount: number | null; player_id: string | null }[],
+  revertidos: Set<string>
+): { amount: number | null; player_id: string | null }[] {
+  const vistos = new Set<string>();
+  return rows.filter((d) => {
+    const pid = d.player_id;
+    if (pid && revertidos.has(pid)) return false;
+    if (pid) {
+      if (vistos.has(pid)) return false;
+      vistos.add(pid);
+    }
+    return true;
+  });
 }
 
 // Depósito medio GLOBAL (de TODOS los afiliados): media del importe de todos los
@@ -324,7 +343,7 @@ export async function depositoMedioGlobal(): Promise<{ media: number | null; num
       .gt("amount", 0)
       .limit(100000);
     if (error || !data || !data.length) return { media: null, num: 0 };
-    const validos = data.filter((d) => !revertidos.has(d.player_id as string));
+    const validos = dedupFtd(data, revertidos);
     if (!validos.length) return { media: null, num: 0 };
     const sum = validos.reduce((s, d) => s + Number(d.amount ?? 0), 0);
     return { media: sum / validos.length, num: validos.length };

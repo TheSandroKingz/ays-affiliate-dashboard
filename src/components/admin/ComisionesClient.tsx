@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { eur } from "@/lib/format";
 
@@ -68,14 +68,21 @@ export default function ComisionesClient({
   const etiquetaMes =
     opciones.find((o) => o.value === periodo)?.label ?? "este mes";
 
+  const saldosReqRef = useRef(0);
   const cargarSaldos = useCallback(async () => {
+    // Token de petición: al cambiar de mes rápido, la respuesta de un mes viejo NO
+    // debe pisar la del mes seleccionado (mostraría pendiente/pagado de otro mes y
+    // 'Poner lo pendiente' registraría un importe equivocado).
+    const reqId = ++saldosReqRef.current;
     const q = periodo ? `?mes=${periodo}` : "";
     const res = await fetch(`/api/admin/saldos${q}`, {
       cache: "no-store",
       headers: { Authorization: "Bearer " + accessToken },
     }).catch(() => null);
+    if (reqId !== saldosReqRef.current) return; // respuesta obsoleta
     if (res && res.ok) {
       const b = await res.json().catch(() => null);
+      if (reqId !== saldosReqRef.current) return;
       if (b && b.saldos) setSaldos(b.saldos);
     }
   }, [accessToken, periodo]);
