@@ -898,8 +898,14 @@ export async function POST(request: Request) {
       // escribió el jugador (patrón, vídeo, promo, cuánto…). Así el enlace aparece
       // pronto y no solo cuando ya dicen que depositaron. Solo lo omitimos en
       // mensajitos sin nada de eso (saludos sueltos, quejas puras).
-      const intencionJugar =
-        /jug|entr|deposit|recarg|vuelve|enlace|link|registr|apuest|patr|v[ií]deo|cuadr|\bmin[ae]s?\b|casino|promo|bono|empez|quiero|gan[ao]|d[oó]nde|m[aá]ndame|p[aá]same|\b20\b|\b30\b|\b100\b|\b150\b/i;
+      // ⛔ El botón "GANAR AHORA" es un pitch FUERTE. Solo debe salir cuando el JUGADOR
+      // pide CLARAMENTE el enlace o entrar/jugar/depositar AHORA — NO por mencionar el
+      // juego, NO por la respuesta del bot, y NUNCA tras una pérdida/problema. Antes con
+      // un regex amplio salía en casi todos los mensajes.
+      const pidePlay =
+        /\b(enlace|link)\b|p[aá]same (el )?(link|enlace|acceso)|quiero (jugar|entrar|deposit|recarg|probar|empezar|darle|meter)|c[oó]mo (entro|juego|empiezo|deposit|recarg|le doy|meto)|d[oó]nde (juego|deposit|entro|le doy|meto)|voy a (deposit|recarg|jugar|entrar|meter)|vamos a (jugar|darle)|entro ya|list[oa] (para|pa) (jugar|darle|entrar)|ya (deposit|recarg)/i;
+      const noPitch =
+        /retir|withdraw|sacar|reintegr|rechaz|reject|deneg|no me deja|no puedo|no funciona|\berror\b|soporte|chat en vivo|verific|\bkyc\b|documento|perd[ií]|arruin|estafa|todo mi dinero|sin (dinero|nada|blanca)|no tengo (dinero|nada|m[aá]s|para)|me qued[eé] (a cero|sin|en cero|pelad)|a cero|quiebra/i;
       // Guardamos el mensaje del jugador para la limpieza automática de chats.
       await guardarMsg(chatId, msg.message_id);
       if (respuesta) {
@@ -912,25 +918,23 @@ export async function POST(request: Request) {
           2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
         await new Promise((r) => setTimeout(r, escribir));
-        // ⛔ El botón "GANAR AHORA" es un pitch para JUGAR/DEPOSITAR: NO debe salir
-        // cuando el jugador está RETIRANDO, tiene un PROBLEMA o pide SOPORTE (ahí molesta
-        // y canta a bot). Antes salía casi siempre porque intencionJugar es muy amplio.
-        const noPitch =
-          /retir|withdraw|sacar|reintegr|rechaz|reject|deneg|no me deja|no puedo|no funciona|\berror\b|soporte|chat en vivo|verific|\bkyc\b|documento/i;
+        // El botón SOLO si el JUGADOR lo pide (pidePlay sobre SU texto), y nunca en
+        // contexto de pérdida/problema/retiro (noPitch, sobre su texto o la respuesta).
         const invita =
-          (intencionJugar.test(respuesta) || intencionJugar.test(textoJ)) &&
-          !noPitch.test(respuesta) &&
-          !noPitch.test(textoJ);
+          pidePlay.test(textoJ) &&
+          !noPitch.test(textoJ) &&
+          !noPitch.test(respuesta);
         const rEnv = await tgEnviar(chatId, respuesta, {
           parse_mode: undefined,
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
         });
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
+      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
         // "debounced", NO mandamos nada: responderá el último mensaje del grupo.)
         // ⛔ !soloCierre: si el jugador solo suelta cortesía ("gracias/ok/vale"),
         // NO respondemos con el pitch comercial (era el caso que soloCierre silencia).
+        // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
         const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });
