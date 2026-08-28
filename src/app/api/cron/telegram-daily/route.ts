@@ -8,6 +8,7 @@ import { BOTS } from "@/lib/bots";
 import { resumenSeguridad } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
 import { revisarSaludBots } from "@/lib/botHealth";
+import { analizarLote, tocaInforme, generarInforme } from "@/lib/analisisHistorial";
 
 // Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
 export const maxDuration = 60;
@@ -242,6 +243,16 @@ export async function GET(request: Request) {
     await revisarSaludBots();
   } catch {
     /* la vigilancia de salud nunca rompe el cron */
+  }
+
+  // ── Análisis supervisado del historial (Fase 1): clasifica un lote de
+  // conversaciones cerradas a diario, y genera el informe cada ~3 días. Enganchado
+  // aquí (plan gratis de Vercel = 1 cron/día). BLINDADO: nunca rompe el cron.
+  try {
+    await analizarLote(12);
+    if (await tocaInforme()) await generarInforme();
+  } catch {
+    /* el análisis del historial nunca rompe el cron */
   }
 
   if (!telegramConfigurado()) {
