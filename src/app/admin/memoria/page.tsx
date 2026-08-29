@@ -78,6 +78,7 @@ export default function MemoriaPage() {
     );
 
   const totalBeneficio = meses.reduce((s, m) => s + m.totalClean, 0);
+  const totalPagado = meses.reduce((s, m) => s + m.structurePaid, 0);
 
   return (
     <main className="flex flex-col gap-5">
@@ -151,8 +152,11 @@ export default function MemoriaPage() {
           {meses.length > 0 && (
             <tfoot>
               <tr className="bg-white/10 font-semibold">
-                <td className="border border-white/10 px-4 py-3 text-white" colSpan={3}>
-                  Beneficio total (histórico)
+                <td className="border border-white/10 px-4 py-3 text-white" colSpan={2}>
+                  Total (histórico)
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
+                  {eur(totalPagado)}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-emerald-400">
                   {eur(totalBeneficio)}
