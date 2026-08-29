@@ -109,48 +109,97 @@ async function clasificar(client: Anthropic, conv: Conv): Promise<Clasif | null>
 export async function analizarLote(limite = 12): Promise<number> {
   if (!KEY) return 0;
   const client = new Anthropic({ apiKey: KEY });
-  let hechas = 0;
+
+  // Claves ya clasificadas (bot + chat + instante del último msg), para no repetir.
+  // Comparamos por INSTANTE (getTime) para no fallar por formatos de fecha distintos.
+  const claveConv = (bot: string, chat_id: number, ultimo: string) =>
+    `${bot}:${chat_id}:${new Date(ultimo).getTime()}`;
+  const yaClasificadas = new Set<string>();
+  try {
+    const { data: prev } = await supabaseAdmin
+      .from("analisis_conversaciones")
+      .select("bot, chat_id, ultimo_msg")
+      .limit(100000);
+    for (const r of (prev ?? []) as { bot: string; chat_id: number; ultimo_msg: string }[]) {
+      yaClasificadas.add(claveConv(r.bot, r.chat_id, r.ultimo_msg));
+    }
+  } catch {
+    /* si falla, seguimos: el índice único de la tabla evita duplicados igualmente */
+  }
+
+  // Una COLA de conversaciones pendientes por bot. Luego repartimos el lote en
+  // ROUND-ROBIN entre bots para que NINGÚN bot (p. ej. Sandro, con mucho volumen)
+  // se coma todo el cupo y los demás no salgan nunca en el informe.
+  const colas: Conv[][] = [];
   for (const bot of ["as", ...BOTS_NUEVOS]) {
-    if (hechas >= limite) break;
     let convs: Conv[] = [];
     try {
       convs = await traerConversaciones(bot);
     } catch {
       continue;
     }
-    for (const conv of convs) {
-      if (hechas >= limite) break;
-      // ¿Ya clasificada en este estado? (misma última fecha) → saltar.
-      const { data: yaData } = await supabaseAdmin
-        .from("analisis_conversaciones")
-        .select("id")
-        .eq("bot", conv.bot)
-        .eq("chat_id", conv.chat_id)
-        .eq("ultimo_msg", conv.ultimo_msg)
-        .limit(1);
-      if (yaData && yaData.length) continue;
-      const c = await clasificar(client, conv);
-      if (!c) continue;
-      await supabaseAdmin.from("analisis_conversaciones").insert({
-        bot: conv.bot,
-        chat_id: conv.chat_id,
-        ultimo_msg: conv.ultimo_msg,
-        tipo_duda: c.tipo_duda ?? null,
-        problema_tecnico: !!c.problema_tecnico,
-        resuelto: c.resuelto === "null" ? null : c.resuelto ?? null,
-        derivado_soporte: !!c.derivado_soporte,
-        categoria: c.categoria ?? null,
-        friccion_abandono: !!c.friccion_abandono,
-        resumen: (c.resumen ?? "").slice(0, 500),
-      });
-      hechas++;
-    }
+    const pend = convs.filter(
+      (c) => !yaClasificadas.has(claveConv(c.bot, c.chat_id, c.ultimo_msg))
+    );
+    if (pend.length) colas.push(pend);
+  }
+
+  let hechas = 0;
+  let idx = 0;
+  while (hechas < limite && colas.some((c) => c.length)) {
+    const cola = colas[idx % colas.length];
+    idx++;
+    const conv = cola.shift();
+    if (!conv) continue; // esta cola ya está vacía, el round-robin sigue con las demás
+    const c = await clasificar(client, conv);
+    if (!c) continue;
+    await supabaseAdmin.from("analisis_conversaciones").insert({
+      bot: conv.bot,
+      chat_id: conv.chat_id,
+      ultimo_msg: conv.ultimo_msg,
+      tipo_duda: c.tipo_duda ?? null,
+      problema_tecnico: !!c.problema_tecnico,
+      resuelto: c.resuelto === "null" ? null : c.resuelto ?? null,
+      derivado_soporte: !!c.derivado_soporte,
+      categoria: c.categoria ?? null,
+      friccion_abandono: !!c.friccion_abandono,
+      resumen: (c.resumen ?? "").slice(0, 500),
+    });
+    hechas++;
   }
   await supabaseAdmin
     .from("analisis_config")
     .update({ ultimo_run: new Date().toISOString() })
     .eq("id", 1);
   return hechas;
+}
+
+// Reordena una lista intercalando por bot (round-robin), para que en el informe NO
+// domine un solo bot (p. ej. Sandro): así los primeros casos que se muestran son un
+// MIX de todos los bots, no 8 seguidos del mismo.
+function mezclarPorBot<T extends { bot: string }>(items: T[]): T[] {
+  const grupos = new Map<string, T[]>();
+  for (const it of items) {
+    const b = it.bot || "otro";
+    const arr = grupos.get(b);
+    if (arr) arr.push(it);
+    else grupos.set(b, [it]);
+  }
+  const arrs = [...grupos.values()];
+  const out: T[] = [];
+  let i = 0;
+  while (out.length < items.length) {
+    let added = false;
+    for (const arr of arrs) {
+      if (i < arr.length) {
+        out.push(arr[i]);
+        added = true;
+      }
+    }
+    if (!added) break;
+    i++;
+  }
+  return out;
 }
 
 // Genera el INFORME agregado del periodo (últimos 3 días) a partir de lo clasificado.
@@ -190,12 +239,10 @@ export async function generarInforme(): Promise<{ id: number } | null> {
       por_tipo_duda: cuenta("tipo_duda"),
       por_bot: cuenta("bot"),
       // Ejemplos concretos (no resueltos + fricciones) para que Yaiza los revise.
-      ejemplos_no_resueltos: conProblema
-        .filter((f) => f.resuelto === "no_resuelto")
+      ejemplos_no_resueltos: mezclarPorBot(conProblema.filter((f) => f.resuelto === "no_resuelto"))
         .slice(0, 15)
         .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen })),
-      ejemplos_friccion: filas
-        .filter((f) => f.friccion_abandono)
+      ejemplos_friccion: mezclarPorBot(filas.filter((f) => f.friccion_abandono))
         .slice(0, 15)
         .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen })),
     };
