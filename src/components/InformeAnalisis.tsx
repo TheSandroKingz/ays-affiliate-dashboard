@@ -7,7 +7,7 @@
 // revisión HUMANA de calidad técnica.
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { RefreshCw, ClipboardList } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 type Ejemplo = { bot: string; tipo: string; resumen: string };
 type Datos = {
@@ -115,17 +115,8 @@ export default function InformeAnalisis({ isAdmin = false }: { isAdmin?: boolean
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <ClipboardList size={18} className="text-sky-300" />
-            Informe de análisis
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Revisión de calidad de las charlas con los jugadores. Se genera solo cada 3 días.
-          </p>
-        </div>
-        {isAdmin && (
+      {isAdmin && (
+        <div className="flex justify-end mb-4">
           <button
             onClick={actualizarAhora}
             disabled={generando}
@@ -135,8 +126,8 @@ export default function InformeAnalisis({ isAdmin = false }: { isAdmin?: boolean
             <RefreshCw size={14} className={generando ? "animate-spin" : ""} />
             {generando ? "Analizando…" : "Actualizar ahora"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {cargando && <p className="text-sm text-slate-400">Cargando…</p>}
       {error && !cargando && <p className="text-sm text-rose-300">{error}</p>}

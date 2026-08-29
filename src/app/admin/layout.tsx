@@ -38,18 +38,6 @@ export default function AdminLayout({
             Actividad
           </Link>
           <Link
-            href="/admin/telegram"
-            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
-          >
-            Telegram
-          </Link>
-          <Link
-            href="/admin/bots"
-            className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
-          >
-            Bots
-          </Link>
-          <Link
             href="/admin/reparto"
             className="text-slate-300 hover:text-white transition-colors whitespace-nowrap"
           >

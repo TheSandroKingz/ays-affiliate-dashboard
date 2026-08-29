@@ -69,8 +69,6 @@ export default function BotLectorPage() {
         </div>
       )}
 
-      <InformeAnalisis />
-
       <BotChatViewer onDinero={setDinero} contadorTitulo />
     </main>
   );

@@ -35,6 +35,11 @@ type SidebarProps = {
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith("/dashboard/reports"));
+  const [telegramOpen, setTelegramOpen] = useState(
+    pathname.startsWith("/admin/telegram") ||
+      pathname.startsWith("/admin/bots") ||
+      pathname === "/dashboard/analisis"
+  );
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -142,6 +147,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             Conversaciones del bot
           </Link>
         )}
+        {soloBot && (
+          <Link href="/dashboard/analisis" className={linkClass("/dashboard/analisis")} onClick={onClose}>
+            <ClipboardList size={18} />
+            Informe de análisis
+          </Link>
+        )}
         {!soloBot && (
         <Link href="/dashboard" className={linkClass("/dashboard")} onClick={onClose}>
           <LayoutDashboard size={18} />
@@ -205,10 +216,35 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         )}
 
         {isAdmin && (
-          <Link href="/admin/telegram" className={linkClass("/admin/telegram")} onClick={onClose}>
-            <MessageCircle size={18} />
-            Telegram
-          </Link>
+          <>
+            <button
+              onClick={() => setTelegramOpen(!telegramOpen)}
+              className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
+              text-slate-300 hover:bg-white/10 w-full"
+            >
+              <span className="flex items-center gap-3">
+                <MessageCircle size={18} />
+                Telegram
+              </span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${telegramOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {telegramOpen && (
+              <div className="ml-8 flex flex-col gap-1">
+                <Link href="/admin/telegram" className={linkClass("/admin/telegram")} onClick={onClose}>
+                  Conversaciones
+                </Link>
+                <Link href="/admin/bots" className={linkClass("/admin/bots")} onClick={onClose}>
+                  Bots
+                </Link>
+                <Link href="/dashboard/analisis" className={linkClass("/dashboard/analisis")} onClick={onClose}>
+                  Informe de análisis
+                </Link>
+              </div>
+            )}
+          </>
         )}
 
         {isAdmin && (
