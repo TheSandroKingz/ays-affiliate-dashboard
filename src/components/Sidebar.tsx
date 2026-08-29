@@ -19,8 +19,6 @@ import {
   LogOut,
   Shield,
   MessageCircle,
-  PieChart,
-  Wallet,
 } from "lucide-react";
 
 const reportLinks = [
@@ -39,6 +37,16 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     pathname.startsWith("/admin/telegram") ||
       pathname.startsWith("/admin/bots") ||
       pathname === "/dashboard/analisis"
+  );
+  const [adminOpen, setAdminOpen] = useState(
+    pathname === "/admin" ||
+      pathname.startsWith("/admin/comisiones") ||
+      pathname.startsWith("/admin/actividad") ||
+      pathname.startsWith("/admin/reparto") ||
+      pathname.startsWith("/admin/gastos") ||
+      pathname.startsWith("/admin/memoria") ||
+      pathname.startsWith("/admin/solicitudes") ||
+      pathname.startsWith("/admin/afiliado")
   );
   const [profileOpen, setProfileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -247,26 +255,49 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </>
         )}
 
+        {/* Admin: desplegable con todas sus secciones (como Telegram). */}
         {isAdmin && (
-          <Link href="/admin/reparto" className={linkClass("/admin/reparto")} onClick={onClose}>
-            <PieChart size={18} />
-            Reparto
-          </Link>
-        )}
-
-        {isAdmin && (
-          <Link href="/admin/gastos" className={linkClass("/admin/gastos")} onClick={onClose}>
-            <Wallet size={18} />
-            Gastos
-          </Link>
-        )}
-
-        {/* Admin siempre el último de las opciones. */}
-        {isAdmin && (
-          <Link href="/admin" className={linkClass("/admin")} onClick={onClose}>
-            <Shield size={18} />
-            Admin
-          </Link>
+          <>
+            <button
+              onClick={() => setAdminOpen(!adminOpen)}
+              className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
+              text-slate-300 hover:bg-white/10 w-full"
+            >
+              <span className="flex items-center gap-3">
+                <Shield size={18} />
+                Admin
+              </span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${adminOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {adminOpen && (
+              <div className="ml-8 flex flex-col gap-1">
+                <Link href="/admin" className={linkClass("/admin")} onClick={onClose}>
+                  Estadísticas
+                </Link>
+                <Link href="/admin/comisiones" className={linkClass("/admin/comisiones")} onClick={onClose}>
+                  Comisiones
+                </Link>
+                <Link href="/admin/actividad" className={linkClass("/admin/actividad")} onClick={onClose}>
+                  Actividad
+                </Link>
+                <Link href="/admin/reparto" className={linkClass("/admin/reparto")} onClick={onClose}>
+                  Reparto
+                </Link>
+                <Link href="/admin/gastos" className={linkClass("/admin/gastos")} onClick={onClose}>
+                  Gastos
+                </Link>
+                <Link href="/admin/memoria" className={linkClass("/admin/memoria")} onClick={onClose}>
+                  Memoria
+                </Link>
+                <Link href="/admin/solicitudes" className={linkClass("/admin/solicitudes")} onClick={onClose}>
+                  Solicitudes
+                </Link>
+              </div>
+            )}
+          </>
         )}
 
         <InstallAppButton onNavigate={onClose} />

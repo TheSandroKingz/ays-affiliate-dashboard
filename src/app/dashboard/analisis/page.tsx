@@ -5,12 +5,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { ADMIN_USER_ID, esGestorBot } from "@/lib/adminId";
+import { esGestorBot } from "@/lib/adminId";
 import InformeAnalisis from "@/components/InformeAnalisis";
 
 export default function AnalisisPage() {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
   const [ok, setOk] = useState(false);
 
   const comprobar = useCallback(async () => {
@@ -22,7 +21,6 @@ export default function AnalisisPage() {
       router.replace("/dashboard");
       return;
     }
-    setIsAdmin(uid === ADMIN_USER_ID);
     setOk(true);
   }, [router]);
 
@@ -40,7 +38,7 @@ export default function AnalisisPage() {
           Revisión de calidad de las charlas con los jugadores. Se genera solo cada 3 días.
         </p>
       </div>
-      <InformeAnalisis isAdmin={isAdmin} />
+      <InformeAnalisis />
     </main>
   );
 }

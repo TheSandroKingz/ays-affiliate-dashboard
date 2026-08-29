@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAdminUser, getGestorBot } from "@/lib/adminAuth";
+import { getGestorBot } from "@/lib/adminAuth";
 import { analizarLote, generarInforme } from "@/lib/analisisHistorial";
 
 // Clasificar conversaciones tarda (llama a la API de Claude), damos margen.
@@ -33,7 +33,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await getAdminUser(request);
+  // Disparar el análisis a mano: admin y gestores del bot (Yaiza). Solo clasifica
+  // conversaciones y genera el informe (no toca dinero ni el bot).
+  const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const run = new URL(request.url).searchParams.get("run");
   if (run === "informe") {

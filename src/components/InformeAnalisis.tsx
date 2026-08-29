@@ -61,7 +61,7 @@ function haceCuanto(iso: string) {
   return `hace ${Math.round(h / 24)} d`;
 }
 
-export default function InformeAnalisis({ isAdmin = false }: { isAdmin?: boolean }) {
+export default function InformeAnalisis() {
   const [resp, setResp] = useState<Resp | null>(null);
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(false);
@@ -115,19 +115,17 @@ export default function InformeAnalisis({ isAdmin = false }: { isAdmin?: boolean
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      {isAdmin && (
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={actualizarAhora}
-            disabled={generando}
-            className="shrink-0 flex items-center gap-2 rounded-lg border border-white/15 bg-white/5
-            px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={generando ? "animate-spin" : ""} />
-            {generando ? "Analizando…" : "Actualizar ahora"}
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={actualizarAhora}
+          disabled={generando}
+          className="shrink-0 flex items-center gap-2 rounded-lg border border-white/15 bg-white/5
+          px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={generando ? "animate-spin" : ""} />
+          {generando ? "Analizando…" : "Actualizar ahora"}
+        </button>
+      </div>
 
       {cargando && <p className="text-sm text-slate-400">Cargando…</p>}
       {error && !cargando && <p className="text-sm text-rose-300">{error}</p>}
@@ -138,7 +136,7 @@ export default function InformeAnalisis({ isAdmin = false }: { isAdmin?: boolean
           {resp?.clasificadas_total
             ? `Ya hay ${resp.clasificadas_total} conversaciones clasificadas; el primer informe saldrá en el próximo ciclo.`
             : "Se generará automáticamente cuando haya conversaciones cerradas que analizar."}
-          {isAdmin && " Puedes pulsar «Actualizar ahora» para generarlo ya."}
+          {" Puedes pulsar «Actualizar ahora» para generarlo ya."}
         </div>
       )}
 
