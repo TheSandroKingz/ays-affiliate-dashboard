@@ -6,10 +6,12 @@
 // clasificación + informe a mano, sin depender del cron). NO ajusta el bot: es
 // revisión HUMANA de calidad técnica.
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 import { RefreshCw } from "lucide-react";
 
-type Ejemplo = { bot: string; tipo: string; resumen: string };
+type Ejemplo = { bot: string; chat_id?: number | null; tipo: string; resumen: string };
 type Datos = {
   total: number;
   problemas_tecnicos: number;
@@ -66,12 +68,15 @@ export default function InformeAnalisis() {
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A qué visor de chats enlazan los ejemplos: admin → /admin/telegram, Yaiza → /dashboard/bot.
+  const [viewerBase, setViewerBase] = useState("/dashboard/bot");
 
   const cargar = useCallback(async () => {
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
+    setViewerBase(session.user.id === ADMIN_USER_ID ? "/admin/telegram" : "/dashboard/bot");
     setError(null);
     try {
       const r = await fetch("/api/admin/analisis", {
@@ -190,6 +195,7 @@ export default function InformeAnalisis() {
               titulo="Casos NO resueltos (para revisar)"
               color="rose"
               items={d.ejemplos_no_resueltos}
+              base={viewerBase}
             />
           )}
 
@@ -199,6 +205,7 @@ export default function InformeAnalisis() {
               titulo="Se cortaron por un fallo técnico"
               color="amber"
               items={d.ejemplos_friccion}
+              base={viewerBase}
             />
           )}
 
@@ -236,27 +243,48 @@ function ListaEjemplos({
   titulo,
   color,
   items,
+  base,
 }: {
   titulo: string;
   color: "rose" | "amber";
   items: Ejemplo[];
+  base: string;
 }) {
   const borde = color === "rose" ? "border-rose-400/30" : "border-amber-400/30";
   return (
     <div>
       <h3 className="text-sm font-medium text-slate-300 mb-2">{titulo}</h3>
       <div className="flex flex-col gap-2">
-        {items.slice(0, 8).map((e, i) => (
-          <div key={i} className={`rounded-lg border ${borde} bg-black/20 px-3 py-2`}>
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[11px] font-medium text-slate-300">
-                {NOMBRE_BOT[e.bot] || e.bot}
-              </span>
-              <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
+        {items.slice(0, 8).map((e, i) => {
+          const contenido = (
+            <>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[11px] font-medium text-slate-300">
+                  {NOMBRE_BOT[e.bot] || e.bot}
+                </span>
+                <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
+                {e.chat_id != null && (
+                  <span className="ml-auto text-[11px] text-sky-300">abrir chat →</span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 leading-snug">{e.resumen}</p>
+            </>
+          );
+          const clase = `block rounded-lg border ${borde} bg-black/20 px-3 py-2`;
+          return e.chat_id != null ? (
+            <Link
+              key={i}
+              href={`${base}?bot=${encodeURIComponent(e.bot)}&chat=${e.chat_id}`}
+              className={`${clase} hover:bg-white/5 transition-colors`}
+            >
+              {contenido}
+            </Link>
+          ) : (
+            <div key={i} className={clase}>
+              {contenido}
             </div>
-            <p className="text-xs text-slate-400 leading-snug">{e.resumen}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -160,7 +160,7 @@ export async function generarInforme(): Promise<{ id: number } | null> {
     const desde = new Date(hasta.getTime() - DIAS_VENTANA * 864e5);
     const { data } = await supabaseAdmin
       .from("analisis_conversaciones")
-      .select("bot, tipo_duda, problema_tecnico, resuelto, derivado_soporte, categoria, friccion_abandono, resumen")
+      .select("bot, chat_id, tipo_duda, problema_tecnico, resuelto, derivado_soporte, categoria, friccion_abandono, resumen")
       .gte("created_at", desde.toISOString())
       .limit(100000);
     const filas = data ?? [];
@@ -193,11 +193,11 @@ export async function generarInforme(): Promise<{ id: number } | null> {
       ejemplos_no_resueltos: conProblema
         .filter((f) => f.resuelto === "no_resuelto")
         .slice(0, 15)
-        .map((f) => ({ bot: f.bot, tipo: f.tipo_duda, resumen: f.resumen })),
+        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen })),
       ejemplos_friccion: filas
         .filter((f) => f.friccion_abandono)
         .slice(0, 15)
-        .map((f) => ({ bot: f.bot, tipo: f.tipo_duda, resumen: f.resumen })),
+        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen })),
     };
     const { data: ins } = await supabaseAdmin
       .from("analisis_informes")
