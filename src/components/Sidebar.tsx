@@ -19,6 +19,8 @@ import {
   LogOut,
   Shield,
   MessageCircle,
+  PieChart,
+  Wallet,
 } from "lucide-react";
 
 const reportLinks = [
@@ -42,8 +44,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     pathname === "/admin" ||
       pathname.startsWith("/admin/comisiones") ||
       pathname.startsWith("/admin/actividad") ||
-      pathname.startsWith("/admin/reparto") ||
-      pathname.startsWith("/admin/gastos") ||
       pathname.startsWith("/admin/memoria") ||
       pathname.startsWith("/admin/solicitudes") ||
       pathname.startsWith("/admin/afiliado")
@@ -255,7 +255,21 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </>
         )}
 
-        {/* Admin: desplegable con todas sus secciones (como Telegram). */}
+        {isAdmin && (
+          <Link href="/admin/reparto" className={linkClass("/admin/reparto")} onClick={onClose}>
+            <PieChart size={18} />
+            Reparto
+          </Link>
+        )}
+
+        {isAdmin && (
+          <Link href="/admin/gastos" className={linkClass("/admin/gastos")} onClick={onClose}>
+            <Wallet size={18} />
+            Gastos
+          </Link>
+        )}
+
+        {/* Admin: desplegable con el resto de secciones (como Telegram). */}
         {isAdmin && (
           <>
             <button
@@ -282,12 +296,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 </Link>
                 <Link href="/admin/actividad" className={linkClass("/admin/actividad")} onClick={onClose}>
                   Actividad
-                </Link>
-                <Link href="/admin/reparto" className={linkClass("/admin/reparto")} onClick={onClose}>
-                  Reparto
-                </Link>
-                <Link href="/admin/gastos" className={linkClass("/admin/gastos")} onClick={onClose}>
-                  Gastos
                 </Link>
                 <Link href="/admin/memoria" className={linkClass("/admin/memoria")} onClick={onClose}>
                   Memoria
