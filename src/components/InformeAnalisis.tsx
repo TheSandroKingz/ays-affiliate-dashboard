@@ -95,6 +95,21 @@ export default function InformeAnalisis() {
     cargar();
   }, [cargar]);
 
+  // Informe VINCULADO entre admin y Yaiza: es el mismo informe compartido, así que
+  // refrescamos en silencio cada 30s y al volver a la pestaña. Si uno pulsa
+  // "Actualizar ahora", al otro se le actualiza solo (sin recargar la página).
+  useEffect(() => {
+    const refrescar = () => {
+      if (document.visibilityState === "visible") cargar();
+    };
+    document.addEventListener("visibilitychange", refrescar);
+    const id = setInterval(refrescar, 30_000);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", refrescar);
+    };
+  }, [cargar]);
+
   async function actualizarAhora() {
     setGenerando(true);
     setError(null);
