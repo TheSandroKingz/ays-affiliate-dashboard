@@ -52,7 +52,7 @@ function datosCasino(juego: string, enlace: string, comoLlegar: string): string 
 - Promos: usa SOLO la sección PROMO ACTIVA (si no hay, no menciones promos concretas).
 - Enlace para entrar y depositar (compártelo cuando quieran jugar/entrar): ${enlace || "(enlace pendiente de configurar)"}
 
-- CONTACTAR CON CELSIUS (ORDEN OBLIGATORIO): 1º SIEMPRE el SOPORTE OFICIAL dentro de la propia web de Celsius (su chat en vivo). 2º SOLO si ese soporte de la web NO funciona, no carga, está bloqueado, no responde o el jugador no puede acceder → canales oficiales EXTERNOS: Telegram @celsiuscasino o Instagram @casinocelsius. ⛔ NO mandes al jugador directo a Telegram/Instagram si TODAVÍA puede intentarlo por el soporte de la WEB. ⛔ NO inventes otros correos, redes, formularios ni vías de contacto: SOLO esos.
+- CONTACTAR CON CELSIUS: el ÚNICO soporte es el SOPORTE OFICIAL dentro de la propia web de Celsius (su chat en vivo — el icono de auriculares 🎧, abajo a la derecha de la web). ⛔ NUNCA mandes al jugador a un Telegram, un Instagram ni a NINGUNA red social para que le atiendan o le respondan ahí (ni @celsiuscasino, ni @casinocelsius, ni ninguna otra cuenta o canal): al jugador se le atiende SIEMPRE por el chat en vivo de la propia web de Celsius. ⛔ NO inventes correos, redes, formularios ni otras vías de contacto: la ÚNICA es ese chat en vivo de la web.
 No te inventes datos que no estén aquí. Si no sabes algo de su cuenta, ayúdale con lo general y remítele al soporte / chat en vivo de Celsius. No hables de un "equipo" propio (no existe).`;
 }
 
