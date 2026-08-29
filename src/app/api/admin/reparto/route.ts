@@ -87,6 +87,7 @@ export async function GET(request: Request) {
     "89a1c478-2282-44ed-b7b1-bd1f4d1b154c": { grupo: "Mariam", sandro: 50, socio: 50 }, // Mariam
     "2d2cba58-6f5f-4088-a2a0-d312617c890e": { grupo: "Black KP", sandro: 35, socio: 65 }, // Black KP (igual que Jeffer)
     "38d176ce-d8c6-435f-a4df-85e1a62bdcef": { grupo: "iAfrika", sandro: 50, socio: 50 }, // iAfrika (a medias, como Mariam)
+    "16ef41d3-3dee-44cb-9a13-6a9a48c7ddeb": { grupo: "Tekio", sandro: 50, socio: 50 }, // TekioTakTak (streamer Twitch, a medias)
   };
   const GENERAL: Split = { grupo: "General / directo", sandro: 65, socio: 35 };
 
