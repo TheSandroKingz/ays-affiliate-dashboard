@@ -16,7 +16,6 @@ export default function CommissionPlanPage() {
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
   const [promoLink, setPromoLink] = useState<string | null>(null);
   const [promoLinkCopied, setPromoLinkCopied] = useState(false);
-  const [conversion, setConversion] = useState<{ clicks: number; ftd: number; pct: number | null } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -49,13 +48,6 @@ export default function CommissionPlanPage() {
       setCpaOther(data.cpa_other ?? 85);
       setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
 
-      // Calidad de tráfico (depósito medio): en paralelo, sin bloquear.
-      fetch("/api/account/calidad", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((b) => setConversion(b?.conversion ?? null))
-        .catch(() => {});
       setPromoLink(
         data.freshaffs_tracking_code
           ? `${window.location.origin}/go/${encodeURIComponent(
@@ -172,23 +164,6 @@ export default function CommissionPlanPage() {
         </div>
       </div>
 
-      {/* Conversión: FTD que sacas de tus clics (su propio recuadro). */}
-      <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Conversión</h2>
-        <div className="flex items-center justify-between">
-          <p className="text-slate-200">FTD por clics</p>
-          {conversion && conversion.pct !== null ? (
-            <p className="text-white font-semibold">
-              {conversion.pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })}%{" "}
-              <span className="text-xs text-slate-400 font-normal">
-                · {conversion.ftd} FTD de {conversion.clicks.toLocaleString("de-DE")} clics
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm text-slate-500">Aún sin datos</p>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
