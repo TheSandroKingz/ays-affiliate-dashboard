@@ -29,7 +29,47 @@ export async function GET(request: Request) {
   const { count } = await supabaseAdmin
     .from("analisis_conversaciones")
     .select("id", { count: "exact", head: true });
+
+  // Enriquecer los ejemplos del informe con su chat_id para poder ABRIR el chat
+  // desde cada caso — también en informes VIEJOS que no lo guardaron. Cruzamos por
+  // (bot + resumen) contra las conversaciones clasificadas del mismo periodo.
+  await enriquecerConChatId(informe as InformeRow);
+
   return NextResponse.json({ informe: informe ?? null, config: config ?? null, clasificadas_total: count ?? 0 });
+}
+
+type Ejemplo = { bot?: string; chat_id?: number | null; tipo?: string; resumen?: string };
+type InformeRow = {
+  desde: string;
+  hasta: string;
+  datos?: { ejemplos_no_resueltos?: Ejemplo[]; ejemplos_friccion?: Ejemplo[] } | null;
+} | null;
+
+async function enriquecerConChatId(informe: InformeRow) {
+  if (!informe?.datos) return;
+  const ejemplos = [
+    ...(informe.datos.ejemplos_no_resueltos ?? []),
+    ...(informe.datos.ejemplos_friccion ?? []),
+  ];
+  const faltan = ejemplos.filter((e) => e && e.chat_id == null && e.resumen);
+  if (!faltan.length) return;
+  // Conversaciones clasificadas del periodo del informe (por fecha de clasificación).
+  const { data: convs } = await supabaseAdmin
+    .from("analisis_conversaciones")
+    .select("bot, chat_id, resumen")
+    .gte("created_at", informe.desde)
+    .lte("created_at", informe.hasta)
+    .limit(100000);
+  const mapa = new Map<string, number>();
+  for (const c of (convs ?? []) as { bot: string; chat_id: number; resumen: string | null }[]) {
+    if (c.resumen) mapa.set(`${c.bot}|${c.resumen}`, c.chat_id);
+  }
+  for (const e of ejemplos) {
+    if (e && e.chat_id == null && e.resumen) {
+      const cid = mapa.get(`${e.bot}|${e.resumen}`);
+      if (cid != null) e.chat_id = cid;
+    }
+  }
 }
 
 export async function POST(request: Request) {

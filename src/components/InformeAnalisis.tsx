@@ -263,11 +263,16 @@ function ListaEjemplos({
                   {NOMBRE_BOT[e.bot] || e.bot}
                 </span>
                 <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
-                {e.chat_id != null && (
-                  <span className="ml-auto text-[11px] text-sky-300">abrir chat →</span>
-                )}
               </div>
               <p className="text-xs text-slate-400 leading-snug">{e.resumen}</p>
+              {e.chat_id != null && (
+                <span
+                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-sky-400/40
+                  bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-200"
+                >
+                  💬 Ver la conversación →
+                </span>
+              )}
             </>
           );
           const clase = `block rounded-lg border ${borde} bg-black/20 px-3 py-2`;
@@ -275,7 +280,7 @@ function ListaEjemplos({
             <Link
               key={i}
               href={`${base}?bot=${encodeURIComponent(e.bot)}&chat=${e.chat_id}`}
-              className={`${clase} hover:bg-white/5 transition-colors`}
+              className={`${clase} hover:border-sky-400/60 hover:bg-white/5 transition-colors`}
             >
               {contenido}
             </Link>
