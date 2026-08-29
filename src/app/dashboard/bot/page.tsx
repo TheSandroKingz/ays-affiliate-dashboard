@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import BotChatViewer, { type DineroBot } from "@/components/BotChatViewer";
+import InformeAnalisis from "@/components/InformeAnalisis";
 import { proximoPagoYaiza } from "@/lib/yaizaPago";
 
 export default function BotLectorPage() {
@@ -67,6 +68,8 @@ export default function BotLectorPage() {
           </div>
         </div>
       )}
+
+      <InformeAnalisis />
 
       <BotChatViewer onDinero={setDinero} contadorTitulo />
     </main>

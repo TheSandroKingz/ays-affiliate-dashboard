@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { RefreshCw, ChevronLeft } from "lucide-react";
 import BotChatViewer from "@/components/BotChatViewer";
+import InformeAnalisis from "@/components/InformeAnalisis";
 
 export default function TelegramPage() {
   const router = useRouter();
@@ -242,6 +243,9 @@ export default function TelegramPage() {
           )}
         </div>
       )}
+
+      {/* Informe de análisis supervisado (Fase 1b). Admin puede generarlo a mano. */}
+      <InformeAnalisis isAdmin />
 
       {/* Chats con los jugadores (Sandro + Jeffer), estilo WhatsApp. */}
       <BotChatViewer admin />
