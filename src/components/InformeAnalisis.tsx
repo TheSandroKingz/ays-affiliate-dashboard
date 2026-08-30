@@ -11,7 +11,18 @@ import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { RefreshCw } from "lucide-react";
 
-type Ejemplo = { bot: string; chat_id?: number | null; tipo: string; resumen: string };
+type Ejemplo = { bot: string; chat_id?: number | null; tipo?: string; resumen: string };
+type SolucionDup = { id: number; problema: string; solucion: string };
+type SolucionPendiente = {
+  id: number;
+  bot: string | null;
+  problema: string;
+  solucion: string;
+  origen_bot: string | null;
+  origen_chat_id: number | null;
+  dup: SolucionDup | null;
+};
+type SolucionReutilizada = { id: number; veces: number; bot: string | null; problema: string };
 type Datos = {
   total: number;
   problemas_tecnicos: number;
@@ -25,6 +36,10 @@ type Datos = {
   por_bot: [string, number][];
   ejemplos_no_resueltos: Ejemplo[];
   ejemplos_friccion: Ejemplo[];
+  decepciones?: number;
+  ejemplos_decepcion?: Ejemplo[];
+  soluciones_pendientes?: SolucionPendiente[];
+  soluciones_reutilizadas?: SolucionReutilizada[];
 };
 type Informe = { id: number; desde: string; hasta: string; datos: Datos; created_at: string };
 type Resp = {
@@ -130,6 +145,20 @@ export default function InformeAnalisis() {
     }
   }
 
+  // Aprobar / descartar / sustituir una solución del banco (Adenda 1).
+  async function accionSolucion(id: number, accion: string, sustituye_a?: number) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch("/api/admin/soluciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+      body: JSON.stringify({ id, accion, sustituye_a }),
+    });
+    await cargar();
+  }
+
   const inf = resp?.informe;
   const d = inf?.datos;
 
@@ -224,6 +253,60 @@ export default function InformeAnalisis() {
             />
           )}
 
+          {/* Adenda 2: decepción explícita con el bot */}
+          {(d.ejemplos_decepcion?.length ?? 0) > 0 && (
+            <ListaEjemplos
+              titulo={`Se quejaron del bot (${d.decepciones ?? 0})`}
+              color="rose"
+              items={d.ejemplos_decepcion ?? []}
+              base={viewerBase}
+            />
+          )}
+
+          {/* Adenda 1: soluciones detectadas pendientes de aprobar */}
+          {(d.soluciones_pendientes?.length ?? 0) > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-2">
+                Soluciones detectadas — pendientes de aprobar
+              </h3>
+              <p className="text-xs text-slate-500 mb-2">
+                Si la apruebas, el bot podrá usarla con otros jugadores que tengan el mismo problema.
+              </p>
+              <div className="flex flex-col gap-2">
+                {(d.soluciones_pendientes ?? []).map((s) => (
+                  <SolucionCard
+                    key={s.id}
+                    s={s}
+                    base={viewerBase}
+                    onAccion={accionSolucion}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Adenda 1: soluciones aprobadas reutilizadas en el periodo */}
+          {(d.soluciones_reutilizadas?.length ?? 0) > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-2">
+                Soluciones reutilizadas este periodo
+              </h3>
+              <div className="flex flex-col gap-1.5">
+                {(d.soluciones_reutilizadas ?? []).map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-black/20 px-3 py-2"
+                  >
+                    <span className="text-xs text-slate-300 flex-1 min-w-0 truncate">{s.problema}</span>
+                    <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                      usada {s.veces}×
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {d.problemas_tecnicos === 0 && (d.ejemplos_no_resueltos?.length ?? 0) === 0 && (
             <p className="text-sm text-emerald-300">
               Sin problemas técnicos detectados en este periodo. 👌
@@ -277,7 +360,9 @@ function ListaEjemplos({
                 <span className="text-[11px] font-medium text-slate-300">
                   {NOMBRE_BOT[e.bot] || e.bot}
                 </span>
-                <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
+                {e.tipo && (
+                  <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
+                )}
               </div>
               <p className="text-xs text-slate-400 leading-snug">{e.resumen}</p>
               {e.chat_id != null && (
@@ -305,6 +390,93 @@ function ListaEjemplos({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// Una solución pendiente de aprobar: problema, solución, origen y botones de acción.
+function SolucionCard({
+  s,
+  base,
+  onAccion,
+}: {
+  s: SolucionPendiente;
+  base: string;
+  onAccion: (id: number, accion: string, sustituye_a?: number) => void;
+}) {
+  const [hecho, setHecho] = useState<string | null>(null);
+  const act = (accion: string, sustituye_a?: number) => {
+    setHecho(accion === "descartar" ? "Descartada" : "Aprobada");
+    onAccion(s.id, accion, sustituye_a);
+  };
+  if (hecho) {
+    return (
+      <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400">
+        {hecho} ✓
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-indigo-400/30 bg-black/20 px-3 py-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[11px] font-medium text-slate-300">
+          {s.bot ? NOMBRE_BOT[s.bot] || s.bot : "Común"}
+        </span>
+        {s.dup && (
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+            posible duplicado
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-slate-300">
+        <b className="text-slate-200">Problema:</b> {s.problema}
+      </p>
+      <p className="text-xs text-slate-400 mt-0.5">
+        <b className="text-slate-200">Solución:</b> {s.solucion}
+      </p>
+
+      {s.dup && (
+        <div className="mt-2 rounded-md border border-amber-400/20 bg-amber-500/5 px-2.5 py-2">
+          <p className="text-[10px] text-amber-200/80 mb-0.5">Ya hay una aprobada parecida:</p>
+          <p className="text-[11px] text-slate-400">
+            <b className="text-slate-300">Sol. aprobada:</b> {s.dup.solucion}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => act("aprobar")}
+          className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-1
+          text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/25"
+        >
+          Aprobar
+        </button>
+        {s.dup && (
+          <button
+            onClick={() => act("sustituir", s.dup!.id)}
+            className="rounded-md border border-sky-400/40 bg-sky-500/15 px-2.5 py-1
+            text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25"
+          >
+            Sustituir a la aprobada
+          </button>
+        )}
+        <button
+          onClick={() => act("descartar")}
+          className="rounded-md border border-white/15 bg-white/5 px-2.5 py-1
+          text-[11px] font-medium text-slate-300 hover:bg-white/10"
+        >
+          Descartar
+        </button>
+        {s.origen_bot && s.origen_chat_id != null && (
+          <Link
+            href={`${base}?bot=${encodeURIComponent(s.origen_bot)}&chat=${s.origen_chat_id}`}
+            className="ml-auto text-[11px] font-semibold text-sky-300 hover:text-sky-200"
+          >
+            💬 Ver origen →
+          </Link>
+        )}
       </div>
     </div>
   );
