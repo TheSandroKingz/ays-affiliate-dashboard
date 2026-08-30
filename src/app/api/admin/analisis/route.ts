@@ -38,11 +38,22 @@ export async function GET(request: Request) {
   return NextResponse.json({ informe: informe ?? null, config: config ?? null, clasificadas_total: count ?? 0 });
 }
 
-type Ejemplo = { bot?: string; chat_id?: number | null; tipo?: string; resumen?: string };
+type Ejemplo = {
+  bot?: string;
+  chat_id?: number | null;
+  tipo?: string;
+  resumen?: string;
+  revisado?: boolean;
+};
 type InformeRow = {
   desde: string;
   hasta: string;
-  datos?: { ejemplos_no_resueltos?: Ejemplo[]; ejemplos_friccion?: Ejemplo[] } | null;
+  datos?: {
+    ejemplos_no_resueltos?: Ejemplo[];
+    ejemplos_friccion?: Ejemplo[];
+    ejemplos_decepcion?: Ejemplo[];
+    ejemplos_bienestar?: Ejemplo[];
+  } | null;
 } | null;
 
 async function enriquecerConChatId(informe: InformeRow) {
@@ -50,24 +61,37 @@ async function enriquecerConChatId(informe: InformeRow) {
   const ejemplos = [
     ...(informe.datos.ejemplos_no_resueltos ?? []),
     ...(informe.datos.ejemplos_friccion ?? []),
+    ...(informe.datos.ejemplos_decepcion ?? []),
+    ...(informe.datos.ejemplos_bienestar ?? []),
   ];
-  const faltan = ejemplos.filter((e) => e && e.chat_id == null && e.resumen);
-  if (!faltan.length) return;
-  // Conversaciones clasificadas del periodo del informe (por fecha de clasificación).
+  if (!ejemplos.length) return;
+  // Conversaciones clasificadas del periodo: para completar chat_id (informes viejos)
+  // y traer el estado 'revisado' (marca de Yaiza) de cada caso.
   const { data: convs } = await supabaseAdmin
     .from("analisis_conversaciones")
-    .select("bot, chat_id, resumen")
+    .select("bot, chat_id, resumen, revisado")
     .gte("created_at", informe.desde)
     .lte("created_at", informe.hasta)
     .limit(100000);
-  const mapa = new Map<string, number>();
-  for (const c of (convs ?? []) as { bot: string; chat_id: number; resumen: string | null }[]) {
-    if (c.resumen) mapa.set(`${c.bot}|${c.resumen}`, c.chat_id);
+  const mapa = new Map<string, { chat_id: number; revisado: boolean }>();
+  for (const c of (convs ?? []) as {
+    bot: string;
+    chat_id: number;
+    resumen: string | null;
+    revisado: boolean;
+  }[]) {
+    if (c.resumen) mapa.set(`${c.bot}|${c.resumen}`, { chat_id: c.chat_id, revisado: !!c.revisado });
+    // También por chat_id directo (para casos que ya traen chat_id).
+    mapa.set(`${c.bot}#${c.chat_id}`, { chat_id: c.chat_id, revisado: !!c.revisado });
   }
   for (const e of ejemplos) {
-    if (e && e.chat_id == null && e.resumen) {
-      const cid = mapa.get(`${e.bot}|${e.resumen}`);
-      if (cid != null) e.chat_id = cid;
+    if (!e) continue;
+    const hit =
+      (e.chat_id != null ? mapa.get(`${e.bot}#${e.chat_id}`) : undefined) ??
+      (e.resumen ? mapa.get(`${e.bot}|${e.resumen}`) : undefined);
+    if (hit) {
+      if (e.chat_id == null) e.chat_id = hit.chat_id;
+      e.revisado = hit.revisado;
     }
   }
 }
@@ -81,6 +105,25 @@ export async function POST(request: Request) {
   if (run === "informe") {
     const r = await generarInforme();
     return NextResponse.json({ ok: !!r, informe_id: r?.id ?? null });
+  }
+  // Marcar/desmarcar un caso como REVISADO por Yaiza (por bot + chat_id).
+  if (run === "revisar") {
+    let body: { bot?: string; chat_id?: number; revisado?: boolean };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+    }
+    if (!body.bot || body.chat_id == null) {
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    }
+    const { error } = await supabaseAdmin
+      .from("analisis_conversaciones")
+      .update({ revisado: body.revisado !== false })
+      .eq("bot", body.bot)
+      .eq("chat_id", Number(body.chat_id));
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, revisado: body.revisado !== false });
   }
   // Por defecto: clasificar un lote.
   const n = await analizarLote(12);

@@ -11,7 +11,13 @@ import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { RefreshCw } from "lucide-react";
 
-type Ejemplo = { bot: string; chat_id?: number | null; tipo?: string; resumen: string };
+type Ejemplo = {
+  bot: string;
+  chat_id?: number | null;
+  tipo?: string;
+  resumen: string;
+  revisado?: boolean;
+};
 type SolucionDup = { id: number; problema: string; solucion: string };
 type SolucionPendiente = {
   id: number;
@@ -150,6 +156,20 @@ export default function InformeAnalisis() {
     }
   }
 
+  // Marcar/desmarcar un caso como revisado (petición de Yaiza).
+  async function marcarRevisado(bot: string, chat_id: number, revisado: boolean) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch("/api/admin/analisis?run=revisar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+      body: JSON.stringify({ bot, chat_id, revisado }),
+    });
+    await cargar();
+  }
+
   // Aprobar / descartar / sustituir una solución del banco (Adenda 1).
   async function accionSolucion(id: number, accion: string, sustituye_a?: number) {
     const {
@@ -245,6 +265,7 @@ export default function InformeAnalisis() {
               color="rose"
               items={d.ejemplos_no_resueltos}
               base={viewerBase}
+              onRevisar={marcarRevisado}
             />
           )}
 
@@ -255,6 +276,7 @@ export default function InformeAnalisis() {
               color="amber"
               items={d.ejemplos_friccion}
               base={viewerBase}
+              onRevisar={marcarRevisado}
             />
           )}
 
@@ -265,6 +287,7 @@ export default function InformeAnalisis() {
               color="rose"
               items={d.ejemplos_decepcion ?? []}
               base={viewerBase}
+              onRevisar={marcarRevisado}
             />
           )}
 
@@ -356,6 +379,7 @@ export default function InformeAnalisis() {
               color="amber"
               items={d.ejemplos_bienestar ?? []}
               base={viewerBase}
+              onRevisar={marcarRevisado}
             />
           )}
 
@@ -421,54 +445,71 @@ function ListaEjemplos({
   color,
   items,
   base,
+  onRevisar,
 }: {
   titulo: string;
   color: "rose" | "amber";
   items: Ejemplo[];
   base: string;
+  onRevisar?: (bot: string, chat_id: number, revisado: boolean) => void;
 }) {
   const borde = color === "rose" ? "border-rose-400/30" : "border-amber-400/30";
+  const pendientes = items.filter((e) => !e.revisado).length;
   return (
     <div>
-      <h3 className="text-sm font-medium text-slate-300 mb-2">{titulo}</h3>
+      <h3 className="text-sm font-medium text-slate-300 mb-2">
+        {titulo}
+        {onRevisar && pendientes > 0 && (
+          <span className="ml-2 text-[11px] font-normal text-slate-500">
+            · {pendientes} sin revisar
+          </span>
+        )}
+      </h3>
       <div className="flex flex-col gap-2">
-        {items.slice(0, 8).map((e, i) => {
-          const contenido = (
-            <>
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[11px] font-medium text-slate-300">
-                  {NOMBRE_BOT[e.bot] || e.bot}
-                </span>
-                {e.tipo && (
-                  <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 leading-snug">{e.resumen}</p>
+        {items.slice(0, 12).map((e, i) => (
+          <div
+            key={i}
+            className={`rounded-lg border ${borde} bg-black/20 px-3 py-2 ${
+              e.revisado ? "opacity-55" : ""
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-[11px] font-medium text-slate-300">
+                {NOMBRE_BOT[e.bot] || e.bot}
+              </span>
+              {e.tipo && (
+                <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
+              )}
+              {e.revisado && (
+                <span className="ml-auto text-[11px] font-semibold text-emerald-300">✓ Revisado</span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 leading-snug">{e.resumen}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               {e.chat_id != null && (
-                <span
-                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-sky-400/40
-                  bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-200"
+                <Link
+                  href={`${base}?bot=${encodeURIComponent(e.bot)}&chat=${e.chat_id}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-sky-400/40
+                  bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25"
                 >
                   💬 Ver la conversación →
-                </span>
+                </Link>
               )}
-            </>
-          );
-          const clase = `block rounded-lg border ${borde} bg-black/20 px-3 py-2`;
-          return e.chat_id != null ? (
-            <Link
-              key={i}
-              href={`${base}?bot=${encodeURIComponent(e.bot)}&chat=${e.chat_id}`}
-              className={`${clase} hover:border-sky-400/60 hover:bg-white/5 transition-colors`}
-            >
-              {contenido}
-            </Link>
-          ) : (
-            <div key={i} className={clase}>
-              {contenido}
+              {onRevisar && e.chat_id != null && (
+                <button
+                  onClick={() => onRevisar(e.bot, e.chat_id as number, !e.revisado)}
+                  className={`rounded-md border px-2.5 py-1 text-[11px] font-medium ${
+                    e.revisado
+                      ? "border-white/15 bg-white/5 text-slate-400 hover:bg-white/10"
+                      : "border-emerald-400/40 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25"
+                  }`}
+                >
+                  {e.revisado ? "Desmarcar" : "Marcar revisado"}
+                </button>
+              )}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
