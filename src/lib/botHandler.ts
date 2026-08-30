@@ -456,12 +456,20 @@ export async function procesarUpdate(
       const nAbuso =
         1 +
         (prevAbuso ?? []).filter((m) => ABUSO_RE.test(String(m.content ?? ""))).length;
-      if (nAbuso >= 2) {
+      if (nAbuso >= 3) {
         await supabaseAdmin
           .from("bot_contacts")
           .update({ silenced: true })
           .eq("bot", bot.key)
           .eq("chat_id", chatId);
+        // Fase 3: a la LISTA NEGRA (para el informe de Yaiza). No rompe si falla.
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            { bot: bot.key, chat_id: chatId, motivo: "3 insultos/amenazas seguidos" },
+            { onConflict: "bot,chat_id", ignoreDuplicates: true }
+          )
+          .then(() => {}, () => {});
         if (owner) {
           await tgEnviar(
             String(owner),

@@ -63,6 +63,8 @@ const SISTEMA_CLASIF = `Eres un CLASIFICADOR de calidad de soporte. Recibes una 
  "friccion_abandono": true|false,
  "decepcion_bot": true|false,
  "solucion": null | {"problema": "texto", "solucion": "texto"},
+ "dato_faltante": null | "texto",
+ "bienestar": true|false,
  "resumen": "una frase objetiva de qué pasó"
 }
 Criterios:
@@ -73,6 +75,8 @@ Criterios:
 - friccion_abandono: true SOLO si el jugador mostró intención clara de depositar (preguntó métodos/importes/pasos) y la conversación se CORTÓ tras una duda TÉCNICA sin resolver.
 - decepcion_bot: true SOLO si el jugador expresó de forma EXPLÍCITA una queja dirigida directamente AL BOT o a su servicio ("menudo bot inútil", "no me sirves para nada", "vaya ayuda de mierda", "paso de esto", quejas de no ser entendido o de respuestas repetitivas). NO cuenta: quejas por perder dinero o por el juego, quejas sobre Celsius como plataforma, sarcasmo/bromas sin queja real, ni el simple silencio. En la duda, false.
 - solucion: rellénalo SOLO si problema_tecnico=true Y resuelto="resuelto" Y el bot dio un ARREGLO TÉCNICO/OPERATIVO concreto y REUTILIZABLE que resolvió el problema (ej: "para el error 'can not make a bet', jugar con el dinero real sin activar el bono"; "para Apple Pay que no aparece, cerrar el navegador, quitar el WiFi, poner datos móviles y reintentar"; "para encontrar Diamond Mines, buscarlo con la lupa del inicio"). "problema" = descripción breve y GENÉRICA del problema (para poder emparejarlo con casos futuros parecidos, sin datos personales). "solucion" = los pasos que funcionaron. ⛔ PROHIBIDO poner aquí nada que sea CONVENCER, PRESIONAR o ANIMAR a depositar/recargar/jugar: eso NO es una solución técnica. Si no hay un arreglo técnico claro y confirmado, devuelve null.
+- dato_faltante: rellénalo SOLO si el jugador pidió un DATO/INFO objetivo que el bot NO tenía y por eso no pudo responder o tuvo que derivar a soporte (ej: "importe máximo de retiro", "cuánto tarda la verificación", "qué divisas admite Celsius", "comisión de un método"). Ponlo como una descripción BREVE y GENÉRICA del dato que faltó (para agrupar casos parecidos). Si el bot sí tenía la info, o no faltó ningún dato, devuelve null. NO es un fallo técnico, es INFORMACIÓN que no estaba disponible.
+- bienestar: true si el jugador mostró MALESTAR o vulnerabilidad real (perdió dinero y está mal/agobiado/enfadado, dice que no debería jugar, que lo necesita, que es su último dinero, señales de problema con el juego). Sirve para MUESTREO de revisión humana de cómo respondió el bot. En la duda, false.
 - resumen: objetivo y breve, en español, sin opinar.
 Responde ÚNICAMENTE el JSON, nada más.`;
 
@@ -85,6 +89,8 @@ type Clasif = {
   friccion_abandono: boolean;
   decepcion_bot: boolean;
   solucion: { problema: string; solucion: string } | null;
+  dato_faltante: string | null;
+  bienestar: boolean;
   resumen: string;
 };
 
@@ -170,6 +176,8 @@ export async function analizarLote(limite = 12): Promise<number> {
       categoria: c.categoria ?? null,
       friccion_abandono: !!c.friccion_abandono,
       decepcion_bot: !!c.decepcion_bot,
+      dato_faltante: c.dato_faltante ? String(c.dato_faltante).slice(0, 300) : null,
+      bienestar: !!c.bienestar,
       resumen: (c.resumen ?? "").slice(0, 500),
     });
 
@@ -260,7 +268,7 @@ export async function generarInforme(): Promise<{ id: number } | null> {
     const desde = new Date(hasta.getTime() - DIAS_VENTANA * 864e5);
     const { data } = await supabaseAdmin
       .from("analisis_conversaciones")
-      .select("bot, chat_id, tipo_duda, problema_tecnico, resuelto, derivado_soporte, categoria, friccion_abandono, decepcion_bot, resumen")
+      .select("bot, chat_id, tipo_duda, problema_tecnico, resuelto, derivado_soporte, categoria, friccion_abandono, decepcion_bot, dato_faltante, bienestar, resumen")
       .gte("created_at", desde.toISOString())
       .limit(100000);
     const filas = data ?? [];
@@ -340,6 +348,43 @@ export async function generarInforme(): Promise<{ id: number } | null> {
       })
       .sort((x, y) => y.veces - x.veces);
 
+    // --- FASE 2: "datos que faltan" — agrupamos datos parecidos y contamos JUGADORES
+    // distintos que los pidieron. Los que llegan al umbral (config) = PRIORITARIOS. ---
+    const { data: cfg } = await supabaseAdmin
+      .from("analisis_config")
+      .select("umbral")
+      .eq("id", 1)
+      .maybeSingle();
+    const umbral = (cfg?.umbral as number) ?? 5;
+    const clusters: { ejemplo: string; jugadores: Set<number>; n: number }[] = [];
+    for (const f of filas) {
+      const dato = f.dato_faltante as string | null;
+      if (!dato) continue;
+      let g = clusters.find((c) => similares(c.ejemplo, dato));
+      if (!g) {
+        g = { ejemplo: dato, jugadores: new Set(), n: 0 };
+        clusters.push(g);
+      }
+      g.jugadores.add(f.chat_id as number);
+      g.n++;
+    }
+    const datosFaltan = clusters
+      .map((c) => ({ dato: c.ejemplo, jugadores: c.jugadores.size, veces: c.n }))
+      .sort((a, b) => b.jugadores - a.jugadores);
+
+    // --- FASE 3: lista negra vigente (para mostrarla en el informe) ---
+    const { data: blData } = await supabaseAdmin
+      .from("lista_negra")
+      .select("bot, chat_id, motivo, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const listaNegra = (blData ?? []) as {
+      bot: string;
+      chat_id: number;
+      motivo: string | null;
+      created_at: string;
+    }[];
+
     const datos = {
       total,
       problemas_tecnicos: conProblema.length,
@@ -367,6 +412,15 @@ export async function generarInforme(): Promise<{ id: number } | null> {
       // Adenda 1: banco de soluciones — pendientes de aprobar + reutilizadas en el periodo.
       soluciones_pendientes: solucionesPendientes,
       soluciones_reutilizadas: solucionesReutilizadas,
+      // Fase 2: datos que faltan (umbral = nº de jugadores para marcar prioritario).
+      umbral,
+      datos_faltan: datosFaltan,
+      // Fase 3: muestreo de bienestar + lista negra vigente.
+      bienestar_total: filas.filter((f) => f.bienestar).length,
+      ejemplos_bienestar: mezclarPorBot(filas.filter((f) => f.bienestar))
+        .slice(0, 15)
+        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, resumen: f.resumen })),
+      lista_negra: listaNegra,
     };
     const { data: ins } = await supabaseAdmin
       .from("analisis_informes")

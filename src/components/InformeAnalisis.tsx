@@ -40,6 +40,11 @@ type Datos = {
   ejemplos_decepcion?: Ejemplo[];
   soluciones_pendientes?: SolucionPendiente[];
   soluciones_reutilizadas?: SolucionReutilizada[];
+  umbral?: number;
+  datos_faltan?: { dato: string; jugadores: number; veces: number }[];
+  bienestar_total?: number;
+  ejemplos_bienestar?: Ejemplo[];
+  lista_negra?: { bot: string; chat_id: number; motivo: string | null; created_at: string }[];
 };
 type Informe = { id: number; desde: string; hasta: string; datos: Datos; created_at: string };
 type Resp = {
@@ -300,6 +305,80 @@ export default function InformeAnalisis() {
                     <span className="text-xs text-slate-300 flex-1 min-w-0 truncate">{s.problema}</span>
                     <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
                       usada {s.veces}×
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fase 2: datos que faltan (info que el bot no tenía) */}
+          {(d.datos_faltan?.length ?? 0) > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-2">
+                Datos que faltan (que pide la gente)
+              </h3>
+              <p className="text-xs text-slate-500 mb-2">
+                Info que el bot no tenía. En naranja, lo que pidieron {d.umbral ?? 5}+ jugadores
+                distintos — merece añadirse a los Datos Fijos.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {(d.datos_faltan ?? []).slice(0, 12).map((x, i) => {
+                  const prioritario = x.jugadores >= (d.umbral ?? 5);
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
+                        prioritario
+                          ? "border-amber-400/40 bg-amber-500/10"
+                          : "border-white/10 bg-black/20"
+                      }`}
+                    >
+                      <span className="text-xs text-slate-300 flex-1 min-w-0">{x.dato}</span>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          prioritario ? "bg-amber-500/20 text-amber-200" : "bg-white/10 text-slate-300"
+                        }`}
+                      >
+                        {x.jugadores} {x.jugadores === 1 ? "jugador" : "jugadores"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Fase 3: muestreo de bienestar */}
+          {(d.ejemplos_bienestar?.length ?? 0) > 0 && (
+            <ListaEjemplos
+              titulo={`Bienestar — revisar cómo respondió el bot (${d.bienestar_total ?? 0})`}
+              color="amber"
+              items={d.ejemplos_bienestar ?? []}
+              base={viewerBase}
+            />
+          )}
+
+          {/* Fase 3: lista negra vigente */}
+          {(d.lista_negra?.length ?? 0) > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-2">
+                Lista negra ({d.lista_negra?.length ?? 0})
+              </h3>
+              <p className="text-xs text-slate-500 mb-2">
+                Jugadores bloqueados por insultos/amenazas repetidos. El bot ya no les responde.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {(d.lista_negra ?? []).slice(0, 20).map((x, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 rounded-lg border border-rose-400/20 bg-black/20 px-3 py-2"
+                  >
+                    <span className="text-[11px] font-medium text-slate-300">
+                      {NOMBRE_BOT[x.bot] || x.bot}
+                    </span>
+                    <span className="text-xs text-slate-400 flex-1 min-w-0 truncate">
+                      chat {x.chat_id} · {x.motivo || "insultos/amenazas"}
                     </span>
                   </div>
                 ))}

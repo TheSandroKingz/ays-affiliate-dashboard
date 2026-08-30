@@ -508,11 +508,19 @@ export async function POST(request: Request) {
           (prevAbuso ?? []).filter((m) =>
             ABUSO_RE.test(String(m.content ?? ""))
           ).length;
-        if (nAbuso >= 2) {
+        if (nAbuso >= 3) {
           await supabaseAdmin
             .from("telegram_contacts")
             .update({ silenced: true })
             .eq("chat_id", chatId);
+          // Fase 3: a la LISTA NEGRA (para el informe de Yaiza). No rompe si falla.
+          await supabaseAdmin
+            .from("lista_negra")
+            .upsert(
+              { bot: "as", chat_id: chatId, motivo: "3 insultos/amenazas seguidos" },
+              { onConflict: "bot,chat_id", ignoreDuplicates: true }
+            )
+            .then(() => {}, () => {});
           if (OWNER_CHAT_ID) {
             await tgEnviar(
               String(OWNER_CHAT_ID),
