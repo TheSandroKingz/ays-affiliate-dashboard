@@ -17,6 +17,7 @@ export type BotDef = {
   afp: string; // sub-id que marca los depósitos de ESTE bot (p. ej. "botjeffer")
   trackingCode: string; // freshaffs_tracking_code del afiliado dueño ("patron", "Fresh")
   nombre: string; // nombre de la persona con la que habla el jugador
+  genero: "f" | "m" | "n"; // para la red de seguridad de voz (quitar 'hermano' si es chica)
   juego: string; // "las Mines", "Diamond Mines"…
   bienvenida: string; // texto del /start
   saludo: string; // saludo corto (al pulsar ❓ AYUDA); según acento/género del bot
@@ -362,6 +363,18 @@ const ENLACE_BLACKKP = "https://asafiliados.com/go/WHWAhAVgwx";
 // "Registro" que ella usa por privado) y sale como afp "botaf".
 const ENLACE_AFRIKA = "https://asafiliados.com/go/naIRiroIcA";
 
+// Red de seguridad de VOZ para bots CHICAS: el modelo a veces cuela "hermano"/"bro"/
+// "manito" (vocativo masculino) pese al prompt. Los quitamos antes de enviar (una chica
+// no llama así a nadie). Solo toca esos vocativos; no altera el resto del mensaje.
+export function ajustarVozFemenina(texto: string, genero: "f" | "m" | "n"): string {
+  if (genero !== "f" || !texto) return texto;
+  return texto
+    .replace(/\s*,\s*\b(hermano|bro|manito)\b/gi, "")
+    .replace(/\b(hermano|bro|manito)\b\s*,?\s*/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export const BOTS: Record<string, BotDef> = {
   jeffer: {
     key: "jeffer",
@@ -376,6 +389,7 @@ export const BOTS: Record<string, BotDef> = {
     afp: AFP_JEFFER,
     trackingCode: "cZahjDgQoR", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "mine"
     nombre: "Jeffer",
+    genero: "m",
     juego: "las Mines",
     bienvenida: bienvenidaJuego("las Mines"),
     saludo: "¡Klk! 👋",
@@ -405,6 +419,7 @@ export const BOTS: Record<string, BotDef> = {
     afp: AFP_MARIAM,
     trackingCode: "AhBpxgTaoP", // Blue manda el CÓDIGO del enlace de Celsius en campaign, no "patron"
     nombre: "Livana",
+    genero: "f",
     juego: "Diamond Mines",
     bienvenida: bienvenidaJuego("Diamond Mines"),
     saludo: "¿Qué pasa tía? 👋",
@@ -431,6 +446,7 @@ export const BOTS: Record<string, BotDef> = {
     afp: AFP_BLACKKP,
     trackingCode: "ecUGAqtfld", // link de IG de Black KP = su cuenta; el dinero del bot (WHWAhAVgwx) se mapea aquí
     nombre: "Black KP",
+    genero: "m",
     juego: "las Mines",
     bienvenida: bienvenidaJuego("las Mines"),
     saludo: "¡Klk! 👋",
@@ -458,6 +474,7 @@ export const BOTS: Record<string, BotDef> = {
     afp: AFP_AFRIKA,
     trackingCode: "werECqYvPP", // link "Registro" de iAfrika = su cuenta; el dinero del bot (naIRiroIcA) se mapea aquí
     nombre: "Afrika",
+    genero: "f",
     juego: "las Mines",
     bienvenida: bienvenidaJuego("las Mines"),
     saludo: "¡Hey! 👋",

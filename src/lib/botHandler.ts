@@ -17,6 +17,7 @@ import {
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import type { BotDef } from "@/lib/bots";
+import { ajustarVozFemenina } from "@/lib/bots";
 
 type Turno = { role: "user" | "assistant"; content: string };
 
@@ -810,6 +811,9 @@ export async function procesarUpdate(
           bot.key,
           chatId
         );
+        // Red de seguridad: si es una bot CHICA, quita cualquier "hermano/bro/manito"
+        // que se le haya colado (una chica no habla así).
+        if (respuesta) respuesta = ajustarVozFemenina(respuesta, bot.genero);
       }
     }
 
