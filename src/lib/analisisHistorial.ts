@@ -383,6 +383,47 @@ export async function generarInforme(): Promise<{ id: number } | null> {
   }
 }
 
+// --- Banco de soluciones: uso EN VIVO por los bots (Adenda 1, fase de reutilización) ---
+
+// Bloque de texto con las soluciones APROBADAS de un bot (+ las comunes) para
+// inyectarlo en el prompt del bot. Vacío si no hay ninguna aprobada → el bot no
+// cambia en nada hasta que Yaiza apruebe soluciones. SOLO arreglos técnicos.
+export async function bloqueSolucionesAprobadas(botKey: string): Promise<string> {
+  try {
+    let q = supabaseAdmin
+      .from("soluciones_verificadas")
+      .select("id, problema, solucion")
+      .eq("estado", "aprobada");
+    // Soluciones de ESTE bot + las comunes (bot null). Si no hay bot, solo comunes.
+    q = /^[a-z]+$/.test(botKey) ? q.or(`bot.eq.${botKey},bot.is.null`) : q.is("bot", null);
+    const { data } = await q.limit(60);
+    const rows = (data ?? []) as { id: number; problema: string; solucion: string }[];
+    if (!rows.length) return "";
+    const lista = rows
+      .map((r) => `- [id ${r.id}] Problema: ${r.problema} → Solución: ${r.solucion}`)
+      .join("\n");
+    return `BANCO DE SOLUCIONES VERIFICADAS (arreglos técnicos ya comprobados y APROBADOS por la revisión humana). Si el problema del jugador COINCIDE claramente con uno de estos, usa DIRECTAMENTE esa solución (con TU voz y naturalidad) en vez de improvisar o gastar intentos a ciegas. Si usas una, empieza tu respuesta EXACTAMENTE con la marca [SOL:<id>] (se quita antes de enviar; el jugador NO la ve). Si ninguna encaja de verdad, resuelve como siempre y NO pongas ninguna marca.\n${lista}`;
+  } catch {
+    return "";
+  }
+}
+
+// Registra que un bot REUTILIZÓ una solución aprobada con un jugador (para el
+// contador "reutilizadas en el periodo"). Best-effort: nunca rompe la respuesta.
+export async function registrarUsoSolucion(
+  solId: number,
+  botKey: string,
+  chatId: number
+): Promise<void> {
+  try {
+    await supabaseAdmin
+      .from("soluciones_verificadas_usos")
+      .insert({ solucion_id: solId, bot: botKey, chat_id: chatId });
+  } catch {
+    /* si falla, no pasa nada: el contador es informativo */
+  }
+}
+
 // ¿Toca generar informe? (han pasado >= 3 días desde el último). Para engancharlo al
 // cron diario (Vercel plan gratis = 1 cron/día), como el vigilante de caídas.
 export async function tocaInforme(): Promise<boolean> {

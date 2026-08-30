@@ -875,7 +875,8 @@ export async function POST(request: Request) {
             historial,
             huecoAhora + entrada,
             imagen,
-            from.first_name ?? null
+            from.first_name ?? null,
+            chatId
           );
         }
       }

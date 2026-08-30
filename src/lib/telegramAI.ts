@@ -5,6 +5,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
+import { bloqueSolucionesAprobadas, registrarUsoSolucion } from "@/lib/analisisHistorial";
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -745,22 +746,45 @@ async function crearConGuardia(
   return fallbackDale(messages);
 }
 
+// Añade el banco de soluciones aprobadas al system (si hay), y tras generar,
+// extrae la marca [SOL:id] (si el bot usó una), la QUITA del texto y registra el
+// uso. Devuelve el texto ya limpio. Vacío el banco → no cambia nada.
+async function conBancoSoluciones(
+  botKey: string,
+  chatId: number | undefined,
+  sistema: Anthropic.TextBlockParam[],
+  generar: (sys: Anthropic.TextBlockParam[]) => Promise<string>
+): Promise<string> {
+  const bloque = await bloqueSolucionesAprobadas(botKey);
+  const sys = bloque ? [...sistema, { type: "text" as const, text: bloque }] : sistema;
+  let txt = await generar(sys);
+  const m = txt?.match(/^\s*\[SOL:\s*(\d+)\]\s*/i);
+  if (m) {
+    const id = Number(m[1]);
+    txt = txt.slice(m[0].length); // el jugador NUNCA ve la marca
+    if (id && chatId) void registrarUsoSolucion(id, botKey, chatId);
+  }
+  return txt;
+}
+
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
 export async function responderIA(
   historial: Turno[],
   mensaje: string,
   imagen?: { base64: string; mediaType: string } | null,
-  nombre?: string | null
+  nombre?: string | null,
+  chatId?: number
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
     const client = new Anthropic({ apiKey: KEY });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     const promo = await getPromo();
-    const txt = await crearConGuardia(
-      client,
+    const txt = await conBancoSoluciones(
+      "as",
+      chatId,
       sistemaCacheado(SYSTEM, promo, nombre),
-      messages
+      (sys) => crearConGuardia(client, sys, messages)
     );
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
@@ -776,16 +800,19 @@ export async function responderIABot(
   historial: Turno[],
   mensaje: string,
   imagen?: { base64: string; mediaType: string } | null,
-  nombre?: string | null
+  nombre?: string | null,
+  botKey?: string,
+  chatId?: number
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
     const client = new Anthropic({ apiKey: KEY });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
-    const txt = await crearConGuardia(
-      client,
+    const txt = await conBancoSoluciones(
+      botKey || "",
+      chatId,
       sistemaCacheado(persona, promo, nombre),
-      messages
+      (sys) => crearConGuardia(client, sys, messages)
     );
     return txt ? quitarGuiones(txt) || null : null;
   } catch {

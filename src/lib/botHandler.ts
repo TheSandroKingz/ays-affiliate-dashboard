@@ -798,7 +798,9 @@ export async function procesarUpdate(
           historial,
           huecoAhora + entrada,
           imagen,
-          from.first_name ?? null
+          from.first_name ?? null,
+          bot.key,
+          chatId
         );
       }
     }
