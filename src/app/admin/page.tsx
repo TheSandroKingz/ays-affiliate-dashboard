@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Calendar, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { ADMIN_USER_ID } from "@/lib/adminId";
+import { ADMIN_USER_ID, YAIZA_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
 import { eur } from "@/lib/format";
 
@@ -177,6 +177,8 @@ export default function AdminStatsPage() {
   (stats ?? []).forEach((r, i) => rankByUser.set(r.user_id, i));
 
   const visibleStats = [...(stats ?? [])]
+    // Yaiza es la REVISORA (no una afiliada que promociona): fuera de "Mis Afiliados".
+    .filter((r) => r.user_id !== YAIZA_ID)
     .filter((r) =>
       (r.display_name ?? "").toLowerCase().includes(busqueda.trim().toLowerCase())
     )
