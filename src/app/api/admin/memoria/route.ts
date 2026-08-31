@@ -47,6 +47,17 @@ export async function GET(request: Request) {
     porMes.set(mes, arr);
   }
 
+  // Gastos (publicidad, infra…) sumados por mes, para ver la inversión mensual.
+  const { data: gastosRaw } = await supabaseAdmin
+    .from("gastos")
+    .select("fecha, importe")
+    .limit(100000);
+  const gastosPorMes = new Map<string, number>();
+  for (const g of (gastosRaw ?? []) as { fecha: string; importe: number }[]) {
+    const mes = String(g.fecha).slice(0, 7);
+    gastosPorMes.set(mes, (gastosPorMes.get(mes) ?? 0) + Number(g.importe ?? 0));
+  }
+
   const meses = [...porMes.entries()]
     .map(([mes, filas]) => {
       const { totals } = computeAdminStats(filas, user.id, me?.id, adminCpa, struct);
@@ -58,6 +69,7 @@ export async function GET(request: Request) {
         totalClean: totals.totalClean,
         clicks: totals.clicks,
         registrations: totals.registrations,
+        gastos: gastosPorMes.get(mes) ?? 0,
       };
     })
     .sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más reciente primero

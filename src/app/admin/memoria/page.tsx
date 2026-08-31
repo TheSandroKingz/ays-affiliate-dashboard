@@ -15,6 +15,7 @@ type Mes = {
   totalClean: number;
   clicks: number;
   registrations: number;
+  gastos: number;
 };
 
 function nombreMes(mes: string) {
@@ -79,6 +80,7 @@ export default function MemoriaPage() {
 
   const totalBeneficio = meses.reduce((s, m) => s + m.totalClean, 0);
   const totalPagado = meses.reduce((s, m) => s + m.structurePaid, 0);
+  const totalGastos = meses.reduce((s, m) => s + (m.gastos ?? 0), 0);
 
   return (
     <main className="flex flex-col gap-5">
@@ -86,7 +88,7 @@ export default function MemoriaPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">Memoria del negocio</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Cómo ha ido cada mes: FTDs, lo pagado a afiliados y tu beneficio.
+            Cómo ha ido cada mes: FTDs, lo pagado a afiliados, los gastos y tu beneficio.
           </p>
         </div>
         <button
@@ -112,6 +114,9 @@ export default function MemoriaPage() {
                 Pagado a afiliados
               </th>
               <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
+                Gastos
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
                 Mi beneficio
               </th>
             </tr>
@@ -119,7 +124,7 @@ export default function MemoriaPage() {
           <tbody>
             {meses.length === 0 ? (
               <tr>
-                <td colSpan={4} className="border border-white/10 px-4 py-6 text-center text-slate-400">
+                <td colSpan={5} className="border border-white/10 px-4 py-6 text-center text-slate-400">
                   Todavía no hay meses con actividad.
                 </td>
               </tr>
@@ -137,6 +142,9 @@ export default function MemoriaPage() {
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
                     {eur(m.structurePaid)}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right text-amber-300">
+                    {m.gastos ? eur(m.gastos) : "—"}
                   </td>
                   <td
                     className={`border border-white/10 px-4 py-3 text-right font-semibold ${
@@ -157,6 +165,9 @@ export default function MemoriaPage() {
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-slate-300">
                   {eur(totalPagado)}
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right text-amber-300">
+                  {totalGastos ? eur(totalGastos) : "—"}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-emerald-400">
                   {eur(totalBeneficio)}
