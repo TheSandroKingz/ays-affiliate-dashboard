@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
+import { YAIZA_ID } from "@/lib/adminId";
 
 export async function GET(request: Request) {
   const user = await getAdminUser(request);
@@ -11,6 +12,9 @@ export async function GET(request: Request) {
   const { data, error } = await supabaseAdmin
     .from("affiliates")
     .select("id, user_id, display_name, cpa_spain, cpa_other, subaffiliate_percent, wallet_erc20, wallet_trc20")
+    // Yaiza es la REVISORA (sueldo fijo por revisar chats), no una afiliada que
+    // promociona: no debe salir en el listado de Comisiones.
+    .neq("user_id", YAIZA_ID)
     .order("display_name", { ascending: true });
 
   if (error) {
