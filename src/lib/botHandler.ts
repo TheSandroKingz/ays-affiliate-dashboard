@@ -704,7 +704,10 @@ export async function procesarUpdate(
     let debounced = false;
     if (entrada && iaConfigurada() && !limitado && !videoEnviado && !soloCierre && miMsgId) {
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
-      await new Promise((r) => setTimeout(r, 4500));
+      // Agrupación de mensajes = 30s (spec de Yaiza): esperamos 30s desde el último
+      // mensaje; si llega otro dentro, ESTA se calla y responde la del nuevo (que
+      // espera SUS 30s) → el temporizador se "reinicia". Ajustable con uso real.
+      await new Promise((r) => setTimeout(r, 30_000));
       const { data: masNuevos } = await supabaseAdmin
         .from("bot_messages")
         .select("id, content, media_type")

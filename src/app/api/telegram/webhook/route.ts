@@ -783,7 +783,11 @@ export async function POST(request: Request) {
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(
           () => {}
         );
-        await new Promise((r) => setTimeout(r, 4500));
+        // Agrupación de mensajes = 30s (spec de Yaiza): esperamos 30s desde el
+        // último mensaje; si llega otro dentro, ESTA invocación se calla y responde
+        // la del mensaje nuevo (que espera SUS 30s) → el temporizador se "reinicia".
+        // Ajustable si en la práctica es mucho/poco.
+        await new Promise((r) => setTimeout(r, 30_000));
         if (miMsgId) {
           const { data: masNuevos } = await supabaseAdmin
             .from("telegram_messages")
