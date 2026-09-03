@@ -1,3 +1,4 @@
+import { promptV2 } from "@/lib/promptBuild";
 // Registro de BOTS nuevos (Jeffer, Mariam, …), paralelos al de Sandro/Kingz.
 // Cada bot tiene su token, su enlace de afiliado, su dueño y su PERSONA (system
 // prompt). Todo lo específico y editable de cada bot está aquí: para "ajustar"
@@ -503,6 +504,13 @@ export const BOTS: Record<string, BotDef> = {
     diario: construirDiario("Afrika"),
   },
 };
+
+// Migración a los prompts v2 de Yaiza: cada bot usa IDENTIDAD + PROMPT MAESTRO +
+// DATOS FIJOS + su enlace/juego. Sobrescribimos la persona construida arriba (la
+// vieja queda sin usarse; el resto de la lógica de código sigue igual).
+for (const [clave, def] of Object.entries(BOTS)) {
+  def.persona = promptV2(clave, def.enlace, def.juego);
+}
 
 export function getBot(key: string | undefined | null): BotDef | null {
   if (!key) return null;
