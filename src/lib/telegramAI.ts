@@ -582,11 +582,17 @@ async function conBancoSoluciones(
   const bloque = await bloqueSolucionesAprobadas(botKey);
   const sys = bloque ? [...sistema, { type: "text" as const, text: bloque }] : sistema;
   let txt = await generar(sys);
-  const m = txt?.match(/^\s*\[SOL:\s*(\d+)\]\s*/i);
-  if (m) {
-    const id = Number(m[1]);
-    txt = txt.slice(m[0].length); // el jugador NUNCA ve la marca
-    if (id && chatId) void registrarUsoSolucion(id, botKey, chatId);
+  if (txt) {
+    // Extraer el id AUNQUE la marca venga mal formada (ej. "[SOL:<id 5>]"): cogemos
+    // el primer número que haya dentro de los corchetes, para el contador de uso.
+    const m = txt.match(/\[SOL:[^\]]*?(\d+)[^\]]*\]/i);
+    if (m && chatId) {
+      const id = Number(m[1]);
+      if (id) void registrarUsoSolucion(id, botKey, chatId);
+    }
+    // ⛔ Quitar CUALQUIER marca [SOL:...] del texto (esté donde esté y como esté) para
+    // que el jugador NUNCA la vea; luego limpiamos el espacio que quede al principio.
+    txt = txt.replace(/\[SOL:[^\]]*\]/gi, "").replace(/ {2,}/g, " ").replace(/^\s+/, "");
   }
   return txt;
 }

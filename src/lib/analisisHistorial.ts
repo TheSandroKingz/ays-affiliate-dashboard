@@ -454,9 +454,9 @@ export async function bloqueSolucionesAprobadas(botKey: string): Promise<string>
     const rows = (data ?? []) as { id: number; problema: string; solucion: string }[];
     if (!rows.length) return "";
     const lista = rows
-      .map((r) => `- [id ${r.id}] Problema: ${r.problema} → Solución: ${r.solucion}`)
+      .map((r) => `- Solución nº ${r.id} → Problema: ${r.problema} → Cómo se resuelve: ${r.solucion}`)
       .join("\n");
-    return `BANCO DE SOLUCIONES VERIFICADAS (arreglos técnicos ya comprobados y APROBADOS por la revisión humana). Si el problema del jugador COINCIDE claramente con uno de estos, usa DIRECTAMENTE esa solución (con TU voz y naturalidad) en vez de improvisar o gastar intentos a ciegas. Si usas una, empieza tu respuesta EXACTAMENTE con la marca [SOL:<id>] (se quita antes de enviar; el jugador NO la ve). Si ninguna encaja de verdad, resuelve como siempre y NO pongas ninguna marca.\n${lista}`;
+    return `BANCO DE SOLUCIONES VERIFICADAS (arreglos técnicos ya comprobados y APROBADOS por la revisión humana). Si el problema del jugador COINCIDE claramente con uno de estos, usa DIRECTAMENTE esa solución (con TU voz y naturalidad) en vez de improvisar o gastar intentos a ciegas. Si usas una, empieza tu respuesta con la marca [SOL:N] poniendo el NÚMERO de esa solución (solo el número, ej. si usas la "Solución nº 5" escribe exactamente [SOL:5]). Esa marca se borra sola antes de enviar, el jugador NO la ve. NUNCA escribas la palabra "id" ni "<id>" dentro de la marca. Si ninguna solución encaja de verdad, resuelve como siempre y NO pongas ninguna marca.\n${lista}`;
   } catch {
     return "";
   }
