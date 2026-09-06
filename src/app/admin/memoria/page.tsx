@@ -36,10 +36,6 @@ export default function MemoriaPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
-  // Edición de la penalización de un mes (dinero restado por el casino).
-  const [editMes, setEditMes] = useState<string | null>(null);
-  const [editVal, setEditVal] = useState("");
-  const [savingMes, setSavingMes] = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -74,44 +70,6 @@ export default function MemoriaPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Guardar la penalización del mes que se está editando.
-  async function guardarPenal(mes: string) {
-    const importe = Number(editVal.replace(",", ".")) || 0;
-    setSavingMes(mes);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch("/api/admin/memoria", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({ mes, importe }),
-      });
-      if (res.ok) {
-        // Actualiza en local sin recargar toda la tabla.
-        setMeses((prev) =>
-          prev.map((m) =>
-            m.mes === mes
-              ? { ...m, penalizacion: importe, beneficio: m.totalClean - importe }
-              : m
-          )
-        );
-        setEditMes(null);
-      }
-    } finally {
-      setSavingMes(null);
-    }
-  }
-
-  function empezarEdicion(m: Mes) {
-    setEditMes(m.mes);
-    setEditVal(m.penalizacion ? String(m.penalizacion) : "");
-  }
 
   if (loading) return <TableSkeleton title="Memoria del negocio" cols={4} />;
   if (error)
@@ -194,48 +152,8 @@ export default function MemoriaPage() {
                   <td className="border border-white/10 px-4 py-3 text-right text-amber-300">
                     {m.gastos ? eur(m.gastos) : "—"}
                   </td>
-                  <td className="border border-white/10 px-4 py-3 text-right">
-                    {editMes === m.mes ? (
-                      <span className="inline-flex items-center gap-1 justify-end">
-                        <input
-                          type="number"
-                          autoFocus
-                          value={editVal}
-                          onChange={(e) => setEditVal(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") guardarPenal(m.mes);
-                            if (e.key === "Escape") setEditMes(null);
-                          }}
-                          placeholder="0"
-                          className="w-24 rounded-md bg-white/10 border border-white/20 text-white text-sm px-2 py-1 text-right [color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                        <button
-                          onClick={() => guardarPenal(m.mes)}
-                          disabled={savingMes === m.mes}
-                          className="rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-2 py-1"
-                          title="Guardar"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => setEditMes(null)}
-                          className="rounded-md bg-white/10 hover:bg-white/20 text-slate-300 text-xs px-2 py-1"
-                          title="Cancelar"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => empezarEdicion(m)}
-                        className={`hover:underline decoration-dotted underline-offset-4 ${
-                          m.penalizacion ? "text-red-400 font-medium" : "text-slate-500"
-                        }`}
-                        title="Editar dinero restado por el casino"
-                      >
-                        {m.penalizacion ? `−${eur(m.penalizacion)}` : "+ añadir"}
-                      </button>
-                    )}
+                  <td className={`border border-white/10 px-4 py-3 text-right ${m.penalizacion ? "text-red-400 font-medium" : "text-slate-500"}`}>
+                    {m.penalizacion ? `−${eur(m.penalizacion)}` : "—"}
                   </td>
                   <td
                     className={`border border-white/10 px-4 py-3 text-right font-semibold ${

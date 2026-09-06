@@ -96,35 +96,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ meses });
 }
-
-// Fijar/editar la PENALIZACIÓN (dinero restado por el casino) de un mes. Solo
-// admin. body: { mes: "YYYY-MM", importe: number }. importe 0 borra el apunte.
-export async function POST(request: Request) {
-  const user = await getAdminUser(request);
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const { mes, importe } = await request.json().catch(() => ({}));
-  if (typeof mes !== "string" || !/^\d{4}-\d{2}$/.test(mes)) {
-    return NextResponse.json({ error: "Mes inválido (YYYY-MM)." }, { status: 400 });
-  }
-  const imp = Number(importe);
-  // Tope de seguridad ante un typo; la penalización es un número positivo (€ que
-  // te restan). 0 = sin penalización (borramos el apunte).
-  if (!Number.isFinite(imp) || imp < 0 || imp > 1_000_000) {
-    return NextResponse.json({ error: "Importe inválido." }, { status: 400 });
-  }
-
-  if (imp === 0) {
-    const { error } = await supabaseAdmin.from("penalizaciones").delete().eq("mes", mes);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, mes, importe: 0 });
-  }
-
-  const { error } = await supabaseAdmin
-    .from("penalizaciones")
-    .upsert({ mes, importe: imp, updated_at: new Date().toISOString() }, { onConflict: "mes" });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, mes, importe: imp });
-}
+// La penalización (dinero restado por el casino) NO se edita desde la app: es un
+// dato manual que solo se fija por detrás (script con service role). Por eso aquí
+// no hay POST — la columna de la Memoria es de solo lectura.
