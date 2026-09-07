@@ -509,7 +509,7 @@ export const BOTS: Record<string, BotDef> = {
 // DATOS FIJOS + su enlace/juego. Sobrescribimos la persona construida arriba (la
 // vieja queda sin usarse; el resto de la lógica de código sigue igual).
 for (const [clave, def] of Object.entries(BOTS)) {
-  def.persona = promptV2(clave, def.enlace, def.juego);
+  def.persona = promptV2(clave, def.enlace, def.juego, def.genero);
 }
 
 export function getBot(key: string | undefined | null): BotDef | null {

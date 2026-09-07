@@ -89,7 +89,7 @@ No te inventes datos que no estén aquí. Si no sabes algo concreto o es de su c
 
 // Personalidad del bot: colega y cercano, enfocado en que vuelvan a jugar, y
 // natural (sin decir que es un bot). Se mantienen las líneas rojas de honestidad.
-const SYSTEM = promptV2("as", ENLACE_JUGAR, "las Mines");
+const SYSTEM = promptV2("as", ENLACE_JUGAR, "las Mines", "m");
 
 type Turno = { role: "user" | "assistant"; content: string };
 
