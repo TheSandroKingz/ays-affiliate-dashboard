@@ -24,11 +24,20 @@ export default function LoginPage() {
 
     // Login en el servidor: resuelve usuario→email allí (sin exponer el correo)
     // y valida la contraseña. Nos devuelve solo los tokens de sesión.
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: cleanId, password }),
-    })
+    // Si el movil pierde cobertura, el fetch RECHAZA: sin este try el boton se
+    // quedaba en "Entrando..." para siempre y habia que recargar la app.
+    let res: Response
+    try {
+      res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: cleanId, password }),
+      })
+    } catch {
+      setError('No hay conexión. Comprueba tu internet e inténtalo de nuevo.')
+      setLoading(false)
+      return
+    }
     const body = await res.json().catch(() => ({}))
     if (!res.ok || !body.access_token) {
       setError(body.error || 'Usuario o contraseña incorrectos')

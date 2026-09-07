@@ -133,8 +133,10 @@ export default function TelegramPage() {
                 >
                   <option value="">Mes…</option>
                   {Array.from({ length: 6 }, (_, i) => {
-                    const d = new Date();
-                    d.setMonth(d.getMonth() - i);
+                    // Ojo: setMonth sobre el dia 31 desborda (31 ene -> 1 dic) y la
+                    // lista salia con meses repetidos y otros ausentes. Anclamos al dia 1.
+                    const h = new Date();
+                    const d = new Date(h.getFullYear(), h.getMonth() - i, 1);
                     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
                   }).map((m) => (
                     <option key={m} value={m} className="text-black">

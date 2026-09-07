@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
@@ -9,6 +9,8 @@ export default function PendientePage() {
   const router = useRouter();
 
   // Si ya está aprobado (o cierra sesión), lo mandamos donde toque.
+  const [desactivada, setDesactivada] = useState(false);
+
   useEffect(() => {
     async function check() {
       try {
@@ -21,10 +23,15 @@ export default function PendientePage() {
         }
         const { data: aff } = await supabase
           .from("affiliates")
-          .select("approved")
+          .select("approved, active")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        if (aff && aff.approved === true) router.replace("/dashboard");
+        // OJO: hay que mirar TAMBIEN 'active'. El dashboard manda aqui a las cuentas
+        // aprobadas pero DESACTIVADAS; si aqui solo mirabamos 'approved', las
+        // devolviamos al dashboard y se quedaban en un ping-pong infinito, sin poder
+        // ni pulsar "Cerrar sesion".
+        if (aff && aff.approved === true && aff.active !== false) router.replace("/dashboard");
+        if (aff && aff.active === false) setDesactivada(true);
       } catch {
         // Fallo transitorio: se queda en esta pantalla, sin romperse.
       }
@@ -62,11 +69,12 @@ export default function PendientePage() {
         </div>
         <div className="animate-in bg-white/10 backdrop-blur-lg border border-emerald-400/50 rounded-2xl p-8 shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]">
           <h1 className="text-2xl font-semibold text-white mb-3">
-            Cuenta pendiente de aprobación
+            {desactivada ? "Cuenta desactivada" : "Cuenta pendiente de aprobación"}
           </h1>
           <p className="text-slate-300 text-sm mb-6">
-            Tu registro se ha recibido correctamente. Un administrador revisará tu
-            cuenta y podrás acceder en cuanto la apruebe. ¡Gracias por tu paciencia!
+            {desactivada
+              ? "Tu cuenta está desactivada ahora mismo. Habla con tu gestor para reactivarla."
+              : "Tu registro se ha recibido correctamente. Un administrador revisará tu cuenta y podrás acceder en cuanto la apruebe. ¡Gracias por tu paciencia!"}
           </p>
           <button
             onClick={salir}

@@ -39,17 +39,21 @@ export default function ComisionesPage() {
 
       setAccessToken(session.access_token);
 
-      const res = await fetch("/api/admin/comisiones", {
-        headers: { Authorization: "Bearer " + session.access_token },
-      });
-      const body = await res.json();
-
-      if (!res.ok) {
-        setError(body.error || "Error al cargar");
-        return;
+      // Sin try/catch, un fallo de red dejaba la pagina en el esqueleto de carga
+      // para siempre, sin error ni forma de reintentar.
+      try {
+        const res = await fetch("/api/admin/comisiones", {
+          headers: { Authorization: "Bearer " + session.access_token },
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(body.error || "Error al cargar");
+          return;
+        }
+        setAffiliates(body.affiliates);
+      } catch {
+        setError("No hay conexión. Inténtalo de nuevo.");
       }
-
-      setAffiliates(body.affiliates);
     }
     load();
   }, [router]);

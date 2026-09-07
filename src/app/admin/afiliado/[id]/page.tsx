@@ -75,7 +75,12 @@ export default function AfiliadoDetallePage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        // Sin esto el boton se quedaba bloqueado en "Eliminando..." sin decir por que.
+        setEliminando(false);
+        alert("Tu sesión ha caducado. Vuelve a entrar e inténtalo de nuevo.");
+        return;
+      }
       const res = await fetch(
         "/api/admin/afiliado?userId=" + encodeURIComponent(userId),
         {

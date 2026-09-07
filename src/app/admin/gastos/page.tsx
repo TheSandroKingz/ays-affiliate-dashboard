@@ -189,6 +189,9 @@ export default function GastosPage() {
       setEditId(null);
       setEd({});
       await cargar();
+    } else {
+      // Antes no pasaba NADA visible: parecia que se habia guardado.
+      setError("No se pudo guardar el cambio. Inténtalo otra vez.");
     }
   }
 
@@ -393,7 +396,7 @@ export default function GastosPage() {
                 <input type="text" value={concepto} onChange={(e) => setConcepto(e.target.value)} placeholder="Concepto (opcional)" className={cell} />
               </td>
               <td className="px-3 py-2">
-                <input type="text" inputMode="decimal" value={importe} onChange={(e) => setImporte(e.target.value)} onKeyDown={(e) => e.key === "Enter" && añadir()} placeholder="€" className={`${cell} text-right`} />
+                <input type="text" inputMode="decimal" value={importe} onChange={(e) => setImporte(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !guardando && añadir()} placeholder="€" className={`${cell} text-right`} />
               </td>
               <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(categoria, quien).k}%</td>
               <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(categoria, quien).p}%</td>
