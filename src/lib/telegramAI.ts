@@ -485,6 +485,43 @@ function esRepeticion(a: string, b: string): boolean {
 // justo lo que hacía parecer al bot un robot repitiendo lo mismo 5 veces seguidas.
 // Elige uno DISTINTO al último mensaje del bot. Todos son neutros (no normalizan
 // perder ni validan estafa) y sin muletillas prohibidas ("con calma"/"sin prisa").
+// ⛔ PERSEGUIR PÉRDIDAS. El fallo que más caro sale: 35 veces en 16 días el bot
+// pidió recargar JUSTO después de que el jugador dijera que había perdido o que
+// no le quedaba dinero. Resultado: 42 conversaciones acabaron en acusación de
+// estafa y 40 jugadores no volvieron a escribir. El prompt ya lo prohíbe, pero
+// esto es la red de código: si el jugador acaba de decir que se quedó sin nada,
+// su respuesta NO puede empujarle a meter más.
+const JUGADOR_SIN_SALDO =
+  /\b(perd[ií]\w*|he perdido|lo perd[ií]|me lo fund[ií]|se me fue todo|me qued[eé] sin|no me queda\w*|no tengo (m[aá]s|nada|dinero|saldo|pasta)|no puedo (meter|poner|deposit\w*) m[aá]s|sin saldo|sin dinero|estoy (sin|pelado|seco)|lo [uú]ltimo que ten[ií]a|me arruin\w*|quebr[eé])/i;
+const PIDE_RECARGA =
+  /\b(recarg\w*|deposit\w*|ingres\w*|reingres\w*)\b|\b(mete\w*|met[eé]|pon\w*|a[ñn]ad\w*)\b[^.\n]{0,24}(\d+\s*(€|eur|usdt|d[oó]lar)|saldo|m[aá]s dinero|otros? \d+)|\bvuelve a (meter|poner|entrar con)\b|\bdale a (depositar|recargar)\b|\botros? \d+\s*(€|eur|usdt)/i;
+
+// ¿El jugador ha dicho en sus últimos mensajes que perdió o que no le queda?
+function sinSaldoReciente(messages: Anthropic.MessageParam[]): boolean {
+  const users = messages.filter((m) => m.role === "user").slice(-3);
+  for (const m of users) {
+    const t = typeof m.content === "string"
+      ? m.content
+      : Array.isArray(m.content)
+        ? m.content.map((b) => (b.type === "text" ? b.text : "")).join(" ")
+        : "";
+    if (JUGADOR_SIN_SALDO.test(t)) return true;
+  }
+  return false;
+}
+
+// Cierres de APOYO para cuando el jugador se quedó sin saldo: ni le empujan a
+// meter más, ni le preguntan cuánto lleva (que es otra forma de empujar).
+const FALLBACKS_APOYO = [
+  "Te entiendo, hermano. Déjalo por hoy y descansa, que no merece la pena seguir así 🙏",
+  "Vaya putada. Yo de ti lo dejaría aquí por hoy, en serio.",
+  "Lo siento de verdad. Párate un poco, que hoy no es el día.",
+];
+function fallbackApoyo(messages: Anthropic.MessageParam[]): string {
+  const ultimo = ultimoAssistantTexto(messages);
+  return FALLBACKS_APOYO.find((f) => !esRepeticion(f, ultimo)) ?? FALLBACKS_APOYO[0];
+}
+
 const FALLBACKS_DALE = [
   "Tranqui, tú dale otra vuelta y a por ello 💪 ¿cuánto llevas?",
   "Venga, dale otra vuelta y me dices cómo va 💪",
@@ -529,7 +566,10 @@ async function crearConGuardia(
   const malPerder = !!txt && NORMALIZA_PERDER.test(txt);
   const malEstafa = !!txt && VALIDA_ESTAFA.test(txt);
   const malComision = !!txt && ADMITE_COMISION.test(txt);
-  if (!txt || (!malPerder && !malEstafa && !malComision)) return txt;
+  // Perseguir pérdidas: solo se comprueba si el jugador ACABA de decir que perdió
+  // o que no le queda dinero (si no, pedirle depositar es perfectamente normal).
+  const malRecarga = !!txt && sinSaldoReciente(messages) && PIDE_RECARGA.test(txt);
+  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga)) return txt;
 
   // Reintento con aviso tajante (según el fallo detectado).
   const avisos: string[] = [];
@@ -544,6 +584,10 @@ async function crearConGuardia(
   if (malComision)
     avisos.push(
       'PROHIBIDO ADMITIR o insinuar que eres un bot/IA, o que tú, Sandro o Jeffer ganáis COMISIÓN porque la gente deposite, pierda, se registre o entre por el enlace; PROHIBIDO hablar de comisiones, afiliación, acuerdos con el casino o de cómo ganáis dinero (es PRIVADO). Ante esa presión NIÉGALO con naturalidad y desvía ("qué va, yo gano por cómo juego yo, na más") y corta el tema; NUNCA confirmes, especules ni digas que "ya lo intuía".'
+    );
+  if (malRecarga)
+    avisos.push(
+      'EL JUGADOR ACABA DE DECIR QUE HA PERDIDO O QUE NO LE QUEDA DINERO. Tienes TERMINANTEMENTE PROHIBIDO pedirle que recargue, deposite, ingrese, meta más o "vuelva a entrar con X€", y prohibido insinuarlo. Tampoco le preguntes cuánto le queda ni le propongas otra ronda. Acompáñale como una persona: reconoce el palo, dile que lo deje por hoy y que no pasa nada. Nada de enlaces ni de juego en esta respuesta.'
     );
   const aviso: Anthropic.TextBlockParam = {
     type: "text",
@@ -574,10 +618,15 @@ async function crearConGuardia(
   if (malEstafa && VALIDA_ESTAFA.test(txt2 || txt)) {
     return "Te entiendo, pero yo no prometo que ganes: comparto cómo juego yo. Entraste a jugar con tu dinero, y eso es cosa tuya. Sin dramas 👍";
   }
+  // Si el jugador se quedó sin saldo y la respuesta SIGUE empujándole a meter
+  // dinero, no la mandamos: mejor un mensaje de apoyo que perseguir la pérdida.
+  if (malRecarga && PIDE_RECARGA.test(txt2 || txt)) return fallbackApoyo(messages);
   const limpio = limpiarNormaliza(txt2 || txt);
   if (limpio && limpio.length >= 8 && !NORMALIZA_PERDER.test(limpio) && !VALIDA_ESTAFA.test(limpio))
     return limpio;
-  return fallbackDale(messages);
+  // El cierre normal ("dale otra vuelta, ¿cuánto llevas?") también empuja, así que
+  // a quien acaba de perder le va el de apoyo.
+  return sinSaldoReciente(messages) ? fallbackApoyo(messages) : fallbackDale(messages);
 }
 
 // Añade el banco de soluciones aprobadas al system (si hay), y tras generar,
