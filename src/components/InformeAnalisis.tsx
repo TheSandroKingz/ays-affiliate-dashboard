@@ -396,7 +396,7 @@ export default function InformeAnalisis() {
                 {(d.lista_negra ?? []).slice(0, 20).map((x, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-2 rounded-lg border border-rose-400/20 bg-black/20 px-3 py-2"
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-rose-400/20 bg-black/20 px-3 py-2"
                   >
                     <span className="text-[11px] font-medium text-slate-300">
                       {NOMBRE_BOT[x.bot] || x.bot}
@@ -404,6 +404,14 @@ export default function InformeAnalisis() {
                     <span className="text-xs text-slate-400 flex-1 min-w-0 truncate">
                       chat {x.chat_id} · {x.motivo || "insultos/amenazas"}
                     </span>
+                    {/* Enlace directo a la conversación, para ver qué pasó de verdad. */}
+                    <Link
+                      href={`${viewerBase}?bot=${encodeURIComponent(x.bot)}&chat=${x.chat_id}`}
+                      className="shrink-0 inline-flex items-center gap-1 rounded-md border border-sky-400/40
+                      bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25"
+                    >
+                      💬 Ver la conversación →
+                    </Link>
                   </div>
                 ))}
               </div>
