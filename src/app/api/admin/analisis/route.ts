@@ -34,6 +34,10 @@ export async function GET(request: Request) {
   // desde cada caso — también en informes VIEJOS que no lo guardaron. Cruzamos por
   // (bot + resumen) contra las conversaciones clasificadas del mismo periodo.
   await enriquecerConChatId(informe as InformeRow);
+  // La LISTA NEGRA se lee SIEMPRE en vivo, nunca del informe: el informe guarda
+  // una FOTO FIJA del momento en que se generó, así que si Yaiza saca a alguien
+  // seguiría apareciendo hasta el siguiente informe.
+  await refrescarListaNegra(informe as InformeRow);
 
   return NextResponse.json({ informe: informe ?? null, config: config ?? null, clasificadas_total: count ?? 0 });
 }
@@ -53,8 +57,29 @@ type InformeRow = {
     ejemplos_friccion?: Ejemplo[];
     ejemplos_decepcion?: Ejemplo[];
     ejemplos_bienestar?: Ejemplo[];
+    lista_negra?: {
+      bot: string;
+      chat_id: number;
+      motivo: string | null;
+      created_at: string;
+    }[];
   } | null;
 } | null;
+
+// Sustituye la lista negra guardada en el informe por la de AHORA MISMO (solo los
+// que siguen bloqueados). Así, al sacar a alguien, desaparece al recargar.
+async function refrescarListaNegra(informe: InformeRow) {
+  if (!informe?.datos) return;
+  const { data, error } = await supabaseAdmin
+    .from("lista_negra")
+    .select("bot, chat_id, motivo, created_at")
+    .is("reactivado_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  // Si la consulta falla, dejamos la foto del informe (mejor eso que vaciarla).
+  if (error) return;
+  informe.datos.lista_negra = data ?? [];
+}
 
 async function enriquecerConChatId(informe: InformeRow) {
   if (!informe?.datos) return;
