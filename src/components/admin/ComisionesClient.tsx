@@ -91,6 +91,15 @@ export default function ComisionesClient({
     cargarSaldos();
   }, [cargarSaldos]);
 
+  // Al cambiar de MES hay que limpiar lo que se estaba tecleando: si no, el
+  // importe que pusiste para un mes se queda en el campo y al pulsar "Registrar"
+  // se grabaria contra el mes NUEVO (pago imputado al mes equivocado).
+  useEffect(() => {
+    setPagoImporte({});
+    setPagoMsg(null);
+    setExpandedId(null);
+  }, [periodo]);
+
   async function registrarPago(id: string, userId: string) {
     const importe = Number((pagoImporte[id] ?? "").replace(",", "."));
     if (!Number.isFinite(importe) || importe <= 0) {
