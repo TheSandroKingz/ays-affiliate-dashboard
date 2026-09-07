@@ -446,7 +446,21 @@ export async function procesarUpdate(
     // forma PERSISTENTE, dejamos de contestarle para no gastar IA. A los 3 se
     // auto-silencia; un uso suelto NO silencia. El dueño lo reactiva en el panel.
     if (textoJ && ABUSO_RE.test(textoJ)) {
-      const { data: prevAbuso } = await supabaseAdmin
+      // Si a este jugador ya lo sacaron de la lista negra, el contador arranca de
+      // CERO desde ese momento: los insultos de antes NO cuentan. Si no, un solo
+      // desliz lo volvería a bloquear al instante, en vez de darle 3 avisos de
+      // nuevo como manda el bloque 5 del Prompt Maestro.
+      const { data: reac } = await supabaseAdmin
+        .from("lista_negra")
+        .select("reactivado_at")
+        .eq("bot", bot.key)
+        .eq("chat_id", chatId)
+        .not("reactivado_at", "is", null)
+        .order("reactivado_at", { ascending: false })
+        .limit(1);
+      const desdeReactivacion = reac?.[0]?.reactivado_at as string | undefined;
+
+      let qPrev = supabaseAdmin
         .from("bot_messages")
         .select("content")
         .eq("bot", bot.key)
@@ -454,6 +468,8 @@ export async function procesarUpdate(
         .eq("role", "user")
         .order("created_at", { ascending: false })
         .limit(12);
+      if (desdeReactivacion) qPrev = qPrev.gt("created_at", desdeReactivacion);
+      const { data: prevAbuso } = await qPrev;
       const nAbuso =
         1 +
         (prevAbuso ?? []).filter((m) => ABUSO_RE.test(String(m.content ?? ""))).length;
@@ -467,8 +483,17 @@ export async function procesarUpdate(
         await supabaseAdmin
           .from("lista_negra")
           .upsert(
-            { bot: bot.key, chat_id: chatId, motivo: "3 insultos/amenazas seguidos" },
-            { onConflict: "bot,chat_id", ignoreDuplicates: true }
+            {
+              bot: bot.key,
+              chat_id: chatId,
+              motivo: "3 insultos/amenazas seguidos",
+              // Si ya lo habían reactivado antes, limpiamos esa marca y la fecha:
+              // vuelve a estar bloqueado y tiene que salir otra vez en el informe.
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
           )
           .then(() => {}, () => {});
         if (owner) {

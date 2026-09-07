@@ -496,13 +496,28 @@ export async function POST(request: Request) {
       // IA con él. A los 3 mensajes abusivos se auto-silencia; el dueño puede
       // quitarle el silencio a mano desde el panel. Un taco suelto NO lo silencia.
       if (textoJ && ABUSO_RE.test(textoJ)) {
-        const { data: prevAbuso } = await supabaseAdmin
+        // Si ya lo sacaron de la lista negra, el contador arranca de CERO desde
+        // ese momento: los insultos de antes NO cuentan (bloque 5: si vuelve a
+        // insultar, se le dan 3 avisos de nuevo, no se le re-bloquea al primero).
+        const { data: reac } = await supabaseAdmin
+          .from("lista_negra")
+          .select("reactivado_at")
+          .eq("bot", "as")
+          .eq("chat_id", chatId)
+          .not("reactivado_at", "is", null)
+          .order("reactivado_at", { ascending: false })
+          .limit(1);
+        const desdeReactivacion = reac?.[0]?.reactivado_at as string | undefined;
+
+        let qPrev = supabaseAdmin
           .from("telegram_messages")
           .select("content")
           .eq("chat_id", chatId)
           .eq("role", "user")
           .order("created_at", { ascending: false })
           .limit(12);
+        if (desdeReactivacion) qPrev = qPrev.gt("created_at", desdeReactivacion);
+        const { data: prevAbuso } = await qPrev;
         const nAbuso =
           1 +
           (prevAbuso ?? []).filter((m) =>
@@ -517,8 +532,17 @@ export async function POST(request: Request) {
           await supabaseAdmin
             .from("lista_negra")
             .upsert(
-              { bot: "as", chat_id: chatId, motivo: "3 insultos/amenazas seguidos" },
-              { onConflict: "bot,chat_id", ignoreDuplicates: true }
+              {
+                bot: "as",
+                chat_id: chatId,
+                motivo: "3 insultos/amenazas seguidos",
+                // Si ya lo habían reactivado antes, limpiamos esa marca y la fecha:
+                // vuelve a estar bloqueado y tiene que salir otra vez en el informe.
+                reactivado_at: null,
+                reactivado_por: null,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: "bot,chat_id" }
             )
             .then(() => {}, () => {});
           if (OWNER_CHAT_ID) {
