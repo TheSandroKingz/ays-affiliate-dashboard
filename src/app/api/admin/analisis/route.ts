@@ -125,6 +125,51 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, revisado: body.revisado !== false });
   }
+  // Sacar a un jugador de la LISTA NEGRA (Prompt Maestro bloque 5: solo Yaiza/el
+  // admin deciden reactivarlo). Hay que revertir DOS cosas: el `silenced` del
+  // contacto —que es lo que de verdad hace que el bot no conteste— y la fila de
+  // lista_negra, que se marca como reactivada (no se borra: deja rastro).
+  if (run === "reactivar") {
+    let body: { bot?: string; chat_id?: number };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+    }
+    const bot = String(body.bot ?? "");
+    const chatId = Number(body.chat_id);
+    if (!bot || !Number.isFinite(chatId)) {
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    }
+
+    // 1) Quitarle el silencio: sin esto el bot seguiría sin responderle.
+    //    El bot de Sandro ("as") vive en telegram_contacts; el resto en bot_contacts.
+    const esAs = bot === "as";
+    let q = supabaseAdmin
+      .from(esAs ? "telegram_contacts" : "bot_contacts")
+      .update({ silenced: false })
+      .eq("chat_id", chatId);
+    if (!esAs) q = q.eq("bot", bot);
+    const { error: errSilencio } = await q;
+    if (errSilencio) {
+      return NextResponse.json({ error: errSilencio.message }, { status: 500 });
+    }
+
+    // 2) Marcar la fila como reactivada (quién y cuándo, para trazabilidad).
+    const { error: errLista } = await supabaseAdmin
+      .from("lista_negra")
+      .update({
+        reactivado_at: new Date().toISOString(),
+        reactivado_por: user.email ?? user.id,
+      })
+      .eq("bot", bot)
+      .eq("chat_id", chatId);
+    if (errLista) {
+      return NextResponse.json({ error: errLista.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, reactivado: true });
+  }
+
   // Por defecto: clasificar un lote.
   const n = await analizarLote(12);
   return NextResponse.json({ ok: true, clasificadas: n });

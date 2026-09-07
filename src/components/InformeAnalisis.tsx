@@ -96,6 +96,9 @@ export default function InformeAnalisis() {
   const [error, setError] = useState<string | null>(null);
   // A qué visor de chats enlazan los ejemplos: admin → /admin/telegram, Yaiza → /dashboard/bot.
   const [viewerBase, setViewerBase] = useState("/dashboard/bot");
+  // Jugador de la lista negra que se está reactivando ("bot:chat_id"), para
+  // deshabilitar su botón mientras va la petición.
+  const [reactivando, setReactivando] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     const {
@@ -168,6 +171,36 @@ export default function InformeAnalisis() {
       body: JSON.stringify({ bot, chat_id, revisado }),
     });
     await cargar();
+  }
+
+  // Sacar a un jugador de la LISTA NEGRA (Prompt Maestro bloque 5: solo Yaiza/el
+  // admin lo deciden). Pide confirmación porque no es trivial: a partir de ahí el
+  // bot vuelve a contestarle sin que el jugador tenga que hacer nada.
+  async function sacarDeListaNegra(bot: string, chat_id: number) {
+    const ok = window.confirm(
+      "¿Seguro que quieres que el bot vuelva a responder a este jugador?"
+    );
+    if (!ok) return;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const clave = `${bot}:${chat_id}`;
+    setReactivando(clave);
+    try {
+      const res = await fetch("/api/admin/analisis?run=reactivar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ bot, chat_id }),
+      });
+      if (!res.ok) {
+        setError("No se pudo sacar de la lista negra. Inténtalo otra vez.");
+        return;
+      }
+      await cargar();
+    } finally {
+      setReactivando(null);
+    }
   }
 
   // Aprobar / descartar / sustituir una solución del banco (Adenda 1).
@@ -412,6 +445,18 @@ export default function InformeAnalisis() {
                     >
                       💬 Ver la conversación →
                     </Link>
+                    {/* Bloque 5 del Prompt Maestro: solo Yaiza decide sacarlo. */}
+                    <button
+                      onClick={() => sacarDeListaNegra(x.bot, x.chat_id)}
+                      disabled={reactivando === `${x.bot}:${x.chat_id}`}
+                      className="shrink-0 rounded-md border border-emerald-400/40 bg-emerald-500/15
+                      px-2.5 py-1 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/25
+                      disabled:opacity-50"
+                    >
+                      {reactivando === `${x.bot}:${x.chat_id}`
+                        ? "Sacando…"
+                        : "Sacar de lista negra"}
+                    </button>
                   </div>
                 ))}
               </div>

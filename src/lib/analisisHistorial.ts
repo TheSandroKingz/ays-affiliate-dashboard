@@ -376,6 +376,9 @@ export async function generarInforme(): Promise<{ id: number } | null> {
     const { data: blData } = await supabaseAdmin
       .from("lista_negra")
       .select("bot, chat_id, motivo, created_at")
+      // Solo los que SIGUEN bloqueados: a los reactivados (Yaiza los sacó de la
+      // lista) se les marca reactivado_at y dejan de salir en el informe.
+      .is("reactivado_at", null)
       .order("created_at", { ascending: false })
       .limit(100);
     const listaNegra = (blData ?? []) as {
