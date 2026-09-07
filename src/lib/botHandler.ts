@@ -120,6 +120,9 @@ export async function procesarUpdate(
     const msg = update?.message as Record<string, unknown> | undefined;
     if (!msg || !msg.chat) return;
 
+    // Solo chats PRIVADOS (ver webhook de Sandro).
+    const tipoChat = (msg.chat as { type?: string }).type;
+    if (tipoChat && tipoChat !== "private") return;
     const chatId: number = (msg.chat as { id: number }).id;
     const text: string = ((msg.text as string) ?? "").trim();
     const caption: string = ((msg.caption as string) ?? "").trim();

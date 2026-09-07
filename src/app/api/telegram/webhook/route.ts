@@ -114,6 +114,9 @@ export async function POST(request: Request) {
   // Solo mensajes normales (ignoramos edits, canales, etc.).
   if (!msg || !msg.chat) return NextResponse.json({ ok: true });
 
+  // Solo chats PRIVADOS: si alguien mete el bot en un grupo, respondía con IA a
+  // todos los mensajes del grupo y mezclaba contacto/silenciado.
+  if (msg.chat.type && msg.chat.type !== "private") return NextResponse.json({ ok: true });
   const chatId: number = msg.chat.id;
   const text: string = (msg.text ?? "").trim();
   const from = msg.from ?? {};
@@ -892,7 +895,11 @@ export async function POST(request: Request) {
           // Imagen para la IA: la del mensaje actual si trae; si no, la del último
           // mensaje reciente del jugador con media (para no perder el vídeo/foto
           // que mandó justo antes del texto). En vídeos, file_id ya es la miniatura.
-          let visionFileId: string | null = mediaFileId;
+          // Solo foto/vídeo/animación van a la visión. Un documento (PDF, apk, zip)
+          // se enviaba como imagen inválida → la IA petaba y el jugador recibía el
+          // pitch fijo. botHandler ya lo filtraba; aquí faltaba.
+          const tipoVeApto = mediaTipo === "photo" || mediaTipo === "video" || mediaTipo === "animation";
+          let visionFileId: string | null = tipoVeApto ? mediaFileId : null;
           if (!visionFileId) {
             const { data: ultMedia } = await supabaseAdmin
               .from("telegram_messages")

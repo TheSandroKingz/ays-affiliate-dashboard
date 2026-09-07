@@ -152,7 +152,7 @@ Devuelve SOLO el mensaje, sin comillas ni explicaciones.`;
 export async function generarMensajeDiario(contexto: string): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const client = new Anthropic({ apiKey: KEY });
+    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
     const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
@@ -183,7 +183,7 @@ export async function generarMensajeDiario(contexto: string): Promise<string | n
 export async function generarMensajeDiarioBot(sistema: string): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const client = new Anthropic({ apiKey: KEY });
+    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
     const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
@@ -309,14 +309,14 @@ function sistemaCacheado(
 // "es normal" a secas, porque vale para depósitos/bono ("eso es normal, está en
 // proceso"); solo las inequívocas de dar por normal/esperable la pérdida o el azar.
 const NORMALIZA_PERDER =
-  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|la (cosa|vaina)|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder(?! el miedo| la verg)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})se (puede|pued\w+) (llegar a )?perder|no\s+(funciona|clava|acierta|gana|sale)\w*[^.\n]{0,20}(el\s+)?100\s*%|(patr[oó]n|m[eé]todo|la z)\w*[^.\n]{0,18}((?<!no )falla\w*|puede fallar|no funciona|no clava|no siempre)|\b(no|tampoco)\s+siempre\s+(se\s+)?gan\w*|no\s+(funciona|clava|acierta)\w*[^.\n]{0,14}siempre|la z no cierra|no cierra (bien )?(la z|en esa|ah[ií])|no controlo (las )?minas|(las )?minas\s+(caen|van|var[ií]an)\b|a veces\s+(pet|salt|explot)|(puede|pueden|podr[ií]a[ns]?)\s+(saltar|petar)|salt[oó]\s+(la\s+|una\s+)?(bomba|mina)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(es|son|sea)\s+aleatori\w*|nada\b[^.\n]{0,18}garantiz|\bnada\b\s+(es\s+|est[aá]\s+)?(100\s*%?\s*)?seguro\b|\b(no|nunca|tampoco)\s+(es|va a ser|ser[aá])\s+(100\s*%?\s*)?seguro\b|no\s+es\s+magia|(el\s+)?riesgo\s+existe|pet[oó]\s+(en|justo|ah[ií])|s[uú]bela\b|sube[a-z]*\s+(la\s+)?(apuesta|puja|importe)|baja\s+(la\s+)?apuesta|divid\w*\s+(la\s+)?apuesta|fraccion\w*|apuesta[r]?\s+(?!20(?:[.,]0{1,2})?\s*€)\d+\s*€|micro-?cobr/i;
+  /\beso (le )?pasa\b|a veces (no sal|(se )?pierd\w*|toca|sale|salen|va as[ií])|a veces s[ií].{0,12}a veces no|le pasa a todos|cada tirada es|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\bes (puro |pura |cuesti[oó]n de |algo de |un poco de )?(azar|suerte)\b|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})\b(algo de|un poco de|parte de|cuesti[oó]n de) (azar|suerte)\b|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})mala suerte|toca petar|no sale bien y ya|es parte del juego|es lo que hay|el juego (va|es) as[ií]|va as[ií] (algunas|a) veces|salen? as[ií] (las )?(tiradas|cosas)|as[ií] (es|son) (el juego|esto|las (tiradas|cosas))|no siempre (sale|se gana|va)|hay veces que (no|(se )?pierd\w*|toca|sale)|eso es (el|este) (juego|negocio)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(puedes|podr[íi]as|podr[íi]a|se puede|es posible|hay (que|c[oó]mo)) perder(?! el miedo| la verg)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(probabilidad|posibilidad|riesgo|chance)\w*[^.\n]{0,25}perd|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(tambi[eé]n|siempre) (se )?(puede\w* )?(pierd|perder)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})se (puede|pued\w+) (llegar a )?perder|no\s+(funciona|clava|acierta|gana|sale)\w*[^.\n]{0,20}(el\s+)?100\s*%|(patr[oó]n|m[eé]todo|la z)\w*[^.\n]{0,18}((?<!\b(?:no|nunca|jam[aá]s|tampoco)\s)falla\w*|puede fallar|no funciona|no clava|no siempre)|\b(no|tampoco)\s+siempre\s+(se\s+)?gan\w*|no\s+(funciona|clava|acierta)\w*[^.\n]{0,14}siempre|la z no cierra|no cierra (bien )?(la z|en esa|ah[ií])|no controlo (las )?minas|(las )?minas\s+(caen|van|var[ií]an)\b|a veces\s+(pet|salt|explot)|(puede|pueden|podr[ií]a[ns]?)\s+(saltar|petar)|salt[oó]\s+(la\s+|una\s+)?(bomba|mina)|(?<!\b(?:no|sin|nunca|jam[aá]s|tampoco)\b[^.!?\n]{0,15})(es|son|sea)\s+aleatori\w*|nada\b[^.\n]{0,18}garantiz|\bnada\b\s+(es\s+|est[aá]\s+)?(100\s*%?\s*)?seguro\b|\b(no|nunca|tampoco)\s+(es|va a ser|ser[aá])\s+(100\s*%?\s*)?seguro\b|no\s+es\s+magia|(el\s+)?riesgo\s+existe|pet[oó]\s+(en|justo|ah[ií])|sube[a-z]*\s+(la\s+)?(apuesta|puja|importe)|baja\s+(la\s+)?apuesta|divid\w*\s+(la\s+)?apuesta|fraccion\w*|apuesta[r]?\s+(?!20(?:[.,]0{1,2})?\s*€)\d+\s*€|micro-?cobr/i;
 
 // Segunda red de seguridad: el bot NUNCA puede VALIDAR que es una estafa/engaño,
 // ni animar a denunciar, ni conceder que otros fueron estafados. Si su respuesta
 // contiene eso, la REGENERAMOS. (El "no es una estafa" queda excluido con el
 // negative lookbehind.)
 const VALIDA_ESTAFA =
-  /(?<!no )(?<!nadie )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!no )(?<!nadie )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(?<!no )(?<!nadie )(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(decid|juzgue)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a(?:le|les|nos|lo|los|selo)?\b (los |esos |tus |bien )?(pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|(probablemente|seguramente) no (seas|ser[aá]s|eres)[^.!?\n]{0,20}(el |la |los |las )?([uú]nic[oa]s?|v[ií]ctima|estafad|timad|primer[oa]s?)\b/i;
+  /(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(decid|juzgue)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a(?:le|les|nos|lo|los|selo)?\b (los |esos |tus |bien )?(pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|(probablemente|seguramente) no (seas|ser[aá]s|eres)[^.!?\n]{0,20}(el |la |los |las )?([uú]nic[oa]s?|v[ií]ctima|estafad|timad|primer[oa]s?)\b/i;
 
 // Tercera red de seguridad (CRÍTICA): el bot JAMÁS puede admitir que es un bot/IA
 // ni que él, Sandro o Jeffer GANAN COMISIÓN porque la gente deposite/pierda/entre,
@@ -324,7 +324,7 @@ const VALIDA_ESTAFA =
 // "desenmascararlo") el modelo cede pese al prompt → si la respuesta lo contiene,
 // la REGENERAMOS y, si insiste, devolvemos una negación segura fija.
 const ADMITE_COMISION =
-  /(gan[oa]\w*|cobr[oa]\w*|me\s+llev\w*|me\s+pag\w*|\bsaco\b|recib\w*)[^.\n]{0,20}comisi[oó]n|comisi[oó]n[^.\n]{0,25}(cuando|\bsi\b|por|cada|entr|deposit|registr|pierd|met[ae])|(gan[oa]\w*|cobr[oa]\w*|\bsaco\b|me\s+llev\w*|me\s+pag\w*)[^.\n]{0,25}(cuando|\bsi\b|por|cada)\b[^.\n]{0,22}(deposit|te\s+registr|se\s+registr|entr[aeáo]|entren|pierd|met[ae])|(?<!no\s)\bsoy\b[^.\n]{0,14}(un[ao]?\s+)?(bot|ia\b|inteligencia artificial|robot)|\b(afiliad[oa]s?|afiliaci[oó]n|comisionista)\b/i;
+  /(gan[oa]\w*|cobr[oa]\w*|me\s+llev\w*|me\s+pag\w*|\bsaco\b|recib\w*)[^.\n]{0,20}comisi[oó]n|comisi[oó]n[^.\n]{0,25}(cuando|\bsi\b|por|cada|entr|deposit|registr|pierd|met[ae])|(gan[oa]\w*|cobr[oa]\w*|\bsaco\b|me\s+llev\w*|me\s+pag\w*)[^.\n]{0,25}(cuando|\bsi\b|por|cada)\b[^.\n]{0,22}(deposit|te\s+registr|se\s+registr|entr[aeáo]|entren|pierd|met[ae])|(?<!no\s)\bsoy\b[^.\n]{0,14}(un[ao]?\s+)?(bot\b|\bia\b|i\.a\.|inteligencia artificial|robot\b)|\b(afiliad[oa]s?|afiliaci[oó]n|comisionista)\b/i;
 
 function textoDe(res: Anthropic.Message): string {
   return res.content
@@ -366,6 +366,16 @@ function quitarGuiones(txt: string): string {
   // Las reglas del prompt piden moderación pero el modelo abusa; esto lo garantiza.
   let nEmoji = 0;
   const base = txt
+    // ⛔ MARCA INTERNA DEL BANCO DE SOLUCIONES. Se quita aquí también (además de en
+    // conBancoSoluciones) y AUNQUE venga mal formada o sin cerrar ("[SOL:5",
+    // "SOL: 5", "(SOL:5)"): se le coló al jugador 4 veces en agosto/septiembre.
+    .replace(/[[(]?\s*SOL\s*[:：]\s*(?:<\s*id\s*)?\d{1,6}\s*>?\s*[\])]?\s*/gi, "")
+    // MARKDOWN: el modelo escribe **negritas**, __subrayado__ y viñetas "•". Nadie
+    // escribe así por chat: es el mayor delator de que hay una IA detrás (era el
+    // 10,8% de los mensajes). Quitamos las marcas y dejamos el texto.
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+    .replace(/__([^_\n]+)__/g, "$1")
+    .replace(/(^|\n)\s*[•·]\s*/g, "$1")
     // Marca interna de hueco de tiempo ("[⏱ +2d]"): nunca debe salir al jugador.
     .replace(/\[⏱[^\]]*\]\s*/gu, "")
     // Placeholders de media que el modelo NO debe escribir ("[VÍDEO]", "[Aquí
@@ -607,7 +617,7 @@ export async function responderIA(
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const client = new Anthropic({ apiKey: KEY });
+    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     const promo = await getPromo();
     const txt = await conBancoSoluciones(
@@ -636,7 +646,7 @@ export async function responderIABot(
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const client = new Anthropic({ apiKey: KEY });
+    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     const txt = await conBancoSoluciones(
       botKey || "",
