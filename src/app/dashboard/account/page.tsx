@@ -74,6 +74,11 @@ export default function AccountPage() {
   const [showPass, setShowPass] = useState(false);
   const [walletErc20, setWalletErc20] = useState("");
   const [walletTrc20, setWalletTrc20] = useState("");
+  const [pedirPw, setPedirPw] = useState<{
+    texto: string;
+    resolve: (v: string | null) => void;
+  } | null>(null);
+  const [pwValor, setPwValor] = useState("");
   const [savingWallets, setSavingWallets] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -253,8 +258,8 @@ export default function AccountPage() {
     if (!error && emailChanged) {
       // Por seguridad pedimos la contraseña actual solo al cambiar el correo
       // (evita que un token robado cambie el email y secuestre la cuenta).
-      const currentPassword = window.prompt(
-        "Por seguridad, escribe tu contraseña actual para cambiar el correo:"
+      const currentPassword = await pedirPassword(
+        "Escribe tu contraseña actual para cambiar el correo"
       );
       if (!currentPassword) {
         emailError = true;
@@ -324,8 +329,8 @@ export default function AccountPage() {
     }
     // Re-autenticación: pedimos la contraseña ACTUAL. Sin esto, un token de sesión
     // robado bastaría para cambiar la contraseña y robar la cuenta.
-    const actual = window.prompt(
-      "Por seguridad, escribe tu contraseña ACTUAL para cambiarla:"
+    const actual = await pedirPassword(
+      "Escribe tu contraseña ACTUAL para poder cambiarla"
     );
     if (!actual) {
       setMessage("Necesitas tu contraseña actual para cambiarla.");
@@ -368,8 +373,8 @@ export default function AccountPage() {
     }
     // Por seguridad pedimos la contraseña actual para cambiar la billetera de
     // cobro (evita que un token robado desvíe tus pagos a otra dirección).
-    const currentPassword = window.prompt(
-      "Por seguridad, escribe tu contraseña actual para cambiar la billetera de cobro:"
+    const currentPassword = await pedirPassword(
+      "Escribe tu contraseña actual para cambiar la billetera de cobro"
     );
     if (!currentPassword) {
       setMessage("Cambio de billetera cancelado (falta la contraseña).");
@@ -415,6 +420,21 @@ export default function AccountPage() {
     { key: "seguridad", label: "Seguridad" },
     { key: "privacidad", label: "Ajustes de Privacidad" },
   ] as const;
+
+  // Pide la contraseña actual con un MODAL propio en vez de window.prompt(): en la
+  // PWA instalada en iPhone los diálogos nativos fallan (no aparecen o devuelven
+  // null), y el afiliado se quedaba sin poder cambiar contraseña ni billetera.
+  // Además así el gestor de contraseñas puede autorrellenar y no se ve en claro.
+
+  function pedirPassword(texto: string): Promise<string | null> {
+    setPwValor("");
+    return new Promise((resolve) => setPedirPw({ texto, resolve }));
+  }
+  function cerrarPw(valor: string | null) {
+    pedirPw?.resolve(valor);
+    setPedirPw(null);
+    setPwValor("");
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
@@ -710,6 +730,52 @@ export default function AccountPage() {
               <a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Política de Privacidad</a>
             </label>
           </div>
+        </div>
+      )}
+
+      {/* Modal para re-autenticar (sustituye a window.prompt, que falla en la PWA) */}
+      {pedirPw && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => cerrarPw(null)}
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              cerrarPw(pwValor ? pwValor : null);
+            }}
+            className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/20 p-5 shadow-xl"
+            style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+          >
+            <p className="text-white text-sm font-medium mb-1">Confirma que eres tú</p>
+            <p className="text-slate-400 text-xs mb-3">{pedirPw.texto}</p>
+            <input
+              type="password"
+              autoFocus
+              autoComplete="current-password"
+              value={pwValor}
+              onChange={(e) => setPwValor(e.target.value)}
+              placeholder="Tu contraseña actual"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white text-base px-3 py-2.5 mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => cerrarPw(null)}
+                className="flex-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-sm font-medium py-2.5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!pwValor}
+                className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold py-2.5"
+              >
+                Continuar
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
