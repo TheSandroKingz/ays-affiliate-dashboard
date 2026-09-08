@@ -73,6 +73,64 @@ export async function GET(request: Request) {
     /* tabla no creada todavía: penalización = 0 */
   }
 
+  // DEPÓSITO MEDIO POR MES. ⚠️ OJO con el importe que manda el casino: el campo
+  // `amount` es el ACUMULADO del jugador, no cada depósito (se comprobó: en 1.210
+  // de 1.212 jugadores la cifra solo sube). Por eso aquí se usa SOLO el evento
+  // 'ftd' (el PRIMER depósito, donde el acumulado = ese depósito) y se deduplica
+  // por jugador. Sumar los redepósitos multiplicaría el dinero por 7.
+  const depoPorMes = new Map<string, { suma: number; n: number }>();
+  try {
+    // Jugadores con la comisión revertida: no cuentan para la media.
+    const { data: rev } = await supabaseAdmin
+      .from("postback_events")
+      .select("player_id")
+      .eq("event_type", "commission")
+      .eq("status", "counted")
+      .eq("counted", false)
+      .not("player_id", "is", null)
+      .limit(100000);
+    const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
+
+    // Paginado: sin esto PostgREST corta en 1000 y la media saldría sesgada.
+    type FilaDep = { amount: number | null; player_id: string | null; created_at: string };
+    const ftds: FilaDep[] = [];
+    for (let desde = 0; ; desde += 1000) {
+      const { data } = await supabaseAdmin
+        .from("postback_events")
+        .select("amount, player_id, created_at")
+        .eq("event_type", "ftd")
+        .not("amount", "is", null)
+        .gt("amount", 0)
+        .order("created_at", { ascending: true })
+        .range(desde, desde + 999);
+      if (!data || !data.length) break;
+      ftds.push(...(data as FilaDep[]));
+      if (data.length < 1000) break;
+    }
+    const vistos = new Set<string>();
+    const mesDe = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+      year: "numeric",
+      month: "2-digit",
+    });
+    for (const d of ftds) {
+      const pid = d.player_id;
+      if (pid && revertidos.has(pid)) continue;
+      if (pid) {
+        if (vistos.has(pid)) continue; // un FTD reenviado no cuenta dos veces
+        vistos.add(pid);
+      }
+      // Mes en hora de Madrid, para que cuadre con el resto de la tabla.
+      const mes = mesDe.format(new Date(d.created_at)).slice(0, 7);
+      const acc = depoPorMes.get(mes) ?? { suma: 0, n: 0 };
+      acc.suma += Number(d.amount ?? 0);
+      acc.n += 1;
+      depoPorMes.set(mes, acc);
+    }
+  } catch {
+    /* si algo falla, la media sale vacía y la tabla no se rompe */
+  }
+
   const meses = [...porMes.entries()]
     .map(([mes, filas]) => {
       const { totals } = computeAdminStats(filas, user.id, me?.id, adminCpa, struct);
@@ -90,6 +148,11 @@ export async function GET(request: Request) {
         clicks: totals.clicks,
         registrations: totals.registrations,
         gastos: gastosPorMes.get(mes) ?? 0,
+        // Media de lo que deposita un jugador nuevo ese mes (null si no hay datos).
+        depositoMedio: depoPorMes.get(mes)?.n
+          ? (depoPorMes.get(mes)!.suma / depoPorMes.get(mes)!.n)
+          : null,
+        depositantes: depoPorMes.get(mes)?.n ?? 0,
       };
     })
     .sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más reciente primero
