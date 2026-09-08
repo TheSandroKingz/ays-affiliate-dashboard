@@ -10,6 +10,7 @@ import BotChatViewer from "@/components/BotChatViewer";
 export default function TelegramPage() {
   const router = useRouter();
   const [configurado, setConfigurado] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [stats, setStats] = useState<{
     activos: number;
     total: number;
@@ -52,6 +53,9 @@ export default function TelegramPage() {
     })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
+    // Antes, ante un 401/500 o la red caida, no se ponia NINGUN estado y el bloque
+    // de dinero desaparecia como si no hubiera datos, sin decir por que.
+    setErrorCarga(!res);
     if (res) {
       setConfigurado(res.configurado !== false);
       setStats(res.stats ?? null);
@@ -90,6 +94,18 @@ export default function TelegramPage() {
           Actualizar
         </button>
       </div>
+
+      {errorCarga && (
+        <div className="rounded-xl border border-red-400/50 bg-red-500/15 px-4 py-3 text-sm text-red-100 flex items-center justify-between gap-3">
+          <span>No se pudieron cargar los datos.</span>
+          <button
+            onClick={() => cargar()}
+            className="shrink-0 rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-semibold"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {!configurado && (
         <div className="rounded-xl border border-amber-400/50 bg-amber-500/15 px-4 py-3 text-sm text-amber-100">

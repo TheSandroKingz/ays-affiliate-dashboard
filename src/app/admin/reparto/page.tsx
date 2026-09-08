@@ -137,7 +137,7 @@ export default function RepartoPage() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-            <div className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-xs font-medium text-slate-400 border-b border-white/10">
+            <div className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-xs font-medium text-slate-400 border-b border-white/10 min-w-[560px]">
               <span>Fuente</span>
               <span className="text-right">FTD</span>
               <span className="text-right">Ganancia</span>
@@ -147,7 +147,7 @@ export default function RepartoPage() {
             {reparto.fuentes.map((f) => (
               <div
                 key={f.nombre}
-                className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-sm border-b border-white/5 last:border-0"
+                className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-sm border-b border-white/5 last:border-0 min-w-[560px]"
               >
                 <span className="text-white">{f.nombre}</span>
                 <span className="text-right text-slate-300">{f.ftd}</span>

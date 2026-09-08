@@ -173,8 +173,12 @@ export default function AdminStatsPage() {
       : `${desde ? fmtCorto(desde) : "inicio"} – ${hasta ? fmtCorto(hasta) : "hoy"}`;
 
   // Ranking real por margen (para la medalla), independiente de la búsqueda/orden.
+  // Se calcula sobre los MISMOS afiliados que se muestran: si no, al excluir a
+  // Yaiza de la tabla los puestos salían salteados ("1, 2, 4").
   const rankByUser = new Map<string, number>();
-  (stats ?? []).forEach((r, i) => rankByUser.set(r.user_id, i));
+  (stats ?? [])
+    .filter((r) => r.user_id !== YAIZA_ID)
+    .forEach((r, i) => rankByUser.set(r.user_id, i));
 
   const visibleStats = [...(stats ?? [])]
     // Yaiza es la REVISORA (no una afiliada que promociona): fuera de "Mis Afiliados".
