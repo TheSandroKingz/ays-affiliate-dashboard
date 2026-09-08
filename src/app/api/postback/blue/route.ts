@@ -356,6 +356,19 @@ export async function GET(request: Request) {
             await liberarEvento(revKey);
           } else {
             estadoRev = "reversed";
+            // ⚠️ AVISO si la reversión CRUZA DE MES. En ese caso el dinero se resta
+            // en el mes vigente pero el FTD en su mes real, así que el margen del
+            // afiliado de ESTE mes sube artificialmente y el reparto con el socio
+            // le daría un % de un beneficio que no existe. No lo corregimos solo
+            // (nunca ha pasado y tocar la lógica de dinero es peor el remedio):
+            // avisamos al admin para que lo ajuste a mano en el reparto.
+            if (!mismoMes) {
+              enviarPush(ADMIN_USER_ID, {
+                title: "⚠️ Reversión de un mes cerrado",
+                body: `Celsius revirtió ${contado.commission}€ de un QFTD de ${contado.date.slice(0, 7)}. Ajusta el reparto con el socio a mano: el margen de este mes sale inflado.`,
+                url: "/admin/reparto",
+              }).catch(() => {});
+            }
             // Marcar counted=false es IMPORTANTE: si no, el índice único deja al
             // jugador con sus QFTD futuros "held" para siempre. Si el UPDATE falla,
             // reintentamos una vez y avisamos (no lo tragamos en silencio).
