@@ -20,6 +20,7 @@ type Mes = {
   gastos: number;
   depositoMedio: number | null;
   depositantes: number;
+  depositadoTotal: number;
 };
 
 function nombreMes(mes: string) {
@@ -87,6 +88,7 @@ export default function MemoriaPage() {
   const totalGastos = meses.reduce((s, m) => s + (m.gastos ?? 0), 0);
   const totalPenal = meses.reduce((s, m) => s + (m.penalizacion ?? 0), 0);
   // Media global PONDERADA por nº de jugadores (no la media de las medias).
+  const totalDepositado = meses.reduce((s, m) => s + (m.depositadoTotal ?? 0), 0);
   const totalDepositantes = meses.reduce((s, m) => s + (m.depositantes ?? 0), 0);
   const sumaDepositos = meses.reduce(
     (s, m) => s + (m.depositoMedio ?? 0) * (m.depositantes ?? 0),
@@ -99,7 +101,7 @@ export default function MemoriaPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">Memoria del negocio</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Cómo ha ido cada mes: FTDs, lo pagado a afiliados, gastos, cuánto deposita un jugador nuevo, lo que te restó el casino y tu beneficio.
+            Cómo ha ido cada mes: FTDs, lo pagado a afiliados, gastos, cuánto han depositado los jugadores, lo que te restó el casino y tu beneficio.
           </p>
         </div>
         <button
@@ -128,7 +130,10 @@ export default function MemoriaPage() {
                 Gastos
               </th>
               <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right whitespace-nowrap">
-                Depósito medio
+                Depositado
+              </th>
+              <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-[11px] font-semibold text-right whitespace-nowrap">
+                Media
               </th>
               <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right whitespace-nowrap">
                 Dinero restado
@@ -141,7 +146,7 @@ export default function MemoriaPage() {
           <tbody>
             {meses.length === 0 ? (
               <tr>
-                <td colSpan={7} className="border border-white/10 px-4 py-6 text-center text-slate-400">
+                <td colSpan={8} className="border border-white/10 px-4 py-6 text-center text-slate-400">
                   Todavía no hay meses con actividad.
                 </td>
               </tr>
@@ -163,17 +168,13 @@ export default function MemoriaPage() {
                   <td className="border border-white/10 px-4 py-3 text-right text-amber-300">
                     {m.gastos ? eur(m.gastos) : "—"}
                   </td>
-                  <td className="border border-white/10 px-4 py-3 text-right text-sky-300">
-                    {m.depositoMedio != null ? (
-                      <>
-                        {eur(m.depositoMedio)}
-                        <span className="block text-[11px] text-slate-500">
-                          {m.depositantes} jugador{m.depositantes === 1 ? "" : "es"}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
+                  <td className="border border-white/10 px-4 py-3 text-right text-sky-300 font-medium">
+                    {m.depositadoTotal ? eur(m.depositadoTotal) : <span className="text-slate-500">—</span>}
+                  </td>
+                  <td className="border border-white/10 px-4 py-3 text-right text-[11px] text-slate-400 whitespace-nowrap">
+                    {m.depositoMedio != null
+                      ? `${eur(m.depositoMedio)} · ${m.depositantes}`
+                      : "—"}
                   </td>
                   <td className={`border border-white/10 px-4 py-3 text-right ${m.penalizacion ? "text-red-400 font-medium" : "text-slate-500"}`}>
                     {m.penalizacion ? `−${eur(m.penalizacion)}` : "—"}
@@ -202,7 +203,12 @@ export default function MemoriaPage() {
                   {totalGastos ? eur(totalGastos) : "—"}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-sky-300">
-                  {totalDepositantes ? eur(sumaDepositos / totalDepositantes) : "—"}
+                  {totalDepositado ? eur(totalDepositado) : "—"}
+                </td>
+                <td className="border border-white/10 px-4 py-3 text-right text-[11px] text-slate-400 whitespace-nowrap">
+                  {totalDepositantes
+                    ? `${eur(sumaDepositos / totalDepositantes)} · ${totalDepositantes}`
+                    : "—"}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-red-400">
                   {totalPenal ? `−${eur(totalPenal)}` : "—"}

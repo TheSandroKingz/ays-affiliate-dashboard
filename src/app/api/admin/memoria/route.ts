@@ -73,12 +73,19 @@ export async function GET(request: Request) {
     /* tabla no creada todavía: penalización = 0 */
   }
 
-  // DEPÓSITO MEDIO POR MES. ⚠️ OJO con el importe que manda el casino: el campo
-  // `amount` es el ACUMULADO del jugador, no cada depósito (se comprobó: en 1.210
-  // de 1.212 jugadores la cifra solo sube). Por eso aquí se usa SOLO el evento
-  // 'ftd' (el PRIMER depósito, donde el acumulado = ese depósito) y se deduplica
-  // por jugador. Sumar los redepósitos multiplicaría el dinero por 7.
-  const depoPorMes = new Map<string, { suma: number; n: number }>();
+  // DEPÓSITOS POR MES. ⚠️ CLAVE: el campo `amount` que manda el casino es el
+  // ACUMULADO del jugador, no cada depósito (comprobado: en 1.210 de 1.212
+  // jugadores la cifra solo sube). Por eso:
+  //  - MEDIA: solo el evento 'ftd' (primer depósito, donde acumulado = depósito),
+  //    deduplicando por jugador.
+  //  - TOTAL: la DIFERENCIA con el acumulado anterior de ese jugador. Sumar los
+  //    importes tal cual multiplicaba el dinero por 7.
+  const depoPorMes = new Map<string, { suma: number; n: number; total: number }>();
+  const dep = (mes: string) => {
+    const a = depoPorMes.get(mes) ?? { suma: 0, n: 0, total: 0 };
+    depoPorMes.set(mes, a);
+    return a;
+  };
   try {
     // Jugadores con la comisión revertida: no cuentan para la media.
     const { data: rev } = await supabaseAdmin
@@ -91,44 +98,56 @@ export async function GET(request: Request) {
       .limit(100000);
     const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
 
-    // Paginado: sin esto PostgREST corta en 1000 y la media saldría sesgada.
-    type FilaDep = { amount: number | null; player_id: string | null; created_at: string };
-    const ftds: FilaDep[] = [];
+    // Paginado: sin esto PostgREST corta en 1000 y saldría sesgado.
+    type FilaDep = {
+      amount: number | null; player_id: string | null;
+      created_at: string; event_type: string;
+    };
+    const evs: FilaDep[] = [];
     for (let desde = 0; ; desde += 1000) {
       const { data } = await supabaseAdmin
         .from("postback_events")
-        .select("amount, player_id, created_at")
-        .eq("event_type", "ftd")
+        .select("amount, player_id, created_at, event_type")
+        .in("event_type", ["ftd", "redeposit"])
         .not("amount", "is", null)
-        .gt("amount", 0)
         .order("created_at", { ascending: true })
         .range(desde, desde + 999);
       if (!data || !data.length) break;
-      ftds.push(...(data as FilaDep[]));
+      evs.push(...(data as FilaDep[]));
       if (data.length < 1000) break;
     }
-    const vistos = new Set<string>();
+
     const mesDe = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Madrid",
-      year: "numeric",
-      month: "2-digit",
+      timeZone: "Europe/Madrid", year: "numeric", month: "2-digit",
     });
-    for (const d of ftds) {
-      const pid = d.player_id;
-      if (pid && revertidos.has(pid)) continue;
-      if (pid) {
-        if (vistos.has(pid)) continue; // un FTD reenviado no cuenta dos veces
-        vistos.add(pid);
+    const acumPrevio = new Map<string, number>(); // último acumulado por jugador
+    const vistosFtd = new Set<string>();
+    for (const e of evs) {
+      const pid = e.player_id;
+      const importe = Number(e.amount ?? 0);
+      const mes = mesDe.format(new Date(e.created_at)).slice(0, 7);
+
+      // --- TOTAL del mes: lo NUEVO que metió (acumulado - acumulado anterior) ---
+      if (pid && importe > 0) {
+        const antes = acumPrevio.get(pid) ?? 0;
+        if (importe > antes) {
+          dep(mes).total += importe - antes;
+          acumPrevio.set(pid, importe);
+        }
       }
-      // Mes en hora de Madrid, para que cuadre con el resto de la tabla.
-      const mes = mesDe.format(new Date(d.created_at)).slice(0, 7);
-      const acc = depoPorMes.get(mes) ?? { suma: 0, n: 0 };
-      acc.suma += Number(d.amount ?? 0);
-      acc.n += 1;
-      depoPorMes.set(mes, acc);
+
+      // --- MEDIA del mes: solo el PRIMER depósito, una vez por jugador ---
+      if (e.event_type !== "ftd" || importe <= 0) continue;
+      if (pid) {
+        if (revertidos.has(pid) || vistosFtd.has(pid)) continue;
+        vistosFtd.add(pid);
+      }
+      const a = dep(mes);
+      a.suma += importe;
+      a.n += 1;
     }
   } catch {
-    /* si algo falla, la media sale vacía y la tabla no se rompe */
+    /* si algo falla, las columnas salen vacías y la tabla no se rompe */
   }
 
   const meses = [...porMes.entries()]
@@ -153,6 +172,8 @@ export async function GET(request: Request) {
           ? (depoPorMes.get(mes)!.suma / depoPorMes.get(mes)!.n)
           : null,
         depositantes: depoPorMes.get(mes)?.n ?? 0,
+        // Dinero NUEVO que entró ese mes (sumando solo los incrementos reales).
+        depositadoTotal: depoPorMes.get(mes)?.total ?? 0,
       };
     })
     .sort((a, b) => (a.mes < b.mes ? 1 : -1)); // más reciente primero
