@@ -57,9 +57,21 @@ type Afiliado = {
 // silencio: es lo que pasa con códigos viejos de un afiliado que se renombró
 // (p. ej. 'patron' y 'Fresh', que fueron de Jeffer y Mariam) o con una campaña
 // nueva de Blue. Throttle: un aviso por código y día.
+// Campañas PROPIAS de la casa: no son de ningún afiliado y su dinero va a la
+// cuenta del admin a propósito. Se listan aquí para NO avisar por ellas (si no,
+// el aviso saltaría cada día por el tráfico normal del negocio).
+//  - SAIqylWftX: campaña principal de Blue de Sandro (tráfico web).
+//  - YmIjpivpyx: el bot de Sandro (verificado: el 100% de sus eventos son afp "bot").
+//  - Default: la propia cuenta de la casa.
+//  - patron / Fresh: códigos VIEJOS de Jeffer y Mariam (antes del 10-ago). Ya no
+//    llega tráfico nuevo con ellos; si llegara, sería dinero de ELLOS y hay que
+//    reasignarlo a mano, así que NO se silencian: se avisa a propósito.
+const CAMPANAS_CASA = new Set(["saiqylwftx", "ymijpivpyx", "default"]);
+
 const campanasAvisadas = new Set<string>();
 async function avisarCampanaDesconocida(tag: string): Promise<void> {
   try {
+    if (CAMPANAS_CASA.has(tag.trim().toLowerCase())) return; // campaña propia
     const clave = `campana:${tag}:${new Date().toISOString().slice(0, 10)}`;
     if (campanasAvisadas.has(clave)) return;
     campanasAvisadas.add(clave);
