@@ -15,7 +15,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const tablas = ["affiliates", "affiliate_daily_stats", "payments"];
+  const tablas = [
+  "affiliates",
+  "affiliate_daily_stats",
+  "payments",
+  // La caja negra del dinero (la prueba de cada FTD y cada comisión) NO se
+  // copiaba, ni los gastos ni las penalizaciones.
+  "postback_events",
+  "gastos",
+  "gastos_saldos",
+  "penalizaciones",
+];
   // .limit(100000): sin límite PostgREST corta a 1000 filas y la copia quedaría
   // TRUNCADA sin error (affiliate_daily_stats crece 1 fila/afiliado/día). En
   // paralelo (las 3 tablas son independientes).

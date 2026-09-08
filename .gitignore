@@ -43,3 +43,4 @@ next-env.d.ts
 # Copias de seguridad de datos (contienen billeteras/PII, NO subir a git)
 backups/
 _tmp_*
+_audit*

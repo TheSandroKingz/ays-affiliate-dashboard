@@ -148,7 +148,9 @@ export async function deteccionFraude(): Promise<Fraude> {
         .not("matched_user_id", "is", null)
         .gte("created_at", hace90)
         .order("created_at", { ascending: false })
-        .limit(1000),
+        // Eran 1000: en 90 días hay ~4.600 filas, así que la detección de
+        // colusión solo miraba los últimos 4-5 días.
+        .limit(100000),
       supabaseAdmin
         .from("affiliate_daily_stats")
         .select("user_id, clicks, ftd")

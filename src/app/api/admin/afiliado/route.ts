@@ -30,6 +30,10 @@ export async function GET(request: Request) {
     .order("date", { ascending: false });
   if (from) q = q.gte("date", from);
   if (to) q = q.lte("date", to);
+  // Sin esto PostgREST corta a 1000 filas EN SILENCIO y, con el atajo "Todo", los
+  // totales de dinero de la ficha salían cortos. Es la única consulta de dinero
+  // que se había quedado sin el tope alto que llevan todas las demás.
+  q = q.limit(100000);
 
   // Las tres consultas solo dependen de userId: en paralelo (más rápido).
   // El correo vive en la capa de auth (auth.users), no en affiliates; lo trae

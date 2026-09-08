@@ -39,7 +39,11 @@ async function getAffiliate(code: string): Promise<CacheEntry> {
     const oldest = linkCache.keys().next().value;
     if (oldest !== undefined) linkCache.delete(oldest);
   }
-  linkCache.set(key, { value, exp: now + CACHE_TTL });
+  // Un destino NULO (afiliado sin promo_link todavía, o fila que aún no existe)
+  // se cacheaba 5 minutos: si dabas de alta a alguien y él compartía su enlace
+  // antes de que le pusieras el promo_link, sus jugadores seguían acabando en la
+  // home durante 5 min más y se perdían. Para el caso nulo, TTL corto.
+  linkCache.set(key, { value, exp: now + (value ? CACHE_TTL : 30_000) });
   return value;
 }
 

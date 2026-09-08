@@ -52,24 +52,63 @@ type Afiliado = {
   freshaffs_tracking_code: string | null;
 };
 
+// Avisa al admin la PRIMERA vez que llega un código de campaña que no es de
+// ningún afiliado. Sin esto, ese dinero se acreditaba a la cuenta de la casa en
+// silencio: es lo que pasa con códigos viejos de un afiliado que se renombró
+// (p. ej. 'patron' y 'Fresh', que fueron de Jeffer y Mariam) o con una campaña
+// nueva de Blue. Throttle: un aviso por código y día.
+const campanasAvisadas = new Set<string>();
+async function avisarCampanaDesconocida(tag: string): Promise<void> {
+  try {
+    const clave = `campana:${tag}:${new Date().toISOString().slice(0, 10)}`;
+    if (campanasAvisadas.has(clave)) return;
+    campanasAvisadas.add(clave);
+    // Candado compartido: la memoria no se comparte entre instancias serverless.
+    const { data } = await supabaseAdmin
+      .from("telegram_envio_diario")
+      .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
+      .select("clave");
+    if (!data || data.length === 0) return; // ya avisado hoy
+    await enviarPush(ADMIN_USER_ID, {
+      title: "⚠️ Código de campaña desconocido",
+      body: `Llega dinero con el código "${tag}" y no es de ningún afiliado: se está acreditando a la cuenta de la casa. Revisa si es de alguien.`,
+      url: "/admin/actividad",
+    });
+  } catch {
+    /* nunca romper el postback por un aviso */
+  }
+}
+
 const SEL = "user_id, cpa_spain, cpa_other, freshaffs_tracking_code";
 
 async function matchAfiliado(tag: string, permitirDefault = true): Promise<Afiliado | null> {
   if (tag) {
     // 1) por tracking code (insensible a mayúsculas, escapando comodines)
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("affiliates")
       .select(SEL)
       .ilike("freshaffs_tracking_code", tag.replace(/[\\%_*]/g, "\\$&"))
+      .order("user_id", { ascending: true })
       .limit(1);
+    // ⛔ Si la CONSULTA falló (hipo de BD, conexiones agotadas en una ráfaga), NO
+    // podemos concluir que el código no existe: caer a la cuenta de la casa le
+    // regalaría al admin el CPA de un afiliado, en silencio. Ya pasó el 26-ago:
+    // 8 eventos con el código de Black KP y Jeffer acabaron en Mongolitos.
+    // Devolvemos null → no_match → el llamador avisa y se revisa a mano.
+    if (error) return null;
     if (data?.[0]) return data[0];
     // 2) por affiliate id exacto
-    const { data: d2 } = await supabaseAdmin
+    const { data: d2, error: e2 } = await supabaseAdmin
       .from("affiliates")
       .select(SEL)
       .eq("freshaffs_affiliate_id", tag)
       .limit(1);
+    if (e2) return null;
     if (d2?.[0]) return d2[0];
+    // 3) El código VIENE pero no es de nadie: puede ser un código viejo de un
+    // afiliado (p. ej. 'patron' o 'Fresh', que fueron de Jeffer y Mariam) o una
+    // campaña nueva. Antes se lo tragaba la cuenta de la casa sin decir nada.
+    if (permitirDefault) void avisarCampanaDesconocida(tag);
   }
   // ⛔ Enlace de bot con dueño definido: si NO empareja con su afiliado, NO cae a la
   // casa (eso pagaría a Sandro el dinero del bot en silencio). Devolvemos null →
