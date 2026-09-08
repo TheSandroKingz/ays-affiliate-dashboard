@@ -294,10 +294,22 @@ export async function GET(request: Request) {
     }
   }
 
-  // ⛔ PAUSA (FreshBet cortó el tráfico): NO se manda NADA promocional — ni el
-  // mensaje diario, ni el vídeo, ni el "hey vuelve" a los dormidos, ni el diario
-  // de los bots nuevos. La vigilancia anti-doble-pago y la limpieza de chats de
-  // arriba SÍ siguen corriendo. Al reactivar el casino, poner ENLACES_PAUSADOS=false.
+  // ⛔ MENSAJES DIARIOS DESACTIVADOS (decisión de Sandro, 8-sep-2026). No se manda
+  // el mensaje diario a los contactos en NINGÚN bot — ni el suyo ni los cuatro
+  // nuevos —, ni el "hey vuelve" a los dormidos. Motivo: quemaban la lista más de
+  // lo que aportaban (Jeffer había perdido el 32% de sus contactos y Afrika el 36%,
+  // frente al 14% del bot de Sandro).
+  // ⚠️ Esto NO afecta al VÍDEO del patrón: ese se sigue mandando cuando el jugador
+  // lo pide en la conversación. Tampoco afecta al análisis del historial, a la
+  // vigilancia anti-doble-pago ni a la limpieza de chats: todo eso va ARRIBA y
+  // sigue corriendo igual.
+  // Para volver a activarlos: poner MENSAJES_DIARIOS = true.
+  const MENSAJES_DIARIOS = false;
+  if (!MENSAJES_DIARIOS) {
+    return NextResponse.json({ ok: true, enviado: false, motivo: "mensajes diarios desactivados" });
+  }
+
+  // ⛔ PAUSA (FreshBet cortó el tráfico): NO se manda NADA promocional.
   if (ENLACES_PAUSADOS) {
     return NextResponse.json({ ok: true, enviado: false, motivo: "pausa: sin envíos promocionales (FreshBet cortado)" });
   }
