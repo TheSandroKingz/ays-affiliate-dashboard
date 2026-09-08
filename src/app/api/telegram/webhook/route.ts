@@ -1000,6 +1000,18 @@ export async function POST(request: Request) {
           reply_markup: botonSoloJugar(),
         });
         await guardarMsg(chatId, midDe(rEnv));
+      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
+        // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
+        // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
+        // Un acuse humano y corto, para que sepa que le hemos leído. (Un jugador
+        // estuvo 9 HORAS sin respuesta por caer justo en este hueco.)
+        const rEnv = await tgEnviar(
+          chatId,
+          "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏",
+          {}
+        );
+        envioOk = !!rEnv?.ok;
+        await guardarMsg(chatId, midDe(rEnv));
       }
 
       // Guardamos la respuesta del bot en el transcript (el mensaje del jugador

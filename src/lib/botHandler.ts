@@ -920,6 +920,18 @@ export async function procesarUpdate(
         { reply_markup: botonSoloJugar(bot.enlace) },
         tok
       );
+    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
+      // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
+      // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
+      // Un acuse humano y corto. (Ver el caso del jugador que estuvo 9 HORAS sin
+      // respuesta por caer justo en este hueco.)
+      const rAcuse = await tgEnviar(
+        chatId,
+        "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏",
+        {},
+        tok
+      );
+      envioOk = !!rAcuse?.ok;
     }
 
     if ((respuesta && envioOk) || videoEnviado) {
