@@ -435,7 +435,9 @@ export async function procesarUpdate(
       .maybeSingle();
     if (contacto?.silenced) return;
 
-    const LIMITE_IA = 8;
+    // Igual que el bot de Sandro (15): con 8, un jugador que parte su duda en
+    // varios mensajes cortos se quedaba sin respuesta antes de tiempo.
+    const LIMITE_IA = 15;
     const { data: nUsuario } = await supabaseAdmin.rpc("bump_bot_ai_user", {
       p_bot: bot.key,
       p_chat_id: chatId,
@@ -615,11 +617,17 @@ export async function procesarUpdate(
       }
       const { data: cfg } = await supabaseAdmin
         .from("bot_config")
-        .select("daily_media_type, daily_file_id, daily_enabled")
+        .select("daily_media_type, daily_file_id, daily_enabled, welcome_media_type, welcome_file_id, welcome_enabled")
         .eq("bot", bot.key)
         .maybeSingle();
       if (cfg?.daily_enabled !== false && cfg?.daily_file_id)
         cands.push({ id: null, media_type: cfg.daily_media_type, file_id: cfg.daily_file_id });
+      // ÚLTIMO RECURSO: el vídeo de BIENVENIDA. El bot de Sandro ya lo usaba y
+      // estos no, así que si su único ejemplo tenía el file_id muerto se quedaban
+      // SIN mandar nada (Jeffer: 0 vídeos en 16 días, poniendo excusas del canal)
+      // aunque sí tuvieran vídeo de bienvenida guardado.
+      if (cfg?.welcome_enabled !== false && cfg?.welcome_file_id)
+        cands.push({ id: null, media_type: cfg.welcome_media_type, file_id: cfg.welcome_file_id });
 
       const caption = (mandoVideo || falloForma)
         ? "Toma, prueba así también 🔥 es OTRA de mis formas. Míralo y hazlo igual."
