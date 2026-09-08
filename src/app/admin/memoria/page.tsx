@@ -23,6 +23,11 @@ type Mes = {
   depositadoTotal: number;
 };
 
+// ¿Tenemos datos de depósitos fiables ese mes? (el casino mandó importes)
+function conDatos(m: Mes): boolean {
+  return (m.depositantes ?? 0) > 0;
+}
+
 function nombreMes(mes: string) {
   const [y, m] = mes.split("-").map(Number);
   const s = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("es-ES", {
@@ -88,7 +93,12 @@ export default function MemoriaPage() {
   const totalGastos = meses.reduce((s, m) => s + (m.gastos ?? 0), 0);
   const totalPenal = meses.reduce((s, m) => s + (m.penalizacion ?? 0), 0);
   // Media global PONDERADA por nº de jugadores (no la media de las medias).
-  const totalDepositado = meses.reduce((s, m) => s + (m.depositadoTotal ?? 0), 0);
+  // Un mes solo tiene dato fiable de depósitos si el casino mandó importes en los
+  // primeros depósitos. En julio (era FreshBet) no llegaba ninguno: se queda en
+  // blanco en vez de enseñar un euro suelto que no significa nada.
+  const totalDepositado = meses
+    .filter(conDatos)
+    .reduce((s, m) => s + (m.depositadoTotal ?? 0), 0);
   const totalDepositantes = meses.reduce((s, m) => s + (m.depositantes ?? 0), 0);
   const sumaDepositos = meses.reduce(
     (s, m) => s + (m.depositoMedio ?? 0) * (m.depositantes ?? 0),
@@ -169,12 +179,10 @@ export default function MemoriaPage() {
                     {m.gastos ? eur(m.gastos) : "—"}
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-sky-300 font-medium">
-                    {m.depositadoTotal ? eur(m.depositadoTotal) : <span className="text-slate-500">—</span>}
+                    {conDatos(m) ? eur(m.depositadoTotal) : <span className="text-slate-500">—</span>}
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-[11px] text-slate-400 whitespace-nowrap">
-                    {m.depositoMedio != null
-                      ? `${eur(m.depositoMedio)} · ${m.depositantes}`
-                      : "—"}
+                    {conDatos(m) && m.depositoMedio != null ? eur(m.depositoMedio) : "—"}
                   </td>
                   <td className={`border border-white/10 px-4 py-3 text-right ${m.penalizacion ? "text-red-400 font-medium" : "text-slate-500"}`}>
                     {m.penalizacion ? `−${eur(m.penalizacion)}` : "—"}
@@ -206,9 +214,7 @@ export default function MemoriaPage() {
                   {totalDepositado ? eur(totalDepositado) : "—"}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-[11px] text-slate-400 whitespace-nowrap">
-                  {totalDepositantes
-                    ? `${eur(sumaDepositos / totalDepositantes)} · ${totalDepositantes}`
-                    : "—"}
+                  {totalDepositantes ? eur(sumaDepositos / totalDepositantes) : "—"}
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-red-400">
                   {totalPenal ? `−${eur(totalPenal)}` : "—"}
