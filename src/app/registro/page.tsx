@@ -14,6 +14,7 @@ export default function RegistroPage() {
   const [email, setEmail] = useState('')
   const [fechaNac, setFechaNac] = useState('')
   const [password, setPassword] = useState('')
+  const [password2, setPassword2] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -58,6 +59,11 @@ export default function RegistroPage() {
     }
 
     // Contraseña con una fortaleza mínima razonable.
+    if (password !== password2) {
+      setError('Las contraseñas no coinciden')
+      setLoading(false)
+      return
+    }
     const pwErr = validarPassword(password, nombre)
     if (pwErr) {
       setError(pwErr)
@@ -201,6 +207,23 @@ export default function RegistroPage() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-200 mb-1">Repite la contraseña</label>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password2}
+              onChange={(e) => setPassword2(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="La misma otra vez"
+            />
+            {password2 && password !== password2 && (
+              <p className="text-amber-400 text-xs mt-1">No coinciden</p>
+            )}
           </div>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}

@@ -258,8 +258,10 @@ export default function AccountPage() {
     if (!error && emailChanged) {
       // Por seguridad pedimos la contraseña actual solo al cambiar el correo
       // (evita que un token robado cambie el email y secuestre la cuenta).
+      // Se muestra el correo EXACTO: al aplicarse queda verificado al momento, así
+      // que un error de tecleo dejaría al afiliado sin poder entrar ni recuperar.
       const currentPassword = await pedirPassword(
-        "Escribe tu contraseña actual para cambiar el correo"
+        `Vas a cambiar tu correo a "${cleanEmail}". Comprueba que está bien escrito: si te equivocas no podrás volver a entrar. Escribe tu contraseña actual para confirmar.`
       );
       if (!currentPassword) {
         emailError = true;
