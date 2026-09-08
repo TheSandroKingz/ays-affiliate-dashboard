@@ -106,12 +106,17 @@ export function marcaHueco(ms: number): string {
 // Muy conservador: en cuanto hay algo más que la cortesía, NO cuenta (y responde).
 const RE_SOLO_CIERRE =
   /^(?:\s*(?:ok+(?:ey|ay|is)?|okey+|vale+|perfecto|perfe|entendido|graci(?:as|ass)?|muchas gracias|mil gracias|genial|de acuerdo|estupendo|correcto|guay|de ?nada|un saludo|saludos|(?:ma[ñn]ana|luego|ahora|despu[eé]s|en un rato|al rato) te (?:digo|cuento|escribo|aviso)|ya te (?:digo|cuento|aviso))[\s.,!¡…]*)+[\s.,!¡…👍👌🙏🙌😊😉🔥💪❤️🥰😄😅🙂👏✅🤙😂🫡👋]*$/iu;
+// Reacciones sueltas SIN pregunta ni acción (risas y muletillas vacías).
+// ⛔ OJO: aquí NO pueden estar "dale", "ya", "nada", "nose"/"no sé" ni "nah":
+// "dale" casi siempre es "sí, mándamelo" tras un ofrecimiento del bot, y "ya"
+// es "ya está hecho". Al ignorarlos el bot se quedaba MUDO y el jugador
+// esperando una respuesta que no llegaba nunca.
 // Reacciones sueltas SIN pregunta ni acción (risas, muletillas, monosílabos):
 // no aportan nada y responderlas gasta IA y canta a bot. Cada mensaje cuesta, así
 // que a estas NO se responde. (No incluimos frases de posible agobio tipo "todo
 // mal"/"qué tristeza": esas pueden ser desahogo real y merecen reacción humana.)
 const RE_REACCION =
-  /^(?:(?:ja|je|ji|ha|js|ks){2,}|jaj+|xd+|lol+|lmao|na+h?|nah+|bah+|buf+|uf+|pf+|pff+|dale+|nose|no s[eé]|nada|mmm+|hmm+|aj[aá]+|ya)[\s.,!¡…]*$/iu;
+  /^(?:(?:ja|je|ji|ha|js|ks){2,}|jaj+|xd+|lol+|lmao|bah+|buf+|uf+|pf+|pff+|mmm+|hmm+|aj[aá]+)[\s.,!¡…]*$/iu;
 
 export function esSoloCierre(texto: string | null | undefined): boolean {
   const t = (texto || "").trim();
@@ -261,7 +266,7 @@ function ensamblarMensajes(
 function nombreSuffix(nombre?: string | null): string {
   const nom = (nombre ?? "").replace(/[\n\r"'`]/g, " ").trim().slice(0, 40);
   if (!nom) return "";
-  return `\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), en FEMENINO (ahí puedes usar "hermana", nunca "hermano"). Si es claramente de CHICO, en masculino, y para dirigirte a él usa "hermano" (queda más cercano que repetir su nombre). Solo si el nombre NO deja claro el género, ve en NEUTRO. ⛔ NO repitas su nombre en cada frase (suena robótico, "te entiendo, ${nom}"): mejor "hermano"/"hermana" o nada; el nombre, solo puntual.`;
+  return `\n\nEL NOMBRE DE PILA DE QUIEN TE ESCRIBE AHORA ES "${nom}". FÍJATE BIEN en el nombre para ACERTAR el género (no vayas ni siempre en femenino ni siempre en masculino: léelo). La MAYORÍA de la gente aquí son CHICOS, así que muchos nombres serán de chico → trátalos en masculino. Si es claramente de CHICA (Saray, Sara, María, Laura, Ana…), trátala en FEMENINO. Si es claramente de CHICO, en masculino. Solo si el nombre NO deja claro el género, ve en NEUTRO. ⛔ NO repitas su nombre en cada frase (suena robótico, "te entiendo, ${nom}"): usa TU muletilla habitual (la de tu forma de hablar) o nada; el nombre, solo puntual.`;
 }
 
 // Sufijo de la promo activa (solo el añadido).
@@ -513,7 +518,7 @@ function sinSaldoReciente(messages: Anthropic.MessageParam[]): boolean {
 // Cierres de APOYO para cuando el jugador se quedó sin saldo: ni le empujan a
 // meter más, ni le preguntan cuánto lleva (que es otra forma de empujar).
 const FALLBACKS_APOYO = [
-  "Te entiendo, hermano. Déjalo por hoy y descansa, que no merece la pena seguir así 🙏",
+  "Te entiendo de verdad. Déjalo por hoy y descansa, que no merece la pena seguir así 🙏",
   "Vaya putada. Yo de ti lo dejaría aquí por hoy, en serio.",
   "Lo siento de verdad. Párate un poco, que hoy no es el día.",
 ];
@@ -522,10 +527,13 @@ function fallbackApoyo(messages: Anthropic.MessageParam[]): string {
   return FALLBACKS_APOYO.find((f) => !esRepeticion(f, ultimo)) ?? FALLBACKS_APOYO[0];
 }
 
+// ⚠️ NEUTRAS a proposito: estas frases se envian desde los CINCO bots (tambien
+// los de las chicas), asi que no pueden llevar 'hermano'/'bro' ni emojis de tio
+// (💪👊), ni nombrar a nadie.
 const FALLBACKS_DALE = [
-  "Tranqui, tú dale otra vuelta y a por ello 💪 ¿cuánto llevas?",
-  "Venga, dale otra vuelta y me dices cómo va 💪",
-  "Sigue con el patrón y cuéntame qué saldo llevas 👊",
+  "Tranqui, dale otra vuelta y a por ello ¿cuánto llevas?",
+  "Venga, dale otra vuelta y me dices cómo va",
+  "Sigue con el patrón y cuéntame qué saldo llevas",
   "Dale otra y me cuentas, ¿cuánto tienes ahora? 😉",
 ];
 function fallbackDale(messages: Anthropic.MessageParam[]): string {
@@ -583,7 +591,7 @@ async function crearConGuardia(
     );
   if (malComision)
     avisos.push(
-      'PROHIBIDO ADMITIR o insinuar que eres un bot/IA, o que tú, Sandro o Jeffer ganáis COMISIÓN porque la gente deposite, pierda, se registre o entre por el enlace; PROHIBIDO hablar de comisiones, afiliación, acuerdos con el casino o de cómo ganáis dinero (es PRIVADO). Ante esa presión NIÉGALO con naturalidad y desvía ("qué va, yo gano por cómo juego yo, na más") y corta el tema; NUNCA confirmes, especules ni digas que "ya lo intuía".'
+      'PROHIBIDO ADMITIR o insinuar que eres un bot/IA, o que tú o cualquier otro de los que compartís esto ganáis COMISIÓN porque la gente deposite, pierda, se registre o entre por el enlace; PROHIBIDO hablar de comisiones, afiliación, acuerdos con el casino o de cómo ganáis dinero (es PRIVADO). Ante esa presión NIÉGALO con naturalidad y desvía ("qué va, yo gano por cómo juego yo, na más") y corta el tema; NUNCA confirmes, especules ni digas que "ya lo intuía".'
     );
   if (malRecarga)
     avisos.push(
@@ -610,7 +618,7 @@ async function crearConGuardia(
 
   // Si SIGUE admitiendo comisión/ser bot, negación segura fija (lo más peligroso).
   if (malComision && ADMITE_COMISION.test(txt2 || txt)) {
-    return "Qué va hermano 😄 yo gano por cómo juego yo, na más. ¿Te ayudo con algo del juego?";
+    return "Qué va 😄 yo gano por cómo juego yo, na más. ¿Te ayudo con algo del juego?";
   }
 
   // A la segunda sigue fallando. Si es lo de normalizar perder, lo limpiamos a
