@@ -577,6 +577,7 @@ export async function procesarUpdate(
     const ejemploJustoAntes = msDesdeEjemplo < 3 * 60 * 1000;
 
     let videoEnviado = false;
+    let envioOk = true; // ¿Telegram aceptó la respuesta?
     let videoEnviadoFileId: string | null = null; // para reproducirlo en el panel
     let videoEnviadoTipo: string | null = null;
     if (
@@ -632,7 +633,20 @@ export async function procesarUpdate(
       const caption = (mandoVideo || falloForma)
         ? "Toma, prueba así también 🔥 es OTRA de mis formas. Míralo y hazlo igual."
         : "Aquí tienes 🔥 así le doy yo. Hazlo igual que en esta y dale.";
-      for (const dv of cands) {
+      // ANTI-DOBLE-ENVÍO: reservamos el hueco de forma ATÓMICA antes de mandar nada.
+      // El UPDATE solo afecta a la fila si nadie lo ha reservado en los últimos 15s;
+      // si no devuelve fila, es que OTRA ejecución (doble toque del jugador) ya está
+      // mandando el vídeo y aquí no mandamos otro.
+      const hace15s = new Date(Date.now() - 15_000).toISOString();
+      const { data: reserva } = await supabaseAdmin
+        .from("bot_contacts")
+        .update({ last_example_at: new Date().toISOString() })
+        .eq("chat_id", chatId)
+        .eq("bot", bot.key)
+        .or(`last_example_at.is.null,last_example_at.lt.${hace15s}`)
+        .select("chat_id");
+      const puedoMandarVideo = !reserva || reserva.length > 0;
+      if (puedoMandarVideo) for (const dv of cands) {
         if (!dv.file_id) continue;
         const { metodo, campo } = metodoMedia(dv.media_type ?? "");
         const p: Record<string, unknown> = { chat_id: chatId, caption, reply_markup: botonSoloJugar(bot.enlace) };
@@ -889,12 +903,14 @@ export async function procesarUpdate(
         pidePlay.test(textoJ) &&
         !noPitch.test(textoJ) &&
         !noPitch.test(respuesta);
-      await tgEnviar(
+      const rEnv = await tgEnviar(
         chatId,
         respuesta,
         { parse_mode: undefined, ...(invita ? { reply_markup: botonSoloJugar(bot.enlace) } : {}) },
         tok
       );
+      // Ver webhook de Sandro: si Telegram no lo aceptó, no lo damos por dicho.
+      envioOk = !!rEnv?.ok;
     } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
       // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
       // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
@@ -906,7 +922,7 @@ export async function procesarUpdate(
       );
     }
 
-    if (respuesta || videoEnviado) {
+    if ((respuesta && envioOk) || videoEnviado) {
       const { data: insA } = await supabaseAdmin
         .from("bot_messages")
         .insert({

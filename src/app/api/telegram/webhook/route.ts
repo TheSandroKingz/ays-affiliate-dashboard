@@ -559,6 +559,7 @@ export async function POST(request: Request) {
       }
 
       let videoEnviado = false;
+      let envioOk = true; // ¿Telegram aceptó la respuesta?
       let videoEnviadoFileId: string | null = null; // para reproducirlo en el panel
       let videoEnviadoTipo: string | null = null;
       // Detecta que piden el patrón/método O que piden VER el vídeo o están
@@ -694,7 +695,19 @@ export async function POST(request: Request) {
           : (mandoVideo || falloForma)
           ? "Toma, prueba así también 🔥 es OTRA de mis formas. Tengo varias — mándame cómo te va y te paso la siguiente. Míralo y hazlo igual."
           : "Aquí tienes 🔥 así le doy yo. Tengo varias formas; hazlo igual que en esta y si acaso me enseñas cómo te fue y te paso otra.";
-        for (const dv of cands) {
+        // ANTI-DOBLE-ENVÍO: reservamos el hueco de forma ATÓMICA antes de mandar nada.
+        // El UPDATE solo afecta a la fila si nadie lo ha reservado en los últimos 15s;
+        // si no devuelve fila, es que OTRA ejecución (doble toque del jugador) ya está
+        // mandando el vídeo y aquí no mandamos otro.
+        const hace15s = new Date(Date.now() - 15_000).toISOString();
+        const { data: reserva } = await supabaseAdmin
+          .from("telegram_contacts")
+          .update({ last_example_at: new Date().toISOString() })
+          .eq("chat_id", chatId)
+          .or(`last_example_at.is.null,last_example_at.lt.${hace15s}`)
+          .select("chat_id");
+        const puedoMandarVideo = !reserva || reserva.length > 0;
+        if (puedoMandarVideo) for (const dv of cands) {
           if (!dv.file_id) continue;
           const m = dv.media_type;
           const metodo =
@@ -972,6 +985,10 @@ export async function POST(request: Request) {
           parse_mode: undefined,
           ...(invita ? { reply_markup: botonSoloJugar() } : {}),
         });
+        // Si Telegram NO lo aceptó (429 por flood, jugador que bloqueó el bot…),
+        // no lo damos por dicho: si lo guardáramos, la IA creería que ya se lo
+        // contó y NUNCA se lo repetiría.
+        envioOk = !!rEnv?.ok;
         await guardarMsg(chatId, midDe(rEnv));
       } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
@@ -987,7 +1004,7 @@ export async function POST(request: Request) {
 
       // Guardamos la respuesta del bot en el transcript (el mensaje del jugador
       // ya se guardó antes de responder, arriba).
-      if (respuesta || videoEnviado) {
+      if ((respuesta && envioOk) || videoEnviado) {
         const { data: insA } = await supabaseAdmin
           .from("telegram_messages")
           .insert({
