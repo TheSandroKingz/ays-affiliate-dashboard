@@ -1,4 +1,8 @@
 import { NextResponse, after } from "next/server";
+
+// Margen para el trabajo de DESPUÉS de responder (los avisos escalonados). La
+// respuesta a Celsius sigue saliendo al instante: esto solo da aire al after().
+export const maxDuration = 60;
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { compararSecreto } from "@/lib/secreto";
 import {
@@ -52,45 +56,6 @@ type Afiliado = {
   freshaffs_tracking_code: string | null;
 };
 
-// Avisa al admin la PRIMERA vez que llega un código de campaña que no es de
-// ningún afiliado. Sin esto, ese dinero se acreditaba a la cuenta de la casa en
-// silencio: es lo que pasa con códigos viejos de un afiliado que se renombró
-// (p. ej. 'patron' y 'Fresh', que fueron de Jeffer y Mariam) o con una campaña
-// nueva de Blue. Throttle: un aviso por código y día.
-// Campañas PROPIAS de la casa: no son de ningún afiliado y su dinero va a la
-// cuenta del admin a propósito. Se listan aquí para NO avisar por ellas (si no,
-// el aviso saltaría cada día por el tráfico normal del negocio).
-//  - SAIqylWftX: campaña principal de Blue de Sandro (tráfico web).
-//  - YmIjpivpyx: el bot de Sandro (verificado: el 100% de sus eventos son afp "bot").
-//  - Default: la propia cuenta de la casa.
-//  - patron / Fresh: códigos VIEJOS de Jeffer y Mariam (antes del 10-ago). Ya no
-//    llega tráfico nuevo con ellos; si llegara, sería dinero de ELLOS y hay que
-//    reasignarlo a mano, así que NO se silencian: se avisa a propósito.
-const CAMPANAS_CASA = new Set(["saiqylwftx", "ymijpivpyx", "default"]);
-
-const campanasAvisadas = new Set<string>();
-async function avisarCampanaDesconocida(tag: string): Promise<void> {
-  try {
-    if (CAMPANAS_CASA.has(tag.trim().toLowerCase())) return; // campaña propia
-    const clave = `campana:${tag}:${new Date().toISOString().slice(0, 10)}`;
-    if (campanasAvisadas.has(clave)) return;
-    campanasAvisadas.add(clave);
-    // Candado compartido: la memoria no se comparte entre instancias serverless.
-    const { data } = await supabaseAdmin
-      .from("telegram_envio_diario")
-      .upsert({ clave }, { onConflict: "clave", ignoreDuplicates: true })
-      .select("clave");
-    if (!data || data.length === 0) return; // ya avisado hoy
-    await enviarPush(ADMIN_USER_ID, {
-      title: "⚠️ Código de campaña desconocido",
-      body: `Llega dinero con el código "${tag}" y no es de ningún afiliado: se está acreditando a la cuenta de la casa. Revisa si es de alguien.`,
-      url: "/admin/actividad",
-    });
-  } catch {
-    /* nunca romper el postback por un aviso */
-  }
-}
-
 const SEL = "user_id, cpa_spain, cpa_other, freshaffs_tracking_code";
 
 async function matchAfiliado(tag: string, permitirDefault = true): Promise<Afiliado | null> {
@@ -117,10 +82,8 @@ async function matchAfiliado(tag: string, permitirDefault = true): Promise<Afili
       .limit(1);
     if (e2) return null;
     if (d2?.[0]) return d2[0];
-    // 3) El código VIENE pero no es de nadie: puede ser un código viejo de un
-    // afiliado (p. ej. 'patron' o 'Fresh', que fueron de Jeffer y Mariam) o una
-    // campaña nueva. Antes se lo tragaba la cuenta de la casa sin decir nada.
-    if (permitirDefault) void avisarCampanaDesconocida(tag);
+    // 3) El código viene pero no es de nadie → cae a la cuenta de la casa (abajo).
+    // NO se avisa: son casi siempre las campañas propias y molestaba.
   }
   // ⛔ Enlace de bot con dueño definido: si NO empareja con su afiliado, NO cae a la
   // casa (eso pagaría a Sandro el dinero del bot en silencio). Devolvemos null →
@@ -539,12 +502,12 @@ export async function GET(request: Request) {
       // Una sola notificación (la de siempre): notificarEvento ya avisa al
       // afiliado y, si es tráfico propio/tuyo, a ti UNA vez. Sin push extra.
       // Si el FTD vino por un bot (afp bot/botmn/botdm), el aviso lo dice.
-      await notificarEvento(
-        target.user_id,
-        "ftd",
-        comisionPagada,
-        afpDeCampana(tag),
-        isocountry
+      // En after(): Celsius recibe su 200 al momento y el aviso se manda después.
+      // Es IMPRESCINDIBLE para poder escalonarlos sin que Celsius reintente.
+      const userNotif = target.user_id;
+      const afpNotif = afpDeCampana(tag);
+      after(() =>
+        notificarEvento(userNotif, "ftd", comisionPagada, afpNotif, isocountry)
       );
       // Aviso a Yaiza: FTD NUEVO por este bot (diciendo de qué bot es).
       after(() => avisarDepositoBotYaiza(afpDeCampana(tag), "ftd"));

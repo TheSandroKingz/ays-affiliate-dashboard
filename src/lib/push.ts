@@ -125,6 +125,40 @@ async function adminCpa(isocountry?: string): Promise<number | null> {
 // quien haya activado ese tipo en sus preferencias. Si el evento es del propio
 // admin (su tráfico), solo al admin. Para FTD, si se pasa `monto` (el CPA
 // acreditado al afiliado), el aviso muestra la cantidad ganada. BLINDADO.
+// ── ESCALONADO DE AVISOS ────────────────────────────────────────────────────
+// Celsius manda su informe de comisiones CADA 6 HORAS: a las 02:00, 08:00, 14:00
+// y 20:00 (hora de Madrid). Por eso los FTD entran en TANDA: se han medido hasta
+// 34 en 7 segundos. Todos los avisos llegaban de golpe al móvil y se veían como
+// un bloque; los repartimos para que vayan cayendo de uno en uno.
+//
+// Sin tabla nueva: la POSICIÓN de este FTD dentro de la tanda se deduce contando
+// cuántos QFTD se contaron en el último minuto antes que él. Cada instancia
+// calcula su propio hueco, así que funciona aunque cada postback caiga en una
+// instancia distinta.
+// 1,5s de hueco: la tanda más grande vista (34) cabe entera dentro del tope, así
+// que cada aviso tiene su propio hueco y no se amontonan al final.
+const ESPACIADO_MS = 1500;
+const ESPERA_MAX_MS = 52_000; // tope de seguridad (la función aguanta 60s)
+
+async function esperarTurnoEnTanda(): Promise<void> {
+  try {
+    const desde = new Date(Date.now() - 60_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("postback_events")
+      .select("id", { count: "exact", head: true })
+      .eq("event_type", "commission")
+      .eq("counted", true)
+      .gte("created_at", desde);
+    // count incluye el evento actual → los que van DELANTE son count-1.
+    const delante = Math.max(0, (count ?? 1) - 1);
+    if (delante === 0) return; // el primero de la tanda sale ya
+    const espera = Math.min(delante * ESPACIADO_MS, ESPERA_MAX_MS);
+    await new Promise((r) => setTimeout(r, espera));
+  } catch {
+    /* si falla el cálculo, se manda sin escalonar */
+  }
+}
+
 export async function notificarEvento(
   userId: string | null | undefined,
   tipo: TipoNotif,
@@ -133,6 +167,9 @@ export async function notificarEvento(
   isocountry?: string
 ): Promise<void> {
   if (!userId) return;
+  // Los FTD llegan en tanda cuando Celsius manda su informe: se escalonan para
+  // que vayan cayendo de uno en uno en vez de todos de golpe.
+  if (tipo === "ftd") await esperarTurnoEnTanda();
   const esBot = !!afp && afp.startsWith("bot");
   const botNombre = BOT_NOMBRE[afp] ?? "el bot";
   const esFtd = tipo === "ftd";
