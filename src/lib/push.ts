@@ -247,7 +247,8 @@ export async function notificarEvento(
               : esBot
                 ? "El bot ha generado un registro."
                 : "Un afiliado ha generado un registro.",
-            url: "/admin/actividad",
+            // Al tocar el aviso de un FTD, al INICIO (no a Actividad).
+          url: "/dashboard",
           })
         );
       }
@@ -261,7 +262,8 @@ export async function notificarEvento(
               ? `Tu enlace ha generado ${fmtMonto(monto!)} 🤑`
               : "Tu enlace ha generado un FTD."
             : "Tu enlace ha generado un registro.",
-          url: "/admin/actividad",
+          // Al tocar el aviso de un FTD, al INICIO (no a Actividad).
+          url: "/dashboard",
         })
       );
     }
