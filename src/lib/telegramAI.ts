@@ -515,12 +515,13 @@ function sinSaldoReciente(messages: Anthropic.MessageParam[]): boolean {
   return false;
 }
 
-// Cierres de APOYO para cuando el jugador se quedó sin saldo: ni le empujan a
-// meter más, ni le preguntan cuánto lleva (que es otra forma de empujar).
+// Cierres para cuando el jugador se quedó sin saldo. NO le empujan a meter más,
+// pero TAMPOCO le dicen que deje de jugar (decisión de Sandro: quedaba muy
+// extremista). Solo acompañan y devuelven la conversación.
 const FALLBACKS_APOYO = [
-  "Te entiendo de verdad. Déjalo por hoy y descansa, que no merece la pena seguir así 🙏",
-  "Vaya putada. Yo de ti lo dejaría aquí por hoy, en serio.",
-  "Lo siento de verdad. Párate un poco, que hoy no es el día.",
+  "Joder, qué putada. ¿Cómo lo llevas?",
+  "Vaya palo, lo siento de verdad.",
+  "Te entiendo, no es plato de gusto. ¿Qué te ha pasado exactamente?",
 ];
 function fallbackApoyo(messages: Anthropic.MessageParam[]): string {
   const ultimo = ultimoAssistantTexto(messages);
@@ -595,7 +596,7 @@ async function crearConGuardia(
     );
   if (malRecarga)
     avisos.push(
-      'EL JUGADOR ACABA DE DECIR QUE HA PERDIDO O QUE NO LE QUEDA DINERO. Tienes TERMINANTEMENTE PROHIBIDO pedirle que recargue, deposite, ingrese, meta más o "vuelva a entrar con X€", y prohibido insinuarlo. Tampoco le preguntes cuánto le queda ni le propongas otra ronda. Acompáñale como una persona: reconoce el palo, dile que lo deje por hoy y que no pasa nada. Nada de enlaces ni de juego en esta respuesta.'
+      'EL JUGADOR ACABA DE DECIR QUE HA PERDIDO O QUE NO LE QUEDA DINERO. Tienes TERMINANTEMENTE PROHIBIDO pedirle que recargue, deposite, ingrese, meta más o "vuelva a entrar con X€", y prohibido insinuarlo. Tampoco le preguntes cuánto le queda ni le propongas otra ronda. Acompáñale como una persona: reconoce el palo y quédate con él. Tampoco le digas que deje de jugar ni le eches un sermón: solo NO le pidas dinero. Nada de enlaces en esta respuesta.'
     );
   const aviso: Anthropic.TextBlockParam = {
     type: "text",
