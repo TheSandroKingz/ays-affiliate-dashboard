@@ -143,6 +143,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       className={`fixed md:static top-0 left-0 min-h-screen md:h-auto md:self-stretch w-64 shrink-0 overflow-y-auto border-r border-white/10 bg-black/95 backdrop-blur py-6 px-3 z-50 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
+      // El indicador de inicio del iPhone tapaba el final del menu.
+      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
     >
         <Link href="/dashboard" className="px-4 mb-6 cursor-pointer block" onClick={onClose}>
           <Image src="/logo-mark.png" alt="A&S Afiliados" width={45} height={56} />

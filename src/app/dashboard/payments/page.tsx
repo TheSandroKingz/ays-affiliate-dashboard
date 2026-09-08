@@ -106,7 +106,9 @@ export default function PaymentsPage() {
               ) : (
                 rows.map((r, i) => (
                   <tr key={r.id} className={`${i % 2 === 1 ? "bg-white/[0.03]" : ""} hover:bg-white/10 transition-colors`}>
-                    <td className="border border-white/10 px-4 py-3">{new Date(r.date).toLocaleDateString("es-ES")}</td>
+                    {/* timeZone UTC: la fecha es 'YYYY-MM-DD' plana. Sin esto, en
+                        America se veia el dia anterior (un pago del 1 salia como 31). */}
+                    <td className="border border-white/10 px-4 py-3">{new Date(r.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}</td>
                     <td className="border border-white/10 px-4 py-3 text-right">
                       {eur(Number(r.amount))}
                     </td>

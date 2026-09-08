@@ -32,6 +32,9 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#000000",
+  // Necesario para que env(safe-area-inset-*) funcione en el iPhone: sin esto,
+  // el indicador de inicio tapa el final del menu (donde esta "Cerrar sesion").
+  viewportFit: "cover" as const,
 };
 
 export default function RootLayout({
