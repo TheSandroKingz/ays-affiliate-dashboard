@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
 import { promptV2 } from "@/lib/promptBuild";
 import { bloqueSolucionesAprobadas, registrarUsoSolucion } from "@/lib/analisisHistorial";
+import { REVISOR } from "@/lib/promptRevisor";
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -665,6 +666,98 @@ async function conBancoSoluciones(
   return txt;
 }
 
+
+// ── SEGUNDA REVISIÓN ANTES DE ENVIAR ────────────────────────────────────────
+// Una llamada de IA aparte mira el BORRADOR antes de que salga al jugador y lo
+// corrige si ve un problema (spec de Yaiza, 9-sep-2026).
+//
+// Decisiones de implementación, y por qué:
+//  · CACHÉ. La spec dice de meter el Prompt Maestro dentro del mensaje. Aquí va
+//    como bloque de SISTEMA cacheado junto al prompt del revisor: son ~20.600
+//    tokens FIJOS en cada mensaje (10,6M al día solo con el bot de Sandro), y
+//    cacheados cuestan ~90% menos. El contenido que ve el modelo es el mismo.
+//  · IMÁGENES. Yaiza avisa de que sin la imagen real media revisión no sirve:
+//    se le pasa la misma foto que vio el bot al generar.
+//  · FALLA HACIA DELANTE. Si el revisor falla, tarda o responde raro, se manda
+//    el borrador original. Nunca se deja al jugador sin respuesta por esto.
+//  · PRESUPUESTO DE TIEMPO. Solo se revisa si queda margen dentro de los 60s de
+//    la función (el debounce ya se come 30s). Si no, va el borrador tal cual.
+const REVISION_ACTIVA = true;
+const REVISOR_TIMEOUT_MS = 8000;
+const REVISION_MARGEN_MS = 42_000; // pasado esto, no da tiempo: enviar el borrador
+
+async function revisarBorrador(
+  client: Anthropic,
+  maestro: string,
+  messages: Anthropic.MessageParam[],
+  borrador: string,
+  inicioMs: number
+): Promise<string> {
+  if (!REVISION_ACTIVA || !borrador) return borrador;
+  if (Date.now() - inicioMs > REVISION_MARGEN_MS) return borrador;
+  try {
+    // La conversación, en texto, para la etiqueta <conversacion>.
+    const conv = messages
+      .map((m) => {
+        const t =
+          typeof m.content === "string"
+            ? m.content
+            : Array.isArray(m.content)
+              ? m.content
+                  .map((b) =>
+                    b.type === "text" ? b.text : b.type === "image" ? "[imagen adjunta]" : ""
+                  )
+                  .join(" ")
+              : "";
+        return `${m.role === "user" ? "JUGADOR" : "BOT"}: ${t}`;
+      })
+      .join("\n");
+
+    // La ÚLTIMA imagen que mandó el jugador, para que el revisor la vea de verdad.
+    let imagen: Anthropic.ImageBlockParam | null = null;
+    for (let i = messages.length - 1; i >= 0 && !imagen; i--) {
+      const c = messages[i].content;
+      if (Array.isArray(c)) {
+        const img = c.find((b) => b.type === "image");
+        if (img) imagen = img as Anthropic.ImageBlockParam;
+      }
+    }
+
+    const partes: Anthropic.ContentBlockParam[] = [];
+    if (imagen) partes.push(imagen);
+    partes.push({
+      type: "text",
+      text: `<conversacion>\n${conv}\n</conversacion>\n\n<borrador>\n${borrador}\n</borrador>`,
+    });
+
+    const res = await client.messages.create(
+      {
+        model: MODELO,
+        max_tokens: 400,
+        system: [
+          { type: "text", text: REVISOR, cache_control: { type: "ephemeral" } },
+          {
+            type: "text",
+            text: `<prompt_maestro>\n${maestro}\n</prompt_maestro>`,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        messages: [{ role: "user", content: partes }],
+      },
+      { timeout: REVISOR_TIMEOUT_MS }
+    );
+    const salida = textoDe(res).trim();
+    if (!salida || /^OK\b/i.test(salida)) return borrador;
+    const m = salida.match(/RESPUESTA_CORREGIDA:\s*([\s\S]+)$/i);
+    const corregida = m?.[1]?.trim();
+    // Solo se acepta la corrección si es una respuesta de verdad; si el revisor
+    // devuelve algo raro o vacío, se manda el borrador original.
+    return corregida && corregida.length >= 8 ? corregida : borrador;
+  } catch {
+    return borrador; // el revisor NUNCA puede dejar al jugador sin respuesta
+  }
+}
+
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
 export async function responderIA(
   historial: Turno[],
@@ -675,15 +768,18 @@ export async function responderIA(
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
+    const inicioMs = Date.now();
     const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     const promo = await getPromo();
-    const txt = await conBancoSoluciones(
+    let txt = await conBancoSoluciones(
       "as",
       chatId,
       sistemaCacheado(SYSTEM, promo, nombre),
       (sys) => crearConGuardia(client, sys, messages)
     );
+    // Segunda pasada: el revisor mira el borrador antes de que salga.
+    if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;
@@ -704,14 +800,17 @@ export async function responderIABot(
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
+    const inicioMs = Date.now();
     const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
-    const txt = await conBancoSoluciones(
+    let txt = await conBancoSoluciones(
       botKey || "",
       chatId,
       sistemaCacheado(persona, promo, nombre),
       (sys) => crearConGuardia(client, sys, messages)
     );
+    // Segunda pasada: el revisor mira el borrador antes de que salga.
+    if (txt) txt = await revisarBorrador(client, persona, messages, txt, inicioMs);
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;
