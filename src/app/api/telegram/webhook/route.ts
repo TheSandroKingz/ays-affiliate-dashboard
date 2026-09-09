@@ -484,7 +484,15 @@ export async function POST(request: Request) {
         p_chat_id: chatId,
         p_ventana_ms: 60_000,
       });
-      const limitado = typeof nUsuario === "number" && nUsuario > LIMITE_IA;
+      // ⚠️ EXCEPCIÓN DEL BLOQUE 5 (Prompt Maestro): un jugador que pregunta por su
+      // DINERO o su CUENTA nunca puede quedarse sin respuesta por un tope técnico.
+      // El caso real: uno mandó ~30 mensajes por una retirada bloqueada, saltó el
+      // límite de mensajes/min y estuvo 9 horas sin respuesta. Los topes siguen
+      // valiendo para el resto (troles, floods sin sentido); la lista negra NO se
+      // salta, porque esa sí es uno de los tres silencios que el bloque 5 permite.
+      const temaDinero = /retir|cobr|\\bpag(?:o|u|ar|a\\b|as\\b|and|ad)|dep[oó]sito|\\bcuentas?\\b|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(text || msg.caption || "");
+      const limitado =
+        typeof nUsuario === "number" && nUsuario > LIMITE_IA && !temaDinero;
 
       // ¿Pide el patrón/vídeo? Si hay vídeo guardado, se lo mandamos como "así
       // es como lo hago yo" (tu contenido/estilo). Sin decir que gana.
@@ -901,7 +909,9 @@ export async function POST(request: Request) {
         // IA (antes uno podía agotar el tope del día y dejar a TODOS con respuesta
         // genérica). 200 respuestas/día por chat es holgadísimo para un usuario
         // real y frena el abuso. Solo cuenta cuando de verdad vamos a llamar a la IA.
-        const dentroCapChat = dentroTope
+        const dentroCapChat = temaDinero
+          ? true // ver excepción del bloque 5 arriba
+          : dentroTope
           ? await rateLimitShared(`aichat:${chatId}`, 200, 24 * 60 * 60 * 1000)
           : false;
         if (dentroTope && dentroCapChat) {

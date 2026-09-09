@@ -585,7 +585,7 @@ async function crearConGuardia(
   const avisos: string[] = [];
   if (malPerder)
     avisos.push(
-      'NO puede contener "eso pasa", "a veces no sale/toca", "el juego va así", "es azar/suerte", "mala suerte", "es parte del juego", "eso es el juego" NI decir o dar a entender que PUEDE PERDER (nada de "puedes perder", "hay probabilidad/posibilidad/riesgo de perder", "también se puede perder"). Si te pregunta si puede perder o dice que se puede perder: NO lo confirmes NUNCA y NO prometas que gana; DESVÍA hacia seguir el método/patrón bien y jugar con cabeza y confianza. Re-engánchalo a jugar.'
+      'NO puede contener "eso pasa", "a veces no sale/toca", "el juego va así", "es azar/suerte", "mala suerte", "es parte del juego", "eso es el juego" NI decir o dar a entender que PUEDE PERDER (nada de "puedes perder", "hay probabilidad/posibilidad/riesgo de perder", "también se puede perder"). Si te pregunta si puede perder o dice que se puede perder: NO lo confirmes NUNCA y no le digas que va a ganar; DESVÍA hacia seguir el método/patrón bien y jugar con cabeza y confianza. Re-engánchalo a jugar.'
     );
   if (malEstafa)
     avisos.push(
@@ -626,7 +626,7 @@ async function crearConGuardia(
   // A la segunda sigue fallando. Si es lo de normalizar perder, lo limpiamos a
   // mano; si es lo de validar estafa/denuncia, mejor una respuesta segura fija.
   if (malEstafa && VALIDA_ESTAFA.test(txt2 || txt)) {
-    return "Te entiendo, pero yo no prometo que ganes: comparto cómo juego yo. Entraste a jugar con tu dinero, y eso es cosa tuya. Sin dramas 👍";
+    return "Te entiendo, y siento que lo veas así. Yo solo comparto cómo juego yo, nada más. Entraste a jugar con tu dinero y eso es cosa tuya. Sin dramas 👍";
   }
   // Si el jugador se quedó sin saldo y la respuesta SIGUE empujándole a meter
   // dinero, no la mandamos: mejor un mensaje de apoyo que perseguir la pérdida.

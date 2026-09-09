@@ -443,7 +443,15 @@ export async function procesarUpdate(
       p_chat_id: chatId,
       p_ventana_ms: 60_000,
     });
-    const limitado = typeof nUsuario === "number" && nUsuario > LIMITE_IA;
+    // ⚠️ EXCEPCIÓN DEL BLOQUE 5 (Prompt Maestro): un jugador que pregunta por su
+    // DINERO o su CUENTA nunca puede quedarse sin respuesta por un tope técnico.
+    // El caso real: uno mandó ~30 mensajes por una retirada bloqueada, saltó el
+    // límite de mensajes/min y estuvo 9 horas sin respuesta. Los topes siguen
+    // valiendo para el resto (troles, floods sin sentido); la lista negra NO se
+    // salta, porque esa sí es uno de los tres silencios que el bloque 5 permite.
+    const temaDinero = /retir|cobr|\\bpag(?:o|u|ar|a\\b|as\\b|and|ad)|dep[oó]sito|\\bcuentas?\\b|verific|bloque|correo|email|bono|bonus|can ?not|make a bet|saldo|reclamaci|estafa/i.test(text || caption || "");
+    const limitado =
+      typeof nUsuario === "number" && nUsuario > LIMITE_IA && !temaDinero;
 
     const textoJ = text || caption;
 
@@ -794,7 +802,9 @@ export async function procesarUpdate(
       const dentroTope = typeof usoActual !== "number" || usoActual <= TOPE_DIA;
       // Cap DIARIO POR CHAT (mismo que Sandro): un solo jugador no acapara el cupo
       // global de IA del bot. 200/día por chat, holgado para un real, frena el abuso.
-      const dentroCapChat = dentroTope
+      const dentroCapChat = temaDinero
+        ? true // ver excepción del bloque 5 arriba
+        : dentroTope
         ? await rateLimitShared(`aichat:${bot.key}:${chatId}`, 200, 24 * 60 * 60 * 1000)
         : false;
       if (dentroTope && dentroCapChat) {
