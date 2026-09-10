@@ -432,7 +432,31 @@ function quitarGuiones(txt: string): string {
   // "?" y "!": solo cae un punto suelto tras un carácter que no sea otro punto.
   const sinPuntoFinal = sinPulgar.replace(/([^.\s])\.\s*$/u, "$1").trim();
   const out = sinPuntoFinal.length >= 2 ? sinPuntoFinal : sinPulgar;
-  return out.length >= 2 ? out : base;
+  return sanearParaJugador(out.length >= 2 ? out : base);
+}
+
+// ── FILTRO FINAL: NADA INTERNO LLEGA AL JUGADOR ────────────────────────────
+// Único punto por el que pasa TODO lo que se le manda. Nace de dos fugas reales:
+// la etiqueta del banco de soluciones ("[SOL:<id 5>]") y las acotaciones de la
+// lista negra ("[No enviar ningún mensaje. El jugador pasa a lista negra...]"),
+// que el jugador llegó a leer y a contestar. En vez de tapar cada caso, aquí se
+// bloquea CUALQUIER corchete que huela a nota de sistema, venga de donde venga.
+const PALABRAS_INTERNAS =
+  /sol\s*[:：]|pendiente|no enviar|sin respuesta|no responder|no contestar|lista negra|silenci|internamente|nota del sistema|instrucci[oó]n|prompt|system|v[ií]deo|imagen adjunta|audio|placeholder|\bid\b|marcador/i;
+
+export function sanearParaJugador(txt: string): string {
+  if (!txt) return "";
+  const limpio = txt
+    // Cualquier bloque [entre corchetes] con pinta de nota interna, esté donde esté.
+    .replace(/\[[^\]\n]{0,200}\]/gu, (m) => (PALABRAS_INTERNAS.test(m) ? "" : m))
+    // Y un corchete de apertura sin cerrar al principio (respuesta cortada).
+    .replace(/^\s*\[[^\]\n]{0,200}$/u, "")
+    .replace(/ {2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  // Si al quitar lo interno no queda nada de sustancia, NO se manda nada: el
+  // llamador lo trata como "la IA no respondió" y decide (acuse o silencio).
+  return limpio.length >= 2 ? limpio : "";
 }
 
 // Texto del ÚLTIMO mensaje del bot en el historial (para el anti-repetición).

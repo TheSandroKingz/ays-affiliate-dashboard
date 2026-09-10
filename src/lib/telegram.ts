@@ -246,6 +246,22 @@ export async function tgEnviar(
   extra?: Record<string, unknown>,
   token: string = TOKEN
 ) {
+  // ⛔ ÚLTIMO CINTURÓN. Aunque el texto no venga de la IA (respuestas fijas,
+  // reenvíos, comandos), aquí NO puede pasar una nota interna. Hubo dos fugas
+  // reales que el jugador llegó a leer: la etiqueta "[SOL:<id 5>]" y
+  // "[No enviar ningún mensaje. El jugador pasa a lista negra...]".
+  if (typeof text === "string" && /\[[^\]\n]{0,200}\]/.test(text)) {
+    const limpio = text
+      .replace(/\[[^\]\n]{0,200}\]/gu, (b: string) =>
+        /sol\s*[:：]|pendiente|no enviar|sin respuesta|no responder|lista negra|silenci|internamente|marcador|placeholder/i.test(b)
+          ? ""
+          : b
+      )
+      .replace(/ {2,}/g, " ")
+      .trim();
+    if (limpio.length < 2) return null; // era SOLO una nota interna: no se manda
+    text = limpio;
+  }
   return tgApi(
     "sendMessage",
     {
