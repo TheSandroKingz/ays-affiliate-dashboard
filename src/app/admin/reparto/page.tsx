@@ -137,7 +137,11 @@ export default function RepartoPage() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-            <div className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-xs font-medium text-slate-400 border-b border-white/10 min-w-[560px]">
+            {/* El scroll horizontal va AQUI: las filas miden 560px minimo y antes
+                las recortaba el overflow-hidden de fuera, lo que desbordaba la
+                pagina y dejaba el movil sin poder desplazarse. */}
+            <div className="overflow-x-auto">
+              <div className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-xs font-medium text-slate-400 border-b border-white/10 min-w-[560px]">
               <span>Fuente</span>
               <span className="text-right">FTD</span>
               <span className="text-right">Ganancia</span>
@@ -162,6 +166,7 @@ export default function RepartoPage() {
                 </span>
               </div>
             ))}
+            </div>
           </div>
           <p className="text-xs text-slate-500 mt-3">
             El reparto se hace sobre la ganancia (lo que sobra tras pagar el CPA
