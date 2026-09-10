@@ -162,6 +162,46 @@ Antes de enviar cualquier respuesta, comprobar lo siguiente. Corregir automátic
 25. No mencionar el propio canal (Telegram, Instagram, TikTok) más de una vez en toda la conversación — si ya se mencionó antes, no volver a mencionarlo en la respuesta actual.
 26. No tranquilizar de forma genérica ("es normal", "espera y ya está", "eso es así") sobre algo que el jugador describe y que no se ha entendido bien. Solo se puede decir que algo es normal si antes se ha identificado exactamente qué está viendo — si no, preguntar primero qué le sale en pantalla, con esas palabras.`;
 
+// Los DATOS FIJOS traen la ficha COMPLETA de los dos juegos: el Patrón Z de
+// Mines (secciones 8-9, para Sandro/Jeffer/BlackKP/Afrika) y Diamond Mines
+// (sección 10, SOLO de Livana). Dárselas enteras a los dos lados hace que el bot
+// confunda los juegos al mirar una captura: el bot de Sandro llegó a decirle 6
+// veces a jugadores que estaban en "Diamond Mines" mirando capturas de Mines.
+// Aquí cada bot se queda con la ficha de SU juego y del otro solo la línea que
+// necesita para redirigir.
+function datosFijosPara(botKey: string): string {
+  const esLivana = botKey === "mariam";
+  const i10 = DATOS_FIJOS.indexOf("10. LIVANA");
+  const i11 = DATOS_FIJOS.indexOf("11. BONOS");
+  if (i10 < 0 || i11 < i10) return DATOS_FIJOS; // si cambia el formato, no tocar
+  if (!esLivana) {
+    // Los bots de Mines NO necesitan la ficha de Diamond Mines: solo saber que
+    // existe, que NO es el suyo y cómo mandar al jugador al juego correcto.
+    return (
+      DATOS_FIJOS.slice(0, i10) +
+      `10. DIAMOND MINES — NO ES TU JUEGO
+Diamond Mines es un juego DISTINTO del casino (lo usa otra persona, no tú). TÚ juegas a Mines y tu método es el Patrón Z de la sección 9.
+Si el jugador está dentro de Diamond Mines, dile que salga y vaya a menú → JUEGOS ORIGINALES → Mines.
+⛔ OJO AL MIRAR CAPTURAS: no des por hecho que una captura es Diamond Mines. Los dos juegos se parecen y ya ha pasado varias veces que se confunden. Si NO estás seguro de cuál es, NO afirmes cuál es: pregúntale al jugador qué nombre pone arriba en el juego.
+
+` +
+      DATOS_FIJOS.slice(i11)
+    );
+  }
+  // Livana: se queda su ficha y se le recorta el detalle del Patrón Z (no es suyo).
+  const i9 = DATOS_FIJOS.indexOf("9. RECORRIDO OFICIAL");
+  if (i9 < 0) return DATOS_FIJOS;
+  return (
+    DATOS_FIJOS.slice(0, i9) +
+    `9. PATRÓN Z — NO ES TU MÉTODO
+El "Patrón Z" es el método de los otros afiliados en el juego "Mines", que es DISTINTO de tu Diamond Mines. Tú NO lo usas y NO se lo expliques a nadie.
+⛔ OJO AL MIRAR CAPTURAS: los dos juegos se parecen. Si no estás segura de cuál es, no lo afirmes: pregúntale qué nombre pone arriba.
+
+` +
+    DATOS_FIJOS.slice(i10)
+  );
+}
+
 // Devuelve el prompt completo del bot indicado por su clave interna
 // ("as","jeffer","mariam","blackkp","afrika"). `genero` ajusta cómo habla.
 export function promptV2(
@@ -171,7 +211,7 @@ export function promptV2(
   genero?: string
 ): string {
   const ident = IDENTIDAD[botKey] ?? IDENTIDAD["as"] ?? "";
-  return `${ident}\n\n${MAESTRO}\n\n=== DATOS FIJOS ===\n${DATOS_FIJOS}\n\n${bloqueCasa(
+  return `${ident}\n\n${MAESTRO}\n\n=== DATOS FIJOS ===\n${datosFijosPara(botKey)}\n\n${bloqueCasa(
     botKey,
     juego
   )}\n\n${bloqueDinamico(enlace, juego)}\n\n${bloqueVoz(genero)}\n\n${COMPROBACIONES}`;

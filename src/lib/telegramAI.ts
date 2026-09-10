@@ -372,6 +372,17 @@ function quitarGuiones(txt: string): string {
   // Las reglas del prompt piden moderación pero el modelo abusa; esto lo garantiza.
   let nEmoji = 0;
   const base = txt
+    // ⛔ ACOTACIONES INTERNAS. El Prompt Maestro le pide al bot que en algunos
+    // casos NO responda (lista negra, silencio), pero el código siempre envía lo
+    // que genere: al no poder callarse, el modelo escribía la acotación entre
+    // corchetes y se le enviaba al jugador. Casos reales del 10-sep:
+    // "[No enviar ningún mensaje. El jugador pasa a lista negra...]" y
+    // "[Lista negra. Sin respuesta.]". Se borra cualquier bloque entre corchetes
+    // que hable de no responder o del proceso interno.
+    .replace(
+      /\[[^\]\n]{0,160}(no enviar|sin respuesta|no responder|lista negra|silencio|silenciar|no contestar|internamente)[^\]\n]{0,160}\]\s*/giu,
+      ""
+    )
     // ⛔ MARCA INTERNA DEL BANCO DE SOLUCIONES. Se quita aquí también (además de en
     // conBancoSoluciones) y AUNQUE venga mal formada o sin cerrar ("[SOL:5",
     // "SOL: 5", "(SOL:5)"): se le coló al jugador 4 veces en agosto/septiembre.
