@@ -831,11 +831,15 @@ export async function POST(request: Request) {
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(
           () => {}
         );
-        // Agrupación de mensajes = 30s (spec de Yaiza): esperamos 30s desde el
-        // último mensaje; si llega otro dentro, ESTA invocación se calla y responde
-        // la del mensaje nuevo (que espera SUS 30s) → el temporizador se "reinicia".
-        // Ajustable si en la práctica es mucho/poco.
-        await new Promise((r) => setTimeout(r, 30_000));
+        // Agrupación (sección 17 de Datos Fijos): 30s si el mensaje parece una idea
+        // COMPLETA, más si viene entrecortado (el jugador sigue escribiendo). Ella
+        // pide 60s para el segundo caso, pero la función entera muere a los 60s en
+        // Vercel: con 60s de espera no quedaría tiempo ni para generar la respuesta.
+        // 45s es lo máximo que cabe dejando margen para la IA, el revisor y el envío.
+        const pareceCompleto =
+        entrada.length > 60 || /[.?!…]\s*$/.test(entrada.trim());
+        const esperaMs = pareceCompleto ? 30_000 : 45_000;
+        await new Promise((r) => setTimeout(r, esperaMs));
         if (miMsgId) {
           const { data: masNuevos } = await supabaseAdmin
             .from("telegram_messages")

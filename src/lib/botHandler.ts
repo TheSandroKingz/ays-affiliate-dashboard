@@ -759,13 +759,20 @@ export async function procesarUpdate(
     // si mientras tanto el jugador manda OTRO mensaje (p. ej. foto y luego texto),
     // ESTE no responde y deja que responda el último, que ya tendrá TODO el contexto.
     // Evita la doble respuesta. Solo cuando vamos a responder con la IA.
+    // ¿El mensaje parece una idea COMPLETA o viene entrecortado? Decide cuánto
+    // esperamos a agrupar, y también si recortamos el retardo "humano" después.
+    const pareceCompleto =
+      !entrada || entrada.length > 60 || /[.?!…]\s*$/.test(entrada.trim());
     let debounced = false;
     if (entrada && iaConfigurada() && !limitado && !videoEnviado && !soloCierre && miMsgId) {
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
-      // Agrupación de mensajes = 30s (spec de Yaiza): esperamos 30s desde el último
-      // mensaje; si llega otro dentro, ESTA se calla y responde la del nuevo (que
-      // espera SUS 30s) → el temporizador se "reinicia". Ajustable con uso real.
-      await new Promise((r) => setTimeout(r, 30_000));
+      // Agrupación (sección 17 de Datos Fijos): 30s si el mensaje parece una idea
+      // COMPLETA, más si viene entrecortado (el jugador sigue escribiendo). Ella
+      // pide 60s para el segundo caso, pero la función entera muere a los 60s en
+      // Vercel: con 60s de espera no quedaría tiempo ni para generar la respuesta.
+      // 45s es lo máximo que cabe dejando margen para la IA, el revisor y el envío.
+      const esperaMs = pareceCompleto ? 30_000 : 45_000;
+      await new Promise((r) => setTimeout(r, esperaMs));
       const { data: masNuevos } = await supabaseAdmin
         .from("bot_messages")
         .select("id, content, media_type")
@@ -903,8 +910,11 @@ export async function procesarUpdate(
       // ⏳ Retardo "humano" VARIABLE antes de enviar (ver webhook de Sandro):
       // aleatorio + proporcional al texto, con "escribiendo…", para no clavar
       // siempre el mismo tiempo (eso canta a bot).
-      const escribir =
-        2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
+      // Si ya esperamos los 45s de agrupación, el retardo "humano" se recorta:
+      // si no, la función se pasaría de los 60s y el jugador se quedaría sin nada.
+      const escribir = pareceCompleto
+        ? 2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30)
+        : 1500;
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
       await new Promise((r) => setTimeout(r, escribir));
       // El botón SOLO si el JUGADOR lo pide (pidePlay sobre SU texto), y nunca en
