@@ -717,7 +717,10 @@ async function conBancoSoluciones(
 //    el borrador original. Nunca se deja al jugador sin respuesta por esto.
 //  · PRESUPUESTO DE TIEMPO. Solo se revisa si queda margen dentro de los 60s de
 //    la función (el debounce ya se come 30s). Si no, va el borrador tal cual.
-const REVISION_ACTIVA = true;
+// ⛔ APAGADO 10-sep: con el revisor puesto, 117 de 202 llamadas del dia murieron
+// sin responder (la funcion agota los 60s de Vercel). Volver a encender solo
+// cuando el presupuesto de tiempo lo permita.
+const REVISION_ACTIVA = false;
 const REVISOR_TIMEOUT_MS = 8000;
 const REVISION_MARGEN_MS = 42_000; // pasado esto, no da tiempo: enviar el borrador
 

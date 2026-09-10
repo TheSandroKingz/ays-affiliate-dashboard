@@ -771,7 +771,9 @@ export async function procesarUpdate(
       // pide 60s para el segundo caso, pero la función entera muere a los 60s en
       // Vercel: con 60s de espera no quedaría tiempo ni para generar la respuesta.
       // 45s es lo máximo que cabe dejando margen para la IA, el revisor y el envío.
-      const esperaMs = pareceCompleto ? 30_000 : 45_000;
+      // Los 45s para mensajes cortos se revirtieron: con ellos + la IA la funcion
+      // se pasaba de los 60s de Vercel y el jugador se quedaba SIN respuesta.
+      const esperaMs = 30_000;
       await new Promise((r) => setTimeout(r, esperaMs));
       const { data: masNuevos } = await supabaseAdmin
         .from("bot_messages")

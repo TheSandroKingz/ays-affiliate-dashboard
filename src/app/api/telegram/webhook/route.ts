@@ -838,7 +838,9 @@ export async function POST(request: Request) {
         // 45s es lo máximo que cabe dejando margen para la IA, el revisor y el envío.
         const pareceCompleto =
         entrada.length > 60 || /[.?!…]\s*$/.test(entrada.trim());
-        const esperaMs = pareceCompleto ? 30_000 : 45_000;
+        // Los 45s para mensajes cortos se revirtieron: con ellos + la IA la funcion
+        // se pasaba de los 60s de Vercel y el jugador se quedaba SIN respuesta.
+        const esperaMs = 30_000;
         await new Promise((r) => setTimeout(r, esperaMs));
         if (miMsgId) {
           const { data: masNuevos } = await supabaseAdmin
