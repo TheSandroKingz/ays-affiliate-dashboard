@@ -805,7 +805,17 @@ function cierreDeSandro(txt: string): string {
   return txt
     .replace(/\by arrancamos\b/gi, "y le damos")
     .replace(/\b(list[oa]s?|cuando quieras|cuando puedas)\s+arrancamos\b/gi, "$1 le damos")
-    .replace(/\barrancamos de nuevo\b/gi, "le damos de nuevo");
+    .replace(/\barrancamos de nuevo\b/gi, "le damos de nuevo")
+    // Y cierra con "dale g, me dices algo", no con "dale, aquí estoy".
+    // Solo el cierre suelto: "aquí estaré" dentro de un mensaje de apoyo (alguien
+    // que lo está pasando mal) NO se toca, ahí "me dices algo" sonaría frío.
+    .replace(
+      /\bdale(?:\s+(?:hermano|bro|crack|máquina|tío))?,?\s*aqu[ií]\s+est(?:oy|ar[eé])(?![\p{L}])/giu,
+      "dale g, me dices algo"
+    )
+    // Y abre con "dale manito", no con "perfecto". Solo al empezar frase: un
+    // "es perfecto para eso" en medio de un mensaje se queda como está.
+    .replace(/(^|[\n.!?¡¿]\s*)Perfecto\b/gu, "$1Dale manito");
 }
 
 export async function responderIA(
