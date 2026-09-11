@@ -128,7 +128,6 @@ export async function procesarUpdate(
     const tipoChat = (msg.chat as { type?: string }).type;
     if (tipoChat && tipoChat !== "private") return;
     const chatId: number = (msg.chat as { id: number }).id;
-    chatDelFallo = chatId;
     const text: string = ((msg.text as string) ?? "").trim();
     const caption: string = ((msg.caption as string) ?? "").trim();
     const from = (msg.from as Record<string, string> | undefined) ?? {};
@@ -439,6 +438,9 @@ export async function procesarUpdate(
       .eq("chat_id", chatId)
       .maybeSingle();
     if (contacto?.silenced) return;
+    // Igual que en el webhook de Sandro: el acuse del catch solo para jugadores
+    // normales, nunca para el dueño ni para alguien silenciado.
+    chatDelFallo = chatId;
 
     // Igual que el bot de Sandro (15): con 8, un jugador que parte su duda en
     // varios mensajes cortos se quedaba sin respuesta antes de tiempo.
@@ -497,6 +499,7 @@ export async function procesarUpdate(
           .update({ silenced: true })
           .eq("bot", bot.key)
           .eq("chat_id", chatId);
+        chatDelFallo = null; // acaba de entrar en lista negra: ni acuse
         // Fase 3: a la LISTA NEGRA (para el informe de Yaiza). No rompe si falla.
         await supabaseAdmin
           .from("lista_negra")
@@ -667,6 +670,7 @@ export async function procesarUpdate(
         const rv = await tgApi(metodo, p, tok);
         if (rv?.ok) {
           videoEnviado = true;
+            algoEnviado = true;
           videoEnviadoFileId = dv.file_id;
           videoEnviadoTipo = dv.media_type ?? "video";
           await supabaseAdmin
@@ -945,12 +949,13 @@ export async function procesarUpdate(
     } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
       // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
       // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
-      await tgEnviar(
+      const rPitch = await tgEnviar(
         chatId,
         "¡Dale! 🔥 Recarga y entra a jugar 👇",
         { reply_markup: botonSoloJugar(bot.enlace) },
         tok
       );
+      if (rPitch?.ok) algoEnviado = true;
     } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
       // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
       // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
@@ -963,6 +968,7 @@ export async function procesarUpdate(
         tok
       );
       envioOk = !!rAcuse?.ok;
+      if (envioOk) algoEnviado = true;
     }
 
     if ((respuesta && envioOk) || videoEnviado) {

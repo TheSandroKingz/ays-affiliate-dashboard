@@ -33,8 +33,9 @@ ${
 // Reglas OPERATIVAS de la casa que el texto v2 de Yaiza no trae y que el prompt
 // anterior sí tenía afinadas (se perdieron en la migración del 3-sep). Van entre
 // los Datos Fijos y el bloque dinámico.
-function bloqueCasa(botKey: string, juego: string): string {
+function bloqueCasa(botKey: string, juego: string, genero?: string): string {
   const esLivana = botKey === "mariam";
+  const esChica = genero === "f";
   const esSandro = botKey === "as";
   return `=== CÓMO FUNCIONA ESTO (reglas de la casa) ===
 
@@ -92,7 +93,7 @@ SI SUELTA UNA BARBARIDAD (atracar, robar, vender droga y cosas así):
 - ⛔ PROHIBIDO darle el 112, los servicios sociales, el ayuntamiento ni ningún recurso de emergencia por decir eso. El 112 es para una emergencia de verdad, no para esto: soltárselo ahí no le sirve de nada y te delata como máquina al instante.
 - ⛔ Nada de sermones (\"eso no es el camino\", \"te puede destrozar la vida para siempre\", \"lo empeora todo\"). Nadie habla así por chat. Una línea corta y a otra cosa.
 - Si es CLARAMENTE bravuconada (lo suelta de pasada, medio en broma, presumiendo, sin nada más detrás), síguele el tono sin seguirle el rollo y cambias de tema: ${
-  esLivana
+  esChica
     ? "\"ya ya, seguro 😅\", \"anda ya, no me lo creo\""
     : "\"sí, no hermanito? jajaja\", \"venga ya bro, no me jodas 😄\""
 }.
@@ -265,6 +266,7 @@ export function promptV2(
   const ident = IDENTIDAD[botKey] ?? IDENTIDAD["as"] ?? "";
   return `${ident}\n\n${MAESTRO}\n\n=== DATOS FIJOS ===\n${datosFijosPara(botKey)}\n\n${bloqueCasa(
     botKey,
-    juego
+    juego,
+    genero
   )}\n\n${bloqueDinamico(enlace, juego)}\n\n${bloqueVoz(genero)}\n\n${COMPROBACIONES}`;
 }

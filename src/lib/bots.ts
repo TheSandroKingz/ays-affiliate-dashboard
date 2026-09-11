@@ -382,8 +382,8 @@ const ENLACE_AFRIKA = "https://asafiliados.com/go/naIRiroIcA";
 export function ajustarVozFemenina(texto: string, genero: "f" | "m" | "n"): string {
   if (genero !== "f" || !texto) return texto;
   return texto
-    .replace(/\s*,\s*\b(hermano|bro|manito)\b/gi, "")
-    .replace(/\b(hermano|bro|manito)\b\s*,?\s*/gi, "")
+    .replace(/\s*,\s*\b(hermanit[oa]s?|hermanos?|bro|manit[oa]s?|crack|m[áa]quina)\b/gi, "")
+    .replace(/\b(hermanit[oa]s?|hermanos?|bro|manit[oa]s?|crack|m[áa]quina)\b\s*,?\s*/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }

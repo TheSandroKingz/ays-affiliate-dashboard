@@ -126,7 +126,6 @@ export async function POST(request: Request) {
   // todos los mensajes del grupo y mezclaba contacto/silenciado.
   if (msg.chat.type && msg.chat.type !== "private") return NextResponse.json({ ok: true });
   const chatId: number = msg.chat.id;
-  chatDelFallo = chatId;
   const text: string = (msg.text ?? "").trim();
   const from = msg.from ?? {};
   const esDueno = OWNER_CHAT_ID && String(chatId) === String(OWNER_CHAT_ID);
@@ -459,6 +458,11 @@ export async function POST(request: Request) {
         .maybeSingle();
       // Silenciado por el dueño: el bot lo ignora del todo.
       if (contacto?.silenced) return NextResponse.json({ ok: true });
+      // A partir de AQUÍ sí es un jugador normal: si algo peta antes de
+      // contestarle, el catch le manda un acuse. Se asigna aquí a propósito y no
+      // antes, para que ese acuse NUNCA le llegue al dueño ni a alguien
+      // silenciado o en lista negra (eso rompería el silencio).
+      chatDelFallo = chatId;
 
       // Aviso push "ha hablado alguien" SOLO para Yaiza (gestiona el bot desde
       // la web). Al admin NO se le avisa de cada charla: a él solo le llegan los
@@ -571,6 +575,7 @@ export async function POST(request: Request) {
               `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): lleva varios insultos/amenazas, dejé de contestarle para no gastar IA. Para reactivarlo, quítale el silencio en el panel.`
             ).catch(() => {});
           }
+          chatDelFallo = null; // acaba de entrar en lista negra: ni acuse
           return NextResponse.json({ ok: true, silenced: "troll" });
         }
       }
@@ -738,6 +743,7 @@ export async function POST(request: Request) {
           if (rv?.ok) {
             await guardarMsg(chatId, midDe(rv));
             videoEnviado = true;
+            algoEnviado = true;
             videoEnviadoFileId = dv.file_id;
             videoEnviadoTipo = m ?? "video";
             await supabaseAdmin
@@ -1028,6 +1034,7 @@ export async function POST(request: Request) {
         const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });
+        if (rEnv?.ok) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
       } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
         // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
