@@ -50,14 +50,23 @@ export async function enviarPush(
     await Promise.all(
       subs.map(async (s) => {
         try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            body
-          );
+          // ⏱️ Sin tope, un endsentry de FCM/APNs colgado se comía los 60s de la
+          // función (esto se llama desde crons y desde el postback).
+          await Promise.race([
+            webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              body
+            ),
+            new Promise((_r, rej) =>
+              setTimeout(() => rej(new Error("push timeout")), 5000)
+            ),
+          ]);
         } catch (err: unknown) {
           const code = (err as { statusCode?: number })?.statusCode;
-          // Suscripción caducada o revocada: la borramos para no reintentar.
-          if (code === 404 || code === 410) {
+          // Suscripción caducada, revocada o con claves corruptas: la borramos
+          // para no reintentarla en cada aviso el resto de su vida. El 403 y el
+          // 400 (VAPID cambiada, claves rotas) tampoco se recuperan solos.
+          if (code === 404 || code === 410 || code === 403 || code === 400) {
             await supabaseAdmin
               .from("push_subscriptions")
               .delete()
@@ -106,6 +115,36 @@ const fmtMonto = (n: number) =>
 // CPA del admin para calcular tu margen por un FTD de un afiliado. Sensible al
 // país igual que la comisión del afiliado: si el FTD es de fuera de España, usa
 // el cpa_other del admin (con respaldo a cpa_spain). Blindado: null si no se puede.
+// Lo que se le paga al PADRE de este afiliado por el FTD de su hijo (override).
+// Sale de lo que se queda el admin, así que hay que restarlo para que el aviso
+// diga la verdad. Si no tiene padre, 0. BLINDADO: ante cualquier fallo, 0.
+async function overrideDelPadre(userId: string, comision: number): Promise<number> {
+  try {
+    const { data: hijo } = await supabaseAdmin
+      .from("affiliates")
+      .select("referred_by")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const padre = hijo?.referred_by;
+    if (!padre) return 0;
+    // ⚠️ `referred_by` guarda el ID DE LA FILA del padre, no su user_id (igual que
+    // en adminStats, que empareja por `a.id`). Buscarlo por user_id no encuentra
+    // nada y el override saldría 0, o sea el aviso inflado otra vez.
+    const { data: p } = await supabaseAdmin
+      .from("affiliates")
+      .select("subaffiliate_percent, user_id")
+      .eq("id", padre)
+      .maybeSingle();
+    // Si el padre es el propio admin, no hay override que pagar a nadie.
+    if (!p || p.user_id === ADMIN_USER_ID) return 0;
+    const pct = Number(p?.subaffiliate_percent ?? 0);
+    if (!Number.isFinite(pct) || pct <= 0) return 0;
+    return (comision * pct) / 100;
+  } catch {
+    return 0;
+  }
+}
+
 async function adminCpa(isocountry?: string): Promise<number | null> {
   try {
     const { data } = await supabaseAdmin
@@ -138,7 +177,12 @@ async function adminCpa(isocountry?: string): Promise<number | null> {
 // 1,5s de hueco: la tanda más grande vista (34) cabe entera dentro del tope, así
 // que cada aviso tiene su propio hueco y no se amontonan al final.
 const ESPACIADO_MS = 1500;
-const ESPERA_MAX_MS = 52_000; // tope de seguridad (la función aguanta 60s)
+// ⏱️ Tope de espera. Antes eran 52s: con tandas grandes, todos los avisos a
+// partir del nº 34 se quedaban clavados en ese tope y salían de golpe (justo lo
+// que el escalonado quiere evitar), y los últimos ni salían porque la función
+// moría a los 60s con el aviso ya perdido y sin reintento. Ahora se corta antes:
+// a partir de ahí se manda YA, amontonado pero entregado.
+const ESPERA_MAX_MS = 35_000;
 
 async function esperarTurnoEnTanda(): Promise<void> {
   try {
@@ -167,11 +211,10 @@ export async function notificarEvento(
   isocountry?: string
 ): Promise<void> {
   if (!userId) return;
-  // Los FTD llegan en tanda cuando Celsius manda su informe: se escalonan para
-  // que vayan cayendo de uno en uno en vez de todos de golpe.
-  if (tipo === "ftd") await esperarTurnoEnTanda();
   const esBot = !!afp && afp.startsWith("bot");
-  const botNombre = BOT_NOMBRE[afp] ?? "el bot";
+  // ⚠️ Puede no estar en el mapa (pasó con iAfrika hasta que se añadió "botaf").
+  // Sin esto salía literalmente "FTD del bot de el bot".
+  const botNombre: string | null = BOT_NOMBRE[afp] ?? null;
   const esFtd = tipo === "ftd";
   const hayMonto = esFtd && typeof monto === "number" && monto > 0;
   try {
@@ -187,6 +230,9 @@ export async function notificarEvento(
     } else if (!quiereAfiliado && !quiereAdmin) {
       return;
     }
+    // El escalonado va AQUÍ, ya sabiendo que hay a quién avisar: antes se
+    // esperaban hasta 52s para luego descubrir que nadie quería el aviso.
+    if (tipo === "ftd") await esperarTurnoEnTanda();
 
     let nombre = "un afiliado";
     try {
@@ -204,14 +250,26 @@ export async function notificarEvento(
     // (Mongolitos) te llevas el importe entero; si es un afiliado normal, tu
     // margen = tu CPA − lo que le pagas a él (el `monto`).
     let montoAdmin: number | null = null;
-    if (hayMonto && quiereAdmin) {
+    if (esFtd && quiereAdmin) {
       if (esCuentaPropia(userId)) {
-        montoAdmin = monto!;
-      } else {
+        // Las cuentas propias tienen el CPA a 0 por diseño (no se les paga), así
+        // que `monto` viene 0 y el aviso salía SIN cifra. Lo tuyo ahí es el CPA
+        // del admin entero.
         const cpa = await adminCpa(isocountry);
-        montoAdmin = cpa != null ? Math.max(0, cpa - monto!) : null;
+        montoAdmin = monto && monto > 0 ? monto : cpa;
+      } else if (hayMonto) {
+        const cpa = await adminCpa(isocountry);
+        if (cpa != null) {
+          // ⚠️ Si el afiliado tiene PADRE, al padre se le paga un override sobre
+          // su comisión, y eso sale de lo tuyo. Sin restarlo, el aviso decía más
+          // dinero del que de verdad te queda (el panel sí lo resta).
+          const override = await overrideDelPadre(userId, monto!);
+          montoAdmin = cpa - monto! - override;
+        }
       }
     }
+    // "Te llevas 0 € 🤑" no se manda: mejor la frase genérica.
+    if (montoAdmin != null && montoAdmin <= 0) montoAdmin = null;
 
     const tareas: Promise<void>[] = [];
     if (userId !== ADMIN_USER_ID) {
@@ -233,10 +291,14 @@ export async function notificarEvento(
           enviarPush(ADMIN_USER_ID, {
             title: esFtd
               ? esBot
-                ? `🤖 FTD del bot de ${botNombre}`
+                ? botNombre
+                  ? `🤖 FTD del bot de ${botNombre}`
+                  : "🤖 FTD de un bot"
                 : `💰 Nuevo FTD de ${nombre}`
               : esBot
-                ? `🤖 Registro del bot de ${botNombre}`
+                ? botNombre
+                  ? `🤖 Registro del bot de ${botNombre}`
+                  : "🤖 Registro de un bot"
                 : `Nuevo registro de ${nombre}`,
             body: esFtd
               ? montoAdmin != null
