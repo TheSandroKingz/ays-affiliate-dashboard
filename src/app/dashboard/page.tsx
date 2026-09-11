@@ -44,8 +44,13 @@ function saludoEmoji(): string {
   const d = new Date();
   const md = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const festivos: Record<string, string> = {
-    "12-24": "🎄", "12-25": "🎄", "12-31": "🎆", "01-01": "🎆",
-    "01-06": "👑", "10-31": "🎃", "02-14": "❤️",
+    "12-24": "🎄",
+    "12-25": "🎄",
+    "12-31": "🎆",
+    "01-01": "🎆",
+    "01-06": "👑",
+    "10-31": "🎃",
+    "02-14": "❤️",
   };
   if (festivos[md]) return festivos[md];
   const h = d.getHours();
@@ -72,10 +77,18 @@ function last7Days(): DailyPoint[] {
 }
 
 function fillMissingDays(
-  daily: { date: string; commission: number; clicks: number; registrations: number; ftd: number }[]
+  daily: {
+    date: string;
+    commission: number;
+    clicks: number;
+    registrations: number;
+    ftd: number;
+  }[],
 ): DailyPoint[] {
   const map = new Map(daily.map((d) => [String(d.date).slice(0, 10), d]));
-  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const todayStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
   const [ty, tm, td] = todayStr.split("-").map(Number);
   const start = new Date(Date.UTC(ty, tm - 1, 1));
   const end = new Date(Date.UTC(ty, tm - 1, td));
@@ -84,7 +97,11 @@ function fillMissingDays(
     const key = d.toISOString().slice(0, 10);
     const row = map.get(key);
     points.push({
-      date: d.toLocaleDateString("es-ES", { month: "short", day: "2-digit", timeZone: "UTC" }),
+      date: d.toLocaleDateString("es-ES", {
+        month: "short",
+        day: "2-digit",
+        timeZone: "UTC",
+      }),
       commission: row ? Number(row.commission) : 0,
       clicks: row ? row.clicks : 0,
       registrations: row ? row.registrations : 0,
@@ -104,7 +121,9 @@ export default function DashboardPage() {
   }, [router]);
   const [showBalanceInfo, setShowBalanceInfo] = useState(false);
   const [dailyData, setDailyData] = useState<DailyPoint[]>(last7Days());
-  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(["commission"]));
+  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(
+    new Set(["commission"]),
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { displayName, birthdate } = useProfile(); // perfil compartido
@@ -123,25 +142,24 @@ export default function DashboardPage() {
   const prevFtdRef = useRef<number | null>(null);
 
   const loadStats = useCallback(async (isRefresh = false) => {
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
-      setLoadError(false);
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setLoadError(false);
+    // Sin try/catch, un corte de red móvil en mitad del Promise.all dejaba el
+    // esqueleto puesto PARA SIEMPRE, sin ni siquiera el botón de reintentar.
+    try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       const user = session?.user;
 
       if (!user || !session) {
-        setLoading(false);
-        setRefreshing(false);
         return;
       }
 
       // Cuenta de admin: tiene su propio panel dedicado (AdminDashboard).
       if (user.id === ADMIN_USER_ID) {
         setIsAdmin(true);
-        setLoading(false);
-        setRefreshing(false);
         return;
       }
 
@@ -173,14 +191,14 @@ export default function DashboardPage() {
           .catch(() => null),
       ]);
       setMediaDep(
-        calidadRes?.deposito?.media != null ? Number(calidadRes.deposito.media) : null
+        calidadRes?.deposito?.media != null
+          ? Number(calidadRes.deposito.media)
+          : null,
       );
 
       // Solo bloqueamos si falla la carga de DATOS (lo que importa).
       if (dailyRes.error) {
         setLoadError(true);
-        setLoading(false);
-        setRefreshing(false);
         return;
       }
 
@@ -190,8 +208,9 @@ export default function DashboardPage() {
       // Celebración de FTD: comparamos el total de FTD del MES con la carga
       // anterior. Solo salta si AUMENTA (no en la primera carga), así no aparece
       // cada vez que entras al inicio.
-      const hoyDia = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" })
-        .format(new Date());
+      const hoyDia = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Madrid",
+      }).format(new Date());
       const hoyMes = hoyDia.slice(0, 7);
       // FTD del mes (para saber si hay uno nuevo), FTD de HOY y el mejor día
       // ANTERIOR (excluyendo hoy) — para detectar récord personal.
@@ -221,7 +240,7 @@ export default function DashboardPage() {
       const subRows: { commission: number }[] = subRes?.rows ?? [];
       const subTotal = subRows.reduce(
         (sum, r) => sum + Number(r.commission ?? 0),
-        0
+        0,
       );
       setSubCommission(subTotal);
 
@@ -229,19 +248,22 @@ export default function DashboardPage() {
       // tiempo, aunque ya se haya cobrado).
       const propiaHist = (dailyRes.data ?? []).reduce(
         (sum, d) => sum + Number(d.commission ?? 0),
-        0
+        0,
       );
       setTotalGenerado(propiaHist + Number(subRes?.totalHistorico ?? 0));
 
       setLastUpdated(new Date());
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
       setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
-
 
   // Registra la visita del afiliado (para que el admin vea quién entra). Máximo
   // una cada 30 min para no inflar con recargas. El admin no cuenta.
@@ -286,9 +308,9 @@ export default function DashboardPage() {
           registrations: acc.registrations + d.registrations,
           ftd: acc.ftd + d.ftd,
         }),
-        { commission: 0, clicks: 0, registrations: 0, ftd: 0 }
+        { commission: 0, clicks: 0, registrations: 0, ftd: 0 },
       ),
-    [dailyData]
+    [dailyData],
   );
 
   const chartData = useMemo(
@@ -300,26 +322,49 @@ export default function DashboardPage() {
         });
         return point;
       }),
-    [dailyData]
+    [dailyData],
   );
 
   const statCards = useMemo(
     () => [
-      { key: "commission", label: isAdmin ? "Mi margen" : "Comisión", value: eur(totals.commission), color: "#10b981" },
-      { key: "clicks", label: "Clics", value: totals.clicks.toLocaleString("de-DE"), color: "#9333ea" },
-      { key: "registrations", label: "Registros", value: totals.registrations.toLocaleString("de-DE"), color: "#f59e0b" },
-      { key: "ftd", label: "FTD", value: totals.ftd.toLocaleString("de-DE"), color: "#38bdf8" },
+      {
+        key: "commission",
+        label: isAdmin ? "Mi margen" : "Comisión",
+        value: eur(totals.commission),
+        color: "#10b981",
+      },
+      {
+        key: "clicks",
+        label: "Clics",
+        value: totals.clicks.toLocaleString("de-DE"),
+        color: "#9333ea",
+      },
+      {
+        key: "registrations",
+        label: "Registros",
+        value: totals.registrations.toLocaleString("de-DE"),
+        color: "#f59e0b",
+      },
+      {
+        key: "ftd",
+        label: "FTD",
+        value: totals.ftd.toLocaleString("de-DE"),
+        color: "#38bdf8",
+      },
     ],
-    [totals, isAdmin]
+    [totals, isAdmin],
   );
 
   // Mes anterior (para la meta "superar el mes pasado" y el aviso del día 1).
   const mesAnterior = useMemo(() => {
-    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+    const hoy = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+    }).format(new Date());
     const [y, m] = hoy.split("-").map(Number);
     const prev = new Date(Date.UTC(y, m - 2, 1)); // mes anterior
     const key = prev.toISOString().slice(0, 7);
-    let commission = 0, ftd = 0;
+    let commission = 0,
+      ftd = 0;
     for (const r of rawDaily) {
       if (String(r.date).slice(0, 7) === key) {
         commission += Number(r.commission ?? 0);
@@ -360,12 +405,17 @@ export default function DashboardPage() {
   const balance = totals.commission + subCommission;
   // Crecimiento: comisión de HOY vs AYER (últimos dos días de la serie, que va
   // del día 1 del mes hasta hoy en orden).
-  const hoyC = dailyData.length ? dailyData[dailyData.length - 1].commission : 0;
-  const ayerC = dailyData.length > 1 ? dailyData[dailyData.length - 2].commission : 0;
+  const hoyC = dailyData.length
+    ? dailyData[dailyData.length - 1].commission
+    : 0;
+  const ayerC =
+    dailyData.length > 1 ? dailyData[dailyData.length - 2].commission : 0;
   const deltaHoy = hoyC - ayerC;
 
   // Proyección de fin de mes: al ritmo actual, cuánto cerrará el mes.
-  const hoyISO = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const hoyISO = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
   const [yProj, mProj, dProj] = hoyISO.split("-").map(Number);
   const diasMes = new Date(yProj, mProj, 0).getDate();
   // El ritmo se cuenta desde el PRIMER FTD (no desde el día 1): el afiliado no
@@ -378,7 +428,11 @@ export default function DashboardPage() {
   // Es una estimación: la redondeamos a múltiplo de 10 para que salga limpia.
   const proyeccion = Math.round(proyeccionRaw / 10) * 10;
   const mostrarProyeccion =
-    !isAdmin && balance > 0 && diasTrabajados > 0 && dProj < diasMes && proyeccion > 0;
+    !isAdmin &&
+    balance > 0 &&
+    diasTrabajados > 0 &&
+    dProj < diasMes &&
+    proyeccion > 0;
   const primaryMetricKey =
     activeMetrics.size > 0 ? Array.from(activeMetrics)[0] : "commission";
   const sinActividad =
@@ -389,10 +443,12 @@ export default function DashboardPage() {
 
   // Aviso primeros días de mes: el balance se reinició; lo anterior se paga aparte.
   const diaDelMes = Number(hoyISO.slice(8, 10));
-  const mostrarAvisoMes = !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
+  const mostrarAvisoMes =
+    !isAdmin && diaDelMes <= 5 && mesAnterior.commission > 0;
   const diasRestantesMes = Math.max(0, diasMes - diaDelMes);
   // ¿Es hoy su cumpleaños? (compara mes-día en zona Madrid).
-  const esCumple = !isAdmin && !!birthdate && hoyISO.slice(5) === String(birthdate).slice(5);
+  const esCumple =
+    !isAdmin && !!birthdate && hoyISO.slice(5) === String(birthdate).slice(5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -402,7 +458,8 @@ export default function DashboardPage() {
           <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
             {recordHoy !== null ? (
               <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
-                <span className="text-xl">🏆</span> ¡Nuevo récord! {recordHoy} FTD hoy
+                <span className="text-xl">🏆</span> ¡Nuevo récord! {recordHoy}{" "}
+                FTD hoy
               </div>
             ) : (
               <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
@@ -413,16 +470,41 @@ export default function DashboardPage() {
         </>
       )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-            <h1 className="text-2xl font-semibold text-white">{saludo()}{displayName && <>, <span className="text-emerald-400">{displayName}</span></>} {saludoEmoji()}</h1>
-              <p className="text-sm text-slate-400">
-                {new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-                {lastUpdated && (
-                  <span className="text-slate-500"> · <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle animate-latido" /> Actualizado {lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}<span className="text-[0.5em] opacity-70">:{String(lastUpdated.getSeconds()).padStart(2, "0")}</span></span>
-                )}
-              </p>
-            </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">
+            {saludo()}
+            {displayName && (
+              <>
+                , <span className="text-emerald-400">{displayName}</span>
+              </>
+            )}{" "}
+            {saludoEmoji()}
+          </h1>
+          <p className="text-sm text-slate-400">
+            {new Date().toLocaleDateString("es-ES", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+            {lastUpdated && (
+              <span className="text-slate-500">
+                {" "}
+                ·{" "}
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle animate-latido" />{" "}
+                Actualizado{" "}
+                {lastUpdated.toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                <span className="text-[0.5em] opacity-70">
+                  :{String(lastUpdated.getSeconds()).padStart(2, "0")}
+                </span>
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3">
           {!isAdmin && <ContactManagerButton />}
           <button
             onClick={() => loadStats(true)}
@@ -456,16 +538,21 @@ export default function DashboardPage() {
           <span className="text-lg leading-none">📅</span>
           <p className="text-sm text-slate-300">
             Nuevo mes: tu balance se ha reiniciado a 0. Lo que ganaste el mes
-            pasado (<b className="text-white">{eur(mesAnterior.commission)}</b>) se
-            te paga aparte, no lo pierdes.
+            pasado (<b className="text-white">{eur(mesAnterior.commission)}</b>)
+            se te paga aparte, no lo pierdes.
           </p>
         </div>
       )}
 
-      <div className="animate-in bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]" style={{ animationDelay: "0.05s" }}>
+      <div
+        className="animate-in bg-white/10 backdrop-blur border border-emerald-400/50 rounded-xl p-7 max-w-lg shadow-[0_0_20px_rgba(16,185,129,0.6),0_0_45px_rgba(16,185,129,0.35),0_0_80px_rgba(16,185,129,0.15)]"
+        style={{ animationDelay: "0.05s" }}
+      >
         <div className="flex items-center justify-between mb-3">
           <div className="group relative flex items-center gap-1.5">
-          <span className="text-sm font-medium text-slate-300">{isAdmin ? "Lo que me quedo" : "Mi balance"}</span>
+            <span className="text-sm font-medium text-slate-300">
+              {isAdmin ? "Lo que me quedo" : "Mi balance"}
+            </span>
             <button
               type="button"
               onClick={() => setShowBalanceInfo((v) => !v)}
@@ -480,13 +567,19 @@ export default function DashboardPage() {
               }`}
             >
               <div className="flex items-center justify-between py-1 text-sm">
-                <span className="text-slate-300">{isAdmin ? "Mi margen (este mes)" : "Comisión propia"}</span>
-                <span className="font-medium text-white">{eur(totals.commission)}</span>
+                <span className="text-slate-300">
+                  {isAdmin ? "Mi margen (este mes)" : "Comisión propia"}
+                </span>
+                <span className="font-medium text-white">
+                  {eur(totals.commission)}
+                </span>
               </div>
               {!isAdmin && subCommission > 0 && (
                 <div className="flex items-center justify-between py-1 text-sm">
                   <span className="text-slate-300">Por subafiliados</span>
-                  <span className="font-medium text-white">{eur(subCommission)}</span>
+                  <span className="font-medium text-white">
+                    {eur(subCommission)}
+                  </span>
                 </div>
               )}
               {!isAdmin && (
@@ -498,13 +591,17 @@ export default function DashboardPage() {
               {!isAdmin && (
                 <div className="flex items-center justify-between py-1 text-sm">
                   <span className="text-slate-300">Total generado</span>
-                  <span className="font-semibold text-emerald-400">{eur(totalGenerado)}</span>
+                  <span className="font-semibold text-emerald-400">
+                    {eur(totalGenerado)}
+                  </span>
                 </div>
               )}
             </div>
+          </div>
         </div>
-        </div>
-        <p className="text-3xl sm:text-4xl font-bold text-white">{eur(balance)}</p>
+        <p className="text-3xl sm:text-4xl font-bold text-white">
+          {eur(balance)}
+        </p>
         {!isAdmin && (
           <div className="mt-3 flex items-center gap-2 text-sm">
             <span className="text-slate-300">
@@ -520,7 +617,11 @@ export default function DashboardPage() {
                     deltaHoy > 0 ? "text-emerald-400" : "text-red-400"
                   }`}
                 >
-                  {deltaHoy > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {deltaHoy > 0 ? (
+                    <TrendingUp size={14} />
+                  ) : (
+                    <TrendingDown size={14} />
+                  )}
                   {eur(Math.abs(deltaHoy))}
                   <span className="text-slate-500 font-normal">vs ayer</span>
                 </span>
@@ -530,28 +631,42 @@ export default function DashboardPage() {
         {mostrarProyeccion && (
           <p className="mt-2 text-xs text-slate-500">
             Proyección{" "}
-            <span className="text-slate-300 font-medium">~{eur(proyeccion)}</span>
+            <span className="text-slate-300 font-medium">
+              ~{eur(proyeccion)}
+            </span>
           </p>
         )}
       </div>
 
       {/* Depósito medio, días de mes y récord (detalles pequeños). */}
-      {!isAdmin && (mediaDep != null || diasRestantesMes > 0 || hist.mejorMes > 0) && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 -mt-3">
-          {mediaDep != null && (
-            <span>💶 Depósito medio: <b className="text-slate-300">{eur(mediaDep)}</b></span>
-          )}
-          {diasRestantesMes > 0 && (
-            <span>🗓️ <b className="text-slate-300">{diasRestantesMes} días</b> de mes</span>
-          )}
-          {hist.mejorMes > 0 && (
-            <span>🏆 Récord: <b className="text-slate-300">{hist.mejorMes} FTD/mes</b></span>
-          )}
-        </div>
-      )}
+      {!isAdmin &&
+        (mediaDep != null || diasRestantesMes > 0 || hist.mejorMes > 0) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 -mt-3">
+            {mediaDep != null && (
+              <span>
+                💶 Depósito medio:{" "}
+                <b className="text-slate-300">{eur(mediaDep)}</b>
+              </span>
+            )}
+            {diasRestantesMes > 0 && (
+              <span>
+                🗓️ <b className="text-slate-300">{diasRestantesMes} días</b> de
+                mes
+              </span>
+            )}
+            {hist.mejorMes > 0 && (
+              <span>
+                🏆 Récord:{" "}
+                <b className="text-slate-300">{hist.mejorMes} FTD/mes</b>
+              </span>
+            )}
+          </div>
+        )}
 
-
-      <div className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3" style={{ animationDelay: "0.12s" }}>
+      <div
+        className="animate-in grid grid-cols-2 md:grid-cols-4 gap-3"
+        style={{ animationDelay: "0.12s" }}
+      >
         {statCards.map((card) => {
           const isActive = activeMetrics.has(card.key);
           return (
@@ -559,8 +674,8 @@ export default function DashboardPage() {
               key={card.key}
               onClick={() => toggleMetric(card.key)}
               className={`text-left p-4 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 border-t-4 transition duration-200 cursor-pointer ${
-              !isActive ? "opacity-50" : "opacity-100"
-            }`}
+                !isActive ? "opacity-50" : "opacity-100"
+              }`}
               style={{ borderTopColor: card.color }}
             >
               <p className="text-sm text-slate-300 mb-1">{card.label}</p>
@@ -570,7 +685,10 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6" style={{ animationDelay: "0.2s" }}>
+      <div
+        className="animate-in relative bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 sm:p-6"
+        style={{ animationDelay: "0.2s" }}
+      >
         <BalanceChart
           data={chartData}
           activeMetrics={activeMetrics}

@@ -119,12 +119,14 @@ export default function GastosPage() {
 
   async function cargar() {
     setError(null);
-    const t = await sesion();
-    if (!t) return;
     // Token de petición: al cambiar de mes rápido, una respuesta vieja NO debe pisar
     // la del mes seleccionado (mostraría gastos/saldos de otro mes).
     const reqId = ++cargarReqRef.current;
     try {
+      // sesion() estaba FUERA del try: si no había sesión (o getSession fallaba)
+      // se salía sin pasar por el finally y el esqueleto se quedaba puesto.
+      const t = await sesion();
+      if (!t) return;
       const q = periodo ? `?mes=${periodo}` : "";
       const r = await fetch(`/api/admin/gastos${q}`, {
         headers: { Authorization: "Bearer " + t },

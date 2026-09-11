@@ -108,23 +108,34 @@ export default function ComisionesClient({
     }
     setPagandoId(id);
     setPagoMsg(null);
-    const res = await fetch("/api/admin/payments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + accessToken,
-      },
-      body: JSON.stringify({ userId, amount: importe, mes: periodo || undefined }),
-    });
-    setPagandoId(null);
-    if (res.ok) {
-      setPagoMsg({ id, texto: `Pago de €${importe} registrado ✓`, ok: true });
-      setPagoImporte((p) => ({ ...p, [id]: "" }));
-      cargarSaldos(); // refrescar pagado/pendiente
-      window.dispatchEvent(new CustomEvent("pago-registrado")); // refrescar historial
-    } else {
-      const b = await res.json().catch(() => ({}));
-      setPagoMsg({ id, texto: b.error || "Error al registrar", ok: false });
+    // Sin try/catch, un corte de red dejaba la fila en "pagando" para siempre y
+    // SIN mensaje de error: parecía que el pago se había registrado.
+    try {
+      const res = await fetch("/api/admin/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({ userId, amount: importe, mes: periodo || undefined }),
+      });
+      if (res.ok) {
+        setPagoMsg({ id, texto: `Pago de €${importe} registrado ✓`, ok: true });
+        setPagoImporte((p) => ({ ...p, [id]: "" }));
+        cargarSaldos(); // refrescar pagado/pendiente
+        window.dispatchEvent(new CustomEvent("pago-registrado")); // refrescar historial
+      } else {
+        const b = await res.json().catch(() => ({}));
+        setPagoMsg({ id, texto: b.error || "Error al registrar", ok: false });
+      }
+    } catch {
+      setPagoMsg({
+        id,
+        texto: "No se pudo conectar. El pago NO se ha registrado, inténtalo otra vez.",
+        ok: false,
+      });
+    } finally {
+      setPagandoId(null);
     }
   }
 
@@ -160,24 +171,28 @@ export default function ComisionesClient({
     setSavingId(id);
     setResult(null);
 
-    const res = await fetch("/api/admin/comisiones", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + accessToken,
-      },
-      body: JSON.stringify({
-        affiliateId: row.id,
-        cpaSpain: row.cpaSpain,
-        cpaOther: row.cpaOther,
-        subaffiliatePercent: row.subaffiliatePercent,
-      }),
-    });
-
-    setSavingId(null);
-    setResult({ id, ok: res.ok });
-    if (!res.ok) {
-      console.error(await res.json());
+    // Igual que en registrarPago: sin catch, un fallo de red dejaba la fila
+    // "guardando" y sin marcar error, como si se hubiera guardado.
+    try {
+      const res = await fetch("/api/admin/comisiones", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({
+          affiliateId: row.id,
+          cpaSpain: row.cpaSpain,
+          cpaOther: row.cpaOther,
+          subaffiliatePercent: row.subaffiliatePercent,
+        }),
+      });
+      setResult({ id, ok: res.ok });
+      if (!res.ok) console.error(await res.json().catch(() => ({})));
+    } catch {
+      setResult({ id, ok: false });
+    } finally {
+      setSavingId(null);
     }
   }
 

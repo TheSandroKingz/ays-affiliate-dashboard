@@ -383,31 +383,35 @@ export default function AccountPage() {
       return;
     }
     setSavingWallets(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
+    // De aquí cobra el afiliado: si falla la red NO puede quedarse en
+    // "Guardando…" sin saber si su billetera se cambió o no.
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/account/wallets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({ walletErc20: erc, walletTrc20: trc, currentPassword }),
+      });
+      if (res.ok) {
+        setMessage("Guardado correctamente");
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setMessage(
+          j?.error === "Contraseña actual incorrecta"
+            ? "Contraseña incorrecta. La billetera no se cambió."
+            : "Error al guardar"
+        );
+      }
+    } catch {
+      setMessage("No se pudo conectar. La billetera NO se ha guardado.");
+    } finally {
       setSavingWallets(false);
-      return;
-    }
-    const res = await fetch("/api/account/wallets", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + session.access_token,
-      },
-      body: JSON.stringify({ walletErc20: erc, walletTrc20: trc, currentPassword }),
-    });
-    setSavingWallets(false);
-    if (res.ok) {
-      setMessage("Guardado correctamente");
-    } else {
-      const j = await res.json().catch(() => ({}));
-      setMessage(
-        j?.error === "Contraseña actual incorrecta"
-          ? "Contraseña incorrecta. La billetera no se cambió."
-          : "Error al guardar"
-      );
     }
   }
 
