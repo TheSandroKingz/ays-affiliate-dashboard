@@ -797,6 +797,17 @@ async function revisarBorrador(
 }
 
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
+// Sandro cierra con "le damos", no con "arrancamos". El modelo se enganchó a
+// "me avisas y arrancamos" como muletilla de despedida (12 veces solo en
+// septiembre). La regla está en el prompt; esto es el seguro por si se despista.
+// Solo para SU bot: en los demás "arrancamos" está bien.
+function cierreDeSandro(txt: string): string {
+  return txt
+    .replace(/\by arrancamos\b/gi, "y le damos")
+    .replace(/\b(list[oa]s?|cuando quieras|cuando puedas)\s+arrancamos\b/gi, "$1 le damos")
+    .replace(/\barrancamos de nuevo\b/gi, "le damos de nuevo");
+}
+
 export async function responderIA(
   historial: Turno[],
   mensaje: string,
@@ -818,6 +829,7 @@ export async function responderIA(
     );
     // Segunda pasada: el revisor mira el borrador antes de que salga.
     if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
+    if (txt) txt = cierreDeSandro(txt);
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;
