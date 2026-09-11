@@ -797,11 +797,13 @@ async function revisarBorrador(
 }
 
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
-// Sandro cierra con "le damos", no con "arrancamos". El modelo se enganchó a
+// Muletillas de Sandro. El modelo se engancha a fórmulas y las repite: aquí
+// se cambian por las suyas. Solo SU bot; en los demás están bien.
+// Empezó por "le damos" en vez de "arrancamos", que se le había pegado a
 // "me avisas y arrancamos" como muletilla de despedida (12 veces solo en
 // septiembre). La regla está en el prompt; esto es el seguro por si se despista.
 // Solo para SU bot: en los demás "arrancamos" está bien.
-function cierreDeSandro(txt: string): string {
+function vozDeSandro(txt: string): string {
   return txt
     .replace(/\by arrancamos\b/gi, "y le damos")
     .replace(/\b(list[oa]s?|cuando quieras|cuando puedas)\s+arrancamos\b/gi, "$1 le damos")
@@ -815,7 +817,22 @@ function cierreDeSandro(txt: string): string {
     )
     // Y abre con "dale manito", no con "perfecto". Solo al empezar frase: un
     // "es perfecto para eso" en medio de un mensaje se queda como está.
-    .replace(/(^|[\n.!?¡¿]\s*)Perfecto\b/gu, "$1Dale manito");
+    .replace(/(^|[\n.!?¡¿]\s*)Perfecto\b/gu, "$1Dale manito")
+    // Y cuando pierden, "qué hablas, qué putada hermanito" en vez de "qué mala
+    // racha". Solo la exclamación: "a veces toca mala racha" o "una mala racha
+    // no define cómo juegas" van en medio de la frase y ahí no encaja.
+    .replace(
+      /(?:vaya,?\s*)?(?:qu[eé]\s+)?(?<!\b(?:una|la|esa|esta|de|tenido|toca|tu|mi)\s)mala\s+racha(?:\s+(?:hermano|hermana|bro|manito|t[ií]o|g))?/giu,
+      (_m, off: number, txtCompleto: string) => {
+        const frase = "qué hablas, qué putada hermanito";
+        const antes = txtCompleto.slice(0, off);
+        return antes.trim() === "" || /[.!?\n]\s*$/.test(antes)
+          ? frase[0].toUpperCase() + frase.slice(1)
+          : frase;
+      }
+    )
+    // Si ya venía un "qué putada" detrás, no lo decimos dos veces.
+    .replace(/qué putada hermanito,?\s*(?:qué\s+)?putada\b/gi, "qué putada hermanito");
 }
 
 export async function responderIA(
@@ -839,7 +856,7 @@ export async function responderIA(
     );
     // Segunda pasada: el revisor mira el borrador antes de que salga.
     if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
-    if (txt) txt = cierreDeSandro(txt);
+    if (txt) txt = vozDeSandro(txt);
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;
