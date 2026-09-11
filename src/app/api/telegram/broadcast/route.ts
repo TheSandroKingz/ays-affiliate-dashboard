@@ -1,3 +1,4 @@
+import { contadorDeDepositos } from "@/lib/postback";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
       .select("amount, created_at, player_id, event_type")
       .in("event_type", ["ftd", "redeposit"])
       .eq("afp", "bot")
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
       .limit(100000),
     supabaseAdmin
       .from("telegram_ai_daily")
@@ -134,14 +135,17 @@ export async function GET(request: Request) {
   // "Recargas" = nº de redeposit. "Dinero que metieron" = importe SOLO de las
   // recargas (redeposit), para no contar dos veces el primer depósito (que salta
   // como ftd Y como redeposit).
+  const nuevoDeposito = contadorDeDepositos();
   const rec = { nTot: 0, eurTot: 0, n: 0, eur: 0 };
   for (const r of recRes.data ?? []) {
     if (r.event_type === "redeposit") {
       rec.nTot++;
-      rec.eurTot += Number(r.amount ?? 0);
+      // El amount de Celsius es ACUMULADO por jugador: solo lo NUEVO.
+      const nuevo = nuevoDeposito(r.player_id as string | null, r.amount);
+      rec.eurTot += nuevo;
       if (enPeriodo(r.created_at as string)) {
         rec.n++;
-        rec.eur += Number(r.amount ?? 0);
+        rec.eur += nuevo;
       }
     }
   }

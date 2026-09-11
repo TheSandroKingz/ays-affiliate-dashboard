@@ -1,3 +1,4 @@
+import { contadorDeDepositos } from "@/lib/postback";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
@@ -81,9 +82,10 @@ export async function GET(request: Request) {
       // recargas. Sirve para contar recargas Y sumar la cantidad depositada.
       supabaseAdmin
         .from("postback_events")
-        .select("afp, amount, event_type")
+        .select("afp, amount, event_type, player_id, created_at")
         .in("event_type", ["ftd", "redeposit"])
         .in("afp", afps)
+        .order("created_at", { ascending: true })
         .limit(100000),
       // Registros atribuidos a cada bot (por su afp).
       supabaseAdmin
@@ -153,6 +155,7 @@ export async function GET(request: Request) {
     qftd.set(e.afp, (qftd.get(e.afp) ?? 0) + 1);
     ganado.set(e.afp, (ganado.get(e.afp) ?? 0) + Number(e.commission ?? 0));
   }
+  const nuevoDeposito = contadorDeDepositos();
   const recargas = new Map<string, number>();
   const depositado = new Map<string, number>();
   for (const e of deps.data ?? []) {
@@ -162,7 +165,9 @@ export async function GET(request: Request) {
     // del panel). El nº de recargas también son los redeposit.
     if (e.event_type === "redeposit") {
       recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
-      depositado.set(e.afp, (depositado.get(e.afp) ?? 0) + Number(e.amount ?? 0));
+      // El amount de Celsius es ACUMULADO por jugador: solo sumamos lo NUEVO.
+      const nuevo = nuevoDeposito(e.player_id as string | null, e.amount);
+      if (nuevo > 0) depositado.set(e.afp, (depositado.get(e.afp) ?? 0) + nuevo);
     }
   }
   const registros = new Map<string, number>();

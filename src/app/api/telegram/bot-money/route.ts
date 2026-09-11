@@ -1,3 +1,4 @@
+import { contadorDeDepositos } from "@/lib/postback";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getGestorBot } from "@/lib/adminAuth";
@@ -40,12 +41,14 @@ export async function GET(request: Request) {
   // que "Dinero que metieron" del panel de admin.
   const { data } = await supabaseAdmin
     .from("postback_events")
-    .select("amount, created_at")
+    .select("amount, created_at, player_id")
     .in("afp", AFPS_BOTS)
     .eq("event_type", "redeposit")
     .gte("created_at", desde)
+    .order("created_at", { ascending: true })
     .limit(100000);
 
+  const nuevoDeposito = contadorDeDepositos();
   let total = 0;
   let hoyTotal = 0;
   let nTotal = 0;
@@ -53,7 +56,8 @@ export async function GET(request: Request) {
   for (const e of data ?? []) {
     const md = fmtMadrid.format(new Date(e.created_at as string)); // fecha Madrid del evento
     if (md < YAIZA_START) continue; // fuera del rango (borde de medianoche)
-    const c = Number(e.amount ?? 0);
+    // El amount de Celsius es ACUMULADO por jugador: solo lo NUEVO.
+    const c = nuevoDeposito(e.player_id as string | null, e.amount);
     total += c;
     nTotal++;
     if (md === hoy) {

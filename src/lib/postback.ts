@@ -358,3 +358,30 @@ export function queryLimpia(url: URL): string {
   p.delete("key");
   return p.toString();
 }
+
+// ── Depósitos: el `amount` de Celsius es ACUMULADO por jugador ──────────────
+// Celsius NO manda lo de cada depósito, manda el total que lleva metido ese
+// jugador. Sumar los importes tal cual multiplica el dinero (en datos reales
+// llegó a ×7): un jugador con depósitos de 50, 30 y 20 genera eventos de 50, 80
+// y 100, que sumados dan 230 en vez de 100.
+//
+// Esto devuelve una función que, evento a evento y EN ORDEN CRONOLÓGICO, dice
+// cuánto dinero NUEVO trae cada uno.
+//
+// ⚠️ Ojo: si la consulta empieza en una fecha y el jugador ya había depositado
+// antes, su primer evento dentro del rango trae el acumulado entero y se cuenta
+// como nuevo. Sigue siendo muchísimo más exacto que sumar todo, pero por eso las
+// consultas conviene arrancarlas lo más atrás posible.
+export function contadorDeDepositos() {
+  const acumPrevio = new Map<string, number>();
+  return (playerId: string | null | undefined, amount: unknown): number => {
+    const importe = Number(amount ?? 0);
+    if (!Number.isFinite(importe) || importe <= 0) return 0;
+    // Sin identificador de jugador no se puede diferenciar: se cuenta tal cual.
+    if (!playerId) return importe;
+    const antes = acumPrevio.get(playerId) ?? 0;
+    if (importe <= antes) return 0; // reenvío, o acumulado que no ha subido
+    acumPrevio.set(playerId, importe);
+    return importe - antes;
+  };
+}
