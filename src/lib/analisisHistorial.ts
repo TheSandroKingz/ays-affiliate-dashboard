@@ -118,9 +118,14 @@ async function clasificar(client: Anthropic, conv: Conv): Promise<Clasif | null>
 
 // Clasifica un LOTE de conversaciones cerradas aún sin clasificar. Limitado por el
 // tiempo de la función; se llama a diario y va vaciando el backlog. Devuelve cuántas.
-export async function analizarLote(limite = 12): Promise<number> {
+// `topeMs` = cuánto puede tardar como mucho. El cron entero muere a los 60s en
+// Vercel y este análisis iba SIN freno: 12 clasificaciones seguidas (una llamada
+// a la IA cada una) se pasaban del minuto y se llevaban por delante todo lo que
+// venía DETRÁS, que ni se ejecutaba.
+export async function analizarLote(limite = 12, topeMs = 25_000): Promise<number> {
   if (!KEY) return 0;
-  const client = new Anthropic({ apiKey: KEY });
+  const t0 = Date.now();
+  const client = new Anthropic({ apiKey: KEY, timeout: 12_000, maxRetries: 0 });
 
   // Claves ya clasificadas (bot + chat + instante del último msg), para no repetir.
   // Comparamos por INSTANTE (getTime) para no fallar por formatos de fecha distintos.
@@ -159,6 +164,9 @@ export async function analizarLote(limite = 12): Promise<number> {
   let hechas = 0;
   let idx = 0;
   while (hechas < limite && colas.some((c) => c.length)) {
+    // Se para en cuanto se agota el presupuesto: lo hecho queda guardado y el
+    // resto se clasifica en la siguiente pasada del cron.
+    if (Date.now() - t0 > topeMs) break;
     const cola = colas[idx % colas.length];
     idx++;
     const conv = cola.shift();

@@ -197,6 +197,8 @@ async function procesarBotsDiario(diaMadrid: string, force = false): Promise<voi
 }
 
 export async function GET(request: Request) {
+  // ⏱️ El cron entero muere a los 60s en Vercel, igual que los webhooks.
+  const tCron = Date.now();
   // Lo llama Vercel (cron, con CRON_SECRET) o el dueño desde el panel (admin).
   const authHeader = request.headers.get("authorization");
   const esCron = compararSecreto(
@@ -245,24 +247,13 @@ export async function GET(request: Request) {
     /* la vigilancia de salud nunca rompe el cron */
   }
 
-  // ── Análisis supervisado del historial (Fase 1): clasifica un lote de
-  // conversaciones cerradas a diario, y genera el informe cada ~3 días. Enganchado
-  // aquí (plan gratis de Vercel = 1 cron/día). BLINDADO: nunca rompe el cron.
-  try {
-    await analizarLote(12);
-    if (await tocaInforme()) await generarInforme();
-  } catch {
-    /* el análisis del historial nunca rompe el cron */
-  }
-
-  if (!telegramConfigurado()) {
-    return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
-  }
-
   // LIMPIEZA de chats: borra los mensajes de más de 40h (Telegram solo permite
   // borrar hasta 48h). La bienvenida no se guarda, así que NUNCA se borra.
   // Corre en cada disparo del cron, aunque no toque enviar.
-  {
+  // ⛔ SOLO si Telegram está configurado: sin token, las llamadas de borrado
+  // fallan pero el DELETE de la tabla sí se ejecutaría, y los mensajes se
+  // quedarían para siempre en el chat sin forma de volver a encontrarlos.
+  if (telegramConfigurado()) {
     const cutoff = new Date(Date.now() - 40 * 3600 * 1000).toISOString();
     // Los MÁS ANTIGUOS primero (asc): así, si hay más de 2000, borramos en BD
     // solo hasta el último que procesamos, y los que sobran se limpian en la
@@ -292,6 +283,26 @@ export async function GET(request: Request) {
         .delete()
         .lte("created_at", ultimo);
     }
+  }
+
+  // ── Análisis supervisado del historial (Fase 1): clasifica un lote de
+  // conversaciones cerradas a diario, y genera el informe cada ~3 días. Enganchado
+  // aquí (plan gratis de Vercel = 1 cron/día). BLINDADO: nunca rompe el cron.
+  try {
+    // Va el ÚLTIMO y con presupuesto: es lo más caro del cron (una llamada a la
+    // IA por conversación) y antes se pasaba de los 60s, dejando sin ejecutar
+    // todo lo que venía detrás (la limpieza de chats no corría NUNCA).
+    const quedaMs = 45_000 - (Date.now() - tCron);
+    if (quedaMs > 8_000) {
+      await analizarLote(6, quedaMs - 6_000);
+      if (Date.now() - tCron < 40_000 && (await tocaInforme())) await generarInforme();
+    }
+  } catch {
+    /* el análisis del historial nunca rompe el cron */
+  }
+
+  if (!telegramConfigurado()) {
+    return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
   }
 
   // ⛔ MENSAJES DIARIOS DESACTIVADOS (decisión de Sandro, 8-sep-2026). No se manda
