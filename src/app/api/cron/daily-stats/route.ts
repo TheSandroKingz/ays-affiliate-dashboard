@@ -69,17 +69,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Idempotencia de los avisos al admin: los crons de Vercel son at-least-once, así
-  // que reservamos una clave del día; si el cron se dispara dos veces, solo la PRIMERA
-  // manda las notificaciones (resumen, cumple, inactivo, alerta Celsius). Las stats ya
-  // se insertaron arriba (upsert idempotente), esto solo blinda las push duplicadas.
-  const { data: reservaAviso } = await supabaseAdmin
-    .from("telegram_envio_diario")
-    .upsert({ clave: `daily-stats:${today}` }, { onConflict: "clave", ignoreDuplicates: true })
-    .select("clave");
-  if (!reservaAviso || reservaAviso.length === 0) {
-    return NextResponse.json({ inserted: rows.length, date: today, yaAvisado: true });
-  }
+  // Idempotencia de los avisos al admin: los crons de Vercel son at-least-once,
+  // así que se reserva una clave antes de mandar cada aviso.
+  // ⚠️ Antes era UNA sola clave para los cinco bloques, y eso perdía avisos: si
+  // la función moría a los 60s a mitad (un push colgado, un bucle largo), la
+  // clave ya estaba gastada y el resto de avisos del día NO se mandaban nunca,
+  // porque el siguiente disparo salía por el return de arriba. Con una clave por
+  // bloque, lo que no dio tiempo a mandar se recupera en el siguiente disparo y
+  // lo ya mandado no se repite.
+  const unaVezAlDia = async (sufijo: string): Promise<boolean> => {
+    try {
+      const { data } = await supabaseAdmin
+        .from("telegram_envio_diario")
+        .upsert(
+          { clave: `daily-stats:${today}:${sufijo}` },
+          { onConflict: "clave", ignoreDuplicates: true }
+        )
+        .select("clave");
+      return !!data && data.length > 0;
+    } catch {
+      return false; // ante la duda, NO mandar (mejor perder uno que repetirlo)
+    }
+  };
 
   // Vigilancia de FreshBet: si lleva días en silencio pese a haber tráfico,
   // avisamos al admin al móvil (fuga de dinero silenciosa). Blindado.
@@ -88,7 +99,7 @@ export async function GET(request: Request) {
     const salud = await saludFreshbet();
     freshbetAlerta = salud.alerta;
     if (salud.alerta) {
-      await enviarPush(ADMIN_USER_ID, {
+      if (await unaVezAlDia("celsius")) await enviarPush(ADMIN_USER_ID, {
         title: "⚠️ Celsius en silencio",
         body: `${salud.diasSin} días sin ningún evento y ${salud.clics7} clics. Revisa que siga configurado.`,
         url: "/admin/actividad",
@@ -127,10 +138,16 @@ export async function GET(request: Request) {
       Number(me?.cpa_spain ?? 0),
       (structure ?? []) as StructRow[]
     );
-    if (r.totals.ftd > 0 || r.totals.registrations > 0) {
+    if (
+      (r.totals.ftd > 0 || r.totals.registrations > 0) &&
+      (await unaVezAlDia("resumen"))
+    ) {
+      // El signo se calcula: con reversiones o penalizaciones el limpio puede ser
+      // negativo y salía literalmente "+-40€ limpio".
+      const limpio = Math.round(r.totals.totalClean);
       await enviarPush(ADMIN_USER_ID, {
         title: "📊 Resumen de ayer",
-        body: `${r.totals.ftd} FTD · +${Math.round(r.totals.totalClean)}€ limpio · ${r.totals.registrations} registros`,
+        body: `${r.totals.ftd} FTD · ${limpio >= 0 ? "+" : ""}${limpio}€ limpio · ${r.totals.registrations} registros`,
         url: "/admin",
       });
     }
@@ -146,7 +163,10 @@ export async function GET(request: Request) {
       .select("display_name, birthdate")
       .not("birthdate", "is", null);
     for (const c of cumples ?? []) {
-      if (String(c.birthdate).slice(5) === md) {
+      if (
+        String(c.birthdate).slice(5) === md &&
+        (await unaVezAlDia(`cumple:${c.display_name}`))
+      ) {
         await enviarPush(ADMIN_USER_ID, {
           title: "🎂 Cumpleaños",
           body: `Hoy cumple ${c.display_name}. ¡Felicítale!`,
@@ -183,9 +203,10 @@ export async function GET(request: Request) {
         (wRows ?? []) as DailyRow[], ADMIN_USER_ID, me?.id,
         Number(me?.cpa_spain ?? 0), (structure ?? []) as StructRow[]
       );
-      await enviarPush(ADMIN_USER_ID, {
+      const limpioSem = Math.round(r.totals.totalClean);
+      if (await unaVezAlDia("semanal")) await enviarPush(ADMIN_USER_ID, {
         title: "📅 Resumen de la semana",
-        body: `${r.totals.ftd} FTD · +${Math.round(r.totals.totalClean)}€ limpio · ${r.totals.registrations} registros`,
+        body: `${r.totals.ftd} FTD · ${limpioSem >= 0 ? "+" : ""}${limpioSem}€ limpio · ${r.totals.registrations} registros`,
         url: "/admin",
       });
     }
@@ -223,7 +244,7 @@ export async function GET(request: Request) {
       const dias = Math.round(
         (hoyMs - new Date(String(ultima) + "T00:00:00Z").getTime()) / 86400000
       );
-      if (dias === 7) {
+      if (dias === 7 && (await unaVezAlDia(`inactivo:${a.user_id}`))) {
         await enviarPush(ADMIN_USER_ID, {
           title: "👀 Afiliado inactivo",
           body: `${a.display_name} lleva 7 días sin entrar. ¿Le das un toque?`,
