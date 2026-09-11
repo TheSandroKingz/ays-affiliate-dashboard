@@ -850,7 +850,10 @@ async function revisarBorrador(
         // Sin reintentos: el cliente general lleva maxRetries 1 y eso doblaba el
         // peor caso del revisor (7s + 7s) justo en el tramo que no sobra.
         { timeout: Math.min(REVISOR_TIMEOUT_MS, queda), maxRetries: 0 }
-      ),
+        // Si la llamada falla DESPUÉS de que el reloj haya ganado la carrera, el
+        // error se quedaría suelto sin recoger. Se recoge aquí para que la
+        // carrera no pueda romper nada por detrás.
+      ).catch(() => null),
       // Plazo duro por si la petición no respeta su propio timeout.
       new Promise<null>((r) => setTimeout(() => r(null), queda)),
     ]);
