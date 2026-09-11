@@ -16,7 +16,11 @@ import {
   queryLimpia,
   type EstadoEvento,
 } from "@/lib/postback";
-import { notificarEvento, enviarPush, avisarDepositoBotYaiza } from "@/lib/push";
+import {
+  notificarEvento,
+  enviarPush,
+  avisarDepositoBotYaiza,
+} from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminAuth";
 import { botPorTracking } from "@/lib/bots";
 
@@ -58,7 +62,49 @@ type Afiliado = {
 
 const SEL = "user_id, cpa_spain, cpa_other, freshaffs_tracking_code";
 
-async function matchAfiliado(tag: string, permitirDefault = true): Promise<Afiliado | null> {
+// Paga el CPA de un QFTD de forma ATÓMICA (candado + suma en una sola
+// transacción de Postgres, ver db/pagar_qftd.sql). Como es idempotente,
+// REINTENTAR ES SEGURO: si la primera llamada se guardó, la segunda dice "ya
+// pagado" en vez de pagar dos veces. Eso es lo que impide perder un CPA cuando
+// la base de datos se atraganta en la ráfaga de Celsius.
+//   true  -> pagado ahora
+//   false -> ese jugador ya estaba pagado
+//   null  -> no se ha podido saber (ni se pagó ni se descarta: queda para revisar)
+//   "sin_funcion" -> el SQL aún no está aplicado; el llamador usa el camino viejo
+async function pagarQftd(
+  key: string,
+  userId: string,
+  fecha: string,
+  commission: number,
+): Promise<boolean | null | "sin_funcion"> {
+  for (let intento = 0; intento < 2; intento++) {
+    const { data, error } = await supabaseAdmin.rpc("pagar_qftd", {
+      p_key: key,
+      p_user_id: userId,
+      p_date: fecha,
+      p_commission: commission,
+    });
+    if (!error) return data === true;
+    // La función todavía no existe en la base de datos (SQL sin aplicar).
+    const msg = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+    if (
+      msg.includes("42883") ||
+      msg.includes("could not find") ||
+      msg.includes("does not exist")
+    ) {
+      return "sin_funcion";
+    }
+    // Fallo transitorio: se reintenta UNA vez. Es seguro justo porque la función
+    // es atómica (o guardó las dos cosas, o no guardó ninguna).
+    if (intento === 0) await new Promise((r) => setTimeout(r, 400));
+  }
+  return null;
+}
+
+async function matchAfiliado(
+  tag: string,
+  permitirDefault = true,
+): Promise<Afiliado | null> {
   if (tag) {
     // 1) por tracking code (insensible a mayúsculas, escapando comodines)
     const { data, error } = await supabaseAdmin
@@ -174,7 +220,9 @@ async function paisRegistrado(playerid: string): Promise<string> {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  if (!compararSecreto(url.searchParams.get("key"), process.env.POSTBACK_SECRET)) {
+  if (
+    !compararSecreto(url.searchParams.get("key"), process.env.POSTBACK_SECRET)
+  ) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -186,31 +234,54 @@ export async function GET(request: Request) {
   // Celsius: YmIjpivpyx, iSHRdbxNKE, AhBpxgTaoP…). Lo miramos PRIMERO; los subN
   // son solo respaldo por si algún enlace los usara. (Antes iban primero los sub
   // y, si Blue rellenara sub1 con un clickid, el dinero caía en Default por error.)
-  const tag = pick(url, ["campaign", "campaign_slug", "sub1", "s1", "sub2", "s2", "sub3", "s3"]);
+  const tag = pick(url, [
+    "campaign",
+    "campaign_slug",
+    "sub1",
+    "s1",
+    "sub2",
+    "s2",
+    "sub3",
+    "s3",
+  ]);
   // Id del jugador (hash ESTABLE de Blue). OJO: solo identificadores de JUGADOR,
   // nunca ids de transacción (txid/transaction_id/txn): esos son únicos por
   // transacción y romperían el candado por jugador, el anti-doble-pago y la
   // reversión (que emparejan por player_id). Si no viene ninguno, playerid queda
   // vacío y el QFTD NO paga (estado seguro), mejor que pagar contra un id
   // irrepetible que ni se puede revertir ni frena el doble pago.
-  const playerid = pick(url, ["player", "player_token", "playerid", "player_id", "customerid", "customer_id", "userid"]);
+  const playerid = pick(url, [
+    "player",
+    "player_token",
+    "playerid",
+    "player_id",
+    "customerid",
+    "customer_id",
+    "userid",
+  ]);
   const isocountry = pick(url, ["country", "isocountry"]).toUpperCase();
   const monto = getMonto(url); // {amount}
   const raw = queryLimpia(url);
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+  }).format(new Date());
 
   // ── EVENTO DE PRUEBA (botón "Probar" de Blue: sub1=test-sub1, campaign=test-…) ──
   // NO debe contar ni pagar NADA: con la atribución por defecto a tu cuenta, cada
   // test se sumaría como un depósito falso. Se registra en la caja negra y se sale.
-  const esTest = /^test-/i.test(tag) || /(sub[123]|s[123]|campaign|campaign_slug)=test-/i.test(raw);
+  const esTest =
+    /^test-/i.test(tag) ||
+    /(sub[123]|s[123]|campaign|campaign_slug)=test-/i.test(raw);
   if (esTest) {
-    const et = (event === "registration"
-      ? "registration"
-      : event === "ftd"
-      ? "ftd"
-      : event === "deposit"
-      ? "redeposit"
-      : "commission") as "registration" | "ftd" | "commission" | "redeposit";
+    const et = (
+      event === "registration"
+        ? "registration"
+        : event === "ftd"
+          ? "ftd"
+          : event === "deposit"
+            ? "redeposit"
+            : "commission"
+    ) as "registration" | "ftd" | "commission" | "redeposit";
     await registrarEvento({
       event_type: et,
       raw_query: raw,
@@ -221,12 +292,19 @@ export async function GET(request: Request) {
       matched_user_id: null,
       status: "no_match",
     });
-    return NextResponse.json({ ok: true, test: true, nota: "evento de prueba: registrado pero NO contado" });
+    return NextResponse.json({
+      ok: true,
+      test: true,
+      nota: "evento de prueba: registrado pero NO contado",
+    });
   }
 
   // ── REGISTRO ──────────────────────────────────────────────────────────────
   if (event === "registration" || event === "register" || event === "signup") {
-    const target = await matchAfiliado(codigoParaMatch(tag), !esCodigoDeBot(tag));
+    const target = await matchAfiliado(
+      codigoParaMatch(tag),
+      !esCodigoDeBot(tag),
+    );
     let estado: EstadoEvento = "no_match";
     if (target) {
       let contar: boolean;
@@ -267,13 +345,24 @@ export async function GET(request: Request) {
       status: estado,
     });
     if (estado === "counted" && target)
-      after(() => notificarEvento(target.user_id, "registration", undefined, afpDeCampana(tag), isocountry));
+      after(() =>
+        notificarEvento(
+          target.user_id,
+          "registration",
+          undefined,
+          afpDeCampana(tag),
+          isocountry,
+        ),
+      );
     return NextResponse.json({ ok: true, event, matched: !!target, estado });
   }
 
   // ── FTD / RECARGA (log, NO paga) ──────────────────────────────────────────
   if (event === "ftd" || event === "deposit" || event === "redeposit") {
-    const target = await matchAfiliado(codigoParaMatch(tag), !esCodigoDeBot(tag));
+    const target = await matchAfiliado(
+      codigoParaMatch(tag),
+      !esCodigoDeBot(tag),
+    );
     const et: "ftd" | "redeposit" = event === "ftd" ? "ftd" : "redeposit";
     // Anti-reintento (mismo jugador + mismo tipo + mismo importe en 2 min = reintento
     // de Blue). Vale para ftd y recarga: no suma dinero pero evita inflar contadores.
@@ -287,7 +376,8 @@ export async function GET(request: Request) {
         .eq("amount", monto)
         .gte("created_at", hace2min)
         .limit(1);
-      if (dup && dup.length) return NextResponse.json({ ok: true, duplicado: true });
+      if (dup && dup.length)
+        return NextResponse.json({ ok: true, duplicado: true });
     } else {
       // Sin player_id: dedup por raw_query (mismo query = reintento de Blue), para no
       // duplicar filas ni avisos a Yaiza cuando el postback llega sin identificador.
@@ -299,7 +389,8 @@ export async function GET(request: Request) {
         .eq("raw_query", raw)
         .gte("created_at", hace2min)
         .limit(1);
-      if (dup && dup.length) return NextResponse.json({ ok: true, duplicado: true });
+      if (dup && dup.length)
+        return NextResponse.json({ ok: true, duplicado: true });
     }
     await registrarEvento({
       event_type: et,
@@ -328,15 +419,25 @@ export async function GET(request: Request) {
   // compartido). En Blue, el QFTD (depósito cualificado) es lo que genera la
   // comisión/ingreso y llega como evento "qualification"; ahí se acredita el CPA
   // (una sola vez por jugador, gracias al candado). ──────────────────────────
-  if (event === "qualification" || event === "commission_paid" || event === "commission") {
+  if (
+    event === "qualification" ||
+    event === "commission_paid" ||
+    event === "commission"
+  ) {
     // Comisión que nos paga la red (para detectar REVERSIÓN si viene negativa).
     // Probamos varios nombres de campo por si Blue no la manda en "commission"
     // (si no, una reversión pasaría desapercibida y el afiliado se quedaría el
     // dinero que el casino le quitó). Si no hay comisión, miramos un amount negativo.
     const comisionRed = montoConSigno(
-      pick(url, ["commission", "commission_amount", "commissionamount", "payout", "revenue"]) ||
+      pick(url, [
+        "commission",
+        "commission_amount",
+        "commissionamount",
+        "payout",
+        "revenue",
+      ]) ||
         pick(url, ["amount"]) ||
-        null
+        null,
     );
 
     // REVERSIÓN: comisión negativa → el casino quitó la comisión. Si ese QFTD
@@ -362,7 +463,11 @@ export async function GET(request: Request) {
         body: "El casino ha quitado una comisión pero no dice de qué jugador. No se ha restado a nadie: revísalo en Actividad.",
         url: "/admin/actividad",
       });
-      return NextResponse.json({ ok: true, estado: "error", nota: "reversión sin player_id" });
+      return NextResponse.json({
+        ok: true,
+        estado: "error",
+        nota: "reversión sin player_id",
+      });
     }
     if (Number.isFinite(comisionRed) && comisionRed < 0 && playerid) {
       let estadoRev: EstadoEvento = "no_match";
@@ -418,9 +523,12 @@ export async function GET(request: Request) {
                 .from("postback_events")
                 .update({ counted: false })
                 .eq("id", contado.id)
-                .then(() => {}, () => {});
+                .then(
+                  () => {},
+                  () => {},
+                );
               console.warn(
-                `[postback] no se pudo marcar counted=false en el evento ${contado.id}: ${uncountErr.message}`
+                `[postback] no se pudo marcar counted=false en el evento ${contado.id}: ${uncountErr.message}`,
               );
             }
             // ⛔ NO soltamos el candado qftd:<jugador>: si el casino REENVÍA el evento
@@ -450,12 +558,18 @@ export async function GET(request: Request) {
           url: "/admin/actividad",
         });
       }
-      return NextResponse.json({ ok: true, reversed: estadoRev === "reversed" });
+      return NextResponse.json({
+        ok: true,
+        reversed: estadoRev === "reversed",
+      });
     }
 
     // QFTD normal: emparejar, candado por jugador, retener si ya estaba contado,
     // y pagar el CPA (nuestro plan, no la comisión de la red).
-    const target = await matchAfiliado(codigoParaMatch(tag), !esCodigoDeBot(tag));
+    const target = await matchAfiliado(
+      codigoParaMatch(tag),
+      !esCodigoDeBot(tag),
+    );
     // Enlace de bot cuyo afiliado dueño no aparece: NO se cuenta a nadie (mejor que
     // pagárselo a la casa). Avisamos al admin para que revise el tracking del afiliado.
     if (esCodigoDeBot(tag) && !target) {
@@ -474,39 +588,67 @@ export async function GET(request: Request) {
     let comisionPagada = 0;
     let heldReason: "double_pay" | null = null;
     if (target && playerid) {
-      const contar = await reclamarEvento(`qftd:${playerid}`);
-      if (contar) {
-        if (await ftdYaContado(playerid)) {
+      // Si la cualificación no trae país, usa el país guardado en el FTD/registro.
+      const isoEfectivo = isocountry || (await paisRegistrado(playerid));
+      const esOtro = isoEfectivo && isoEfectivo !== "ES";
+      const commission = Number(
+        (esOtro ? (target.cpa_other ?? target.cpa_spain) : target.cpa_spain) ??
+          0,
+      );
+      const clave = `qftd:${playerid}`;
+      // ⛔ ORDEN IMPORTANTE, no tocar: primero se mira si ESE JUGADOR ya tiene un
+      // QFTD contado. Si se pagara antes de comprobarlo, un jugador con el
+      // candado libre pero ya pagado (reversión, conteo a mano, FTD antiguo)
+      // cobraría DOS VECES.
+      if (await ftdYaContado(playerid)) {
+        // No se paga. Para distinguir: si el candado ya estaba puesto es el
+        // reenvío normal del casino (duplicado, se ignora en silencio); si estaba
+        // libre es un QFTD DISTINTO del mismo jugador y hay que mirarlo a mano.
+        const candadoLibre = await reclamarEvento(clave);
+        estado = candadoLibre ? "held" : "duplicate";
+        if (candadoLibre) heldReason = "double_pay";
+      } else {
+        // CAMINO NUEVO: candado y pago en UNA sola transacción de Postgres, con
+        // reintento seguro porque la función es idempotente (db/pagar_qftd.sql).
+        // Esto es lo que impide perder un CPA cuando la base de datos se
+        // atraganta en la ráfaga que manda Celsius cada 6 horas.
+        const pagado = await pagarQftd(clave, target.user_id, today, commission);
+        if (pagado === true) {
+          estado = "counted";
+          comisionPagada = commission;
+        } else if (pagado === false) {
+          // El candado estaba puesto pero el jugador no tiene nada contado: es un
+          // candado huérfano de los que dejaba el camino viejo al fallar la suma.
+          // Se RETIENE para poder recuperarlo desde el panel, en vez de perderlo.
           estado = "held";
           heldReason = "double_pay";
+        } else if (pagado === null) {
+          // No se ha podido saber. Queda para revisar: nunca se paga a ciegas.
+          estado = "error";
         } else {
-          // Si la cualificación no trae país, usa el país guardado en el FTD/registro.
-          const isoEfectivo = isocountry || (await paisRegistrado(playerid));
-          const esOtro = isoEfectivo && isoEfectivo !== "ES";
-          const commission = Number(
-            (esOtro ? target.cpa_other ?? target.cpa_spain : target.cpa_spain) ?? 0
-          );
-          const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
-            p_user_id: target.user_id,
-            p_date: today,
-            p_registrations: 0,
-            p_ftd: 1,
-            p_commission: commission,
-          });
-          if (error) {
-            // A PROPÓSITO no liberamos el candado: el RPC pudo CONFIRMAR en
-            // Postgres aunque devolviera error (timeout tras commit). Liberarlo
-            // haría que un reintento SUMARA otra vez (doble pago). Preferimos NO
-            // contar (queda status=error para revisión manual) antes que arriesgar
-            // un doble pago. Mismo criterio que el endpoint viejo de comisión.
-            estado = "error";
+          // CAMINO VIEJO, mientras db/pagar_qftd.sql no esté aplicado.
+          const contar = await reclamarEvento(clave);
+          if (contar) {
+            const { error } = await supabaseAdmin.rpc("increment_daily_stats", {
+              p_user_id: target.user_id,
+              p_date: today,
+              p_registrations: 0,
+              p_ftd: 1,
+              p_commission: commission,
+            });
+            if (error) {
+              // A PROPÓSITO no se libera el candado: el RPC pudo CONFIRMAR aunque
+              // contestara error (timeout tras commit), y soltarlo arriesgaría un
+              // doble pago. Queda en "error" y se resuelve desde el panel.
+              estado = "error";
+            } else {
+              estado = "counted";
+              comisionPagada = commission;
+            }
           } else {
-            estado = "counted";
-            comisionPagada = commission;
+            estado = "duplicate";
           }
         }
-      } else {
-        estado = "duplicate";
       }
     }
     await registrarEvento({
@@ -530,7 +672,7 @@ export async function GET(request: Request) {
       const userNotif = target.user_id;
       const afpNotif = afpDeCampana(tag);
       after(() =>
-        notificarEvento(userNotif, "ftd", comisionPagada, afpNotif, isocountry)
+        notificarEvento(userNotif, "ftd", comisionPagada, afpNotif, isocountry),
       );
       // Aviso a Yaiza: FTD NUEVO por este bot (diciendo de qué bot es).
       after(() => avisarDepositoBotYaiza(afpDeCampana(tag), "ftd"));
@@ -601,5 +743,9 @@ export async function GET(request: Request) {
     matched_user_id: null,
     status: "no_match",
   });
-  return NextResponse.json({ ok: true, event, nota: "evento no reconocido; guardado en la caja negra" });
+  return NextResponse.json({
+    ok: true,
+    event,
+    nota: "evento no reconocido; guardado en la caja negra",
+  });
 }
