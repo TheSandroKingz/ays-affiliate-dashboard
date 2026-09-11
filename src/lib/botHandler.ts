@@ -65,6 +65,10 @@ export async function procesarUpdate(
   bot: BotDef,
   update: Record<string, unknown>
 ): Promise<void> {
+  // ⏱️ Igual que en el webhook de Sandro: el reloj de los 60s empieza aquí.
+  const t0 = Date.now();
+  let algoEnviado = false;
+  let chatDelFallo: number | null = null;
   const tok = bot.token;
   const owner = bot.owner;
   try {
@@ -124,6 +128,7 @@ export async function procesarUpdate(
     const tipoChat = (msg.chat as { type?: string }).type;
     if (tipoChat && tipoChat !== "private") return;
     const chatId: number = (msg.chat as { id: number }).id;
+    chatDelFallo = chatId;
     const text: string = ((msg.text as string) ?? "").trim();
     const caption: string = ((msg.caption as string) ?? "").trim();
     const from = (msg.from as Record<string, string> | undefined) ?? {};
@@ -881,7 +886,8 @@ export async function procesarUpdate(
           imagen,
           from.first_name ?? null,
           bot.key,
-          chatId
+          chatId,
+          t0
         );
         // Red de seguridad: si es una bot CHICA, quita cualquier "hermano/bro/manito"
         // que se le haya colado (una chica no habla así).
@@ -914,9 +920,11 @@ export async function procesarUpdate(
       // siempre el mismo tiempo (eso canta a bot).
       // Si ya esperamos los 45s de agrupación, el retardo "humano" se recorta:
       // si no, la función se pasaría de los 60s y el jugador se quedaría sin nada.
-      const escribir = pareceCompleto
+      const escribirBase = pareceCompleto
         ? 2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30)
         : 1500;
+      // ⏱️ Y además acotado por lo que queda de los 60s de Vercel.
+      const escribir = Math.max(0, Math.min(escribirBase, 52_000 - (Date.now() - t0)));
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
       await new Promise((r) => setTimeout(r, escribir));
       // El botón SOLO si el JUGADOR lo pide (pidePlay sobre SU texto), y nunca en
@@ -933,6 +941,7 @@ export async function procesarUpdate(
       );
       // Ver webhook de Sandro: si Telegram no lo aceptó, no lo damos por dicho.
       envioOk = !!rEnv?.ok;
+      if (envioOk) algoEnviado = true;
     } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
       // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
       // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
@@ -1007,6 +1016,15 @@ export async function procesarUpdate(
       }
     }
   } catch {
-    /* nunca lanzamos: Telegram reintentaría en bucle */
+    // Nunca lanzamos (Telegram reintentaría en bucle), pero si el fallo nos pilló
+    // antes de contestar, el jugador recibe al menos un acuse.
+    if (!algoEnviado && chatDelFallo != null) {
+      await tgEnviar(
+        chatDelFallo,
+        "perdona, se me ha liado un momento. dame un segundo y te digo algo 🙏",
+        undefined,
+        tok
+      ).catch(() => {});
+    }
   }
 }

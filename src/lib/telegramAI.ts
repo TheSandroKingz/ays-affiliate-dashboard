@@ -158,7 +158,7 @@ Devuelve SOLO el mensaje, sin comillas ni explicaciones.`;
 export async function generarMensajeDiario(contexto: string): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
+    const client = new Anthropic({ apiKey: KEY, timeout: 12_000, maxRetries: 1 });
     const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
@@ -189,7 +189,7 @@ export async function generarMensajeDiario(contexto: string): Promise<string | n
 export async function generarMensajeDiarioBot(sistema: string): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
+    const client = new Anthropic({ apiKey: KEY, timeout: 12_000, maxRetries: 1 });
     const promo = await getPromo();
     const res = await client.messages.create({
       model: MODELO,
@@ -578,10 +578,21 @@ function fallbackDale(messages: Anthropic.MessageParam[]): string {
   return FALLBACKS_DALE.find((f) => !esRepeticion(f, ultimo)) ?? FALLBACKS_DALE[0];
 }
 
+// ⏱️ PRESUPUESTO. La función entera muere a los 60s en Vercel (plan gratis) y
+// ya nos costó una caída: 117 de 202 respuestas perdidas. Antes de este tope,
+// crearConGuardia podía encadenar TRES llamadas a la IA (inicial + regeneración
+// por repetición + corrección), y con el debounce de 30s delante eso se salía
+// del minuto sin que nadie lo mirara. Ahora, pasados estos ms desde que empezó
+// el webhook, se deja de encadenar llamadas y se tira de lo que ya hay.
+const TOPE_IA_MS = 36_000;
+const vaTarde = (inicioMs?: number) =>
+  typeof inicioMs === "number" && Date.now() - inicioMs > TOPE_IA_MS;
+
 async function crearConGuardia(
   client: Anthropic,
   system: Anthropic.TextBlockParam[],
-  messages: Anthropic.MessageParam[]
+  messages: Anthropic.MessageParam[],
+  inicioMs?: number
 ): Promise<string> {
   const res = await client.messages.create({
     model: MODELO,
@@ -594,7 +605,7 @@ async function crearConGuardia(
   // mensajes del bot, regenera UNA vez pidiendo algo distinto. Miramos 3 (no solo
   // el último) porque el caso que más canta es repetir la misma idea turno tras
   // turno reformulada — típico en los bucles de "cancela el bono / chat en vivo".
-  if (txt && ultimosAssistantTextos(messages, 3).some((a) => esRepeticion(txt, a))) {
+  if (txt && !vaTarde(inicioMs) && ultimosAssistantTextos(messages, 3).some((a) => esRepeticion(txt, a))) {
     const avisoRep: Anthropic.TextBlockParam = {
       type: "text",
       text: "⛔ TU RESPUESTA REPITE LO QUE YA DIJISTE EN TUS ÚLTIMOS MENSAJES. NO vuelvas a soltar la misma idea/instrucción reformulada (p. ej. 'cancela el bono'/'ve al chat en vivo'/'dale a place bet'/'sigue la Z') ni a describir el mismo estado. Si eso YA no le funcionó, CAMBIA de táctica: da un paso NUEVO y concreto, escala al siguiente canal, o pregúntale algo distinto. Breve y natural.",
@@ -615,6 +626,20 @@ async function crearConGuardia(
   // o que no le queda dinero (si no, pedirle depositar es perfectamente normal).
   const malRecarga = !!txt && sinSaldoReciente(messages) && PIDE_RECARGA.test(txt);
   if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga)) return txt;
+
+  // ⏱️ Sin tiempo para otra llamada: no se manda el texto malo, se resuelve con
+  // las salidas seguras de abajo (las mismas que si la corrección fallara).
+  if (vaTarde(inicioMs)) {
+    if (malComision)
+      return "Qué va 😄 yo gano por cómo juego yo, na más. ¿Te ayudo con algo del juego?";
+    if (malEstafa)
+      return "Te entiendo, y siento que lo veas así. Yo solo comparto cómo juego yo, nada más. Entraste a jugar con tu dinero y eso es cosa tuya. Sin dramas 👍";
+    if (malRecarga) return fallbackApoyo(messages);
+    const limpioYa = limpiarNormaliza(txt);
+    if (limpioYa && limpioYa.length >= 8 && !NORMALIZA_PERDER.test(limpioYa))
+      return limpioYa;
+    return sinSaldoReciente(messages) ? fallbackApoyo(messages) : fallbackDale(messages);
+  }
 
   // Reintento con aviso tajante (según el fallo detectado).
   const avisos: string[] = [];
@@ -852,19 +877,22 @@ export async function responderIA(
   mensaje: string,
   imagen?: { base64: string; mediaType: string } | null,
   nombre?: string | null,
-  chatId?: number
+  chatId?: number,
+  inicioWebhookMs?: number
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const inicioMs = Date.now();
-    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
+    // El presupuesto se cuenta desde que ARRANCÓ el webhook (incluye el debounce
+    // de 30s), no desde aquí: si no, el tope no serviría de nada.
+    const inicioMs = inicioWebhookMs ?? Date.now();
+    const client = new Anthropic({ apiKey: KEY, timeout: 12_000, maxRetries: 1 });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     const promo = await getPromo();
     let txt = await conBancoSoluciones(
       "as",
       chatId,
       sistemaCacheado(SYSTEM, promo, nombre),
-      (sys) => crearConGuardia(client, sys, messages)
+      (sys) => crearConGuardia(client, sys, messages, inicioMs)
     );
     // Segunda pasada: el revisor mira el borrador antes de que salga.
     if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
@@ -885,18 +913,19 @@ export async function responderIABot(
   imagen?: { base64: string; mediaType: string } | null,
   nombre?: string | null,
   botKey?: string,
-  chatId?: number
+  chatId?: number,
+  inicioWebhookMs?: number
 ): Promise<string | null> {
   if (!KEY) return null;
   try {
-    const inicioMs = Date.now();
-    const client = new Anthropic({ apiKey: KEY, timeout: 15_000, maxRetries: 1 });
+    const inicioMs = inicioWebhookMs ?? Date.now();
+    const client = new Anthropic({ apiKey: KEY, timeout: 12_000, maxRetries: 1 });
     const messages = ensamblarMensajes(historial, mensaje, imagen);
     let txt = await conBancoSoluciones(
       botKey || "",
       chatId,
       sistemaCacheado(persona, promo, nombre),
-      (sys) => crearConGuardia(client, sys, messages)
+      (sys) => crearConGuardia(client, sys, messages, inicioMs)
     );
     // Segunda pasada: el revisor mira el borrador antes de que salga.
     if (txt) txt = await revisarBorrador(client, persona, messages, txt, inicioMs);

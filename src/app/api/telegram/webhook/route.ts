@@ -53,6 +53,14 @@ const BIENVENIDA =
 // ABUSO_RE ahora vive en telegramAI (compartido con los bots Jeffer/Livana).
 
 export async function POST(request: Request) {
+  // ⏱️ Momento en que arrancó el webhook. Vercel mata la función a los 60s, así
+  // que todo lo que espera (debounce, IA, retardo humano) se mide contra esto.
+  const t0 = Date.now();
+  // ¿Le hemos llegado a mandar algo al jugador? Si un fallo de red/BD nos tira
+  // antes de contestar, el catch de abajo manda al menos un acuse: quedarse en
+  // visto es el peor final posible (y ya pasó).
+  let algoEnviado = false;
+  let chatDelFallo: number | null = null;
   // Verificación del secreto del webhook (comparación en tiempo constante).
   const secret = request.headers.get("x-telegram-bot-api-secret-token");
   if (!compararSecreto(secret, process.env.TELEGRAM_WEBHOOK_SECRET)) {
@@ -118,6 +126,7 @@ export async function POST(request: Request) {
   // todos los mensajes del grupo y mezclaba contacto/silenciado.
   if (msg.chat.type && msg.chat.type !== "private") return NextResponse.json({ ok: true });
   const chatId: number = msg.chat.id;
+  chatDelFallo = chatId;
   const text: string = (msg.text ?? "").trim();
   const from = msg.from ?? {};
   const esDueno = OWNER_CHAT_ID && String(chatId) === String(OWNER_CHAT_ID);
@@ -836,8 +845,6 @@ export async function POST(request: Request) {
         // pide 60s para el segundo caso, pero la función entera muere a los 60s en
         // Vercel: con 60s de espera no quedaría tiempo ni para generar la respuesta.
         // 45s es lo máximo que cabe dejando margen para la IA, el revisor y el envío.
-        const pareceCompleto =
-        entrada.length > 60 || /[.?!…]\s*$/.test(entrada.trim());
         // Los 45s para mensajes cortos se revirtieron: con ellos + la IA la funcion
         // se pasaba de los 60s de Vercel y el jugador se quedaba SIN respuesta.
         const esperaMs = 30_000;
@@ -948,7 +955,8 @@ export async function POST(request: Request) {
             huecoAhora + entrada,
             imagen,
             from.first_name ?? null,
-            chatId
+            chatId,
+            t0
           );
         }
       }
@@ -987,8 +995,12 @@ export async function POST(request: Request) {
         // chocó "¿por qué respondes tan rápido?"). Metemos una espera aleatoria +
         // algo proporcional a lo que "escribe", con "escribiendo…" visible. La
         // función aguanta 60s, así que hay margen de sobra.
-        const escribir =
+        // ⏱️ Acotado por lo que queda: si la IA ha tardado, se recorta o se manda
+        // ya. Antes era fijo (hasta 10,5s) y podía ser la gota que pasaba de 60s
+        // y dejaba al jugador sin respuesta, que es mucho peor que ir rápido.
+        const escribirBase =
           2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
+        const escribir = Math.max(0, Math.min(escribirBase, 52_000 - (Date.now() - t0)));
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
         await new Promise((r) => setTimeout(r, escribir));
         // El botón SOLO si el JUGADOR lo pide (pidePlay sobre SU texto), y nunca en
@@ -1005,6 +1017,7 @@ export async function POST(request: Request) {
         // no lo damos por dicho: si lo guardáramos, la IA creería que ya se lo
         // contó y NUNCA se lo repetiría.
         envioOk = !!rEnv?.ok;
+        if (envioOk) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
       } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
@@ -1027,6 +1040,7 @@ export async function POST(request: Request) {
           {}
         );
         envioOk = !!rEnv?.ok;
+        if (envioOk) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
       }
 
@@ -1087,7 +1101,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
   } catch {
-    /* nunca devolvemos error: Telegram reintentaría en bucle */
+    // Nunca devolvemos error: Telegram reintentaría en bucle. Pero si el fallo
+    // nos pilló ANTES de contestar, al jugador le decimos algo: si no, se queda
+    // en visto y no vuelve.
+    if (!algoEnviado && chatDelFallo != null) {
+      await tgEnviar(
+        chatDelFallo,
+        "perdona la tardanza, se me ha liado. dame un momento y te digo algo 🙏"
+      ).catch(() => {});
+    }
   }
 
   return NextResponse.json({ ok: true });
