@@ -57,7 +57,13 @@ export async function GET(request: Request) {
     supabaseAdmin
       .from("postback_events")
       .select(columnas)
-      .eq("status", "held")
+      // "held"  = sospecha de doble pago (no se contó por precaución).
+      // "error"  = la suma del CPA FALLÓ (hipo de la BD en la ráfaga del casino).
+      //            El candado del jugador quedó puesto, así que el reintento del
+      //            casino rebota como "duplicado" y el CPA se pierde EN SILENCIO
+      //            si nadie lo resuelve. Pasó el 11-sep con 85€. Ahora sale aquí
+      //            para poder contarlo desde el panel.
+      .in("status", ["held", "error"])
       .order("created_at", { ascending: false })
       .limit(100000),
     deteccionFraude(),

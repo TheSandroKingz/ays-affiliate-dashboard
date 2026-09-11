@@ -32,7 +32,12 @@ export async function POST(request: Request) {
   if (!ev) {
     return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
   }
-  if (ev.status !== "held") {
+  // Se resuelven tanto los RETENIDOS ("held") como los que fallaron al sumar
+  // ("error"). Diferencia importante: en un "error" el candado del jugador YA se
+  // consumió en el intento fallido, así que NO se puede volver a reclamar; la
+  // comprobación buena ahí es ftdYaContado (¿se le llegó a pagar o no?).
+  const esFallo = ev.status === "error";
+  if (ev.status !== "held" && !esFallo) {
     return NextResponse.json(
       { error: "Ese evento ya está resuelto." },
       { status: 409 }
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
       .from("postback_events")
       .update({ status: "discarded" })
       .eq("id", id)
-      .eq("status", "held");
+      .in("status", ["held", "error"]);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -85,13 +90,19 @@ export async function POST(request: Request) {
   // Si cualquiera falla, descartamos este retenido sin sumar.
   if (ev.player_id) {
     const yaContado = await ftdYaContado(ev.player_id);
-    const gotLock = yaContado ? false : await reclamarEvento(`qftd:${ev.player_id}`);
+    // En un "error" el candado ya es NUESTRO (lo puso el intento que falló), así
+    // que reclamarlo otra vez daría false y descartaríamos un CPA legítimo.
+    const gotLock = yaContado
+      ? false
+      : esFallo
+        ? true
+        : await reclamarEvento(`qftd:${ev.player_id}`);
     if (!gotLock) {
       await supabaseAdmin
         .from("postback_events")
         .update({ status: "discarded" })
         .eq("id", id)
-        .eq("status", "held");
+        .in("status", ["held", "error"]);
       return NextResponse.json(
         {
           error:
@@ -112,12 +123,12 @@ export async function POST(request: Request) {
     .from("postback_events")
     .update({ status: "resolved", counted: true, commission })
     .eq("id", id)
-    .eq("status", "held")
+    .in("status", ["held", "error"])
     .select("id");
   if (claimErr || !claimed || claimed.length === 0) {
     // No ganamos el evento (ya resuelto / error): soltamos el candado de jugador
     // que acabamos de reclamar para no dejarlo bloqueado.
-    if (ev.player_id) await liberarEvento(`qftd:${ev.player_id}`);
+    if (ev.player_id && !esFallo) await liberarEvento(`qftd:${ev.player_id}`);
     if (claimErr) {
       return NextResponse.json({ error: claimErr.message }, { status: 500 });
     }

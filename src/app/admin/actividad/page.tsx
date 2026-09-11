@@ -201,12 +201,12 @@ export default function ActividadPage() {
       {retenidos.length > 0 && (
         <div className="rounded-xl border border-red-400/60 bg-red-500/15 p-4">
           <p className="text-sm font-semibold text-red-100 flex items-center gap-2">
-            🛑 {retenidos.length} FTD retenido{retenidos.length === 1 ? "" : "s"} — sin
-            contar hasta que decidas
+            🛑 {retenidos.length} FTD sin contar — esperando a que decidas
           </p>
           <p className="text-xs text-red-200/80 mt-1 mb-3">
-            Este jugador ya tenía un FTD contado, así que no se ha sumado el dinero
-            para evitar un doble pago. Revísalo y decide.
+            Dinero que NO se ha sumado. Cada uno te dice por qué: o el jugador ya
+            tenía un FTD contado (para no pagar dos veces), o la suma falló y el
+            casino no lo va a reintentar. Revísalo y decide.
           </p>
           <div className="flex flex-col gap-2">
             {retenidos.map((e) => (
@@ -216,6 +216,16 @@ export default function ActividadPage() {
               >
                 <div className="text-sm text-white min-w-0">
                   <span className="font-medium">{e.name ?? e.tracking_code ?? "—"}</span>
+                  <span
+                    className={
+                      "ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border " +
+                      (e.status === "error"
+                        ? "bg-amber-500/20 text-amber-200 border-amber-400/50"
+                        : "bg-red-500/20 text-red-200 border-red-400/50")
+                    }
+                  >
+                    {e.status === "error" ? "falló al sumar" : "posible doble pago"}
+                  </span>
                   <span className="text-slate-400">
                     {" "}
                     · jugador{" "}
