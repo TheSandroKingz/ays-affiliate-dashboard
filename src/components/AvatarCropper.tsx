@@ -52,7 +52,7 @@ export default function AvatarCropper({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-black border border-white/15 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-4">
+      <div className="bg-black border border-white/15 rounded-2xl p-4 w-full max-w-sm max-h-[90dvh] overflow-y-auto flex flex-col gap-4">
         <p className="text-sm font-medium text-white">
           Ajusta tu foto — arrastra y haz zoom
         </p>

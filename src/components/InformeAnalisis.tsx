@@ -165,11 +165,22 @@ export default function InformeAnalisis() {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
-    await fetch("/api/admin/analisis?run=revisar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-      body: JSON.stringify({ bot, chat_id, revisado }),
-    });
+    // Sin comprobar res.ok, un 500 se tragaba y la lista se repintaba como si
+    // la accion hubiera funcionado.
+    try {
+      const r = await fetch("/api/admin/analisis?run=revisar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ bot, chat_id, revisado }),
+      });
+      if (!r.ok) {
+        alert("No se pudo guardar. Inténtalo otra vez.");
+        return;
+      }
+    } catch {
+      alert("No se pudo conectar. Inténtalo otra vez.");
+      return;
+    }
     await cargar();
   }
 
@@ -209,11 +220,20 @@ export default function InformeAnalisis() {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
-    await fetch("/api/admin/soluciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-      body: JSON.stringify({ id, accion, sustituye_a }),
-    });
+    try {
+      const r = await fetch("/api/admin/soluciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ id, accion, sustituye_a }),
+      });
+      if (!r.ok) {
+        alert("No se pudo guardar. Inténtalo otra vez.");
+        return;
+      }
+    } catch {
+      alert("No se pudo conectar. Inténtalo otra vez.");
+      return;
+    }
     await cargar();
   }
 

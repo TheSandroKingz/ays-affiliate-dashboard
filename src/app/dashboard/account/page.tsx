@@ -10,14 +10,20 @@ import { Eye, EyeOff } from "lucide-react";
 import AvatarCropper from "@/components/AvatarCropper";
 import PushToggle from "@/components/PushToggle";
 import { useProfile } from "@/components/DashboardProvider";
-import { TONOS, getTono, setTono, reproducirSonido, type TonoNotif } from "@/lib/sonido";
+import {
+  TONOS,
+  getTono,
+  setTono,
+  reproducirSonido,
+  type TonoNotif,
+} from "@/lib/sonido";
 import { contieneEmoji } from "@/lib/texto";
 
 // Guarda campos de perfil por el ENDPOINT DE SERVIDOR (whitelist + service role),
 // en vez de escribir directo en `affiliates` con la anon key. Así la seguridad no
 // depende de recordar los privilegios de columna en la BD. Devuelve true si OK.
 async function guardarPerfil(
-  campos: Record<string, unknown>
+  campos: Record<string, unknown>,
 ): Promise<{ ok: boolean; duplicate?: boolean }> {
   const {
     data: { session },
@@ -66,7 +72,7 @@ export default function AccountPage() {
     reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
-  
+
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -84,70 +90,78 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     async function loadData() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      setEmail(user.email ?? "");
+      // Sin try/catch, un corte de red dejaba el esqueleto de la página de Cuenta
+      // puesto para siempre, sin forma de reintentar.
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (!user) return;
+        setEmail(user.email ?? "");
 
-      // Dos consultas en paralelo (la fecha de nacimiento ya viene del perfil
-      // compartido, así no repetimos la misma fila de affiliates).
-      // Las preferencias de notificaciones (notif_ftd/notif_registro) van en el
-      // MISMO select del perfil. Si el select fallara (columnas aún sin crear),
-      // reintentamos sin ellas para no romper la página.
-      let perfilRes = await supabase
-        .from("affiliates")
-        .select("avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20, notif_ftd, notif_registro")
-        .eq("user_id", user.id)
-        .single();
-      if (perfilRes.error) {
-        perfilRes = await supabase
+        // Dos consultas en paralelo (la fecha de nacimiento ya viene del perfil
+        // compartido, así no repetimos la misma fila de affiliates).
+        // Las preferencias de notificaciones (notif_ftd/notif_registro) van en el
+        // MISMO select del perfil. Si el select fallara (columnas aún sin crear),
+        // reintentamos sin ellas para no romper la página.
+        let perfilRes = await supabase
           .from("affiliates")
-          .select("avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20")
+          .select(
+            "avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20, notif_ftd, notif_registro",
+          )
           .eq("user_id", user.id)
           .single();
-      }
+        if (perfilRes.error) {
+          perfilRes = await supabase
+            .from("affiliates")
+            .select(
+              "avatar_url, accepted_terms, accepted_privacy, display_name, wallet_erc20, wallet_trc20",
+            )
+            .eq("user_id", user.id)
+            .single();
+        }
 
-      const data = perfilRes.data as Record<string, unknown> | null;
-      if (data) {
-        setFirstName((data.display_name as string) ?? "");
-        setAcceptedTerms((data.accepted_terms as boolean) ?? false);
-        setAcceptedPrivacy((data.accepted_privacy as boolean) ?? false);
-        setAvatarUrl((data.avatar_url as string) ?? null);
-        setWalletErc20((data.wallet_erc20 as string) ?? "");
-        setWalletTrc20((data.wallet_trc20 as string) ?? "");
-        setNotifFtd((data.notif_ftd as boolean) ?? true);
-        setNotifRegistro((data.notif_registro as boolean) ?? true);
-      }
+        const data = perfilRes.data as Record<string, unknown> | null;
+        if (data) {
+          setFirstName((data.display_name as string) ?? "");
+          setAcceptedTerms((data.accepted_terms as boolean) ?? false);
+          setAcceptedPrivacy((data.accepted_privacy as boolean) ?? false);
+          setAvatarUrl((data.avatar_url as string) ?? null);
+          setWalletErc20((data.wallet_erc20 as string) ?? "");
+          setWalletTrc20((data.wallet_trc20 as string) ?? "");
+          setNotifFtd((data.notif_ftd as boolean) ?? true);
+          setNotifRegistro((data.notif_registro as boolean) ?? true);
+        }
 
-      // Yaiza: sus dos avisos propios (select aparte y blindado para no romper
-      // la página si las columnas aún no existen).
-      const yaiza = esSoloBot(user.id);
-      setSoloBot(yaiza);
-      if (yaiza) {
-        const { data: bot } = await supabase
-          .from("affiliates")
-          .select("notif_bot_msg, notif_bot_deposito")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        const b = bot as Record<string, unknown> | null;
-        setNotifBotMsg((b?.notif_bot_msg as boolean) ?? true);
-        setNotifBotDep((b?.notif_bot_deposito as boolean) ?? true);
+        // Yaiza: sus dos avisos propios (select aparte y blindado para no romper
+        // la página si las columnas aún no existen).
+        const yaiza = esSoloBot(user.id);
+        setSoloBot(yaiza);
+        if (yaiza) {
+          const { data: bot } = await supabase
+            .from("affiliates")
+            .select("notif_bot_msg, notif_bot_deposito")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const b = bot as Record<string, unknown> | null;
+          setNotifBotMsg((b?.notif_bot_msg as boolean) ?? true);
+          setNotifBotDep((b?.notif_bot_deposito as boolean) ?? true);
+        }
+      } catch {
+        /* se muestra lo que haya cargado; nunca se queda colgado */
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
     loadData();
   }, []);
 
   // Guarda una preferencia de notificación (optimista, blindado).
   async function guardarNotif(
-    campo: "notif_ftd" | "notif_registro" | "notif_bot_msg" | "notif_bot_deposito",
-    valor: boolean
+    campo:
+      "notif_ftd" | "notif_registro" | "notif_bot_msg" | "notif_bot_deposito",
+    valor: boolean,
   ) {
     if (campo === "notif_ftd") setNotifFtd(valor);
     else if (campo === "notif_registro") setNotifRegistro(valor);
@@ -199,7 +213,9 @@ export default function AccountPage() {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const { data: urlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(path);
     const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
     await guardarPerfil({ avatar_url: publicUrl });
@@ -207,114 +223,120 @@ export default function AccountPage() {
     setAvatarUrl(publicUrl);
     // El menú lateral refleja la nueva foto al instante, sin recargar.
     window.dispatchEvent(
-      new CustomEvent("profile-updated", { detail: { avatar_url: publicUrl } })
+      new CustomEvent("profile-updated", { detail: { avatar_url: publicUrl } }),
     );
     setUploading(false);
   }
 
   async function savePersonal() {
     setSaving(true);
-    setMessage(null);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) {
-      setSaving(false);
-      return;
-    }
+    // Sin try/catch, un corte de red dejaba el boton en "Guardando..." para
+    // siempre y sin ningun mensaje de error.
+    try {
+      setMessage(null);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        return;
+      }
 
-    const cleanEmail = email.trim();
-    const emailChanged = !!cleanEmail && cleanEmail !== user.email;
+      const cleanEmail = email.trim();
+      const emailChanged = !!cleanEmail && cleanEmail !== user.email;
 
-    // Validación de formato de email en cliente (no hay <form> que la dispare).
-    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setMessage("El correo no tiene un formato válido.");
-      setSaving(false);
-      return;
-    }
+      // Validación de formato de email en cliente (no hay <form> que la dispare).
+      if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        setMessage("El correo no tiene un formato válido.");
+        return;
+      }
 
-    // El nombre no puede llevar emojis (afea la web y rompe iniciales/avatar).
-    if (contieneEmoji(firstName)) {
-      setMessage("El nombre no puede tener emojis.");
-      setSaving(false);
-      return;
-    }
+      // El nombre no puede llevar emojis (afea la web y rompe iniciales/avatar).
+      if (contieneEmoji(firstName)) {
+        setMessage("El nombre no puede tener emojis.");
+        return;
+      }
 
-    const upd: Record<string, unknown> = {
-      first_name: firstName.trim(),
-      display_name: firstName.trim(),
-    };
-    if (birthdate) upd.birthdate = birthdate;
-    // Guardado por el SERVIDOR (whitelist + service role). El reintento sin
-    // 'birthdate' si la columna no existe lo hace el propio endpoint.
-    const resPerfil = await guardarPerfil(upd);
-    const error: { code?: string } | null = resPerfil.ok
-      ? null
-      : { code: resPerfil.duplicate ? "23505" : "other" };
+      const upd: Record<string, unknown> = {
+        first_name: firstName.trim(),
+        display_name: firstName.trim(),
+      };
+      if (birthdate) upd.birthdate = birthdate;
+      // Guardado por el SERVIDOR (whitelist + service role). El reintento sin
+      // 'birthdate' si la columna no existe lo hace el propio endpoint.
+      const resPerfil = await guardarPerfil(upd);
+      const error: { code?: string } | null = resPerfil.ok
+        ? null
+        : { code: resPerfil.duplicate ? "23505" : "other" };
 
-    let emailError = false;
-    let emailMsg = "";
-    if (!error && emailChanged) {
-      // Por seguridad pedimos la contraseña actual solo al cambiar el correo
-      // (evita que un token robado cambie el email y secuestre la cuenta).
-      // Se muestra el correo EXACTO: al aplicarse queda verificado al momento, así
-      // que un error de tecleo dejaría al afiliado sin poder entrar ni recuperar.
-      const currentPassword = await pedirPassword(
-        `Vas a cambiar tu correo a "${cleanEmail}". Comprueba que está bien escrito: si te equivocas no podrás volver a entrar. Escribe tu contraseña actual para confirmar.`
-      );
-      if (!currentPassword) {
-        emailError = true;
-        emailMsg =
-          "Tu usuario se guardó, pero el correo no se cambió (falta la contraseña).";
-      } else {
-        const res = await fetch("/api/account/update-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + session.access_token,
-          },
-          body: JSON.stringify({ newEmail: cleanEmail, currentPassword }),
-        });
-        if (!res.ok) {
+      let emailError = false;
+      let emailMsg = "";
+      if (!error && emailChanged) {
+        // Por seguridad pedimos la contraseña actual solo al cambiar el correo
+        // (evita que un token robado cambie el email y secuestre la cuenta).
+        // Se muestra el correo EXACTO: al aplicarse queda verificado al momento, así
+        // que un error de tecleo dejaría al afiliado sin poder entrar ni recuperar.
+        const currentPassword = await pedirPassword(
+          `Vas a cambiar tu correo a "${cleanEmail}". Comprueba que está bien escrito: si te equivocas no podrás volver a entrar. Escribe tu contraseña actual para confirmar.`,
+        );
+        if (!currentPassword) {
           emailError = true;
-          const j = await res.json().catch(() => ({}));
           emailMsg =
-            j?.error === "Contraseña actual incorrecta"
-              ? "Tu usuario se guardó, pero el correo no se cambió: contraseña incorrecta."
-              : "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo.";
+            "Tu usuario se guardó, pero el correo no se cambió (falta la contraseña).";
+        } else {
+          const res = await fetch("/api/account/update-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + session.access_token,
+            },
+            body: JSON.stringify({ newEmail: cleanEmail, currentPassword }),
+          });
+          if (!res.ok) {
+            emailError = true;
+            const j = await res.json().catch(() => ({}));
+            emailMsg =
+              j?.error === "Contraseña actual incorrecta"
+                ? "Tu usuario se guardó, pero el correo no se cambió: contraseña incorrecta."
+                : "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo.";
+          }
         }
       }
-    }
 
-    setSaving(false);
-    if (error) {
-      setMessage(
-        error.code === "23505"
-          ? "Ese nombre de usuario ya está en uso, elige otro."
-          : "Error al guardar"
-      );
-    } else {
-      // El nombre SÍ se guardó (haya ido bien o no lo del correo): avisamos al
-      // menú lateral para que refleje el nuevo nombre al instante, sin recargar.
-      window.dispatchEvent(
-        new CustomEvent("profile-updated", {
-          detail: { display_name: firstName.trim() },
-        })
-      );
-      if (emailError) {
-        // Solo falló/canceló el correo. No mentimos con "todo ok".
+      if (error) {
         setMessage(
-          emailMsg ||
-            "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo."
+          error.code === "23505"
+            ? "Ese nombre de usuario ya está en uso, elige otro."
+            : "Error al guardar",
         );
       } else {
-        setMessage("Guardado correctamente");
-        // Si se cambió el correo, refrescamos la sesión para que el JWT local
-        // traiga el email nuevo; si no, cada "Guardar" siguiente creería que el
-        // correo cambió otra vez y volvería a pedir la contraseña.
-        if (emailChanged) await supabase.auth.refreshSession();
+        // El nombre SÍ se guardó (haya ido bien o no lo del correo): avisamos al
+        // menú lateral para que refleje el nuevo nombre al instante, sin recargar.
+        window.dispatchEvent(
+          new CustomEvent("profile-updated", {
+            detail: { display_name: firstName.trim() },
+          }),
+        );
+        if (emailError) {
+          // Solo falló/canceló el correo. No mentimos con "todo ok".
+          setMessage(
+            emailMsg ||
+              "Tu usuario se guardó, pero no se pudo cambiar el correo. Inténtalo de nuevo.",
+          );
+        } else {
+          setMessage("Guardado correctamente");
+          // Si se cambió el correo, refrescamos la sesión para que el JWT local
+          // traiga el email nuevo; si no, cada "Guardar" siguiente creería que el
+          // correo cambió otra vez y volvería a pedir la contraseña.
+          if (emailChanged) await supabase.auth.refreshSession();
+        }
       }
+    } catch {
+      setMessage(
+        "No se pudo conectar. No se ha guardado nada, inténtalo otra vez.",
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -332,7 +354,7 @@ export default function AccountPage() {
     // Re-autenticación: pedimos la contraseña ACTUAL. Sin esto, un token de sesión
     // robado bastaría para cambiar la contraseña y robar la cuenta.
     const actual = await pedirPassword(
-      "Escribe tu contraseña ACTUAL para poder cambiarla"
+      "Escribe tu contraseña ACTUAL para poder cambiarla",
     );
     if (!actual) {
       setMessage("Necesitas tu contraseña actual para cambiarla.");
@@ -366,17 +388,21 @@ export default function AccountPage() {
     const erc = walletErc20.trim();
     const trc = walletTrc20.trim();
     if (erc && !/^0x[a-fA-F0-9]{40}$/.test(erc)) {
-      setMessage("La billetera de Ethereum (ERC-20) no parece válida. Debe empezar por 0x.");
+      setMessage(
+        "La billetera de Ethereum (ERC-20) no parece válida. Debe empezar por 0x.",
+      );
       return;
     }
     if (trc && !/^T[a-zA-Z0-9]{33}$/.test(trc)) {
-      setMessage("La billetera de Tron (TRC-20) no parece válida. Debe empezar por T.");
+      setMessage(
+        "La billetera de Tron (TRC-20) no parece válida. Debe empezar por T.",
+      );
       return;
     }
     // Por seguridad pedimos la contraseña actual para cambiar la billetera de
     // cobro (evita que un token robado desvíe tus pagos a otra dirección).
     const currentPassword = await pedirPassword(
-      "Escribe tu contraseña actual para cambiar la billetera de cobro"
+      "Escribe tu contraseña actual para cambiar la billetera de cobro",
     );
     if (!currentPassword) {
       setMessage("Cambio de billetera cancelado (falta la contraseña).");
@@ -396,7 +422,11 @@ export default function AccountPage() {
           "Content-Type": "application/json",
           Authorization: "Bearer " + session.access_token,
         },
-        body: JSON.stringify({ walletErc20: erc, walletTrc20: trc, currentPassword }),
+        body: JSON.stringify({
+          walletErc20: erc,
+          walletTrc20: trc,
+          currentPassword,
+        }),
       });
       if (res.ok) {
         setMessage("Guardado correctamente");
@@ -405,7 +435,7 @@ export default function AccountPage() {
         setMessage(
           j?.error === "Contraseña actual incorrecta"
             ? "Contraseña incorrecta. La billetera no se cambió."
-            : "Error al guardar"
+            : "Error al guardar",
         );
       }
     } catch {
@@ -414,7 +444,6 @@ export default function AccountPage() {
       setSavingWallets(false);
     }
   }
-
 
   if (loading) {
     return <CardsSkeleton title="Configuración de Cuenta" cards={2} />;
@@ -444,7 +473,9 @@ export default function AccountPage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
-      <h1 className="text-2xl font-semibold text-white">Configuración de Cuenta</h1>
+      <h1 className="text-2xl font-semibold text-white">
+        Configuración de Cuenta
+      </h1>
 
       <div className="flex gap-2 border-b border-white/10 overflow-x-auto min-w-0">
         {tabs.map((t) => (
@@ -475,14 +506,22 @@ export default function AccountPage() {
         >
           {message}
         </p>
-      )}{activeTab === "personal" && (
+      )}
+      {activeTab === "personal" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-semibold overflow-hidden shrink-0 relative">
               {avatarUrl ? (
-                <Image src={avatarUrl} alt="Foto de perfil" fill className="object-cover" />
+                <Image
+                  src={avatarUrl}
+                  alt="Foto de perfil"
+                  fill
+                  className="object-cover"
+                />
+              ) : firstName ? (
+                firstName[0].toUpperCase()
               ) : (
-                firstName ? firstName[0].toUpperCase() : "?"
+                "?"
               )}
             </div>
             <div>
@@ -490,7 +529,9 @@ export default function AccountPage() {
                 type="file"
                 accept="image/*"
                 ref={fileInputRef}
-                onChange={(e) => e.target.files?.[0] && seleccionarFoto(e.target.files[0])}
+                onChange={(e) =>
+                  e.target.files?.[0] && seleccionarFoto(e.target.files[0])
+                }
                 className="hidden"
               />
               {cropSrc && (
@@ -500,7 +541,7 @@ export default function AccountPage() {
                   onConfirm={(blob) => {
                     setCropSrc(null);
                     uploadAvatar(
-                      new File([blob], "avatar.jpg", { type: "image/jpeg" })
+                      new File([blob], "avatar.jpg", { type: "image/jpeg" }),
                     );
                   }}
                 />
@@ -516,7 +557,9 @@ export default function AccountPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Nombre de usuario</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Nombre de usuario
+            </label>
             <input
               type="text"
               value={firstName}
@@ -524,19 +567,23 @@ export default function AccountPage() {
               className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-          
+
           <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Correo electrónico</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-          
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Correo electrónico
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Fecha de nacimiento</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Fecha de nacimiento
+            </label>
             <input
               type="date"
               value={birthdate}
@@ -555,19 +602,37 @@ export default function AccountPage() {
           </button>
 
           <div className="border-t border-white/10 pt-4 mt-1">
-            <p className="text-sm font-medium text-slate-200 mb-2">Notificaciones</p>
+            <p className="text-sm font-medium text-slate-200 mb-2">
+              Notificaciones
+            </p>
             <PushToggle />
             <div className="mt-3">
               <p className="text-xs text-slate-400 mb-2">Avísame de:</p>
               <div className="flex flex-col gap-2">
                 {(soloBot
                   ? [
-                      { campo: "notif_bot_msg" as const, label: "Cuando escriben al bot 💬", val: notifBotMsg },
-                      { campo: "notif_bot_deposito" as const, label: "Cuando depositan por el bot 💰", val: notifBotDep },
+                      {
+                        campo: "notif_bot_msg" as const,
+                        label: "Cuando escriben al bot 💬",
+                        val: notifBotMsg,
+                      },
+                      {
+                        campo: "notif_bot_deposito" as const,
+                        label: "Cuando depositan por el bot 💰",
+                        val: notifBotDep,
+                      },
                     ]
                   : [
-                      { campo: "notif_ftd" as const, label: "Nuevos FTD 🎉", val: notifFtd },
-                      { campo: "notif_registro" as const, label: "Nuevos registros 👀", val: notifRegistro },
+                      {
+                        campo: "notif_ftd" as const,
+                        label: "Nuevos FTD 🎉",
+                        val: notifFtd,
+                      },
+                      {
+                        campo: "notif_registro" as const,
+                        label: "Nuevos registros 👀",
+                        val: notifRegistro,
+                      },
                     ]
                 ).map((o) => (
                   <button
@@ -593,34 +658,36 @@ export default function AccountPage() {
               </div>
             </div>
             {!soloBot && (
-            <div className="mt-4">
-              <p className="text-xs text-slate-400 mb-2">Sonido al entrar un QFTD:</p>
-              <div className="flex items-center gap-2">
-                <select
-                  value={tono}
-                  onChange={(e) => elegirTono(e.target.value as TonoNotif)}
-                  className="flex-1 max-w-xs rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {TONOS.map((o) => (
-                    <option key={o.id} value={o.id} className="bg-black">
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => reproducirSonido(tono)}
-                  disabled={tono === "off"}
-                  className="shrink-0 rounded-lg border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-40"
-                >
-                  ▶ Probar
-                </button>
+              <div className="mt-4">
+                <p className="text-xs text-slate-400 mb-2">
+                  Sonido al entrar un QFTD:
+                </p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={tono}
+                    onChange={(e) => elegirTono(e.target.value as TonoNotif)}
+                    className="flex-1 max-w-xs rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {TONOS.map((o) => (
+                      <option key={o.id} value={o.id} className="bg-black">
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => reproducirSonido(tono)}
+                    disabled={tono === "off"}
+                    className="shrink-0 rounded-lg border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-40"
+                  >
+                    ▶ Probar
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Al elegir un tono suena solo. Se oye en este dispositivo
+                  cuando entra un QFTD nuevo.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5">
-                Al elegir un tono suena solo. Se oye en este dispositivo cuando
-                entra un QFTD nuevo.
-              </p>
-            </div>
             )}
           </div>
         </div>
@@ -628,7 +695,9 @@ export default function AccountPage() {
 
       {activeTab === "cobro" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
-          <p className="text-sm text-slate-300">Los pagos se realizan en USDT.</p>
+          <p className="text-sm text-slate-300">
+            Los pagos se realizan en USDT.
+          </p>
           <div>
             <label className="block text-sm font-medium text-slate-200 mb-1">
               Billetera USDT · Ethereum (ERC-20)
@@ -670,7 +739,9 @@ export default function AccountPage() {
       {activeTab === "seguridad" && (
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Nueva contraseña</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Nueva contraseña
+            </label>
             <div className="relative">
               <input
                 type={showPass ? "text" : "password"}
@@ -682,7 +753,9 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-label={
+                  showPass ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
               >
                 {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -690,7 +763,9 @@ export default function AccountPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Confirmar contraseña</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Confirmar contraseña
+            </label>
             <div className="relative">
               <input
                 type={showPass ? "text" : "password"}
@@ -702,7 +777,9 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-label={
+                  showPass ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
               >
                 {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -723,17 +800,41 @@ export default function AccountPage() {
         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 flex flex-col gap-4">
           <div>
             <p className="text-sm text-slate-400 mb-3">
-              Tu consentimiento a los siguientes Términos y Condiciones y Política de Privacidad es obligatorio para poder usar la plataforma.
+              Tu consentimiento a los siguientes Términos y Condiciones y
+              Política de Privacidad es obligatorio para poder usar la
+              plataforma.
             </p>
             <label className="flex items-center gap-2 text-sm text-white mb-2">
-              <input type="checkbox" checked={acceptedTerms} disabled className="w-4 h-4 accent-emerald-500" />
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                disabled
+                className="w-4 h-4 accent-emerald-500"
+              />
               He aceptado los{" "}
-              <a href="/terminos" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Términos y Condiciones</a>
+              <a
+                href="/terminos"
+                target="_blank"
+                className="text-emerald-400 hover:text-emerald-300 underline"
+              >
+                Términos y Condiciones
+              </a>
             </label>
             <label className="flex items-center gap-2 text-sm text-white">
-              <input type="checkbox" checked={acceptedPrivacy} disabled className="w-4 h-4 accent-emerald-500" />
+              <input
+                type="checkbox"
+                checked={acceptedPrivacy}
+                disabled
+                className="w-4 h-4 accent-emerald-500"
+              />
               He aceptado la{" "}
-              <a href="/privacidad" target="_blank" className="text-emerald-400 hover:text-emerald-300 underline">Política de Privacidad</a>
+              <a
+                href="/privacidad"
+                target="_blank"
+                className="text-emerald-400 hover:text-emerald-300 underline"
+              >
+                Política de Privacidad
+              </a>
             </label>
           </div>
         </div>
@@ -752,9 +853,13 @@ export default function AccountPage() {
               cerrarPw(pwValor ? pwValor : null);
             }}
             className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/20 p-5 shadow-xl"
-            style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+            style={{
+              paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+            }}
           >
-            <p className="text-white text-sm font-medium mb-1">Confirma que eres tú</p>
+            <p className="text-white text-sm font-medium mb-1">
+              Confirma que eres tú
+            </p>
             <p className="text-slate-400 text-xs mb-3">{pedirPw.texto}</p>
             <input
               type="password"
