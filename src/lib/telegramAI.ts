@@ -804,35 +804,47 @@ async function revisarBorrador(
 // septiembre). La regla está en el prompt; esto es el seguro por si se despista.
 // Solo para SU bot: en los demás "arrancamos" está bien.
 function vozDeSandro(txt: string): string {
-  return txt
-    .replace(/\by arrancamos\b/gi, "y le damos")
-    .replace(/\b(list[oa]s?|cuando quieras|cuando puedas)\s+arrancamos\b/gi, "$1 le damos")
-    .replace(/\barrancamos de nuevo\b/gi, "le damos de nuevo")
-    // Y cierra con "dale g, me dices algo", no con "dale, aquí estoy".
-    // Solo el cierre suelto: "aquí estaré" dentro de un mensaje de apoyo (alguien
-    // que lo está pasando mal) NO se toca, ahí "me dices algo" sonaría frío.
-    .replace(
-      /\bdale(?:\s+(?:hermano|bro|crack|máquina|tío))?,?\s*aqu[ií]\s+est(?:oy|ar[eé])(?![\p{L}])/giu,
-      "dale g, me dices algo"
-    )
-    // Y abre con "dale manito", no con "perfecto". Solo al empezar frase: un
-    // "es perfecto para eso" en medio de un mensaje se queda como está.
-    .replace(/(^|[\n.!?¡¿]\s*)Perfecto\b/gu, "$1Dale manito")
-    // Y cuando pierden, "qué hablas, qué putada hermanito" en vez de "qué mala
-    // racha". Solo la exclamación: "a veces toca mala racha" o "una mala racha
-    // no define cómo juegas" van en medio de la frase y ahí no encaja.
-    .replace(
-      /(?:vaya,?\s*)?(?:qu[eé]\s+)?(?<!\b(?:una|la|esa|esta|de|tenido|toca|tu|mi)\s)mala\s+racha(?:\s+(?:hermano|hermana|bro|manito|t[ií]o|g))?/giu,
-      (_m, off: number, txtCompleto: string) => {
-        const frase = "qué hablas, qué putada hermanito";
-        const antes = txtCompleto.slice(0, off);
-        return antes.trim() === "" || /[.!?\n]\s*$/.test(antes)
-          ? frase[0].toUpperCase() + frase.slice(1)
-          : frase;
-      }
-    )
-    // Si ya venía un "qué putada" detrás, no lo decimos dos veces.
-    .replace(/qué putada hermanito,?\s*(?:qué\s+)?putada\b/gi, "qué putada hermanito");
+  // ¿La coincidencia empieza frase? (para devolver la muletilla en mayúscula)
+  const empiezaFrase = (txt: string, off: number) => {
+    const antes = txt.slice(0, off);
+    return antes.trim() === "" || /[.!?\n]\s*$/.test(antes);
+  };
+  const conCaja = (frase: string, txt: string, off: number) =>
+    empiezaFrase(txt, off) ? frase[0].toUpperCase() + frase.slice(1) : frase;
+
+  return (
+    txt
+      .replace(/\b(y)\s+arrancamos\b/gi, "$1 le damos")
+      .replace(
+        /\b(list[oa]s?|cuando quieras|cuando puedas)\s+arrancamos\b/gi,
+        "$1 le damos"
+      )
+      .replace(/\barrancamos de nuevo\b/gi, (_m, off: number, t: string) =>
+        conCaja("le damos de nuevo", t, off)
+      )
+      // Cierra con "dale g, me dices algo", no con "dale, aquí estoy". Solo el
+      // cierre suelto: "aquí estaré" dentro de un mensaje de apoyo NO se toca,
+      // ahí "me dices algo" sonaría frío.
+      .replace(
+        /\bdale(?:\s+(?:hermano|bro|crack|máquina|tío))?,?\s*aqu[ií]\s+est(?:oy|ar[eé])(?![\p{L}])/giu,
+        (_m, off: number, t: string) => conCaja("dale g, me dices algo", t, off)
+      )
+      // Abre con "dale manito", no con "Perfecto". ⚠️ SOLO cuando "Perfecto" va
+      // solo (seguido de coma, punto o fin): "Perfecto para empezar, mete 20€"
+      // se quedaba en "Dale manito para empezar", que no se entiende.
+      .replace(/(^|[\n.!?¡¿]\s*)Perfecto(?=\s*[,.!?…]|\s*$)/gu, "$1Dale manito")
+      // Cuando pierden, "qué hablas, qué putada hermanito". ⚠️ SOLO la
+      // exclamación: hace falta el "qué" o el "vaya" delante. Sin eso, un "estás
+      // en mala racha pero sales de esta" se convertía en un galimatías, y
+      // encima a quien acababa de perder.
+      .replace(
+        /(?:vaya,?\s*qu[eé]\s+|qu[eé]\s+|vaya,?\s+)mala\s+racha(?:\s+(?:hermano|hermana|bro|manito|t[ií]o|g))?/giu,
+        (_m, off: number, t: string) =>
+          conCaja("qué hablas, qué putada hermanito", t, off)
+      )
+      // Si ya venía un "qué putada" detrás, no lo decimos dos veces.
+      .replace(/qué putada hermanito,?\s*(?:qué\s+)?putada\b/gi, "qué putada hermanito")
+  );
 }
 
 export async function responderIA(
