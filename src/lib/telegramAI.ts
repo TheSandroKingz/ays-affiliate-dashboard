@@ -761,12 +761,25 @@ async function conBancoSoluciones(
 //    el borrador original. Nunca se deja al jugador sin respuesta por esto.
 //  · PRESUPUESTO DE TIEMPO. Solo se revisa si queda margen dentro de los 60s de
 //    la función (el debounce ya se come 30s). Si no, va el borrador tal cual.
-// ⛔ APAGADO 10-sep: con el revisor puesto, 117 de 202 llamadas del dia murieron
-// sin responder (la funcion agota los 60s de Vercel). Volver a encender solo
-// cuando el presupuesto de tiempo lo permita.
-const REVISION_ACTIVA = false;
-const REVISOR_TIMEOUT_MS = 8000;
-const REVISION_MARGEN_MS = 42_000; // pasado esto, no da tiempo: enviar el borrador
+// ⚠️ HISTORIA: se apagó el 10-sep porque con el revisor puesto murieron 117 de
+// 202 llamadas del día (la función agota los 60s de Vercel). Se vuelve a
+// encender el 11-sep, pero SOLO con el presupuesto de tiempo bien contado:
+// antes el margen se medía desde que empezaba la llamada a la IA, o sea que NO
+// incluía los 30s del debounce y por eso no frenaba nada. Ahora `inicioMs` es
+// el momento en que arrancó el webhook, que es lo que de verdad cuenta.
+//
+// Tres cinturones para que esto NO pueda tumbar los chats otra vez:
+//  1. Solo se revisa si han pasado menos de REVISION_MARGEN_MS desde el inicio.
+//  2. La llamada lleva timeout propio y SIN reintentos (el cliente general los
+//     tiene a 1, y eso duplicaba el peor caso del revisor).
+//  3. Carrera contra un plazo duro calculado con lo que queda: pase lo que pase,
+//     se corta y se manda el borrador.
+const REVISION_ACTIVA = true;
+const REVISOR_TIMEOUT_MS = 7000;
+const REVISION_MARGEN_MS = 38_000; // pasado esto, no da tiempo: enviar el borrador
+// Tope absoluto: a partir de aquí hay que estar enviando ya (la función muere a
+// los 60s y todavía queda el retardo de "escribiendo" y el envío).
+const REVISION_TOPE_DURO_MS = 46_000;
 
 async function revisarBorrador(
   client: Anthropic,
@@ -776,7 +789,11 @@ async function revisarBorrador(
   inicioMs: number
 ): Promise<string> {
   if (!REVISION_ACTIVA || !borrador) return borrador;
-  if (Date.now() - inicioMs > REVISION_MARGEN_MS) return borrador;
+  if (Date.now() - inicioMs > REVISION_MARGEN_MS) {
+    // Rastro para medir cuánto entra de verdad (buscar "revisor:" en los logs).
+    console.log("revisor: saltado por tiempo (" + (Date.now() - inicioMs) + "ms)");
+    return borrador;
+  }
   try {
     // La conversación, en texto, para la etiqueta <conversacion>.
     const conv = messages
@@ -812,7 +829,11 @@ async function revisarBorrador(
       text: `<conversacion>\n${conv}\n</conversacion>\n\n<borrador>\n${borrador}\n</borrador>`,
     });
 
-    const res = await client.messages.create(
+    // Lo que queda hasta el tope duro; si no da ni para 3s, ni lo intentamos.
+    const queda = REVISION_TOPE_DURO_MS - (Date.now() - inicioMs);
+    if (queda < 3000) return borrador;
+    const res = await Promise.race([
+      client.messages.create(
       {
         model: MODELO,
         max_tokens: 400,
@@ -826,15 +847,31 @@ async function revisarBorrador(
         ],
         messages: [{ role: "user", content: partes }],
       },
-      { timeout: REVISOR_TIMEOUT_MS }
-    );
+        // Sin reintentos: el cliente general lleva maxRetries 1 y eso doblaba el
+        // peor caso del revisor (7s + 7s) justo en el tramo que no sobra.
+        { timeout: Math.min(REVISOR_TIMEOUT_MS, queda), maxRetries: 0 }
+      ),
+      // Plazo duro por si la petición no respeta su propio timeout.
+      new Promise<null>((r) => setTimeout(() => r(null), queda)),
+    ]);
+    if (!res) {
+      console.log("revisor: cortado por el plazo duro");
+      return borrador; // se acabó el tiempo: va el borrador tal cual
+    }
     const salida = textoDe(res).trim();
-    if (!salida || /^OK\b/i.test(salida)) return borrador;
+    if (!salida || /^OK\b/i.test(salida)) {
+      console.log("revisor: ok, sin cambios");
+      return borrador;
+    }
     const m = salida.match(/RESPUESTA_CORREGIDA:\s*([\s\S]+)$/i);
     const corregida = m?.[1]?.trim();
     // Solo se acepta la corrección si es una respuesta de verdad; si el revisor
     // devuelve algo raro o vacío, se manda el borrador original.
-    return corregida && corregida.length >= 8 ? corregida : borrador;
+    if (corregida && corregida.length >= 8) {
+      console.log("revisor: CORRIGIO el borrador");
+      return corregida;
+    }
+    return borrador;
   } catch {
     return borrador; // el revisor NUNCA puede dejar al jugador sin respuesta
   }
