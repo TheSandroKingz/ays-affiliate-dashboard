@@ -442,15 +442,34 @@ function quitarGuiones(txt: string): string {
 // que el jugador llegó a leer y a contestar. En vez de tapar cada caso, aquí se
 // bloquea CUALQUIER corchete que huela a nota de sistema, venga de donde venga.
 const PALABRAS_INTERNAS =
-  /sol\s*[:：]|pendiente|no enviar|sin respuesta|no responder|no contestar|lista negra|silenci|internamente|nota del sistema|instrucci[oó]n|prompt|system|v[ií]deo|imagen adjunta|audio|placeholder|\bid\b|marcador/i;
+  /sol\s*[:：]?\s*(?:<\s*)?id|sol\s*[:：]?\s*\d|pendiente|no enviar|sin respuesta|no responder|no contestar|lista negra|silenci|internamente|nota del sistema|nota interna|instrucci[oó]n|prompt|system|v[ií]deo|imagen adjunta|audio|placeholder|\bid\b|marcador/i;
+
+// Frases que SOLO pueden ser una nota del sistema: nadie las escribe hablando
+// con otra persona. Para los paréntesis y las líneas sueltas usamos ESTA lista,
+// más estricta, porque "(mira el vídeo)" sí es una frase normal y no se puede
+// borrar por llevar la palabra "vídeo".
+const NOTA_SISTEMA =
+  /no enviar|sin respuesta|no responder|no contestar|lista negra|silenciar|nota interna|nota del sistema|sol\s*[:：]?\s*(?:<\s*)?id|sol\s*[:：]\s*\d/i;
 
 export function sanearParaJugador(txt: string): string {
   if (!txt) return "";
   const limpio = txt
-    // Cualquier bloque [entre corchetes] con pinta de nota interna, esté donde esté.
-    .replace(/\[[^\]\n]{0,200}\]/gu, (m) => (PALABRAS_INTERNAS.test(m) ? "" : m))
-    // Y un corchete de apertura sin cerrar al principio (respuesta cortada).
-    .replace(/^\s*\[[^\]\n]{0,200}$/u, "")
+    // Cualquier bloque [entre corchetes] con pinta de nota interna. Acepta saltos
+    // de línea y hasta 400 caracteres: se coló un "[Lista negra.\nSin respuesta.]"
+    // porque el patrón viejo no cruzaba el salto, y notas más largas porque
+    // paraba a los 200.
+    .replace(/\[[^\][]{0,400}\]/gu, (m) => (PALABRAS_INTERNAS.test(m) ? "" : m))
+    // Lo mismo entre paréntesis o comillas angulares (el modelo alterna), pero
+    // solo si es inconfundiblemente una nota del sistema.
+    .replace(/\([^()]{0,400}\)/gu, (m) => (NOTA_SISTEMA.test(m) ? "" : m))
+    .replace(/«[^«»]{0,400}»/gu, (m) => (NOTA_SISTEMA.test(m) ? "" : m))
+    // Un corchete de apertura sin cerrar al principio (respuesta cortada).
+    .replace(/^\s*\[[^\][]{0,400}$/u, "")
+    // Y la nota SIN delimitador ninguno: una línea corta que es solo una
+    // instrucción interna ("Nota interna: lista negra, sin respuesta.").
+    .split("\n")
+    .filter((l) => !(l.trim().length <= 120 && NOTA_SISTEMA.test(l)))
+    .join("\n")
     .replace(/ {2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
