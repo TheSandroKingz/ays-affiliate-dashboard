@@ -729,8 +729,15 @@ export async function POST(request: Request) {
           .or(`last_example_at.is.null,last_example_at.lt.${hace15s}`)
           .select("chat_id");
         const puedoMandarVideo = !reserva || reserva.length > 0;
+        // ⏱️ TOPE DE INTENTOS. Si hay muchos ejemplos con file_id muerto, este
+        // bucle hacía una llamada a Telegram por cada uno (hasta 200) y se comía
+        // los 60s de la función él solo, sin que el jugador recibiera nada.
+        // Con 4 intentos basta: si esos 4 fallan, seguimos y le contestamos.
+        let intentosVideo = 0;
         if (puedoMandarVideo) for (const dv of cands) {
           if (!dv.file_id) continue;
+          if (intentosVideo >= 4 || Date.now() - t0 > 20_000) break;
+          intentosVideo++;
           const m = dv.media_type;
           const metodo =
             m === "video" ? "sendVideo" : m === "animation" ? "sendAnimation" : m === "photo" ? "sendPhoto" : m === "document" ? "sendDocument" : "sendMessage";

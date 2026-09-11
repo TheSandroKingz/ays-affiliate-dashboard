@@ -662,8 +662,13 @@ export async function procesarUpdate(
         .or(`last_example_at.is.null,last_example_at.lt.${hace15s}`)
         .select("chat_id");
       const puedoMandarVideo = !reserva || reserva.length > 0;
+      // ⏱️ Mismo tope que en el webhook de Sandro: con muchos file_id muertos,
+      // este bucle se comía los 60s de la función y el jugador se quedaba sin nada.
+      let intentosVideo = 0;
       if (puedoMandarVideo) for (const dv of cands) {
         if (!dv.file_id) continue;
+        if (intentosVideo >= 4 || Date.now() - t0 > 20_000) break;
+        intentosVideo++;
         const { metodo, campo } = metodoMedia(dv.media_type ?? "");
         const p: Record<string, unknown> = { chat_id: chatId, caption, reply_markup: botonSoloJugar(bot.enlace) };
         p[campo] = dv.file_id;
