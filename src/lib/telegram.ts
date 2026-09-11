@@ -105,10 +105,13 @@ export async function tgApi(
 ): Promise<{ ok: boolean; result?: unknown; description?: string } | null> {
   if (!token) return null;
   try {
+    // ⏱️ Sin tope, un Telegram lento se comía los 60s de la función y el
+    // jugador se quedaba sin nada. El catch de abajo ya degrada bien.
     const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
+      signal: AbortSignal.timeout(8000),
     });
     return await res.json();
   } catch {
@@ -145,7 +148,8 @@ export async function descargarFoto(
     // interpolarlo en la URL, por si un cambio futuro devolviera algo raro.
     if (!/^[\w./-]+$/.test(filePath) || filePath.includes("..")) return null;
     const res = await fetch(
-      `https://api.telegram.org/file/bot${token}/${filePath}`
+      `https://api.telegram.org/file/bot${token}/${filePath}`,
+      { signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
@@ -202,7 +206,8 @@ export async function descargarMedia(
     if (!filePath) return null;
     if (!/^[\w./-]+$/.test(filePath) || filePath.includes("..")) return null;
     const res = await fetch(
-      `https://api.telegram.org/file/bot${token}/${filePath}`
+      `https://api.telegram.org/file/bot${token}/${filePath}`,
+      { signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return null;
     const bytes = Buffer.from(await res.arrayBuffer());
