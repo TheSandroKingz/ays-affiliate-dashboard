@@ -341,6 +341,29 @@ export async function GET(request: Request) {
 
     // REVERSIÓN: comisión negativa → el casino quitó la comisión. Si ese QFTD
     // estaba contado, se lo restamos también al afiliado (espejo con la red).
+    // ⛔ Reversión SIN identificador de jugador: no se puede saber a quién
+    // revertirle, así que si se dejara caer al flujo normal saldría "no_match"
+    // con comisión 0 y el afiliado se quedaría un dinero que el casino ya le ha
+    // quitado. Se registra como error y se avisa para resolverlo a mano.
+    if (Number.isFinite(comisionRed) && comisionRed < 0 && !playerid) {
+      await registrarEvento({
+        event_type: "commission",
+        raw_query: raw,
+        tracking_code: tag,
+        afp: afpDeCampana(tag),
+        player_id: "",
+        isocountry,
+        matched_user_id: null,
+        commission: 0,
+        status: "error",
+      });
+      await enviarPush(ADMIN_USER_ID, {
+        title: "⚠️ Reversión sin identificador",
+        body: "El casino ha quitado una comisión pero no dice de qué jugador. No se ha restado a nadie: revísalo en Actividad.",
+        url: "/admin/actividad",
+      });
+      return NextResponse.json({ ok: true, estado: "error", nota: "reversión sin player_id" });
+    }
     if (Number.isFinite(comisionRed) && comisionRed < 0 && playerid) {
       let estadoRev: EstadoEvento = "no_match";
       const contado = await buscarQftdContado(playerid);
