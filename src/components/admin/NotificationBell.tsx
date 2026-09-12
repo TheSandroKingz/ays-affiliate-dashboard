@@ -125,7 +125,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-white/15 bg-black/95 backdrop-blur shadow-xl overflow-hidden">
+        <div className="absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] max-h-[70dvh] overflow-y-auto overflow-x-hidden overscroll-contain rounded-xl border border-white/15 bg-black/95 backdrop-blur shadow-xl">
           <p className="px-4 py-2 text-xs font-semibold text-slate-400 border-b border-white/10">
             Novedades
           </p>
