@@ -1038,6 +1038,12 @@ function vozDeSandro(txt: string): string {
         const abre = ["Dale", "Tuchabee", "Va"];
         return pre + abre[Math.floor(Math.random() * abre.length)];
       })
+      // "en qué puedo echarte una mano" suena a centralita. Se queda en "qué
+      // necesitas"; el "manito" lo pone el prompt, que sí sabe si es un tío.
+      .replace(
+        /\ben\s+qu[eé]\s+(?:te\s+)?puedo\s+(?:echarte\s+una\s+mano|ayudar(?:te)?)\b/gi,
+        (_m, off: number, t: string) => conCaja("qué necesitas", t, off)
+      )
       // Cuando pierden, "qué hablas, qué putada hermanito". ⚠️ SOLO la
       // exclamación: hace falta el "qué" o el "vaya" delante. Sin eso, un "estás
       // en mala racha pero sales de esta" se convertía en un galimatías, y
