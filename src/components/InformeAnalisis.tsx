@@ -17,7 +17,22 @@ type Ejemplo = {
   tipo?: string;
   resumen: string;
   revisado?: boolean;
+  cuando?: string | null; // fecha del último mensaje de esa conversación
 };
+
+// "12 sep, 02:45" — corto, para que quepa al lado del bot sin cargar la ficha.
+function cuandoCorto(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("es-ES", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Madrid",
+  });
+}
 type SolucionDup = { id: number; problema: string; solucion: string };
 type SolucionPendiente = {
   id: number;
@@ -40,6 +55,7 @@ type Datos = {
   fricciones_abandono: number;
   por_tipo_duda: [string, number][];
   por_bot: [string, number][];
+  datos_que_faltan?: [string, number][];
   ejemplos_no_resueltos: Ejemplo[];
   ejemplos_friccion: Ejemplo[];
   decepciones?: number;
@@ -311,6 +327,32 @@ export default function InformeAnalisis() {
             </div>
           )}
 
+          {/* Lo que le faltó saber al bot: la lista de deberes para Datos Fijos */}
+          {(d.datos_que_faltan?.length ?? 0) > 0 && (
+            <section className="rounded-xl border border-sky-400/30 bg-sky-500/5 p-4">
+              <h3 className="text-sm font-semibold text-sky-100">
+                Datos que le faltaron al bot
+              </h3>
+              <p className="text-xs text-sky-200/70 mt-1 mb-3">
+                Información que el bot no tenía y por la que se quedó atascado. Añadirla a
+                los Datos Fijos evita que vuelva a pasar.
+              </p>
+              <ul className="flex flex-col gap-1.5">
+                {d.datos_que_faltan!.map(([texto, veces]) => (
+                  <li
+                    key={texto}
+                    className="flex items-start gap-2 text-sm text-slate-300 leading-snug"
+                  >
+                    <span className="shrink-0 mt-0.5 text-[11px] font-semibold text-sky-300 tabular-nums">
+                      {veces}×
+                    </span>
+                    <span className="min-w-0">{texto}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Ejemplos no resueltos — para revisar a mano */}
           {d.ejemplos_no_resueltos?.length > 0 && (
             <ListaEjemplos
@@ -550,6 +592,9 @@ function ListaEjemplos({
               <span className="text-[11px] font-medium text-slate-300">
                 {NOMBRE_BOT[e.bot] || e.bot}
               </span>
+              {e.cuando && (
+                <span className="text-[11px] text-slate-500">· {cuandoCorto(e.cuando)}</span>
+              )}
               {e.tipo && (
                 <span className="text-[11px] text-slate-500">· {NOMBRE_DUDA[e.tipo] || e.tipo}</span>
               )}

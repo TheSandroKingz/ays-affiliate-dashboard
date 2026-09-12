@@ -277,12 +277,30 @@ export async function generarInforme(): Promise<{ id: number } | null> {
   try {
     const hasta = new Date();
     const desde = new Date(hasta.getTime() - DIAS_VENTANA * 864e5);
-    const { data } = await supabaseAdmin
-      .from("analisis_conversaciones")
-      .select("bot, chat_id, tipo_duda, problema_tecnico, resuelto, derivado_soporte, categoria, friccion_abandono, decepcion_bot, dato_faltante, bienestar, resumen")
-      .gte("created_at", desde.toISOString())
-      .limit(100000);
-    const filas = data ?? [];
+    const filas = await traerTodo<{
+      bot: string;
+      chat_id: number;
+      tipo_duda: string | null;
+      problema_tecnico: boolean | null;
+      resuelto: string | null;
+      derivado_soporte: boolean | null;
+      categoria: string | null;
+      friccion_abandono: boolean | null;
+      decepcion_bot: boolean | null;
+      dato_faltante: string | null;
+      bienestar: boolean | null;
+      resumen: string | null;
+      ultimo_msg: string | null;
+    }>((d, h) =>
+      supabaseAdmin
+        .from("analisis_conversaciones")
+        .select(
+          "bot, chat_id, tipo_duda, problema_tecnico, resuelto, derivado_soporte, categoria, friccion_abandono, decepcion_bot, dato_faltante, bienestar, resumen, ultimo_msg"
+        )
+        .gte("created_at", desde.toISOString())
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
     const total = filas.length;
     const conProblema = filas.filter((f) => f.problema_tecnico);
     const resueltos = conProblema.filter((f) => f.resuelto === "resuelto").length;
@@ -414,10 +432,24 @@ export async function generarInforme(): Promise<{ id: number } | null> {
       // Ejemplos concretos (no resueltos + fricciones) para que Yaiza los revise.
       ejemplos_no_resueltos: mezclarPorBot(conProblema.filter((f) => f.resuelto === "no_resuelto"))
         .slice(0, 15)
-        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen })),
+        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen, cuando: f.ultimo_msg })),
+      // Lo que le FALTÓ saber al bot, agrupado y con cuántas veces. Ya se venía
+      // recogiendo por conversación pero no se enseñaba en ninguna parte: es,
+      // literalmente, la lista de lo que hay que añadir a los Datos Fijos.
+      datos_que_faltan: Object.entries(
+        conProblema
+          .filter((f) => f.resuelto === "no_resuelto" && f.dato_faltante)
+          .reduce((acc: Record<string, number>, f) => {
+            const k = String(f.dato_faltante).trim().slice(0, 160);
+            acc[k] = (acc[k] ?? 0) + 1;
+            return acc;
+          }, {})
+      )
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12),
       ejemplos_friccion: mezclarPorBot(filas.filter((f) => f.friccion_abandono))
         .slice(0, 15)
-        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen })),
+        .map((f) => ({ bot: f.bot, chat_id: f.chat_id, tipo: f.tipo_duda, resumen: f.resumen, cuando: f.ultimo_msg })),
       // Adenda 2: jugadores que se quejaron EXPLÍCITAMENTE del bot (calidad, no bienestar).
       decepciones: filas.filter((f) => f.decepcion_bot).length,
       ejemplos_decepcion: mezclarPorBot(filas.filter((f) => f.decepcion_bot))
