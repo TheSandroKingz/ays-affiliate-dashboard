@@ -395,8 +395,11 @@ function sinTrabajarConLaCasa(txt: string): string {
 }
 
 function quitarGuiones(txt: string): string {
-  // Tope de emojis: como mucho UNO por mensaje (deja el primero, quita el resto).
-  // Las reglas del prompt piden moderación pero el modelo abusa; esto lo garantiza.
+  // ⛔ EMOJIS: prácticamente ninguno. Antes el tope era UNO por mensaje, pero
+  // aun así salían en casi todas las respuestas y satura. Ahora se quitan TODOS,
+  // salvo en uno de cada diez mensajes, donde se deja pasar el primero. Así cae
+  // alguno de vez en cuando (natural) en vez de uno en cada frase (robótico).
+  const dejarUno = Math.random() < 0.1;
   let nEmoji = 0;
   const base = txt
     // ⛔ ACOTACIONES INTERNAS. El Prompt Maestro le pide al bot que en algunos
@@ -439,7 +442,7 @@ function quitarGuiones(txt: string): string {
     // selector de variación y tonos de piel). Menos robótico.
     .replace(
       /(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F})(?:[\u{1F3FB}-\u{1F3FF}\u{FE0F}]|\u{200D}(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F}))*/gu,
-      (m) => (nEmoji++ === 0 ? m : "")
+      (m) => (dejarUno && nEmoji++ === 0 ? m : "")
     )
     // Rangos numéricos (0–24h, 30 - 40): guion normal pegado, NO coma (si no,
     // "0–24h" salía "0, 24h").
@@ -988,6 +991,11 @@ async function revisarBorrador(
 }
 
 // Devuelve la respuesta del bot (texto) o null si no hay clave / falla.
+// ⚠️ ESTOS CAMBIOS SON NEUTROS A PROPÓSITO. Las muletillas nuevas ("g",
+// "manito", "hermanito") son de tío y aquí NO se sabe si al otro lado hay un
+// hombre o una mujer: soltárselas a una mujer queda fatal, y ya pasó. El toque
+// masculino lo pone el PROMPT, que sí ve el nombre y la conversación. Esto solo
+// se encarga de quitar las fórmulas viejas sin meter ningún vocativo.
 // Muletillas de Sandro. El modelo se engancha a fórmulas y las repite: aquí
 // se cambian por las suyas. Solo SU bot; en los demás están bien.
 // Empezó por "le damos" en vez de "arrancamos", que se le había pegado a
@@ -1018,12 +1026,12 @@ function vozDeSandro(txt: string): string {
       // ahí "me dices algo" sonaría frío.
       .replace(
         /\bdale(?:\s+(?:hermano|bro|crack|máquina|tío))?,?\s*aqu[ií]\s+est(?:oy|ar[eé])(?![\p{L}])/giu,
-        (_m, off: number, t: string) => conCaja("dale g, me dices algo", t, off)
+        (_m, off: number, t: string) => conCaja("dale, me dices algo", t, off)
       )
       // Abre con "dale manito", no con "Perfecto". ⚠️ SOLO cuando "Perfecto" va
       // solo (seguido de coma, punto o fin): "Perfecto para empezar, mete 20€"
       // se quedaba en "Dale manito para empezar", que no se entiende.
-      .replace(/(^|[\n.!?¡¿]\s*)Perfecto(?=\s*[,.!?…]|\s*$)/gu, "$1Dale manito")
+      .replace(/(^|[\n.!?¡¿]\s*)Perfecto(?=\s*[,.!?…]|\s*$)/gu, "$1Dale")
       // Cuando pierden, "qué hablas, qué putada hermanito". ⚠️ SOLO la
       // exclamación: hace falta el "qué" o el "vaya" delante. Sin eso, un "estás
       // en mala racha pero sales de esta" se convertía en un galimatías, y
@@ -1031,10 +1039,10 @@ function vozDeSandro(txt: string): string {
       .replace(
         /(?:vaya,?\s*qu[eé]\s+|qu[eé]\s+|vaya,?\s+)mala\s+racha(?:\s+(?:hermano|hermana|bro|manito|t[ií]o|g))?/giu,
         (_m, off: number, t: string) =>
-          conCaja("qué hablas, qué putada hermanito", t, off)
+          conCaja("qué hablas, qué putada", t, off)
       )
       // Si ya venía un "qué putada" detrás, no lo decimos dos veces.
-      .replace(/qué putada hermanito,?\s*(?:qué\s+)?putada\b/gi, "qué putada hermanito")
+      .replace(/qué putada,?\s*(?:qué\s+)?putada\b/gi, "qué putada")
   );
 }
 
