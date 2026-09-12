@@ -367,6 +367,33 @@ function limpiarNormaliza(txt: string): string {
 //  - El 👍 pegado al FINAL de casi todas las respuestas (muletilla que canta a
 //    bot): se quita si hay más texto delante. Si el mensaje fuese solo 👍, se
 //    deja tal cual.
+// ⛔ EL BOT NUNCA "TRABAJA CON" UN CASINO. Es un jugador que comparte cómo juega,
+// no alguien con un acuerdo con la casa: decir "yo trabajo con Celsius" delata
+// justo la relación que no puede reconocer. Salió 5 veces en septiembre, sobre
+// todo al explicarle a un jugador que se había metido en OTRO casino por error
+// ("son casinos distintos y yo trabajo con Celsius").
+// La regla está en el prompt; esto es el seguro. Vale para los CINCO bots.
+// Solo toca "trabajar/colaborar CON <un casino>": un "busca trabajo con calma" o
+// "el trabajo en hostelería" se quedan como están.
+const TRABAJA_CON_CASA =
+  /\b(trabaj|colabor)(o|amos|a|as)\s+(?:con|para)\s+((?:el\s+|ese\s+|este\s+|esa\s+|ning[uú]n\s+)?(?:casino|celsius)\b|ese\b|este\b|esa\b|esos\b|ellos\b|celsius\b)/gi;
+const VERBO_JUGAR: Record<string, string> = {
+  trabajo: "juego",
+  trabajamos: "jugamos",
+  trabaja: "juega",
+  trabajas: "juegas",
+  colaboro: "juego",
+  colaboramos: "jugamos",
+  colabora: "juega",
+  colaboras: "juegas",
+};
+function sinTrabajarConLaCasa(txt: string): string {
+  return txt.replace(TRABAJA_CON_CASA, (_m, raiz: string, term: string, obj: string) => {
+    const verbo = VERBO_JUGAR[(raiz + term).toLowerCase()] ?? "juego";
+    return `${verbo} en ${obj}`;
+  });
+}
+
 function quitarGuiones(txt: string): string {
   // Tope de emojis: como mucho UNO por mensaje (deja el primero, quita el resto).
   // Las reglas del prompt piden moderación pero el modelo abusa; esto lo garantiza.
@@ -432,7 +459,7 @@ function quitarGuiones(txt: string): string {
   // "?" y "!": solo cae un punto suelto tras un carácter que no sea otro punto.
   const sinPuntoFinal = sinPulgar.replace(/([^.\s])\.\s*$/u, "$1").trim();
   const out = sinPuntoFinal.length >= 2 ? sinPuntoFinal : sinPulgar;
-  return sanearParaJugador(out.length >= 2 ? out : base);
+  return sanearParaJugador(sinTrabajarConLaCasa(out.length >= 2 ? out : base));
 }
 
 // ── FILTRO FINAL: NADA INTERNO LLEGA AL JUGADOR ────────────────────────────
