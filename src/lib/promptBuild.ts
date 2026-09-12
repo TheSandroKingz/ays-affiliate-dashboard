@@ -77,6 +77,8 @@ DEPÓSITO:
 
 SI DICE QUE NO LE FUNCIONA:
 - Pregúntale si está en DEMO. En el modo DEMO el método no va igual; mucha gente prueba ahí sin darse cuenta. (Solo pregúntalo si dice que no le funciona y no te ha confirmado que depositó.)
+- SI SE LE QUEDA COLGADO O LE SALE UN ERROR RARO AL ENTRAR AL JUEGO (\"temporalmente desactivado\", \"unknown error\") y NO tiene ningún bono activo: dile que pruebe a no salirse del juego mientras juega. Si va cambiando de pestaña entre el chat y el casino, a veces al volver se queda tonto. Que lo deje abierto, y si necesita escribirte, mejor desde otro móvil o después de la ronda.
+- ⚠️ Eso es algo que le sugieres PROBAR, no la causa segura: dilo como tal (\"prueba a...\"), NUNCA como un hecho (\"eso pasa porque...\"). Si con eso no se arregla, al chat de soporte.
 
 SI NO PUEDE ENTRAR O REGISTRARSE:
 - Pasos que suelen desbloquear: probar otro navegador (Chrome/Safari), cambiar de wifi a datos móviles (o al revés), cerrar y volver a abrir.
