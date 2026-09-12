@@ -779,17 +779,17 @@ export async function POST(request: Request) {
       const entrada =
         textoJ ||
         (msg.video || msg.animation
-          ? "[el jugador te ha enviado un vídeo]"
+          ? "[el jugador te ha enviado un VÍDEO. NO puedes verlo: no describas su contenido ni des por hecho qué sale en él.]"
           : msg.photo
           ? "[el jugador te ha enviado una foto]"
           : msg.voice || msg.audio
-          ? "[el jugador te ha enviado una nota de voz]"
+          ? "[el jugador te ha enviado un AUDIO. NO puedes oírlo: no des por hecho qué dice.]"
           : msg.sticker
           ? "[el jugador te ha enviado un sticker]"
           : msg.document
           ? "[el jugador te ha enviado un archivo]"
           : msg.video_note
-          ? "[el jugador te ha enviado una nota de vídeo]"
+          ? "[el jugador te ha enviado una NOTA DE VÍDEO. NO puedes verla ni oírla.]"
           : msg.location
           ? "[el jugador te ha enviado una ubicación]"
           : msg.contact
@@ -971,7 +971,19 @@ export async function POST(request: Request) {
           // pitch fijo. botHandler ya lo filtraba; aquí faltaba.
           const tipoVeApto = mediaTipo === "photo" || mediaTipo === "video" || mediaTipo === "animation";
           let visionFileId: string | null = tipoVeApto ? mediaFileId : null;
-          if (!visionFileId) {
+          // ⛔ NO ARRASTRAR UNA IMAGEN VIEJA SI EL MENSAJE DE AHORA ES UN ARCHIVO
+          // QUE NO SE PUEDE VER (nota de voz, audio, vídeo sin miniatura, PDF,
+          // sticker...). Antes se buscaba la última foto de los 3 minutos previos
+          // y se le adjuntaba: el modelo describía ESA captura vieja creyendo que
+          // era lo que le acababan de mandar, e incluso soltaba cifras exactas
+          // ("20€ de Bet Amount y 2 minas") de un vídeo que nunca vio.
+          // Lo detectó Yaiza (nota del 12-sep) y lleva repitiéndose desde el caso 6.
+          // El rescate de la foto anterior SOLO tiene sentido cuando lo de ahora
+          // es TEXTO: ahí sí, el jugador mandó la captura y luego escribió.
+          const traeArchivo =
+            !!(msg.video || msg.animation || msg.photo || msg.voice || msg.audio ||
+               msg.sticker || msg.document || msg.video_note);
+          if (!visionFileId && !traeArchivo) {
             const { data: ultMedia } = await supabaseAdmin
               .from("telegram_messages")
               .select("file_id")

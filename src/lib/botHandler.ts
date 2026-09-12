@@ -705,17 +705,17 @@ export async function procesarUpdate(
     const entrada =
       textoJ ||
       (msg.video || msg.animation
-        ? "[el jugador te ha enviado un vídeo]"
+        ? "[el jugador te ha enviado un VÍDEO. NO puedes verlo: no describas su contenido ni des por hecho qué sale en él.]"
         : msg.photo
         ? "[el jugador te ha enviado una foto]"
         : msg.voice || msg.audio
-        ? "[el jugador te ha enviado una nota de voz]"
+        ? "[el jugador te ha enviado un AUDIO. NO puedes oírlo: no des por hecho qué dice.]"
         : msg.sticker
         ? "[el jugador te ha enviado un sticker]"
         : msg.document
         ? "[el jugador te ha enviado un archivo]"
         : msg.video_note
-        ? "[el jugador te ha enviado una nota de vídeo]"
+        ? "[el jugador te ha enviado una NOTA DE VÍDEO. NO puedes verla ni oírla.]"
         : msg.location
         ? "[el jugador te ha enviado una ubicación]"
         : msg.contact
@@ -893,7 +893,14 @@ export async function procesarUpdate(
             mediaJ.media_type === "animation")
             ? mediaJ.file_id
             : null;
-        if (!visionFileId) {
+        // ⛔ Mismo freno que en el webhook de Sandro: si lo que acaban de mandar
+        // es un archivo que NO se puede ver (audio, vídeo sin miniatura, PDF,
+        // sticker), NO se arrastra una foto de hace un rato. El modelo la
+        // describía como si fuera lo recién enviado e inventaba cifras exactas.
+        const traeArchivo =
+          !!(msg.video || msg.animation || msg.photo || msg.voice || msg.audio ||
+             msg.sticker || msg.document || msg.video_note);
+        if (!visionFileId && !traeArchivo) {
           const { data: ultFoto } = await supabaseAdmin
             .from("bot_messages")
             .select("file_id")
