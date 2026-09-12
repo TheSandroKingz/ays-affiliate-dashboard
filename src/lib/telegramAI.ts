@@ -1031,7 +1031,13 @@ function vozDeSandro(txt: string): string {
       // Abre con "dale manito", no con "Perfecto". ⚠️ SOLO cuando "Perfecto" va
       // solo (seguido de coma, punto o fin): "Perfecto para empezar, mete 20€"
       // se quedaba en "Dale manito para empezar", que no se entiende.
-      .replace(/(^|[\n.!?¡¿]\s*)Perfecto(?=\s*[,.!?…]|\s*$)/gu, "$1Dale")
+      .replace(/(^|[\n.!?¡¿]\s*)Perfecto(?=\s*[,.!?…]|\s*$)/gu, (_m, pre: string) => {
+        // Se alterna para no meter "Dale" en todas: ya sale en 1 de cada 6
+        // mensajes y repetirlo es lo que canta a máquina. Las dos valen para
+        // hombre o mujer (aquí no se sabe con quién habla).
+        const abre = ["Dale", "Tuchabee", "Va"];
+        return pre + abre[Math.floor(Math.random() * abre.length)];
+      })
       // Cuando pierden, "qué hablas, qué putada hermanito". ⚠️ SOLO la
       // exclamación: hace falta el "qué" o el "vaya" delante. Sin eso, un "estás
       // en mala racha pero sales de esta" se convertía en un galimatías, y
