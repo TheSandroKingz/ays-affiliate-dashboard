@@ -20,6 +20,59 @@ export type SaludResultado = {
 
 type BotChk = { key: string; label: string; token: string; pathEsperado: string };
 
+// ── AUTO-REPARACIÓN DEL WEBHOOK ────────────────────────────────────────────
+// El fallo que más probable es que te pille fuera de casa: Telegram se queda
+// sin el webhook (un despliegue raro, un cambio de dominio, o alguien tocando
+// el bot) y deja de llegar NADA. Antes había que entrar al panel a darle a
+// "Conectar webhook" a mano.
+//
+// Esto lo vuelve a poner solo. Es seguro:
+//   · La URL sale SIEMPRE de la base de confianza (NEXT_PUBLIC_SITE_URL o
+//     VERCEL_URL, que las fija la plataforma), NUNCA de una cabecera del
+//     cliente, que es falsificable.
+//   · Es idempotente: si ya está bien, no toca nada.
+//   · Lo peor que puede provocar alguien llamándolo es que el webhook se quede
+//     apuntando a donde ya tenía que apuntar.
+export async function repararWebhooks(): Promise<string[]> {
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  if (!base) return [];
+
+  const lista: { key: string; token: string; secret: string; path: string }[] = [];
+  const tokenSandro = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
+  const secretSandro = (process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  if (tokenSandro && secretSandro) {
+    lista.push({ key: "as", token: tokenSandro, secret: secretSandro, path: "/api/telegram/webhook" });
+  }
+  for (const b of Object.values(BOTS)) {
+    if (b.token && b.secret) {
+      lista.push({ key: b.key, token: b.token, secret: b.secret, path: `/api/telegram/webhook/${b.key}` });
+    }
+  }
+
+  const reparados: string[] = [];
+  await Promise.all(
+    lista.map(async (b) => {
+      try {
+        const info = await tgApi("getWebhookInfo", {}, b.token);
+        const actual = (info?.result as { url?: string } | undefined)?.url ?? "";
+        const esperada = `${base}${b.path}`;
+        if (actual === esperada) return; // todo en orden
+        const r = await tgApi(
+          "setWebhook",
+          { url: esperada, secret_token: b.secret, allowed_updates: ["message", "callback_query"] },
+          b.token
+        );
+        if (r?.ok) reparados.push(b.key);
+      } catch {
+        /* si no se puede, lo dirá el chequeo de salud */
+      }
+    })
+  );
+  return reparados;
+}
+
 export async function revisarSaludBots(): Promise<SaludResultado> {
   // Bot de Sandro (token por defecto) + bots nuevos (Jeffer/Livana/Black KP…).
   // Solo los que tienen token configurado (los demás no están montados).
