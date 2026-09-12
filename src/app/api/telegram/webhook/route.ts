@@ -861,7 +861,14 @@ export async function POST(request: Request) {
         // Los 45s para mensajes cortos se revirtieron: con ellos + la IA la funcion
         // se pasaba de los 60s de Vercel y el jugador se quedaba SIN respuesta.
         const esperaMs = 30_000;
-        await new Promise((r) => setTimeout(r, esperaMs));
+        // 👀 "escribiendo..." DESDE YA, sin cambiar la espera. Sin esto el bot
+        // parece muerto durante 30s y la gente se impacienta: un jugador mandó
+        // "Hola?" un segundo antes de que le llegara la respuesta. Telegram borra
+        // el indicador a los ~5s, así que se refresca a mitad de la espera.
+        tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
+        await new Promise((r) => setTimeout(r, esperaMs / 2));
+        tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
+        await new Promise((r) => setTimeout(r, esperaMs / 2));
         if (miMsgId) {
           const { data: masNuevos } = await supabaseAdmin
             .from("telegram_messages")
