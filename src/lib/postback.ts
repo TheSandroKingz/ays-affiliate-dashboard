@@ -94,6 +94,26 @@ export async function reclamarEvento(eventKey: string | null): Promise<boolean> 
   return Array.isArray(data) && data.length > 0; // fila nueva = contar; vacío = duplicado
 }
 
+// ¿Está YA puesto el candado de este evento? Es solo una LECTURA: no lo coge ni
+// lo toca. Existe porque usar reclamarEvento() para "preguntar" da falsos
+// positivos: esa devuelve true cuando la consulta falla ("ante la duda,
+// contamos"), que para contar está bien pero para preguntar no. Pasó el 12-sep:
+// en la ráfaga de las 12:00 dijo "candado libre" en dos reenvíos normales de
+// Celsius y saltaron dos avisos de "posible doble pago" que no eran nada.
+//
+// Ante un fallo devuelve true (= "ya estaba"), que es la opción CALLADA: quien
+// llama ya ha comprobado por otro lado que el jugador está pagado, así que no
+// hay dinero en juego y un aviso falso solo hace ruido.
+export async function candadoPuesto(eventKey: string | null): Promise<boolean> {
+  if (!eventKey) return false;
+  const { count, error } = await supabaseAdmin
+    .from("postback_dedup")
+    .select("event_key", { count: "exact", head: true })
+    .eq("event_key", eventKey);
+  if (error) return true;
+  return (count ?? 0) > 0;
+}
+
 // Libera un evento reclamado (borra el token) para que un reintento lo cuente.
 // Se usa si el incremento falló tras reclamar.
 export async function liberarEvento(eventKey: string | null): Promise<void> {

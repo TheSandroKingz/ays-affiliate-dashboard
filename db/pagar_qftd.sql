@@ -47,9 +47,17 @@ begin
     return false;  -- ya estaba pagado
   end if;
 
-  -- Mismo transacción que el candado: o las dos, o ninguna.
-  -- Orden de los parámetros: (usuario, fecha, clicks, registros, ftd, comisión)
-  perform public.increment_daily_stats(p_user_id, p_date, 0, 0, 1, p_commission);
+  -- Misma transacción que el candado: o las dos, o ninguna.
+  -- ⚠️ Los parámetros van POR NOMBRE, no por orden. Por orden falla (error
+  -- 42883): la función de la base de datos no tiene exactamente esa firma, y
+  -- además así da igual si algún día se le añade un parámetro nuevo.
+  perform public.increment_daily_stats(
+    p_user_id       => p_user_id,
+    p_date          => p_date,
+    p_registrations => 0,
+    p_ftd           => 1,
+    p_commission    => p_commission
+  );
   return true;
 end;
 $$;

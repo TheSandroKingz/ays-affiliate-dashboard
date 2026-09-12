@@ -14,6 +14,7 @@ import {
   montoConSigno,
   getMonto,
   queryLimpia,
+  candadoPuesto,
   type EstadoEvento,
 } from "@/lib/postback";
 import {
@@ -604,9 +605,11 @@ export async function GET(request: Request) {
         // No se paga. Para distinguir: si el candado ya estaba puesto es el
         // reenvío normal del casino (duplicado, se ignora en silencio); si estaba
         // libre es un QFTD DISTINTO del mismo jugador y hay que mirarlo a mano.
-        const candadoLibre = await reclamarEvento(clave);
-        estado = candadoLibre ? "held" : "duplicate";
-        if (candadoLibre) heldReason = "double_pay";
+        // ⚠️ Se PREGUNTA (candadoPuesto), no se reclama: reclamarEvento devuelve
+        // true cuando la consulta falla, y en la ráfaga del casino eso disparó
+        // dos avisos falsos de "posible doble pago" el 12-sep.
+        estado = (await candadoPuesto(clave)) ? "duplicate" : "held";
+        if (estado === "held") heldReason = "double_pay";
       } else {
         // CAMINO NUEVO: candado y pago en UNA sola transacción de Postgres, con
         // reintento seguro porque la función es idempotente (db/pagar_qftd.sql).
