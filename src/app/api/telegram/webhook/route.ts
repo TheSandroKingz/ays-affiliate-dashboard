@@ -13,7 +13,7 @@ import {
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
-import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
+import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -912,11 +912,19 @@ export async function POST(request: Request) {
         return { role: m.role as "user" | "assistant", content: marca + m.content };
       });
 
+      // ── BUCLE DE DESPEDIDA ────────────────────────────────────────────
+      // Si el bot ya se despidió las últimas dos veces y el jugador sigue con
+      // cortesías ("chao", "igualmente", "bendiciones", un emoji), no hay nada
+      // nuevo que decir: cada respuesta le daba pie a otra. Caso real del
+      // 12-sep: 17 minutos y 20 mensajes despidiéndose. Quien cierra de verdad
+      // es el silencio, no otro "cuídate".
+      const bucleFin = bucleDeDespedida(historial, entrada);
+
       // La IA responde (si no está limitada, no se pasó el tope diario y no ha
       // quedado "debounced" por un mensaje posterior).
       const TOPE_DIA = 5000;
       let respuesta: string | null = null;
-      if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre) {
+      if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
         }).format(new Date());
@@ -1032,7 +1040,7 @@ export async function POST(request: Request) {
         envioOk = !!rEnv?.ok;
         if (envioOk) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
+      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
         // "debounced", NO mandamos nada: responderá el último mensaje del grupo.)
         // ⛔ !soloCierre: si el jugador solo suelta cortesía ("gracias/ok/vale"),
@@ -1043,7 +1051,7 @@ export async function POST(request: Request) {
         });
         if (rEnv?.ok) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
+      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
         // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
         // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
         // Un acuse humano y corto, para que sepa que le hemos leído. (Un jugador

@@ -14,7 +14,7 @@ import {
   descargarFoto,
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
-import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, ABUSO_RE } from "@/lib/telegramAI";
+import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
@@ -809,11 +809,18 @@ export async function procesarUpdate(
       }
     }
 
+    // Mismo freno que en el webhook de Sandro: si ya nos despedimos y sigue con
+
+    // cortesías, se deja de contestar.
+
+    const bucleFin = bucleDeDespedida(historial, entrada);
+
+
     // La IA responde (si no está limitada, dentro del tope y no ha quedado debounced).
     const TOPE_DIA = 5000;
     let respuesta: string | null = null;
     let promo = "";
-    if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre) {
+    if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
       const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(
         new Date()
@@ -951,7 +958,7 @@ export async function procesarUpdate(
       // Ver webhook de Sandro: si Telegram no lo aceptó, no lo damos por dicho.
       envioOk = !!rEnv?.ok;
       if (envioOk) algoEnviado = true;
-    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !noPitch.test(entrada)) {
+    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
       // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
       // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
       const rPitch = await tgEnviar(
@@ -961,7 +968,7 @@ export async function procesarUpdate(
         tok
       );
       if (rPitch?.ok) algoEnviado = true;
-    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre) {
+    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
       // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
       // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
       // Un acuse humano y corto. (Ver el caso del jugador que estuvo 9 HORAS sin
