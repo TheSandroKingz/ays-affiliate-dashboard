@@ -787,15 +787,22 @@ export async function procesarUpdate(
       // 45s es lo máximo que cabe dejando margen para la IA, el revisor y el envío.
       // Los 45s para mensajes cortos se revirtieron: con ellos + la IA la funcion
       // se pasaba de los 60s de Vercel y el jugador se quedaba SIN respuesta.
-      const esperaMs = 30_000;
-      // 👀 "escribiendo..." DESDE YA, sin cambiar la espera. Sin esto el bot
-      // parece muerto durante 30s y la gente se impacienta: un jugador mandó
-      // "Hola?" un segundo antes de que le llegara la respuesta. Telegram borra
-      // el indicador a los ~5s, así que se refresca a mitad de la espera.
-      tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
-      await new Promise((r) => setTimeout(r, esperaMs / 2));
-      tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
-      await new Promise((r) => setTimeout(r, esperaMs / 2));
+      // Agrupación (sección 17 de Datos Fijos): se espera un poco antes de
+      // contestar, por si el jugador está escribiendo en varios trozos.
+      //
+      // ⚠️ 30s es MUCHO para un mensaje suelto y corto ("alo", "hola", "?"):
+      // ahí no hay nada que agrupar y el bot parece muerto. Un jugador mandó
+      // "Hola?" un segundo antes de que le llegara la respuesta. Poner
+      // "escribiendo..." durante la espera se probó y queda peor: nadie tarda
+      // 40s escribiendo para soltar una línea.
+      // Con un saludo corto se espera 12s (que sigue agrupando lo que llegue
+      // detrás, que es lo habitual al escribir del tirón) y con algo más largo
+      // o con pinta de venir entrecortado, los 30s de siempre.
+      // ⛔ NO subir de 30s: con 45s la función se pasaba de los 60s de Vercel y
+      // el jugador se quedaba SIN respuesta (117 de 202 perdidas el 10-sep).
+      const esCorto = entrada.trim().length <= 25;
+      const esperaMs = esCorto ? 12_000 : 30_000;
+      await new Promise((r) => setTimeout(r, esperaMs));
       const { data: masNuevos } = await supabaseAdmin
         .from("bot_messages")
         .select("id, content, media_type")
