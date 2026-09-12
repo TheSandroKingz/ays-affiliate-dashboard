@@ -1033,8 +1033,13 @@ export async function POST(request: Request) {
         // ⏱️ Acotado por lo que queda: si la IA ha tardado, se recorta o se manda
         // ya. Antes era fijo (hasta 10,5s) y podía ser la gota que pasaba de 60s
         // y dejaba al jugador sin respuesta, que es mucho peor que ir rápido.
+        // ⏳ Cuánto tarda en "escribir", ATADO A LO QUE VA A ESCRIBIR. Antes llevaba
+        // un aleatorio de hasta 5s que no miraba la longitud: por una línea corta
+        // salía "escribiendo..." 7 segundos y cantaba. Ahora: un momento de leer y
+        // pensar, más el tiempo de teclear a ritmo de móvil (~8 caracteres por
+        // segundo), con tope para que un mensaje largo no eternice la espera.
         const escribirBase =
-          2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30);
+          1000 + Math.floor(Math.random() * 1500) + Math.min(9000, respuesta.length * 120);
         const escribir = Math.max(0, Math.min(escribirBase, 52_000 - (Date.now() - t0)));
         tgApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
         await new Promise((r) => setTimeout(r, escribir));

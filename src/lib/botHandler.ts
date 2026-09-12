@@ -950,8 +950,13 @@ export async function procesarUpdate(
       // siempre el mismo tiempo (eso canta a bot).
       // Si ya esperamos los 45s de agrupación, el retardo "humano" se recorta:
       // si no, la función se pasaría de los 60s y el jugador se quedaría sin nada.
+      // ⏳ Cuánto tarda en "escribir", ATADO A LO QUE VA A ESCRIBIR. Antes llevaba
+      // un aleatorio de hasta 5s que no miraba la longitud: por una línea corta
+      // salía "escribiendo..." 7 segundos y cantaba. Ahora: un momento de leer y
+      // pensar, más el tiempo de teclear a ritmo de móvil (~8 caracteres por
+      // segundo), con tope para que un mensaje largo no eternice la espera.
       const escribirBase = pareceCompleto
-        ? 2000 + Math.floor(Math.random() * 5000) + Math.min(3500, respuesta.length * 30)
+        ? 1000 + Math.floor(Math.random() * 1500) + Math.min(9000, respuesta.length * 120)
         : 1500;
       // ⏱️ Y además acotado por lo que queda de los 60s de Vercel.
       const escribir = Math.max(0, Math.min(escribirBase, 52_000 - (Date.now() - t0)));
