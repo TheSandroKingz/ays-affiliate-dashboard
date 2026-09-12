@@ -3,6 +3,9 @@
 // Claude (batch, separado del bot que habla) y genera informes para revisión HUMANA.
 // ⛔ NO ajusta el bot solo. NO mide "éxito" por depósito. NO analiza qué frases hacen
 // depositar. Solo calidad técnica y supervisión. BLINDADO: cualquier fallo se ignora.
+import { traerTodo } from "./traerTodo";
+import { enviarPush } from "./push";
+import { ADMIN_USER_ID } from "./adminId";
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "./supabaseAdmin";
 
@@ -486,6 +489,99 @@ export async function registrarUsoSolucion(
       .insert({ solucion_id: solId, bot: botKey, chat_id: chatId });
   } catch {
     /* si falla, no pasa nada: el contador es informativo */
+  }
+}
+
+// ── APRENDIZAJE (solo RESTA, nunca inventa) ────────────────────────────────
+// Lo único que el bot puede aprender solo es DEJAR DE DECIR algo que no
+// funciona. NO puede crear soluciones nuevas, ni cambiar sus reglas, ni tocar
+// el prompt: eso lo decidís vosotros. Aquí solo se mira, de las soluciones YA
+// aprobadas, cuáles acaban en conversaciones sin resolver una y otra vez, y
+// esas se devuelven a "pendiente" (dejan de usarse hasta que alguien las
+// revise) y se avisa al móvil.
+//
+// Por qué a "pendiente" y no borradas: es reversible de un clic, y si la
+// solución era buena y lo que fallaba era la clasificación, no se pierde nada.
+//
+// Cautelas, porque quien clasifica es otra IA y se equivoca:
+//   · Solo cuentan las conversaciones clasificadas como "resuelto" o
+//     "no_resuelto" (las "sin_determinar" y las vacías se ignoran).
+//   · Hacen falta al menos MIN_CASOS con veredicto claro.
+//   · Y que falle en al menos el UMBRAL de ellas.
+const MIN_CASOS = 4;
+const UMBRAL_FALLO = 0.7;
+
+export async function revisarSolucionesQueFallan(): Promise<number> {
+  try {
+    const aprobadas = await traerTodo<{ id: number; problema: string }>((d, h) =>
+      supabaseAdmin
+        .from("soluciones_verificadas")
+        .select("id, problema")
+        .eq("estado", "aprobada")
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
+    if (!aprobadas.length) return 0;
+    const ids = aprobadas.map((a) => a.id);
+
+    const usos = await traerTodo<{ solucion_id: number; chat_id: number; created_at: string }>(
+      (d, h) =>
+        supabaseAdmin
+          .from("soluciones_verificadas_usos")
+          .select("solucion_id, chat_id, created_at")
+          .in("solucion_id", ids)
+          .order("created_at", { ascending: true })
+          .range(d, h)
+    );
+    if (!usos.length) return 0;
+
+    const chats = [...new Set(usos.map((u) => u.chat_id))];
+    const clasif = await traerTodo<{ chat_id: number; resuelto: string | null; created_at: string }>(
+      (d, h) =>
+        supabaseAdmin
+          .from("analisis_conversaciones")
+          .select("chat_id, resuelto, created_at")
+          .in("chat_id", chats)
+          .order("created_at", { ascending: true })
+          .range(d, h)
+    );
+
+    // Para cada uso, el PRIMER veredicto de esa conversación posterior al uso.
+    const marcador = new Map<number, { ok: number; mal: number }>();
+    for (const u of usos) {
+      const tUso = new Date(u.created_at).getTime();
+      const v = clasif.find(
+        (c) => c.chat_id === u.chat_id && new Date(c.created_at).getTime() > tUso
+      );
+      if (!v || (v.resuelto !== "resuelto" && v.resuelto !== "no_resuelto")) continue;
+      const m = marcador.get(u.solucion_id) ?? { ok: 0, mal: 0 };
+      if (v.resuelto === "resuelto") m.ok++;
+      else m.mal++;
+      marcador.set(u.solucion_id, m);
+    }
+
+    let retiradas = 0;
+    for (const [solId, m] of marcador) {
+      const total = m.ok + m.mal;
+      if (total < MIN_CASOS) continue;
+      if (m.mal / total < UMBRAL_FALLO) continue;
+      const { error } = await supabaseAdmin
+        .from("soluciones_verificadas")
+        .update({ estado: "pendiente" })
+        .eq("id", solId)
+        .eq("estado", "aprobada"); // solo si sigue aprobada (idempotente)
+      if (error) continue;
+      retiradas++;
+      const sol = aprobadas.find((a) => a.id === solId);
+      await enviarPush(ADMIN_USER_ID, {
+        title: "🧠 Una solución ha dejado de usarse",
+        body: `"${(sol?.problema ?? "").slice(0, 60)}" falló en ${m.mal} de ${total} casos. Vuelve a pendiente hasta que la revises.`,
+        url: "/admin/analisis",
+      });
+    }
+    return retiradas;
+  } catch {
+    return 0; // el aprendizaje nunca rompe el cron
   }
 }
 

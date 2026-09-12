@@ -8,7 +8,7 @@ import { BOTS } from "@/lib/bots";
 import { resumenSeguridad } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
 import { revisarSaludBots } from "@/lib/botHealth";
-import { analizarLote, tocaInforme, generarInforme } from "@/lib/analisisHistorial";
+import { analizarLote, tocaInforme, generarInforme , revisarSolucionesQueFallan} from "@/lib/analisisHistorial";
 
 // Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
 export const maxDuration = 60;
@@ -296,6 +296,9 @@ export async function GET(request: Request) {
     if (quedaMs > 8_000) {
       await analizarLote(6, quedaMs - 6_000);
       if (Date.now() - tCron < 40_000 && (await tocaInforme())) await generarInforme();
+      // Aprendizaje: retira de circulación las soluciones que llevan varias
+      // conversaciones seguidas sin resolver nada. Solo RESTA, nunca inventa.
+      if (Date.now() - tCron < 45_000) await revisarSolucionesQueFallan();
     }
   } catch {
     /* el análisis del historial nunca rompe el cron */
