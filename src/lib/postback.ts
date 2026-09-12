@@ -1,3 +1,4 @@
+import { traerTodo } from "./traerTodo";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Identificador único del jugador que manda freshbet. Probamos varios nombres
@@ -272,26 +273,32 @@ export async function depositoMedio(
     // Excluimos de la media los jugadores con REVERSIÓN (chargeback): al revertir, su
     // commission queda status="counted" pero counted=false. Sin esto, un depósito
     // reembolsado seguiría inflando la "calidad de tráfico". Reversiones = raras.
-    const { data: rev } = await supabaseAdmin
-      .from("postback_events")
-      .select("player_id")
-      .eq("matched_user_id", userId)
-      .eq("event_type", "commission")
-      .eq("status", "counted")
-      .eq("counted", false)
-      .not("player_id", "is", null)
-      .limit(100000);
-    const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
+    const rev = await traerTodo<{ player_id: string | null }>((d, h) =>
+      supabaseAdmin
+        .from("postback_events")
+        .select("player_id")
+        .eq("matched_user_id", userId)
+        .eq("event_type", "commission")
+        .eq("status", "counted")
+        .eq("counted", false)
+        .not("player_id", "is", null)
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
+    const revertidos = new Set(rev.map((r) => r.player_id as string));
 
-    const { data, error } = await supabaseAdmin
-      .from("postback_events")
-      .select("amount, player_id")
-      .eq("matched_user_id", userId)
-      .eq("event_type", "ftd")
-      .not("amount", "is", null)
-      .gt("amount", 0)
-      .limit(100000); // sin límite PostgREST corta en 1000 y la media saldría sesgada
-    if (error || !data || !data.length) return { media: null, num: 0 };
+    const data = await traerTodo<{ amount: number | null; player_id: string | null }>((d, h) =>
+      supabaseAdmin
+        .from("postback_events")
+        .select("amount, player_id")
+        .eq("matched_user_id", userId)
+        .eq("event_type", "ftd")
+        .not("amount", "is", null)
+        .gt("amount", 0)
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
+    if (!data.length) return { media: null, num: 0 };
     const validos = dedupFtd(data, revertidos);
     if (!validos.length) return { media: null, num: 0 };
     const sum = validos.reduce((s, d) => s + Number(d.amount ?? 0), 0);
@@ -325,24 +332,30 @@ function dedupFtd(
 export async function depositoMedioGlobal(): Promise<{ media: number | null; num: number }> {
   try {
     // Igual que depositoMedio pero global: excluimos jugadores con reversión.
-    const { data: rev } = await supabaseAdmin
-      .from("postback_events")
-      .select("player_id")
-      .eq("event_type", "commission")
-      .eq("status", "counted")
-      .eq("counted", false)
-      .not("player_id", "is", null)
-      .limit(100000);
-    const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
+    const rev = await traerTodo<{ player_id: string | null }>((d, h) =>
+      supabaseAdmin
+        .from("postback_events")
+        .select("player_id")
+        .eq("event_type", "commission")
+        .eq("status", "counted")
+        .eq("counted", false)
+        .not("player_id", "is", null)
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
+    const revertidos = new Set(rev.map((r) => r.player_id as string));
 
-    const { data, error } = await supabaseAdmin
-      .from("postback_events")
-      .select("amount, player_id")
-      .eq("event_type", "ftd")
-      .not("amount", "is", null)
-      .gt("amount", 0)
-      .limit(100000);
-    if (error || !data || !data.length) return { media: null, num: 0 };
+    const data = await traerTodo<{ amount: number | null; player_id: string | null }>((d, h) =>
+      supabaseAdmin
+        .from("postback_events")
+        .select("amount, player_id")
+        .eq("event_type", "ftd")
+        .not("amount", "is", null)
+        .gt("amount", 0)
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
+    if (!data.length) return { media: null, num: 0 };
     const validos = dedupFtd(data, revertidos);
     if (!validos.length) return { media: null, num: 0 };
     const sum = validos.reduce((s, d) => s + Number(d.amount ?? 0), 0);

@@ -1,5 +1,6 @@
 import { contadorDeDepositos } from "@/lib/postback";
 import { NextResponse } from "next/server";
+import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { BOTS } from "@/lib/bots";
@@ -59,42 +60,59 @@ export async function GET(request: Request) {
     botMsgs,
     meCpa,
   ] = await Promise.all([
-      supabaseAdmin
-        .from("telegram_contacts")
-        .select("opted_out, silenced, last_msg_at, joined_at")
-        .limit(100000),
-      supabaseAdmin
-        .from("bot_contacts")
-        .select("bot, opted_out, silenced, last_msg_at, joined_at")
-        .limit(100000),
+      traerTodo<{ opted_out: boolean | null; silenced: boolean | null; last_msg_at: string | null; joined_at: string | null }>(
+        (d, h) =>
+          supabaseAdmin
+            .from("telegram_contacts")
+            .select("opted_out, silenced, last_msg_at, joined_at")
+            .order("chat_id", { ascending: true })
+            .range(d, h)
+      ).then((data) => ({ data })),
+      traerTodo<{ bot: string; opted_out: boolean | null; silenced: boolean | null; last_msg_at: string | null; joined_at: string | null }>(
+        (d, h) =>
+          supabaseAdmin
+            .from("bot_contacts")
+            .select("bot, opted_out, silenced, last_msg_at, joined_at")
+            .order("chat_id", { ascending: true })
+            .range(d, h)
+      ).then((data) => ({ data })),
       supabaseAdmin.from("telegram_ai_daily").select("count").eq("day", hoyKey).maybeSingle(),
       supabaseAdmin.from("bot_ai_daily").select("bot, count").eq("day", hoyKey),
       supabaseAdmin.from("telegram_config").select("promo").eq("id", 1).maybeSingle(),
       supabaseAdmin.from("bot_config").select("bot, promo").limit(100),
-      supabaseAdmin
-        .from("postback_events")
-        .select("afp, commission")
-        .eq("counted", true)
-        .eq("event_type", "commission")
-        .in("afp", afps)
-        .limit(100000),
+      traerTodo<{ afp: string; commission: number | null }>((d, h) =>
+        supabaseAdmin
+          .from("postback_events")
+          .select("afp, commission")
+          .eq("counted", true)
+          .eq("event_type", "commission")
+          .in("afp", afps)
+          .order("id", { ascending: true })
+          .range(d, h)
+      ).then((data) => ({ data })),
       // Depósitos con importe (Celsius sí manda el amount): primeros depósitos y
       // recargas. Sirve para contar recargas Y sumar la cantidad depositada.
-      supabaseAdmin
-        .from("postback_events")
-        .select("afp, amount, event_type, player_id, created_at")
-        .in("event_type", ["ftd", "redeposit"])
-        .in("afp", afps)
-        .order("created_at", { ascending: true })
-        .limit(100000),
+      traerTodo<{ afp: string; amount: number | null; event_type: string; player_id: string | null; created_at: string }>(
+        (d, h) =>
+          supabaseAdmin
+            .from("postback_events")
+            .select("afp, amount, event_type, player_id, created_at")
+            .in("event_type", ["ftd", "redeposit"])
+            .in("afp", afps)
+            .order("created_at", { ascending: true })
+            .range(d, h)
+      ).then((data) => ({ data })),
       // Registros atribuidos a cada bot (por su afp).
-      supabaseAdmin
-        .from("postback_events")
-        .select("afp")
-        .eq("event_type", "registration")
-        .eq("counted", true)
-        .in("afp", afps)
-        .limit(100000),
+      traerTodo<{ afp: string }>((d, h) =>
+        supabaseAdmin
+          .from("postback_events")
+          .select("afp")
+          .eq("event_type", "registration")
+          .eq("counted", true)
+          .in("afp", afps)
+          .order("id", { ascending: true })
+          .range(d, h)
+      ).then((data) => ({ data })),
       // Mensajes totales guardados: head counts (NO traer toda la tabla).
       supabaseAdmin
         .from("telegram_messages")

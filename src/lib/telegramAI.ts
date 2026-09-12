@@ -126,6 +126,46 @@ export function esSoloCierre(texto: string | null | undefined): boolean {
   return soloEmojiPunt || RE_SOLO_CIERRE.test(t) || RE_REACCION.test(t);
 }
 
+// ── BUCLE DE DESPEDIDA ──────────────────────────────────────────────────────
+// Caso real (12-sep, chat 8808461061): 17 minutos y 20 mensajes despidiéndose.
+// El jugador soltaba "chao un saludo", "igualmente bro", "bendiciones", "si 💪"
+// y el bot contestaba a TODOS con otro "cuídate hermano". `esSoloCierre` no los
+// pilla porque no son "ok/vale/gracias" pelados, y cada respuesta le daba pie a
+// otra. Aquí se mira si el mensaje es de los de CERRAR (más amplio) y, si el bot
+// YA se ha despedido, se deja de contestar: el que cierra de verdad es el
+// silencio, no otro "cuídate".
+const RE_DESPEDIDA =
+  // ⚠️ Sin \\b al final: en JS la "é" no cuenta como letra, así que un \\b detrás
+  // de "avisaré" NO casa y la despedida se escapaba (mismo fallo que ya tuvimos
+  // con "estaré"). Se usa un "no va seguido de letra" en su lugar.
+  /\b(?:chao|ad[ioí]os|hasta (?:luego|ma[ñn]ana|otra|pronto)|nos vemos|buenas noches|que descanses|descansa|c[uú]idate|cuidate|un saludo|saludos|bendiciones|igualmente|lo mismo digo|gracias por (?:todo|la honestidad|tu tiempo)|te aviso|ya te aviso|t+e? avisar[eé]|te digo algo|me voy|me piro|a dormir)(?![\p{L}])/iu;
+
+// ¿Este mensaje es de los de cerrar la conversación? (o puro emoji/cortesía)
+export function esDespedida(texto: string | null | undefined): boolean {
+  const t = (texto || "").trim();
+  if (!t || t.length > 60) return false;
+  if (esSoloCierre(t)) return true;
+  // Solo emojis, puntos suspensivos o muletillas vacías.
+  if (/^[\s.,!¡…]*$/u.test(t)) return true;
+  if (/^[\s.,!¡…\p{Extended_Pictographic}\u{FE0F}\u{1F3FB}-\u{1F3FF}\u{200D}]+$/u.test(t)) return true;
+  if (RE_DESPEDIDA.test(t)) return true;
+  // "vale rey", "dale bro", "si hermano": cortesía + vocativo y nada más.
+  return /^(s[ií]|no|vale+|ok+(ey)?|dale|ya|claro|perfe(cto)?|listo|genial|gracias?)[\s,]*(bro|bron|hermano|hermana|manito|rey|tio|t[ií]o|crack|sandro|jeffer|livana)?[\s.,!¡…\p{Extended_Pictographic}\u{FE0F}]*$/iu.test(t);
+}
+
+// ¿Estamos en un bucle de despedidas? Mira los mensajes ANTERIORES del BOT: si
+// ya cerró las últimas veces y el jugador sigue con cortesías, no hay nada nuevo
+// que decir.
+export function bucleDeDespedida(
+  historial: { role: string; content: string }[],
+  entrada: string
+): boolean {
+  if (!esDespedida(entrada)) return false;
+  const delBot = historial.filter((m) => m.role === "assistant").slice(-2);
+  if (delBot.length < 2) return false;
+  return delBot.every((m) => esDespedida(m.content));
+}
+
 // Insultos/acusaciones al bot que, REPETIDOS, hacen que dejemos de contestarle
 // (auto-silencio a los 3). Incluye acusaciones de estafa sueltas ("estafador",
 // "scammer", "scam") además de en marco personal ("eres un estafador"). Un uso
