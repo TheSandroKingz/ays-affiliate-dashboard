@@ -539,6 +539,12 @@ export function sanearParaJugador(txt: string): string {
     // solo si es inconfundiblemente una nota del sistema.
     .replace(/\([^()]{0,400}\)/gu, (m) => (NOTA_SISTEMA.test(m) ? "" : m))
     .replace(/«[^«»]{0,400}»/gu, (m) => (NOTA_SISTEMA.test(m) ? "" : m))
+    // Caso 56 de Yaiza: un corchete al PRINCIPIO o al FINAL se quita diga lo que
+    // diga. El filtro por palabras clave deja pasar redacciones nuevas ("[El
+    // jugador queda marcado para revisión]"), y en un chat de verdad nadie
+    // escribe entre corchetes. ⚠️ Salvo un enlace de markdown "[texto](url)".
+    .replace(/^\s*\[[^\][]{0,400}\](?!\()\s*/u, "")
+    .replace(/\s*\[[^\][]{0,400}\](?!\()\s*$/u, "")
     // Un corchete de apertura sin cerrar al principio (respuesta cortada).
     .replace(/^\s*\[[^\][]{0,400}$/u, "")
     // Y la nota SIN delimitador ninguno: una línea corta que es solo una
