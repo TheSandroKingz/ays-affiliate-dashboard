@@ -281,34 +281,63 @@ Antes de enviar cualquier respuesta, comprobar lo siguiente. Corregir automátic
 // necesita para redirigir.
 function datosFijosPara(botKey: string): string {
   const esLivana = botKey === "mariam";
-  const i10 = DATOS_FIJOS.indexOf("10. LIVANA");
-  const i11 = DATOS_FIJOS.indexOf("11. BONOS");
-  if (i10 < 0 || i11 < i10) return DATOS_FIJOS; // si cambia el formato, no tocar
+  const esJeffer = botKey === "jeffer";
+
+  // Sustituye una sección entera por un texto corto. Devuelve el original si no
+  // encuentra los límites (si Yaiza cambia el formato, mejor no tocar nada).
+  const sustituirSeccion = (t: string, desde: string, hasta: string, texto: string): string => {
+    const i = t.indexOf(desde);
+    if (i < 0) return t;
+    const ini = t.lastIndexOf("\n", i) + 1;
+    const f = t.indexOf(hasta, i);
+    if (f < 0) return t;
+    return t.slice(0, ini) + texto + t.slice(f);
+  };
+
+  let t = DATOS_FIJOS;
+
+  // ⛔ PATRÓN CRUZ (9.1): es EXCLUSIVO de Jeffer y trae TRES recorridos. Dárselo a
+  // los demás es pedir el mismo lío que ya tuvimos con Diamond Mines: acaban
+  // mezclando recorridos y explicando uno que no es el suyo.
+  if (!esJeffer) {
+    t = sustituirSeccion(
+      t,
+      "9.1 PATRÓN CRUZ",
+      "10. LIVANA",
+      `9.1 PATRÓN CRUZ — NO ES TU MÉTODO
+El "Patrón Cruz" es el recorrido propio y exclusivo de Jeffer. TÚ NO lo usas y NO se lo expliques a nadie: tu recorrido es el Patrón Z de la sección 9.
+
+`
+    );
+  }
+
   if (!esLivana) {
     // Los bots de Mines NO necesitan la ficha de Diamond Mines: solo saber que
     // existe, que NO es el suyo y cómo mandar al jugador al juego correcto.
-    return (
-      DATOS_FIJOS.slice(0, i10) +
+    return sustituirSeccion(
+      t,
+      "10. LIVANA",
+      "11. BONOS",
       `10. DIAMOND MINES — NO ES TU JUEGO
 Diamond Mines es un juego DISTINTO del casino (lo usa otra persona, no tú). TÚ juegas a Mines y tu método es el Patrón Z de la sección 9.
 Si el jugador está dentro de Diamond Mines, dile que salga y vaya a menú → JUEGOS ORIGINALES → Mines.
 ⛔ OJO AL MIRAR CAPTURAS: no des por hecho que una captura es Diamond Mines. Los dos juegos se parecen y ya ha pasado varias veces que se confunden. Si NO estás seguro de cuál es, NO afirmes cuál es: pregúntale al jugador qué nombre pone arriba en el juego.
 
-` +
-      DATOS_FIJOS.slice(i11)
+`
     );
   }
-  // Livana: se queda su ficha y se le recorta el detalle del Patrón Z (no es suyo).
-  const i9 = DATOS_FIJOS.indexOf("9. RECORRIDO OFICIAL");
-  if (i9 < 0) return DATOS_FIJOS;
-  return (
-    DATOS_FIJOS.slice(0, i9) +
+
+  // Livana: se queda su ficha y pierde el detalle del Patrón Z (no es suyo). El
+  // recorte llega hasta la sección 10, así que de paso se lleva el 9.1.
+  return sustituirSeccion(
+    t,
+    "9. RECORRIDO OFICIAL",
+    "10. LIVANA",
     `9. PATRÓN Z — NO ES TU MÉTODO
 El "Patrón Z" es el método de los otros afiliados en el juego "Mines", que es DISTINTO de tu Diamond Mines. Tú NO lo usas y NO se lo expliques a nadie.
 ⛔ OJO AL MIRAR CAPTURAS: los dos juegos se parecen. Si no estás segura de cuál es, no lo afirmes: pregúntale qué nombre pone arriba.
 
-` +
-    DATOS_FIJOS.slice(i10)
+`
   );
 }
 
