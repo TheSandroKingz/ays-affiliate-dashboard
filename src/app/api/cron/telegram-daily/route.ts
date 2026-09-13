@@ -7,7 +7,7 @@ import { generarMensajeDiario, generarMensajeDiarioBot } from "@/lib/telegramAI"
 import { BOTS } from "@/lib/bots";
 import { resumenSeguridad } from "@/lib/seguridad";
 import { enviarPush } from "@/lib/push";
-import { revisarSaludBots } from "@/lib/botHealth";
+import { revisarSaludBots , repararWebhooks} from "@/lib/botHealth";
 import { analizarLote, tocaInforme, generarInforme , revisarSolucionesQueFallan} from "@/lib/analisisHistorial";
 
 // Damos margen: la IA + envíos + limpieza no deben cortarse a medias.
@@ -242,6 +242,19 @@ export async function GET(request: Request) {
   // caído (throttle interno 1/bot/hora). Enganchado aquí porque el plan gratis de
   // Vercel no permite un cron propio frecuente. BLINDADO: nunca rompe el cron.
   try {
+    // 🔧 Primero INTENTAR ARREGLARLO, luego avisar de lo que siga roto. Si
+    // Telegram ha perdido el webhook, se vuelve a poner solo. Antes esto solo
+    // pasaba si alguien llamaba a /api/health desde fuera: sin ese vigilante
+    // montado, la reparación no se ejecutaba nunca. Aquí corre 8 veces al día
+    // pase lo que pase.
+    const reparados = await repararWebhooks();
+    if (reparados.length) {
+      await enviarPush(ADMIN_USER_ID, {
+        title: "🔧 Webhook caído y reconectado solo",
+        body: `Telegram se había quedado sin el webhook de: ${reparados.join(", ")}. Ya está puesto otra vez, no tienes que hacer nada.`,
+        url: "/admin/bots",
+      }).catch(() => {});
+    }
     await revisarSaludBots();
   } catch {
     /* la vigilancia de salud nunca rompe el cron */
