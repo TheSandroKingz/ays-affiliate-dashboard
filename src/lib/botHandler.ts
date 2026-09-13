@@ -536,6 +536,16 @@ export async function procesarUpdate(
       );
     // Reenvío EXPLÍCITO: piden claramente que les mandes el vídeo/patrón otra vez
     // (no una duda). Esto SÍ salta el candado de "no dos seguidos".
+      // ⛔ QUEJA POR HABER PERDIDO. Mandarle el vídeo del patrón a quien acaba de
+    // decir que perdió dinero con él es lo peor que se puede hacer: parece que
+    // le estás vendiendo otra vez lo que le ha fallado. Sale en los casos de
+    // prueba de Yaiza (44/44b) y estaba pasando de verdad: "He perdido 50 euros
+    // haciendo el patrón tuyo" disparaba el vídeo, porque `falloForma` solo
+    // miraba "no me funciona" y no cubría "perder".
+    const quejaPerdida =
+      /\bperd[ií]\w*|\bhe perdido|\bhas hecho perder|\bme hizo perder|\bno sirve|\bno vale\b|\bes una mierda|\bestafa|\btimo\b/i.test(
+        textoJ
+      );
     // Negación: si DICE que NO quiere el vídeo/ejemplo, NO cuenta como petición.
     const negPide =
       /\b(no|nunca|ya no|deja de|para de|dejad? de|dej[eé]is de|dejes de)\b\s*(?:(?:me|te|lo|la|los|las|melo|mela)\s*){0,2}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|manda|quiero (?:el|un|ver))\w*/i.test(textoJ);
@@ -605,6 +615,7 @@ export async function procesarUpdate(
       // pero un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
       ((((pidePatron || pideEnvioExplicito) && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) && !patronFuturoOCambio) &&
       !problemaReal &&
+        !quejaPerdida &&
       !limitado &&
       // No dos vídeos seguidos ante una DUDA; PERO si lo piden EXPLÍCITAMENTE
       // ("mándame el vídeo otra vez"), se lo mandamos igual.

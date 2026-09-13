@@ -600,6 +600,16 @@ export async function POST(request: Request) {
         /no me (va|funciona|sal|tir|acier|sirv)|no funciona|no va|me falla|fall[oó]|pet[oó]|\bpeta\b|no acierto|salen? bomba|me sale bomba|explot|no gano|otra forma|otro ejemplo/i.test(
           textoJ
         );
+      // ⛔ QUEJA POR HABER PERDIDO. Mandarle el vídeo del patrón a quien acaba de
+      // decir que perdió dinero con él es lo peor que se puede hacer: parece que
+      // le estás vendiendo otra vez lo que le ha fallado. Sale en los casos de
+      // prueba de Yaiza (44/44b) y estaba pasando de verdad: "He perdido 50 euros
+      // haciendo el patrón tuyo" disparaba el vídeo, porque `falloForma` solo
+      // miraba "no me funciona" y no cubría "perder".
+      const quejaPerdida =
+        /\bperd[ií]\w*|\bhe perdido|\bhas hecho perder|\bme hizo perder|\bno sirve|\bno vale\b|\bes una mierda|\bestafa|\btimo\b/i.test(
+          textoJ
+        );
       // Negación: si DICE que NO quiere el vídeo/ejemplo ("no me mandes el vídeo",
       // "deja de mandarme el clip"), NO cuenta como petición ni salta candados.
       const negPide =
@@ -661,6 +671,7 @@ export async function POST(request: Request) {
         // un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
         ((((pidePatron || pideEnvioExplicito) && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) && !patronFuturoOCambio) &&
         !problemaReal &&
+        !quejaPerdida &&
         !limitado &&
         // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.
         (!ejemploJustoAntes || reenvioExplicito) &&
