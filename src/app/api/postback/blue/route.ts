@@ -77,7 +77,8 @@ async function pagarQftd(
   userId: string,
   fecha: string,
   commission: number,
-): Promise<boolean | null | "sin_funcion"> {
+): Promise<boolean | null | "sin_funcion" | "pagado_en_reintento"> {
+  let falloAntes = false;
   for (let intento = 0; intento < 2; intento++) {
     const { data, error } = await supabaseAdmin.rpc("pagar_qftd", {
       p_key: key,
@@ -85,7 +86,16 @@ async function pagarQftd(
       p_date: fecha,
       p_commission: commission,
     });
-    if (!error) return data === true;
+    if (!error) {
+      if (data === true) return true;
+      // Dice que ya estaba pagado. Si NUESTRO primer intento había fallado, lo más
+      // probable es que ese primero SÍ se guardara y solo se perdiera la respuesta:
+      // el dinero está sumado, y lo sumamos nosotros. Distinguirlo importa porque
+      // si no, el evento queda como "retenido", el registro no cuadra con el dinero
+      // y salta una falsa alarma de doble pago. Pasó hoy con 85 EUR.
+      return falloAntes ? "pagado_en_reintento" : false;
+    }
+    falloAntes = true;
     // La función todavía no existe en la base de datos (SQL sin aplicar).
     const msg = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
     if (
@@ -102,18 +112,37 @@ async function pagarQftd(
   return null;
 }
 
+// Una LECTURA con reintento. Emparejar al afiliado es solo leer, así que
+// reintentar es gratis y seguro. Hace falta porque en las ráfagas del casino la
+// consulta falla de vez en cuando, y un fallo ahí marcaba el evento como "no
+// encontrado": el 12 y el 13 de septiembre eso pasó en 1 de cada 4 eventos,
+// contra 1 de cada 100 los días anteriores (cada evento hace ahora más consultas
+// y en paralelo se saturan antes).
+async function leerConReintento<T>(
+  consulta: () => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<{ data: T[] | null; error: unknown }> {
+  let ultimo = await consulta();
+  for (let i = 0; i < 2 && ultimo.error; i++) {
+    await new Promise((r) => setTimeout(r, 120 * (i + 1)));
+    ultimo = await consulta();
+  }
+  return ultimo;
+}
+
 async function matchAfiliado(
   tag: string,
   permitirDefault = true,
 ): Promise<Afiliado | null> {
   if (tag) {
     // 1) por tracking code (insensible a mayúsculas, escapando comodines)
-    const { data, error } = await supabaseAdmin
-      .from("affiliates")
-      .select(SEL)
-      .ilike("freshaffs_tracking_code", tag.replace(/[\\%_*]/g, "\\$&"))
-      .order("user_id", { ascending: true })
-      .limit(1);
+    const { data, error } = await leerConReintento<Afiliado>(() =>
+      supabaseAdmin
+        .from("affiliates")
+        .select(SEL)
+        .ilike("freshaffs_tracking_code", tag.replace(/[\\%_*]/g, "\\$&"))
+        .order("user_id", { ascending: true })
+        .limit(1),
+    );
     // ⛔ Si la CONSULTA falló (hipo de BD, conexiones agotadas en una ráfaga), NO
     // podemos concluir que el código no existe: caer a la cuenta de la casa le
     // regalaría al admin el CPA de un afiliado, en silencio. Ya pasó el 26-ago:
@@ -141,11 +170,13 @@ async function matchAfiliado(
   // (el tráfico del bot entraba como trackingcode=Default). Así TU tráfico sale en
   // el dashboard aunque el enlace directo de Celsius no traiga sub1. Los afiliados
   // con su ?s1=<código> propio SÍ emparejan arriba y se llevan lo suyo.
-  const { data: def } = await supabaseAdmin
-    .from("affiliates")
-    .select(SEL)
-    .ilike("freshaffs_tracking_code", "Default")
-    .limit(1);
+  const { data: def } = await leerConReintento<Afiliado>(() =>
+    supabaseAdmin
+      .from("affiliates")
+      .select(SEL)
+      .ilike("freshaffs_tracking_code", "Default")
+      .limit(1),
+  );
   return def?.[0] ?? null;
 }
 
@@ -616,7 +647,7 @@ export async function GET(request: Request) {
         // Esto es lo que impide perder un CPA cuando la base de datos se
         // atraganta en la ráfaga que manda Celsius cada 6 horas.
         const pagado = await pagarQftd(clave, target.user_id, today, commission);
-        if (pagado === true) {
+        if (pagado === true || pagado === "pagado_en_reintento") {
           estado = "counted";
           comisionPagada = commission;
         } else if (pagado === false) {
