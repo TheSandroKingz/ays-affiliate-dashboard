@@ -884,6 +884,17 @@ const REVISION_MARGEN_MS = 38_000; // pasado esto, no da tiempo: enviar el borra
 // los 60s y todavía queda el retardo de "escribiendo" y el envío).
 const REVISION_TOPE_DURO_MS = 46_000;
 
+// Apunta lo que ha hecho el revisor, para poder decidir con datos si compensa
+// tenerlo encendido (cuesta ~la mitad de la factura de IA). Antes esto solo iba
+// a los registros de Vercel, que se borran y no se pueden consultar.
+// BLINDADO: si la tabla no existe todavía, no pasa nada.
+function apuntarRevisor(campo: "corrigio" | "sin_cambios" | "saltado" | "rechazado"): void {
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  void supabaseAdmin
+    .rpc("increment_revisor", { p_day: hoy, p_campo: campo })
+    .then(() => {}, () => {});
+}
+
 async function revisarBorrador(
   client: Anthropic,
   maestro: string,
@@ -894,7 +905,7 @@ async function revisarBorrador(
   if (!REVISION_ACTIVA || !borrador) return borrador;
   if (Date.now() - inicioMs > REVISION_MARGEN_MS) {
     // Rastro para medir cuánto entra de verdad (buscar "revisor:" en los logs).
-    console.log("revisor: saltado por tiempo (" + (Date.now() - inicioMs) + "ms)");
+    apuntarRevisor("saltado");
     return borrador;
   }
   try {
@@ -978,17 +989,17 @@ async function revisarBorrador(
     // la función aunque el revisor hubiera contestado en 2s.
     if (temporizador) clearTimeout(temporizador);
     if (!res) {
-      console.log("revisor: cortado por el plazo duro");
+      apuntarRevisor("saltado");
       return borrador; // se acabó el tiempo: va el borrador tal cual
     }
     // Si la corrección se cortó por quedarse sin tokens, saldría a medias.
     if (res.stop_reason === "max_tokens") {
-      console.log("revisor: respuesta truncada, va el borrador");
+      apuntarRevisor("rechazado");
       return borrador;
     }
     const salida = textoDe(res).trim();
     if (!salida || /^OK\b/i.test(salida)) {
-      console.log("revisor: ok, sin cambios");
+      apuntarRevisor("sin_cambios");
       return borrador;
     }
     // Nos quedamos con la ÚLTIMA etiqueta, no con la primera: el revisor a veces
@@ -1019,17 +1030,17 @@ async function revisarBorrador(
       ADMITE_COMISION.test(corregida) ||
       (sinSaldoReciente(messages) && PIDE_RECARGA.test(corregida))
     ) {
-      console.log("revisor: correccion rechazada por las redes de seguridad");
+      apuntarRevisor("rechazado");
       return borrador;
     }
     // Y si al pasarla por el filtro de notas internas no queda nada, es que el
     // revisor devolvió una acotación ("No responder a este jugador"): con el
     // borrador bueno tirado, el jugador se quedaba sin respuesta.
     if (sanearParaJugador(corregida).length < 8) {
-      console.log("revisor: correccion vacia tras sanear, va el borrador");
+      apuntarRevisor("rechazado");
       return borrador;
     }
-    console.log("revisor: CORRIGIO el borrador");
+    apuntarRevisor("corrigio");
     return corregida;
   } catch {
     return borrador; // el revisor NUNCA puede dejar al jugador sin respuesta
