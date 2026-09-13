@@ -1,3 +1,6 @@
+import { traerTodo } from "@/lib/traerTodo";
+import { enviarPush } from "@/lib/push";
+import { ADMIN_USER_ID } from "@/lib/adminId";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { compararSecreto } from "@/lib/secreto";
@@ -26,18 +29,54 @@ export async function GET(request: Request) {
   "gastos_saldos",
   "penalizaciones",
 ];
-  // .limit(100000): sin límite PostgREST corta a 1000 filas y la copia quedaría
-  // TRUNCADA sin error (affiliate_daily_stats crece 1 fila/afiliado/día). En
-  // paralelo (las 3 tablas son independientes).
+  // ⚠️ .limit(100000) NO levanta el tope: PostgREST corta a 1000 filas por
+  // respuesta pase lo que pase. La copia llevaba meses TRUNCADA sin avisar de
+  // nada: el 13-sep guardaba 1.000 filas de postback_events de las 13.445 que
+  // hay, o sea el 92% de la caja negra del dinero sin copiar. Hay que paginar.
   const data: Record<string, unknown[]> = {};
+  // ⚠️ Paginar exige ORDENAR por algo estable, y NO todas las tablas tienen "id":
+  // `penalizaciones` va por "mes" y `gastos_saldos` no tiene id tampoco. Si se
+  // ordena por una columna que no existe, la consulta falla y esa tabla saldría
+  // VACÍA en la copia, que es peor que truncada. Aquí va la columna de cada una.
+  const ORDEN: Record<string, string> = {
+    penalizaciones: "mes",
+    gastos_saldos: "mes",
+  };
   const res = await Promise.all(
-    tablas.map((t) => supabaseAdmin.from(t).select("*").limit(100000))
+    tablas.map((t) =>
+      traerTodo<Record<string, unknown>>((d, h) =>
+        supabaseAdmin
+          .from(t)
+          .select("*")
+          .order(ORDEN[t] ?? "id", { ascending: true })
+          .range(d, h)
+      )
+    )
   );
   tablas.forEach((t, i) => {
-    data[t] = res[i].data ?? [];
+    data[t] = res[i];
   });
 
+  // Si alguna tabla se queda corta respecto a lo que hay de verdad, la copia NO
+  // sirve: mejor saberlo que guardar una copia falsa en silencio.
+  const incompletas: string[] = [];
+  await Promise.all(
+    tablas.map(async (t, i) => {
+      const { count } = await supabaseAdmin.from(t).select("*", { count: "exact", head: true });
+      if (typeof count === "number" && res[i].length < count) {
+        incompletas.push(`${t} (${res[i].length}/${count})`);
+      }
+    })
+  );
+
   const { error } = await supabaseAdmin.from("data_snapshots").insert({ data });
+  if (incompletas.length) {
+    await enviarPush(ADMIN_USER_ID, {
+      title: "⚠️ La copia de seguridad salió incompleta",
+      body: `Faltan filas en: ${incompletas.join(", ")}. Revísalo, la copia de hoy no sirve entera.`,
+      url: "/admin",
+    }).catch(() => {});
+  }
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
