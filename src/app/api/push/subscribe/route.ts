@@ -48,12 +48,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { error } = await supabaseAdmin
+  // `last_seen_at` marca la última vez que ESTE dispositivo dio señales de vida
+  // (la app lo refresca cada 6 h). Sirve para distinguir un móvil real de una
+  // suscripción FANTASMA: iPhone rota el endpoint y deja el viejo colgado, y
+  // Apple sigue aceptándolo (201) aunque no lo entregue a nadie. Sin esto no
+  // hay forma de saber cuál de las tres suscripciones de un usuario está viva.
+  const fila = {
+    user_id: user.id,
+    endpoint,
+    p256dh,
+    auth,
+    last_seen_at: new Date().toISOString(),
+  };
+  let { error } = await supabaseAdmin
     .from("push_subscriptions")
-    .upsert(
-      { user_id: user.id, endpoint, p256dh, auth },
-      { onConflict: "endpoint" }
-    );
+    .upsert(fila, { onConflict: "endpoint" });
+  // Si la columna aún no existe en la base (SQL sin aplicar), se guarda igual
+  // sin ella: nadie se queda sin avisos por esto.
+  if (error?.code === "42703" || /last_seen_at/.test(error?.message ?? "")) {
+    ({ error } = await supabaseAdmin
+      .from("push_subscriptions")
+      .upsert(
+        { user_id: user.id, endpoint, p256dh, auth },
+        { onConflict: "endpoint" }
+      ));
+  }
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

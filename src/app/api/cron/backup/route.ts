@@ -95,6 +95,22 @@ export async function GET(request: Request) {
       .then(() => {}, () => {});
   }
 
+  // Limpieza de suscripciones push FANTASMA: endpoints que Apple/Google siguen
+  // aceptando (201) pero que ya no entregan a ningún móvil, porque el iPhone
+  // rotó el endpoint o se desinstaló la app. Un dispositivo vivo refresca su
+  // last_seen_at cada 6 h al abrir la app; si lleva 45 días sin dar señales, es
+  // un fantasma y solo sirve para que parezca que el aviso salió cuando no
+  // llegó a nadie. Blindado: si la columna aún no existe, no se borra nada.
+  const hace45 = new Date(Date.now() - 45 * 864e5).toISOString();
+  await supabaseAdmin
+    .from("push_subscriptions")
+    .delete()
+    .lt("last_seen_at", hace45)
+    .then(
+      () => {},
+      () => {}
+    );
+
   return NextResponse.json({
     ok: true,
     filas: Object.fromEntries(
