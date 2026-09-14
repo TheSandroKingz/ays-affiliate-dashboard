@@ -3,6 +3,7 @@
 // código. BLINDADO: cualquier fallo devuelve null y el flujo sigue (nunca rompe).
 
 import Anthropic from "@anthropic-ai/sdk";
+import { apuntarUso } from "@/lib/iaUso";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
 import { promptV2 } from "@/lib/promptBuild";
@@ -222,6 +223,7 @@ export async function generarMensajeDiario(contexto: string): Promise<string | n
         },
       ],
     });
+    apuntarUso("diario", res);
     const txt = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -250,6 +252,7 @@ export async function generarMensajeDiarioBot(sistema: string): Promise<string |
         { role: "user", content: "Escribe el mensaje de hoy. Que sea distinto a otros días." },
       ],
     });
+    apuntarUso("diario", res);
     const txt = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -737,6 +740,7 @@ async function crearConGuardia(
     { model: MODELO, max_tokens: 300, system, messages },
     opcionesIA(inicioMs)
   );
+  apuntarUso("respuesta", res);
   let txt = textoDe(res);
   // ANTI-REPETICIÓN: si la respuesta es casi igual a ALGUNO de los últimos 3
   // mensajes del bot, regenera UNA vez pidiendo algo distinto. Miramos 3 (no solo
@@ -751,6 +755,7 @@ async function crearConGuardia(
       { model: MODELO, max_tokens: 300, system: [...system, avisoRep], messages },
       opcionesIA(inicioMs)
     );
+    apuntarUso("repeticion", resR);
     const txtR = textoDe(resR);
     if (txtR) txt = txtR;
   }
@@ -802,6 +807,7 @@ async function crearConGuardia(
     { model: MODELO, max_tokens: 300, system: [...system, aviso], messages },
     opcionesIA(inicioMs)
   );
+  apuntarUso("regeneracion", res2);
   const txt2 = textoDe(res2);
   if (
     txt2 &&
@@ -1020,6 +1026,7 @@ async function revisarBorrador(
       apuntarRevisor("rechazado");
       return borrador;
     }
+    apuntarUso("revisor", res);
     const salida = textoDe(res).trim();
     if (!salida || /^OK\b/i.test(salida)) {
       apuntarRevisor("sin_cambios");

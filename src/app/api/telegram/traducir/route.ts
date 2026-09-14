@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apuntarUso } from "@/lib/iaUso";
 import { getGestorBot } from "@/lib/adminAuth";
 import { rateLimitShared } from "@/lib/rateLimit";
 import Anthropic from "@anthropic-ai/sdk";
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       // inyectar instrucciones fuera de él.
       messages: [{ role: "user", content: `<<<\n${text.replace(/<<<|>>>/g, "")}\n>>>` }],
     });
+    apuntarUso("traducir", res);
     const bloque = res.content.find((b) => b.type === "text");
     const traduccion = bloque && bloque.type === "text" ? bloque.text.trim() : "";
     return NextResponse.json({ traduccion: traduccion || text });

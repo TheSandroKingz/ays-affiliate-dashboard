@@ -4,6 +4,7 @@
 // ⛔ NO ajusta el bot solo. NO mide "éxito" por depósito. NO analiza qué frases hacen
 // depositar. Solo calidad técnica y supervisión. BLINDADO: cualquier fallo se ignora.
 import { traerTodo } from "./traerTodo";
+import { apuntarUso } from "@/lib/iaUso";
 import { enviarPush } from "./push";
 import { ADMIN_USER_ID } from "./adminId";
 import Anthropic from "@anthropic-ai/sdk";
@@ -109,6 +110,7 @@ async function clasificar(client: Anthropic, conv: Conv): Promise<Clasif | null>
       system: SISTEMA_CLASIF,
       messages: [{ role: "user", content: `CONVERSACIÓN:\n${texto}` }],
     });
+    apuntarUso("analisis", res);
     const t = res.content.find((b) => b.type === "text");
     const raw = t && "text" in t ? t.text : "";
     const json = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
