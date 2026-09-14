@@ -9,6 +9,17 @@ import { promptV2 } from "@/lib/promptBuild";
 import { bloqueSolucionesAprobadas, registrarUsoSolucion } from "@/lib/analisisHistorial";
 import { REVISOR } from "@/lib/promptRevisor";
 
+// El prompt del revisor está escrito dando por hecho que el Prompt Maestro le
+// llega aparte, dentro de una etiqueta <prompt_maestro>. Ahora le llega ANTES,
+// sin etiqueta, para poder compartir la caché con la llamada que generó el
+// borrador (ver el comentario del `system` en revisarBorrador). Esta línea le
+// dice dónde mirar, para que las 27 comprobaciones sigan funcionando igual.
+const PUENTE_REVISOR =
+  "⚠️ DÓNDE ESTÁ EL PROMPT MAESTRO: todo el texto que va ANTES de esta línea es " +
+  "el <prompt_maestro> del bot que tienes que revisar. Cada vez que estas " +
+  "instrucciones mencionen el <prompt_maestro>, se refieren a ese texto de " +
+  "arriba. En el mensaje solo te llegan la <conversacion> y el <borrador>.\n\n";
+
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
 export function iaConfigurada(): boolean {
@@ -963,11 +974,23 @@ async function revisarBorrador(
       {
         model: MODELO,
         max_tokens: 500,
+        // ⚠️ EL ORDEN DE ESTOS DOS BLOQUES ES LO QUE CUESTA EL DINERO.
+        // La caché de Anthropic casa por PREFIJO exacto: solo reutiliza lo que
+        // va desde el principio de la petición. Antes el revisor empezaba por
+        // REVISOR y metía el prompt del bot DEBAJO y envuelto en etiquetas
+        // <prompt_maestro>, así que era un texto distinto en una posición
+        // distinta: una SEGUNDA caché de 41.500 tokens por bot, con sus propias
+        // escrituras. Cada mensaje pagaba el prompt entero DOS veces.
+        // Poniéndolo primero y TAL CUAL (el mismo `maestro` que la llamada que
+        // generó el borrador), el revisor reutiliza la caché que esa llamada
+        // acaba de dejar caliente y su prompt sale prácticamente gratis.
+        // Si tocas esto, el bloque de abajo tiene que seguir siendo idéntico,
+        // carácter a carácter, al primer bloque de sistemaCacheado().
         system: [
-          { type: "text", text: REVISOR, cache_control: { type: "ephemeral" } },
+          { type: "text", text: maestro, cache_control: { type: "ephemeral" } },
           {
             type: "text",
-            text: `<prompt_maestro>\n${maestro}\n</prompt_maestro>`,
+            text: PUENTE_REVISOR + REVISOR,
             cache_control: { type: "ephemeral" },
           },
         ],

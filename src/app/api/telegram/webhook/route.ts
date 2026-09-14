@@ -947,7 +947,12 @@ export async function POST(request: Request) {
 
       // La IA responde (si no está limitada, no se pasó el tope diario y no ha
       // quedado "debounced" por un mensaje posterior).
-      const TOPE_DIA = 5000;
+      // Freno de gasto del día. Estaba en 5.000, que con el coste real por
+      // respuesta son más de 150 EUR en un día: no frenaba nada, solo existía.
+      // El uso real son ~480 respuestas/día entre todos los bots, así que 1.500
+      // deja 3 veces de margen para un día bueno y a la vez pone un techo de
+      // verdad si algo se desboca (un bucle, un ataque, un bot repitiendo).
+      const TOPE_DIA = 1500;
       let respuesta: string | null = null;
       if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
