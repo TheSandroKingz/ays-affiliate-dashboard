@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { CUENTAS_PROPIAS } from "@/lib/adminId";
@@ -42,13 +43,20 @@ export async function GET(request: Request) {
   const ids = structIds.length ? structIds : [DUMMY];
 
   // Comisión del MES elegido por afiliado.
-  const { data: daily } = await supabaseAdmin
-    .from("affiliate_daily_stats")
-    .select("user_id, commission")
-    .in("user_id", ids)
-    .gte("date", from)
-    .lte("date", hasta)
-    .limit(100000); // sin límite PostgREST corta en 1000 y descuadraría los saldos
+  // Por bloques de 1000: PostgREST ignora .limit() por encima de su tope y los
+  // saldos saldrían cortos en cuanto el histórico crezca.
+  const daily = await traerTodo<{ user_id: string; commission: number | null }>(
+    (d, h) =>
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, commission")
+        .in("user_id", ids)
+        .gte("date", from)
+        .lte("date", hasta)
+        .order("date", { ascending: true })
+        .order("user_id", { ascending: true })
+        .range(d, h)
+  );
   const comByUser = new Map<string, number>();
   for (const d of daily ?? []) {
     comByUser.set(

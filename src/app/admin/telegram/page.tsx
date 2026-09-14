@@ -29,10 +29,15 @@ export default function TelegramPage() {
   const [refrescando, setRefrescando] = useState(false);
 
   const cargar = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session || session.user.id !== ADMIN_USER_ID) {
+    const session = await supabase.auth
+      .getSession()
+      .then((r) => r.data.session)
+      .catch(() => null);
+    if (!session) {
+      setErrorCarga(true);
+      return;
+    }
+    if (session.user.id !== ADMIN_USER_ID) {
       router.replace("/dashboard");
       return;
     }
@@ -84,8 +89,11 @@ export default function TelegramPage() {
         <button
           onClick={async () => {
             setRefrescando(true);
-            await cargar();
-            setRefrescando(false);
+            try {
+              await cargar();
+            } finally {
+              setRefrescando(false);
+            }
           }}
           disabled={refrescando}
           className="shrink-0 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"

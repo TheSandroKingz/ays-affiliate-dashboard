@@ -65,11 +65,16 @@ export async function GET(request: Request) {
       // TODO el histórico (sin acotar fecha) para el "Total generado". El mes en
       // curso ("Lo que me quedo") se saca filtrando este mismo array por fecha en
       // memoria (antes había una 2ª query idéntica solo acotada por fecha).
-      supabaseAdmin
-        .from("affiliate_daily_stats")
-        .select("user_id, date, commission, clicks, registrations, ftd")
-        .in("user_id", idsToLoad)
-        .limit(100000), // sin límite PostgREST corta en 1000 → los totales saldrían cortos al crecer
+      // Por bloques de 1000: .limit() no vale, PostgREST corta ahí igualmente.
+      traerTodo<DailyRow>((d, h) =>
+        supabaseAdmin
+          .from("affiliate_daily_stats")
+          .select("user_id, date, commission, clicks, registrations, ftd")
+          .in("user_id", idsToLoad)
+          .order("date", { ascending: true })
+          .order("user_id", { ascending: true })
+          .range(d, h)
+      ).then((data) => ({ data })),
       supabaseAdmin
         .from("affiliates")
         .select("user_id", { count: "exact", head: true })
@@ -103,10 +108,6 @@ export async function GET(request: Request) {
   const paises = [...paisesMap.entries()]
     .map(([code, n]) => ({ code, n }))
     .sort((a, b) => b.n - a.n);
-
-  if (histDailyRes.error) {
-    return NextResponse.json({ error: histDailyRes.error.message }, { status: 500 });
-  }
 
   // El mes en curso/pasado sale del mismo histórico, filtrado por fecha (enRango
   // ya acota más adelante; esto solo evita traer la tabla dos veces).

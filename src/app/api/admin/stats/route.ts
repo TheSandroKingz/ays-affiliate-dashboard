@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
@@ -30,17 +31,20 @@ export async function GET(request: Request) {
     s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
   const from = fechaOk(url.searchParams.get("from"));
   const to = fechaOk(url.searchParams.get("to"));
-  let q = supabaseAdmin
-    .from("affiliate_daily_stats")
-    .select("user_id, date, commission, clicks, registrations, ftd")
-    .in("user_id", idsToLoad);
-  if (from) q = q.gte("date", from);
-  if (to) q = q.lte("date", to);
-  // Límite alto explícito: sin él PostgREST corta en 1000 y el atajo "Todo"
-  // (rangos amplios) truncaría el histórico y descuadraría "Le pago"/"Mi margen".
-  q = q.limit(100000);
-  const { data: dailyRaw, error: dErr } = await q;
-  if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
+  // Por bloques de 1000: .limit() no vale, PostgREST corta ahí igualmente y el
+  // atajo "Todo" truncaría el histórico, descuadrando "Le pago"/"Mi margen".
+  const dailyRaw = await traerTodo<DailyRow>((d, h) => {
+    let q = supabaseAdmin
+      .from("affiliate_daily_stats")
+      .select("user_id, date, commission, clicks, registrations, ftd")
+      .in("user_id", idsToLoad);
+    if (from) q = q.gte("date", from);
+    if (to) q = q.lte("date", to);
+    return q
+      .order("date", { ascending: true })
+      .order("user_id", { ascending: true })
+      .range(d, h);
+  });
 
   const { stats, totals, own, daily } = computeAdminStats(
     (dailyRaw ?? []) as DailyRow[],

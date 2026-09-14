@@ -163,15 +163,20 @@ export default function AccountPage() {
       "notif_ftd" | "notif_registro" | "notif_bot_msg" | "notif_bot_deposito",
     valor: boolean,
   ) {
-    if (campo === "notif_ftd") setNotifFtd(valor);
-    else if (campo === "notif_registro") setNotifRegistro(valor);
-    else if (campo === "notif_bot_msg") setNotifBotMsg(valor);
-    else setNotifBotDep(valor);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
-    await guardarPerfil({ [campo]: valor });
+    const pintar = (v: boolean) => {
+      if (campo === "notif_ftd") setNotifFtd(v);
+      else if (campo === "notif_registro") setNotifRegistro(v);
+      else if (campo === "notif_bot_msg") setNotifBotMsg(v);
+      else setNotifBotDep(v);
+    };
+    pintar(valor);
+    const r = await guardarPerfil({ [campo]: valor });
+    // Si no se pudo guardar, el interruptor vuelve a su sitio: antes se quedaba
+    // puesto y el afiliado creia tener el aviso activado sin estarlo.
+    if (!r.ok) {
+      pintar(!valor);
+      setMessage("No se pudo guardar el aviso. Reinténtalo.");
+    }
   }
 
   // Fecha de nacimiento inicial desde el perfil compartido (sin consulta extra).
@@ -361,25 +366,33 @@ export default function AccountPage() {
       return;
     }
     setSaving(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const res = await fetch("/api/account/password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + (session?.access_token ?? ""),
-      },
-      body: JSON.stringify({ currentPassword: actual, newPassword }),
-    });
-    setSaving(false);
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setMessage(j?.error || "No se pudo cambiar la contraseña");
-    } else {
-      setMessage("Contraseña actualizada");
-      setNewPassword("");
-      setConfirmPassword("");
+    // Sin el try/finally, si se va la conexión a mitad el botón se queda en
+    // "Guardando…" para siempre (y arrastra al de "Guardar cambios", que usa
+    // el mismo estado) hasta recargar la página.
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const res = await fetch("/api/account/password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (session?.access_token ?? ""),
+        },
+        body: JSON.stringify({ currentPassword: actual, newPassword }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage(j?.error || "No se pudo cambiar la contraseña");
+      } else {
+        setMessage("Contraseña actualizada");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } catch {
+      setMessage("No se pudo cambiar la contraseña. Revisa tu conexión.");
+    } finally {
+      setSaving(false);
     }
   }
 

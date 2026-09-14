@@ -135,9 +135,12 @@ export default function MediaReportPage() {
         )
           .sort((a, b) => (a.date < b.date ? 1 : -1))
           .map((r) => {
+            // timeZone UTC o en Dominicana (UTC-4, donde están Jeffer y Black
+            // KP) "2026-09-01" se lee como el 31 de agosto y el mes sale mal.
             const s = new Date(r.date + "-01").toLocaleDateString("es-ES", {
               month: "long",
               year: "numeric",
+              timeZone: "UTC",
             });
             return { etiqueta: s.charAt(0).toUpperCase() + s.slice(1), row: r };
           })

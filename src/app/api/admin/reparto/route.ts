@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { computeAdminStats, type DailyRow, type StructRow } from "@/lib/adminStats";
@@ -63,13 +64,19 @@ export async function GET(request: Request) {
   const struct = (structure ?? []) as StructRow[];
   const idsToLoad = [user.id, ...struct.map((s) => s.user_id)];
 
-  const { data: daily } = await supabaseAdmin
-    .from("affiliate_daily_stats")
-    .select("user_id, date, commission, clicks, registrations, ftd")
-    .in("user_id", idsToLoad)
-    .gte("date", desde)
-    .lte("date", hasta)
-    .limit(100000);
+  // .limit() NO sirve: PostgREST corta en 1000 filas pase lo que pase. Hay que
+  // pedirlas por bloques o el reparto saldría corto en cuanto crezca el histórico.
+  const daily = await traerTodo<DailyRow>((d, h) =>
+    supabaseAdmin
+      .from("affiliate_daily_stats")
+      .select("user_id, date, commission, clicks, registrations, ftd")
+      .in("user_id", idsToLoad)
+      .gte("date", desde)
+      .lte("date", hasta)
+      .order("date", { ascending: true })
+      .order("user_id", { ascending: true })
+      .range(d, h)
+  );
 
   const rows = (daily ?? []).map((d) => ({
     ...d,

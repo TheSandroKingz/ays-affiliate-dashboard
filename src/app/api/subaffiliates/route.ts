@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 
@@ -45,11 +46,20 @@ export async function POST(request: NextRequest) {
         .format(new Date())
         .slice(0, 7) + "-01";
 
-    const { data: dailyData } = await supabaseAdmin
-      .from("affiliate_daily_stats")
-      .select("user_id, commission, date")
-      .in("user_id", userIds)
-      .limit(100000); // sin límite, PostgREST corta en 1000 y subestima al crecer
+    // Por bloques de 1000: .limit() no vale, PostgREST corta ahí igualmente.
+    const dailyData = await traerTodo<{
+      user_id: string;
+      commission: number | null;
+      date: string;
+    }>((d, h) =>
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, commission, date")
+        .in("user_id", userIds)
+        .order("date", { ascending: true })
+        .order("user_id", { ascending: true })
+        .range(d, h)
+    );
 
     const sumMes = new Map<string, number>();
     const sumHist = new Map<string, number>();

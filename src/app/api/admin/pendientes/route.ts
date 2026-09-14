@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { CUENTAS_PROPIAS } from "@/lib/adminId";
@@ -26,22 +27,31 @@ export async function GET(request: Request) {
   const ids = reales.map((a) => a.user_id as string);
   if (!ids.length) return NextResponse.json({ filas: [] });
 
-  const [dailyRes, pagosRes] = await Promise.all([
-    supabaseAdmin
-      .from("affiliate_daily_stats")
-      .select("user_id, date, commission")
-      .in("user_id", ids)
-      .limit(100000),
-    supabaseAdmin
-      .from("payments")
-      .select("user_id, amount, date")
-      .in("user_id", ids)
-      .limit(100000),
+  // Por bloques de 1000: PostgREST ignora .limit() por encima de su tope.
+  const [dailyFilas, pagosFilas] = await Promise.all([
+    traerTodo<{ user_id: string; date: string; commission: number | null }>((d, h) =>
+      supabaseAdmin
+        .from("affiliate_daily_stats")
+        .select("user_id, date, commission")
+        .in("user_id", ids)
+        .order("date", { ascending: true })
+        .order("user_id", { ascending: true })
+        .range(d, h)
+    ),
+    traerTodo<{ user_id: string; amount: number | null; date: string }>((d, h) =>
+      supabaseAdmin
+        .from("payments")
+        .select("user_id, amount, date")
+        .in("user_id", ids)
+        .order("date", { ascending: true })
+        .order("user_id", { ascending: true })
+        .range(d, h)
+    ),
   ]);
 
   // Comisión PROPIA por (afiliado, mes).
   const propia = new Map<string, number>();
-  for (const d of dailyRes.data ?? []) {
+  for (const d of dailyFilas) {
     const mes = String(d.date).slice(0, 7);
     const k = `${d.user_id}|${mes}`;
     propia.set(k, (propia.get(k) ?? 0) + Number(d.commission ?? 0));
@@ -67,7 +77,7 @@ export async function GET(request: Request) {
   }
   // Pagado por (afiliado, mes) — según la fecha del pago.
   const pagado = new Map<string, number>();
-  for (const p of pagosRes.data ?? []) {
+  for (const p of pagosFilas) {
     const mes = String(p.date).slice(0, 7);
     const k = `${p.user_id}|${mes}`;
     pagado.set(k, (pagado.get(k) ?? 0) + Number(p.amount ?? 0));

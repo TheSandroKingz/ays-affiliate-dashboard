@@ -27,12 +27,17 @@ export async function GET(request: Request) {
   const structIds = struct.map((s) => s.user_id);
   const idsToLoad = [user.id, ...structIds];
 
-  const { data: dailyRaw, error } = await supabaseAdmin
-    .from("affiliate_daily_stats")
-    .select("user_id, date, commission, clicks, registrations, ftd")
-    .in("user_id", idsToLoad)
-    .limit(100000); // sin límite, PostgREST corta en 1000 y el histórico saldría corto
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Por bloques de 1000: .limit() no vale, PostgREST corta ahí igualmente y el
+  // histórico de meses saldría corto.
+  const dailyRaw = await traerTodo<DailyRow>((d, h) =>
+    supabaseAdmin
+      .from("affiliate_daily_stats")
+      .select("user_id, date, commission, clicks, registrations, ftd")
+      .in("user_id", idsToLoad)
+      .order("date", { ascending: true })
+      .order("user_id", { ascending: true })
+      .range(d, h)
+  );
 
   const all = (dailyRaw ?? []).map((d) => ({
     ...d,

@@ -167,12 +167,24 @@ export default function DashboardPage() {
       // El nombre ya lo tiene el almacén compartido, así que aquí solo pedimos
       // los datos diarios y la comisión de subafiliados (una consulta menos).
       const [dailyRes, subRes, calidadRes] = await Promise.all([
-        supabase
-          .from("affiliate_daily_stats")
-          .select("date, commission, clicks, registrations, ftd")
-          .eq("user_id", user.id)
-          .order("date", { ascending: true })
-          .limit(100000), // sin límite PostgREST corta en 1000 (y en orden asc tiraría los días recientes)
+        // Por bloques de 1000: .limit() no vale, PostgREST corta ahí igualmente
+        // y en orden ascendente lo que tiraría son los días recientes. Aquí no
+        // usamos traerTodo porque necesitamos saber si la consulta ha fallado.
+        (async () => {
+          const filas: DailyPoint[] = [];
+          for (let desde = 0; desde < 200_000; desde += 1000) {
+            const { data, error } = await supabase
+              .from("affiliate_daily_stats")
+              .select("date, commission, clicks, registrations, ftd")
+              .eq("user_id", user.id)
+              .order("date", { ascending: true })
+              .range(desde, desde + 999);
+            if (error) return { data: null, error };
+            filas.push(...((data ?? []) as DailyPoint[]));
+            if (!data || data.length < 1000) break;
+          }
+          return { data: filas, error: null };
+        })(),
         fetch("/api/subaffiliates", {
           method: "POST",
           headers: {

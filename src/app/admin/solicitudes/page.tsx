@@ -18,9 +18,12 @@ export default function SolicitudesPage() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      // getSession() puede fallar (red caida, token corrupto). Sin el try la
+      // pagina se quedaba en el esqueleto de carga para siempre.
+      const session = await supabase.auth
+        .getSession()
+        .then((r) => r.data.session)
+        .catch(() => null);
       if (!session || session.user.id !== ADMIN_USER_ID) {
         router.replace("/dashboard");
         return;
