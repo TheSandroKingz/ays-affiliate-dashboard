@@ -351,16 +351,31 @@ function fechaSuffix(): string {
   return `\n\n📅 HOY es ${hoy}. Estamos en el año ${anio}: úsalo SIEMPRE para calcular edades y fechas (edad ≈ ${anio} − año de nacimiento). Ejemplo: alguien nacido en 2007 tiene ${anio - 2007} este año; es MAYOR de edad (18+) si ${anio} − su año de nacimiento ≥ 18. Nunca calcules la edad de memoria: hazlo con este año.`;
 }
 
+// ⚠️ EL ORDEN DE LOS BLOQUES ES DINERO. La caché solo reutiliza el PREFIJO
+// exacto de la petición, así que va de lo más fijo a lo que más cambia:
+//   1. El prompt del bot (41.500 tokens, igual siempre)        → cacheado
+//   2. Banco de soluciones + fecha + promo (cambian poco: la
+//      fecha una vez al día, el banco cuando se aprueba algo)    → cacheado
+//   3. El nombre del jugador (cambia en CADA chat)              → sin cachear
+// Antes el banco iba al FINAL, detrás del nombre, y la fecha iba pegada al
+// nombre: ~1.300 tokens casi fijos se pagaban a precio completo en cada
+// llamada, y cada respuesta hace hasta 3 (respuesta, regeneración, revisor).
+// Medido el 15-sep en ia_uso. El modelo ve el mismo texto, solo cambia el orden.
 function sistemaCacheado(
   base: string,
   promo: string,
-  nombre?: string | null
+  nombre?: string | null,
+  banco = ""
 ): Anthropic.TextBlockParam[] {
-  const dyn = fechaSuffix() + promoSuffix(promo) + nombreSuffix(nombre);
   const bloques: Anthropic.TextBlockParam[] = [
     { type: "text", text: base, cache_control: { type: "ephemeral" } },
   ];
-  if (dyn) bloques.push({ type: "text", text: dyn });
+  const estable = (banco ? `\n\n${banco}` : "") + fechaSuffix() + promoSuffix(promo);
+  if (estable) {
+    bloques.push({ type: "text", text: estable, cache_control: { type: "ephemeral" } });
+  }
+  const nom = nombreSuffix(nombre);
+  if (nom) bloques.push({ type: "text", text: nom });
   return bloques;
 }
 
@@ -844,11 +859,13 @@ async function crearConGuardia(
 async function conBancoSoluciones(
   botKey: string,
   chatId: number | undefined,
-  sistema: Anthropic.TextBlockParam[],
+  // Recibe el banco y monta el system con él DENTRO de la parte cacheada (ver
+  // sistemaCacheado): antes se pegaba al final y se pagaba entero cada vez.
+  construir: (banco: string) => Anthropic.TextBlockParam[],
   generar: (sys: Anthropic.TextBlockParam[]) => Promise<string>
 ): Promise<string> {
   const bloque = await bloqueSolucionesAprobadas(botKey);
-  const sys = bloque ? [...sistema, { type: "text" as const, text: bloque }] : sistema;
+  const sys = construir(bloque || "");
   let txt = await generar(sys);
   if (txt) {
     // Extraer el id AUNQUE la marca venga mal formada (ej. "[SOL:<id 5>]"): cogemos
@@ -1164,7 +1181,7 @@ export async function responderIA(
     let txt = await conBancoSoluciones(
       "as",
       chatId,
-      sistemaCacheado(SYSTEM, promo, nombre),
+      (banco) => sistemaCacheado(SYSTEM, promo, nombre, banco),
       (sys) => crearConGuardia(client, sys, messages, inicioMs)
     );
     // Segunda pasada: el revisor mira el borrador antes de que salga.
@@ -1197,7 +1214,7 @@ export async function responderIABot(
     let txt = await conBancoSoluciones(
       botKey || "",
       chatId,
-      sistemaCacheado(persona, promo, nombre),
+      (banco) => sistemaCacheado(persona, promo, nombre, banco),
       (sys) => crearConGuardia(client, sys, messages, inicioMs)
     );
     // Segunda pasada: el revisor mira el borrador antes de que salga.
