@@ -1,3 +1,4 @@
+import { traerTodo } from "@/lib/traerTodo";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
@@ -88,15 +89,18 @@ export async function GET(request: Request) {
   };
   try {
     // Jugadores con la comisión revertida: no cuentan para la media.
-    const { data: rev } = await supabaseAdmin
-      .from("postback_events")
-      .select("player_id")
-      .eq("event_type", "commission")
-      .eq("status", "counted")
-      .eq("counted", false)
-      .not("player_id", "is", null)
-      .limit(100000);
-    const revertidos = new Set((rev ?? []).map((r) => r.player_id as string));
+    const rev = await traerTodo<{ player_id: string | null }>((d, h) =>
+      supabaseAdmin
+        .from("postback_events")
+        .select("player_id")
+        .eq("event_type", "commission")
+        .eq("status", "counted")
+        .eq("counted", false)
+        .not("player_id", "is", null)
+        .order("id", { ascending: true })
+        .range(d, h),
+    );
+    const revertidos = new Set(rev.map((r) => r.player_id as string));
 
     // Paginado: sin esto PostgREST corta en 1000 y saldría sesgado.
     type FilaDep = {

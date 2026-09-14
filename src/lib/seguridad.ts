@@ -1,3 +1,4 @@
+import { traerTodo } from "./traerTodo";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { ADMIN_USER_ID, esCuentaPropia } from "./adminId";
 
@@ -58,11 +59,14 @@ export async function saludFreshbet(): Promise<SaludFreshbet> {
         .select("clicks")
         .gte("date", hace7)
         .limit(100000),
-      supabaseAdmin
-        .from("postback_events")
-        .select("event_type, counted, afp, player_id")
-        .gte("created_at", hace3)
-        .limit(100000),
+      traerTodo<{ event_type: string; counted: boolean | null; afp: string | null; player_id: string | null }>((d, h) =>
+        supabaseAdmin
+          .from("postback_events")
+          .select("event_type, counted, afp, player_id")
+          .gte("created_at", hace3)
+          .order("id", { ascending: true })
+          .range(d, h),
+      ).then((data) => ({ data })),
     ]);
 
     const ultimoEvento = (ultRes.data?.created_at as string | undefined) ?? null;
@@ -140,17 +144,20 @@ export async function deteccionFraude(): Promise<Fraude> {
     // (dentro de esa ventana sobra) y la colusión reciente es la que importa.
     const hace90 = new Date(Date.now() - 90 * 86400000).toISOString();
     const [evRes, dailyRes, canalRes, affRes] = await Promise.all([
-      supabaseAdmin
-        .from("postback_events")
-        .select("player_id, matched_user_id")
-        .in("event_type", ["ftd", "commission"])
-        .not("player_id", "is", null)
-        .not("matched_user_id", "is", null)
-        .gte("created_at", hace90)
-        .order("created_at", { ascending: false })
-        // Eran 1000: en 90 días hay ~4.600 filas, así que la detección de
-        // colusión solo miraba los últimos 4-5 días.
-        .limit(100000),
+      traerTodo<{ player_id: string | null; matched_user_id: string | null }>((d, h) =>
+        supabaseAdmin
+          .from("postback_events")
+          .select("player_id, matched_user_id")
+          .in("event_type", ["ftd", "commission"])
+          .not("player_id", "is", null)
+          .not("matched_user_id", "is", null)
+          .gte("created_at", hace90)
+          // Orden estable para poder paginar: sin esto, cada bloque de 1000
+          // podía traer filas repetidas o saltarse otras.
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(d, h),
+      ).then((data) => ({ data })),
       supabaseAdmin
         .from("affiliate_daily_stats")
         .select("user_id, clicks, ftd")
@@ -161,13 +168,16 @@ export async function deteccionFraude(): Promise<Fraude> {
       // de los bots). Los enlaces directos del casino que reparten los
       // afiliados por Instagram NO pasan por ahí, así que sus depósitos llegan
       // sin ningún clic detrás.
-      supabaseAdmin
-        .from("postback_events")
-        .select("matched_user_id, afp")
-        .in("event_type", ["ftd", "commission"])
-        .eq("counted", true)
-        .gte("created_at", inicioMes)
-        .limit(100000),
+      traerTodo<{ matched_user_id: string | null; afp: string | null }>((d, h) =>
+        supabaseAdmin
+          .from("postback_events")
+          .select("matched_user_id, afp")
+          .in("event_type", ["ftd", "commission"])
+          .eq("counted", true)
+          .gte("created_at", inicioMes)
+          .order("id", { ascending: true })
+          .range(d, h),
+      ).then((data) => ({ data })),
       supabaseAdmin.from("affiliates").select("user_id, display_name").limit(100000),
     ]);
 
@@ -267,17 +277,22 @@ export async function resumenSeguridad(): Promise<ResumenSeguridad> {
     if (!rpc.error && Array.isArray(rpc.data)) {
       dobles = rpc.data.length;
     } else {
-      const countedRes = await supabaseAdmin
-        .from("postback_events")
-        .select("player_id")
-        .in("event_type", ["ftd", "commission"])
-        .eq("status", "counted")
-        .eq("counted", true) // OJO: una reversión pone counted=false pero DEJA status="counted".
-        .not("player_id", "is", null) // Sin esto, un QFTD revertido + recualificado daba doble FALSO.
-        .limit(100000);
-      if (countedRes.error) return { retenidos, dobles: 0, ok: retenidos === 0 };
+      // ⚠️ PAGINADO: con .limit(100000) solo se veían 1000 de las ~1.900 filas
+      // contadas, así que el detector de pagos duplicados miraba la mitad de los
+      // datos y podía no ver un duplicado antiguo.
+      const contados = await traerTodo<{ player_id: string }>((d, h) =>
+        supabaseAdmin
+          .from("postback_events")
+          .select("player_id")
+          .in("event_type", ["ftd", "commission"])
+          .eq("status", "counted")
+          .eq("counted", true) // OJO: una reversión pone counted=false pero DEJA status="counted".
+          .not("player_id", "is", null) // Sin esto, un QFTD revertido + recualificado daba doble FALSO.
+          .order("id", { ascending: true })
+          .range(d, h),
+      );
       const cnt = new Map<string, number>();
-      for (const r of countedRes.data ?? []) {
+      for (const r of contados) {
         const p = r.player_id as string;
         cnt.set(p, (cnt.get(p) ?? 0) + 1);
       }

@@ -1,3 +1,4 @@
+import { traerTodo } from "@/lib/traerTodo";
 import { contadorDeDepositos } from "@/lib/postback";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -86,25 +87,31 @@ export async function GET(request: Request) {
     // afp EXACTO "bot" (no "bot%"), si no incluiría los sub-bots botmn/botdm de
     // Jeffer/Alana e inflaría las cifras de ESTE panel con lo de ellos.
     // limit alto: sin él PostgREST corta en 1000 y las cifras se quedarían cortas.
-    supabaseAdmin
-      .from("postback_events")
-      .select("commission, created_at")
-      .eq("counted", true)
-      .eq("event_type", "commission")
-      .eq("afp", "bot")
-      .limit(100000),
+    traerTodo<{ commission: number | null; created_at: string }>((d, h) =>
+  supabaseAdmin
+    .from("postback_events")
+    .select("commission, created_at")
+    .eq("counted", true)
+    .eq("event_type", "commission")
+    .eq("afp", "bot")
+    .order("id", { ascending: true })
+    .range(d, h),
+).then((data) => ({ data })),
     // DEPÓSITOS del bot de Sandro (afp EXACTO "bot"): PRIMEROS depósitos (ftd) +
     // RECARGAS (redeposit). El nº de "Recargas" son solo los redeposit, y el
     // importe de "Dinero que metieron" se suma SOLO de las recargas (redeposit):
     // el postback de depósito salta también en el 1er depósito, así que sumar el
     // importe de ftd Y redeposit contaría dos veces el primer depósito.
-    supabaseAdmin
-      .from("postback_events")
-      .select("amount, created_at, player_id, event_type")
-      .in("event_type", ["ftd", "redeposit"])
-      .eq("afp", "bot")
-      .order("created_at", { ascending: true })
-      .limit(100000),
+    traerTodo<{ amount: number | null; created_at: string; player_id: string | null; event_type: string }>((d, h) =>
+  supabaseAdmin
+    .from("postback_events")
+    .select("amount, created_at, player_id, event_type")
+    .in("event_type", ["ftd", "redeposit"])
+    .eq("afp", "bot")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .range(d, h),
+).then((data) => ({ data })),
     supabaseAdmin
       .from("telegram_ai_daily")
       .select("count")

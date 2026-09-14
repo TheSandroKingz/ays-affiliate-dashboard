@@ -1,3 +1,4 @@
+import { traerTodo } from "@/lib/traerTodo";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
@@ -23,12 +24,15 @@ export async function GET(request: Request) {
 
   // Eventos de postback marcados con el afp EXACTO de ESTE bot (igual que el
   // panel admin; un prefijo podría cruzar datos con otro bot cuyo afp empiece igual).
-  const { data: eventos } = await supabaseAdmin
+  const eventos = await traerTodo<{ event_type: string; commission: number | null; amount: number | null; counted: boolean | null; isocountry: string | null; created_at: string }>((d, h) =>
+  supabaseAdmin
     .from("postback_events")
     .select("event_type, commission, amount, counted, isocountry, created_at")
     .eq("afp", bot.afp)
     .order("created_at", { ascending: false })
-    .limit(100000);
+    .order("id", { ascending: true })
+    .range(d, h),
+)
 
   const ev = eventos ?? [];
   let qftd = 0; // depósitos cualificados (los que pagan)

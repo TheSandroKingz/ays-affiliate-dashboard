@@ -1,3 +1,4 @@
+import { traerTodo } from "@/lib/traerTodo";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
@@ -75,16 +76,19 @@ export async function GET(request: Request) {
         .eq("approved", false),
       resumenSeguridad(),
       saludFreshbet(),
-      supabaseAdmin
-        .from("postback_events")
-        .select("isocountry")
-        .in("event_type", ["ftd", "commission"])
-        .eq("counted", true)
-        // Solo el MES en curso (se reinicia cada mes, como el resto del panel), no
-        // el histórico. Usamos el inicio de mes de Madrid en UTC (inicioMesUtc)
-        // para no perder las primeras horas del día 1.
-        .gte("created_at", inicioMesUtc)
-        .limit(100000), // sin límite se cortaría en 1000 y el histograma saldría corto
+      traerTodo<{ isocountry: string | null }>((d, h) =>
+  supabaseAdmin
+    .from("postback_events")
+    .select("isocountry")
+    .in("event_type", ["ftd", "commission"])
+    .eq("counted", true)
+    // Solo el MES en curso (se reinicia cada mes, como el resto del panel), no
+    // el histórico. Usamos el inicio de mes de Madrid en UTC (inicioMesUtc)
+    // para no perder las primeras horas del día 1.
+    .gte("created_at", inicioMesUtc)
+    .order("id", { ascending: true })
+    .range(d, h),
+).then((data) => ({ data })), // sin límite se cortaría en 1000 y el histograma saldría corto
     ]);
 
   const adminCpa = Number(meRes.data?.cpa_spain ?? 0);
