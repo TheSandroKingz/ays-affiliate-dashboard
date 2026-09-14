@@ -64,6 +64,11 @@ export async function GET(request: Request) {
       //            si nadie lo resuelve. Pasó el 11-sep con 85€. Ahora sale aquí
       //            para poder contarlo desde el panel.
       .in("status", ["held", "error"])
+      // ⛔ SOLO QFTD. Un "registration" que falló al sumar NO paga CPA: aparecía
+      // en la lista de "FTD sin contar" con su botón de Contar, y pulsarlo habría
+      // sumado 85 EUR por alguien que solo se registró. El 14-sep había tres así
+      // (220 EUR en total) esperando un clic.
+      .in("event_type", ["ftd", "commission"])
       .order("created_at", { ascending: false })
       .limit(100000),
     deteccionFraude(),

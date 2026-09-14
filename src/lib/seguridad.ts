@@ -139,7 +139,7 @@ export async function deteccionFraude(): Promise<Fraude> {
     // Acotamos a los últimos 90 días: así el limit(1000) no trunca en silencio
     // (dentro de esa ventana sobra) y la colusión reciente es la que importa.
     const hace90 = new Date(Date.now() - 90 * 86400000).toISOString();
-    const [evRes, dailyRes, affRes] = await Promise.all([
+    const [evRes, dailyRes, canalRes, affRes] = await Promise.all([
       supabaseAdmin
         .from("postback_events")
         .select("player_id, matched_user_id")
@@ -155,6 +155,18 @@ export async function deteccionFraude(): Promise<Fraude> {
         .from("affiliate_daily_stats")
         .select("user_id, clicks, ftd")
         .gte("date", inicioMes)
+        .limit(100000),
+      // FTD del mes SEPARADOS POR CANAL. Hace falta porque los clics solo se
+      // cuentan cuando el jugador pasa por asafiliados.com/go/... (los enlaces
+      // de los bots). Los enlaces directos del casino que reparten los
+      // afiliados por Instagram NO pasan por ahí, así que sus depósitos llegan
+      // sin ningún clic detrás.
+      supabaseAdmin
+        .from("postback_events")
+        .select("matched_user_id, afp")
+        .in("event_type", ["ftd", "commission"])
+        .eq("counted", true)
+        .gte("created_at", inicioMes)
         .limit(100000),
       supabaseAdmin.from("affiliates").select("user_id, display_name").limit(100000),
     ]);
@@ -187,9 +199,24 @@ export async function deteccionFraude(): Promise<Fraude> {
       acc.ftd += Number(d.ftd ?? 0);
       agg.set(d.user_id, acc);
     }
+    // FTD que SÍ vienen del embudo que medimos (los enlaces /go de los bots).
+    // Comparar el total de FTD contra los clics daba ratios absurdos: el 14-sep
+    // el panel acusaba a Jeffer de autodepósito con un 212% (104 FTD / 49 clics)
+    // cuando sus 102 FTD del mes venían TODOS de su enlace directo de Instagram,
+    // que no pasa por nuestro contador. Se estaban dividiendo los depósitos de
+    // un sitio entre los clics de otro.
+    const ftdMedidos = new Map<string, number>();
+    for (const e of canalRes.data ?? []) {
+      const u = e.matched_user_id as string | null;
+      const afp = String(e.afp ?? "");
+      if (!u || !afp.startsWith("bot")) continue;
+      ftdMedidos.set(u, (ftdMedidos.get(u) ?? 0) + 1);
+    }
+
     const conversionAnomala = [...agg.entries()]
       .filter(([uid, v]) => {
         if (uid === ADMIN_USER_ID || esCuentaPropia(uid)) return false;
+        v.ftd = ftdMedidos.get(uid) ?? 0; // solo lo que de verdad podemos medir
         if (v.ftd < 3) return false;
         // (a) FTD SIN ningún clic registrado: sus depósitos no vienen de su
         //     enlace /go → patrón de autodepósito más claro. (b) Conversión

@@ -44,6 +44,19 @@ export async function POST(request: Request) {
     );
   }
 
+  // ⛔ CINTURÓN: no se paga CPA por algo que no es un QFTD. El panel ya filtra,
+  // pero esto es lo que de verdad mueve el dinero y no puede depender de que la
+  // pantalla esté bien. Un registro NUNCA paga.
+  if (accion === "contar" && ev.event_type !== "ftd" && ev.event_type !== "commission") {
+    return NextResponse.json(
+      {
+        error:
+          "Eso es un registro, no un depósito cualificado: no paga CPA. Si sobra, descártalo.",
+      },
+      { status: 400 }
+    );
+  }
+
   // Descartar: confirmar que era un duplicado. No se suma nada.
   if (accion === "descartar") {
     const { error } = await supabaseAdmin
