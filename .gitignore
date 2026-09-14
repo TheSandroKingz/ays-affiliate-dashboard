@@ -44,3 +44,4 @@ next-env.d.ts
 backups/
 _tmp_*
 _audit*
+tmp_audit/
