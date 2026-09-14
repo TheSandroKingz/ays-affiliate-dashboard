@@ -144,28 +144,32 @@ export async function GET(request: Request) {
   // como ftd Y como redeposit).
   const nuevoDeposito = contadorDeDepositos();
   const rec = { nTot: 0, eurTot: 0, n: 0, eur: 0 };
+  // Se van guardando aquí con el importe NUEVO (no el acumulado) y en orden.
+  const recargasReales: { importe: number; fecha: string; player: string | null }[] = [];
   for (const r of recRes.data ?? []) {
     if (r.event_type === "redeposit") {
-      rec.nTot++;
+      // Solo es recarga si ya le habíamos visto depositar antes (Celsius manda
+      // un redeposit también en el primer depósito).
+      const esRecarga = nuevoDeposito.yaTenia(r.player_id as string | null);
       // El amount de Celsius es ACUMULADO por jugador: solo lo NUEVO.
       const nuevo = nuevoDeposito(r.player_id as string | null, r.amount);
+      if (esRecarga) {
+        rec.nTot++;
+        recargasReales.push({ importe: nuevo, fecha: r.created_at as string, player: (r.player_id as string) ?? null });
+      }
       rec.eurTot += nuevo;
       if (enPeriodo(r.created_at as string)) {
-        rec.n++;
+        if (esRecarga) rec.n++;
         rec.eur += nuevo;
       }
     }
   }
 
   // Últimas recargas (solo redeposit, para verlas una a una con su importe).
-  const recientes = (recRes.data ?? [])
-    .filter((r) => r.event_type === "redeposit")
-    .slice(0, 15)
-    .map((r) => ({
-      importe: Number(r.amount ?? 0),
-      fecha: r.created_at as string,
-      player: (r.player_id as string) ?? null,
-    }));
+  // ⚠️ Esto enseñaba las 15 MÁS VIEJAS de la historia bajo el título "Últimas
+  // recargas" (la consulta viene en orden ascendente y se hacía slice(0,15)), y
+  // con el importe ACUMULADO del jugador en vez de lo que acababa de meter.
+  const recientes = recargasReales.slice(-15).reverse();
 
   const iaHoy = iaHoyRes.data?.count ?? 0;
   const promo = configRes.data?.promo ?? "";

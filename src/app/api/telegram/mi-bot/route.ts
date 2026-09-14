@@ -1,3 +1,4 @@
+import { contadorDeDepositos } from "@/lib/postback";
 import { traerTodo } from "@/lib/traerTodo";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -24,10 +25,10 @@ export async function GET(request: Request) {
 
   // Eventos de postback marcados con el afp EXACTO de ESTE bot (igual que el
   // panel admin; un prefijo podría cruzar datos con otro bot cuyo afp empiece igual).
-  const eventos = await traerTodo<{ event_type: string; commission: number | null; amount: number | null; counted: boolean | null; isocountry: string | null; created_at: string }>((d, h) =>
+  const eventos = await traerTodo<{ event_type: string; commission: number | null; amount: number | null; counted: boolean | null; isocountry: string | null; created_at: string; player_id: string | null }>((d, h) =>
   supabaseAdmin
     .from("postback_events")
-    .select("event_type, commission, amount, counted, isocountry, created_at")
+    .select("event_type, commission, amount, counted, isocountry, created_at, player_id")
     .eq("afp", bot.afp)
     .order("created_at", { ascending: false })
     .order("id", { ascending: true })
@@ -35,20 +36,28 @@ export async function GET(request: Request) {
 )
 
   const ev = eventos ?? [];
+  // Va en orden ascendente por id para que el contador de depósitos vea los
+  // acumulados en el orden correcto.
+  const evOrden = [...ev].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const nuevoDeposito = contadorDeDepositos();
   let qftd = 0; // depósitos cualificados (los que pagan)
   let ganado = 0; // € ganados (CPA acreditado)
   let ftd = 0; // primeros depósitos (aunque no cualifiquen aún)
   let recargas = 0; // re-depósitos
   let dineroRecargas = 0; // importe de recargas (si FreshBet lo manda)
-  for (const e of ev) {
+  for (const e of evOrden) {
     if (e.event_type === "commission" && e.counted) {
       qftd++;
       ganado += Number(e.commission ?? 0);
     } else if (e.event_type === "ftd") {
       ftd++;
     } else if (e.event_type === "redeposit") {
-      recargas++;
-      dineroRecargas += Number(e.amount ?? 0);
+      // ⚠️ Dos trampas de Celsius juntas: manda un `redeposit` también en el
+      // PRIMER depósito (así que contarlos todos infla las recargas), y el
+      // `amount` es el ACUMULADO del jugador, no lo que acaba de meter (sumarlo
+      // en crudo daba 9.961 EUR donde había 2.574).
+      if (nuevoDeposito.yaTenia(e.player_id as string | null)) recargas++;
+      dineroRecargas += nuevoDeposito(e.player_id as string | null, e.amount);
     }
   }
 

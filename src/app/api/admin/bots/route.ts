@@ -182,9 +182,13 @@ export async function GET(request: Request) {
     // redeposit contaría DOS VECES el primer depósito (mismo criterio que el resto
     // del panel). El nº de recargas también son los redeposit.
     if (e.event_type === "redeposit") {
-      recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
+      // ⚠️ Celsius manda un `redeposit` TAMBIÉN en el primer depósito, así que
+      // contarlos todos infla el número: el bot de A&S decía 102 recargas
+      // cuando eran 61. Solo es recarga si ya le habíamos visto depositar.
+      const esRecarga = nuevoDeposito.yaTenia(e.player_id as string | null);
       // El amount de Celsius es ACUMULADO por jugador: solo sumamos lo NUEVO.
       const nuevo = nuevoDeposito(e.player_id as string | null, e.amount);
+      if (esRecarga) recargas.set(e.afp, (recargas.get(e.afp) ?? 0) + 1);
       if (nuevo > 0) depositado.set(e.afp, (depositado.get(e.afp) ?? 0) + nuevo);
     }
   }

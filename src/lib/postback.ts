@@ -407,7 +407,7 @@ export function queryLimpia(url: URL): string {
 // consultas conviene arrancarlas lo más atrás posible.
 export function contadorDeDepositos() {
   const acumPrevio = new Map<string, number>();
-  return (playerId: string | null | undefined, amount: unknown): number => {
+  const fn = (playerId: string | null | undefined, amount: unknown): number => {
     const importe = Number(amount ?? 0);
     if (!Number.isFinite(importe) || importe <= 0) return 0;
     // Sin identificador de jugador no se puede diferenciar: se cuenta tal cual.
@@ -417,4 +417,12 @@ export function contadorDeDepositos() {
     acumPrevio.set(playerId, importe);
     return importe - antes;
   };
+  // ¿Ya habíamos visto un depósito de este jugador? Sirve para no contar como
+  // "recarga" el PRIMER depósito: Celsius manda un evento `redeposit` también
+  // en el primero, así que contar todos los redeposit infla el número. Con los
+  // datos reales, el bot de A&S decía 102 recargas cuando eran 61.
+  // ⚠️ Preguntar SIEMPRE antes de llamar a la función, que es la que apunta.
+  fn.yaTenia = (playerId: string | null | undefined): boolean =>
+    !!playerId && (acumPrevio.get(playerId) ?? 0) > 0;
+  return fn;
 }
