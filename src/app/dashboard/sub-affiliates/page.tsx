@@ -140,7 +140,7 @@ export default function SubAffiliatesPage() {
                 Nombre del Afiliado
               </th>
               <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">
-                Comisión
+                Comisión (este mes)
               </th>
             </tr>
           </thead>
@@ -167,7 +167,7 @@ export default function SubAffiliatesPage() {
             <tfoot>
               <tr className="bg-white/10 font-semibold">
                 <td className="border border-white/10 px-4 py-3 text-white" colSpan={2}>
-                  Total
+                  Total del mes
                 </td>
                 <td className="border border-white/10 px-4 py-3 text-right text-white">
                   {eur(totalCommission)}

@@ -249,7 +249,8 @@ export default function AfiliadoDetallePage() {
       destacar: false,
     },
     {
-      label: "Depósito medio",
+      // Ojo: esta cifra es de SIEMPRE, no cambia con el período elegido arriba.
+      label: "Depósito medio (histórico)",
       value:
         deposito?.media != null
           ? eur(deposito.media)
