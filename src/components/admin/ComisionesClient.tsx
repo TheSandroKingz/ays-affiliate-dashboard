@@ -197,7 +197,7 @@ export default function ComisionesClient({
   }
 
   const inputClass =
-    "mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500";
+    "mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
     <div className="flex flex-col gap-3">
@@ -280,6 +280,7 @@ export default function ComisionesClient({
                             CPA España (€)
                             <input
                               type="number"
+                              inputMode="decimal"
                               value={row.cpaSpain}
                               onChange={(e) => updateRow(row.id, "cpaSpain", Number(e.target.value))}
                               className={inputClass}
@@ -289,6 +290,7 @@ export default function ComisionesClient({
                             CPA Otros (€)
                             <input
                               type="number"
+                              inputMode="decimal"
                               value={row.cpaOther}
                               onChange={(e) => updateRow(row.id, "cpaOther", Number(e.target.value))}
                               className={inputClass}
@@ -298,6 +300,7 @@ export default function ComisionesClient({
                             % Subafiliado
                             <input
                               type="number"
+                              inputMode="decimal"
                               value={row.subaffiliatePercent}
                               onChange={(e) => updateRow(row.id, "subaffiliatePercent", Number(e.target.value))}
                               className={inputClass}
@@ -339,11 +342,13 @@ export default function ComisionesClient({
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
+                              
                               inputMode="decimal"
+                              
                               placeholder="Importe €"
                               value={pagoImporte[row.id] ?? ""}
                               onChange={(e) => setPagoImporte((p) => ({ ...p, [row.id]: e.target.value }))}
-                              className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              className="flex-1 min-w-0 rounded-lg bg-white/10 border border-white/20 text-white text-base sm:text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             />
                             <button
                               onClick={() => registrarPago(row.id, row.userId)}

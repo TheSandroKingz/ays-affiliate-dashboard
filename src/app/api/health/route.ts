@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { compararSecreto } from "@/lib/secreto";
 import { repararWebhooks } from "@/lib/botHealth";
 import { enviarPush } from "@/lib/push";
 import { ADMIN_USER_ID } from "@/lib/adminId";
@@ -19,7 +20,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
 
-export async function GET() {
+export async function GET(req: Request) {
   const t0 = Date.now();
   const fallos: string[] = [];
   let reparado: string[] = [];
@@ -71,8 +72,17 @@ export async function GET() {
   }
 
   const ok = fallos.length === 0;
+  // Solo se detalla el fallo a quien trae el secreto: es público a propósito
+  // (lo llama un vigilante externo), y la lista de fallos es información sobre
+  // el estado interno que no hace falta dar a cualquiera.
+  const conSecreto = compararSecreto(
+    new URL(req.url).searchParams.get("k"),
+    process.env.CRON_SECRET
+  );
   return NextResponse.json(
-    { ok, fallos, reparado, ms: Date.now() - t0 },
+    conSecreto
+      ? { ok, fallos, reparado, ms: Date.now() - t0 }
+      : { ok },
     { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } }
   );
 }

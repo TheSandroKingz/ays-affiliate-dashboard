@@ -69,7 +69,7 @@ const partePrz = (g: { categoria: string; importe: number; quien: string }) =>
   (g.importe * pctDe(g.categoria, g.quien).p) / 100;
 
 const cell =
-  "w-full rounded-md bg-white/10 border border-white/15 text-white text-sm px-2 py-1.5 [color-scheme:dark] placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+  "w-full rounded-md bg-white/10 border border-white/15 text-white text-base sm:text-sm px-2 py-1.5 [color-scheme:dark] placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
 export default function GastosPage() {
   const router = useRouter();
@@ -403,7 +403,7 @@ export default function GastosPage() {
               <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(categoria, quien).k}%</td>
               <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(categoria, quien).p}%</td>
               <td className="px-2 py-2 text-center">
-                <button onClick={añadir} disabled={guardando} className="rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold w-8 h-8 leading-none" title="Añadir">+</button>
+                <button onClick={añadir} disabled={guardando} className="rounded-md bg-emerald-600 hover:bg-emerald-700 min-h-[44px] px-4 disabled:opacity-50 text-white text-sm font-semibold w-8 h-8 leading-none" title="Añadir">+</button>
               </td>
             </tr>
 
@@ -441,8 +441,8 @@ export default function GastosPage() {
                       <td className="px-3 py-2 text-right text-xs text-slate-500">{pctDe(ed.categoria ?? g.categoria, ed.quien ?? g.quien).p}%</td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-1">
-                          <button onClick={guardarEd} className="text-emerald-400 hover:text-emerald-300 px-1" title="Guardar">✓</button>
-                          <button onClick={() => { setEditId(null); setEd({}); }} className="text-slate-500 hover:text-white px-1" title="Cancelar">×</button>
+                          <button onClick={guardarEd} className="text-emerald-400 hover:text-emerald-300 px-3 py-2 min-h-[44px]" title="Guardar">✓</button>
+                          <button onClick={() => { setEditId(null); setEd({}); }} className="text-slate-500 hover:text-white px-3 py-2 min-h-[44px]" title="Cancelar">×</button>
                         </div>
                       </td>
                     </tr>
@@ -479,7 +479,7 @@ export default function GastosPage() {
                       {eur(partePrz(g))} <span className="text-[10px] text-slate-500">({pctDe(g.categoria, g.quien).p}%)</span>
                     </td>
                     <td className="px-2 py-3 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); borrar(g.id); }} className="text-slate-500 hover:text-red-400 text-lg leading-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition" title="Borrar">×</button>
+                      <button onClick={(e) => { e.stopPropagation(); borrar(g.id); }} className="text-slate-500 hover:text-red-400 text-lg leading-none px-3 py-2 min-h-[44px] min-w-[44px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition" title="Borrar">×</button>
                     </td>
                   </tr>
                 );

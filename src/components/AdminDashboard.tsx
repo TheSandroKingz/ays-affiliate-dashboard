@@ -575,7 +575,9 @@ export default function AdminDashboard() {
                 className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm"
               >
                 <span>{banderaEmoji(p.code)}</span>
-                <span className="text-[10px] text-slate-400">{p.code}</span>
+                {/* El nombre iba solo en title=, que en móvil no existe: se ve
+                    la bandera y un código de dos letras y nada más. */}
+                <span className="text-xs text-slate-300">{nombrePais(p.code) || p.code}</span>
                 <span className="font-semibold text-white">{p.n}</span>
               </span>
             ))}

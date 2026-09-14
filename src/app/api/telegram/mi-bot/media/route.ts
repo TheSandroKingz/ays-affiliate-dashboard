@@ -26,12 +26,9 @@ export async function GET(request: Request) {
   if (Math.floor(Date.now() / 1000) > exp) {
     return NextResponse.json({ error: "caducada" }, { status: 403 });
   }
-  const esperada = firmarMediaBot(id, exp);
-  const a = Buffer.from(sig);
-  const b = Buffer.from(esperada);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    return NextResponse.json({ error: "firma inválida" }, { status: 403 });
-  }
+  // La comprobación de la firma se hace MÁS ABAJO, cuando ya sabemos de qué bot
+  // es el mensaje: la firma incluye el bot para que una URL de un bot no sirva
+  // para pedir la foto de otro.
 
   // Rate-limit por IP (ver /api/telegram/media): frena repetir una URL firmada
   // en bucle para forzar descargas desde Telegram.
@@ -60,6 +57,16 @@ export async function GET(request: Request) {
   const bot = getBot(msg?.bot as string | undefined);
   if ((!fileId && !fullId) || !bot || !bot.token) {
     return NextResponse.json({ error: "no existe" }, { status: 404 });
+  }
+
+  // Ahora sí: la firma tiene que corresponder a ESTE bot. Sin esto, una URL
+  // firmada valía para pedir el mensaje que fuera con ese id, sin comprobar de
+  // quién era.
+  const esperada = firmarMediaBot(id, exp, bot.key);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(esperada);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return NextResponse.json({ error: "firma inválida" }, { status: 403 });
   }
 
   // Vídeo/animación con archivo real guardado → lo servimos REPRODUCIBLE (mime de

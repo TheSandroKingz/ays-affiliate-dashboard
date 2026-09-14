@@ -193,7 +193,7 @@ export default function EstadoBotsPage() {
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                         <button
                           onClick={() => renombrar(b.key, b.label)}
-                          className="text-[10px] text-emerald-300 hover:text-emerald-200 underline underline-offset-2"
+                          className="text-xs text-emerald-300 hover:text-emerald-200 rounded-md border border-emerald-400/25 hover:bg-emerald-400/10 px-3 py-2 min-h-[40px] inline-flex items-center gap-1"
                         >
                           ✏️ Renombrar en Telegram
                         </button>
@@ -203,7 +203,7 @@ export default function EstadoBotsPage() {
                               ? conectarSandro()
                               : conectar(b.key)
                           }
-                          className="text-[10px] text-sky-300 hover:text-sky-200 underline underline-offset-2"
+                          className="text-xs text-sky-300 hover:text-sky-200 rounded-md border border-sky-400/25 hover:bg-sky-400/10 px-3 py-2 min-h-[40px] inline-flex items-center gap-1"
                         >
                           🔌 Conectar webhook
                         </button>

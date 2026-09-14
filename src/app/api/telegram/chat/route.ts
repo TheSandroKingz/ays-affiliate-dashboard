@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
   // Caducidad de 12h para las URLs de imagen (suficiente para ver el chat). Cada
   // bot firma y sirve su media por su propia ruta (Sandro /media, bots nuevos /mi-bot/media).
-  const exp = Math.floor(Date.now() / 1000) + 12 * 3600;
+  const exp = Math.floor(Date.now() / 1000) + 30 * 60;
   const history = filas.map((m) => {
     const id = m.id as number;
     const esVid = m.media_type === "video" || m.media_type === "animation";
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     if ((playable || comoImagen) && mediaKeyConfigurada()) {
       media_kind = playable ? "video" : "image";
       media_url = esBotNuevo
-        ? `/api/telegram/mi-bot/media?id=${id}&exp=${exp}&sig=${firmarMediaBot(id, exp)}`
+        ? `/api/telegram/mi-bot/media?id=${id}&exp=${exp}&sig=${firmarMediaBot(id, exp, origenRaw)}`
         : `/api/telegram/media?id=${id}&exp=${exp}&sig=${firmarMedia(id, exp)}`;
     }
     return {

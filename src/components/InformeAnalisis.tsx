@@ -503,7 +503,7 @@ export default function InformeAnalisis() {
                     <Link
                       href={`${viewerBase}?bot=${encodeURIComponent(x.bot)}&chat=${x.chat_id}`}
                       className="shrink-0 inline-flex items-center gap-1 rounded-md border border-sky-400/40
-                      bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25"
+                      bg-sky-500/15 px-3 py-2.5 min-h-[44px] text-sm font-semibold text-sky-200 hover:bg-sky-500/25"
                     >
                       💬 Ver la conversación →
                     </Link>
@@ -512,7 +512,7 @@ export default function InformeAnalisis() {
                       onClick={() => sacarDeListaNegra(x.bot, x.chat_id)}
                       disabled={reactivando === `${x.bot}:${x.chat_id}`}
                       className="shrink-0 rounded-md border border-emerald-400/40 bg-emerald-500/15
-                      px-2.5 py-1 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/25
+                      px-3 py-2.5 min-h-[44px] text-sm font-semibold text-emerald-200 hover:bg-emerald-500/25
                       disabled:opacity-50"
                     >
                       {reactivando === `${x.bot}:${x.chat_id}`
@@ -608,7 +608,7 @@ function ListaEjemplos({
                 <Link
                   href={`${base}?bot=${encodeURIComponent(e.bot)}&chat=${e.chat_id}`}
                   className="inline-flex items-center gap-1 rounded-md border border-sky-400/40
-                  bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25"
+                  bg-sky-500/15 px-3 py-2.5 min-h-[44px] text-sm font-semibold text-sky-200 hover:bg-sky-500/25"
                 >
                   💬 Ver la conversación →
                 </Link>
@@ -616,7 +616,7 @@ function ListaEjemplos({
               {onRevisar && e.chat_id != null && (
                 <button
                   onClick={() => onRevisar(e.bot, e.chat_id as number, !e.revisado)}
-                  className={`rounded-md border px-2.5 py-1 text-[11px] font-medium ${
+                  className={`rounded-md border px-3 py-2.5 min-h-[44px] text-sm font-medium ${
                     e.revisado
                       ? "border-white/15 bg-white/5 text-slate-400 hover:bg-white/10"
                       : "border-emerald-400/40 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25"

@@ -25,10 +25,14 @@ export function mediaKeyConfigurada(): boolean {
 // espacio de nombres distinto ("bot.") para que una URL firmada de un bot NO
 // sirva contra el endpoint de imágenes del bot de Sandro (telegram_messages), ni
 // al revés: el id por sí solo no basta, la firma incluye el prefijo.
-export function firmarMediaBot(id: number, exp: number): string {
+// La firma incluye el BOT, no solo el id del mensaje: así una URL firmada de
+// un bot no puede reutilizarse para pedir la foto de otro. Y dura poco (ver
+// quien la genera): antes valían 12 horas desde cualquier sitio y sin sesión,
+// o sea que pegarla en un grupo dejaba la foto del jugador al aire.
+export function firmarMediaBot(id: number, exp: number, bot = ""): string {
   return crypto
     .createHmac("sha256", MEDIA_KEY)
-    .update(`bot.${id}.${exp}`)
+    .update(`bot.${bot}.${id}.${exp}`)
     .digest("hex");
 }
 export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";

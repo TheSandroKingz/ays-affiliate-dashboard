@@ -43,7 +43,9 @@ export async function GET(request: Request) {
   };
   const filas = (r2.data ?? []) as unknown as Fila[];
 
-  const exp = Math.floor(Date.now() / 1000) + 12 * 3600;
+  // 30 min: una URL firmada que dura 12 h y funciona sin sesión desde
+  // cualquier sitio es una foto de un jugador al aire si alguien la comparte.
+  const exp = Math.floor(Date.now() / 1000) + 30 * 60;
   const history = filas.map((m) => {
     // Vídeo/animación con archivo real → se REPRODUCE en el visor. Foto (o vídeo
     // antiguo del que solo hay miniatura) → imagen. Sin nada servible → solo texto.
@@ -60,7 +62,8 @@ export async function GET(request: Request) {
         hayMedia && mediaKeyConfigurada()
           ? `/api/telegram/mi-bot/media?id=${m.id}&exp=${exp}&sig=${firmarMediaBot(
               m.id as number,
-              exp
+              exp,
+              bot.key
             )}`
           : null,
     };

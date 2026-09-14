@@ -67,7 +67,7 @@ export default function AdminLayout({
           </Link>
         </div>
       </header>
-      <main className="p-4 sm:p-6 md:p-8">{children}</main>
+      <main className="p-4 sm:p-6 md:p-8 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</main>
     </div>
   );
 }

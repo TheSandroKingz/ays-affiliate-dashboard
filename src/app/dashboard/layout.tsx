@@ -36,7 +36,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             corre EN PARALELO con la comprobación de acceso, y cada página muestra
             su propio skeleton. El guardián sigue redirigiendo (login/pendiente) y
             RLS protege los datos, así que es seguro. */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">{children}</main>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</main>
       </div>
     </div>
   );

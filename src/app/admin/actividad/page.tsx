@@ -229,24 +229,24 @@ export default function ActividadPage() {
                   <span className="text-slate-400">
                     {" "}
                     · jugador{" "}
-                    <span className="font-mono text-xs">
+                    <span className="font-mono text-xs break-all">
                       {e.player_id?.startsWith("legacy:") ? "(antiguo)" : e.player_id}
                     </span>{" "}
                     · {tiempoRelativo(e.created_at)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
                   <button
                     onClick={() => resolver(e.id, "descartar")}
                     disabled={resolviendo === e.id}
-                    className="text-xs font-semibold text-slate-300 hover:text-white border border-white/20 hover:bg-white/10 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
+                    className="text-sm font-semibold text-slate-300 hover:text-white border border-white/20 hover:bg-white/10 disabled:opacity-50 px-4 py-2.5 min-h-[44px] rounded-lg transition"
                   >
                     Descartar
                   </button>
                   <button
                     onClick={() => resolver(e.id, "contar")}
                     disabled={resolviendo === e.id}
-                    className="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
+                    className="text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-4 py-2.5 min-h-[44px] rounded-lg transition"
                   >
                     {resolviendo === e.id ? "..." : "Contar"}
                   </button>
@@ -334,7 +334,7 @@ export default function ActividadPage() {
         <div className="rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           ⚠️ Hay <b>{sinPlayerId}</b> FTD contados <b>sin identificador de jugador</b>.
           Sin ese dato, si Celsius reenvía un FTD se contaría dos veces. Revisa
-          que Celsius incluya el <span className="font-mono">playerid</span> en los postbacks.
+          que Celsius incluya el <span className="font-mono break-all">playerid</span> en los postbacks.
         </div>
       )}
 
@@ -342,7 +342,7 @@ export default function ActividadPage() {
         <div className="rounded-xl border border-red-400/60 bg-red-500/15 px-4 py-3 text-sm text-red-100">
           🚨 <b>{resumen.repetidos.length}</b> jugador(es) contados MÁS de una vez
           (posible doble pago):{" "}
-          <span className="font-mono">
+          <span className="font-mono break-all">
             {resumen.repetidos.map((r) => `${r.player_id} (${r.veces}×)`).join(", ")}
           </span>
           . Revísalo cuanto antes.
@@ -420,7 +420,12 @@ export default function ActividadPage() {
                       {e.player_id?.startsWith("legacy:") ? (
                         <span className="text-xs text-slate-500">(antiguo)</span>
                       ) : e.player_id ? (
-                        <span className="font-mono text-xs text-slate-300">{e.player_id}</span>
+                        <span
+                          className="font-mono text-xs text-slate-300 block max-w-[7rem] truncate"
+                          title={e.player_id}
+                        >
+                          {e.player_id}
+                        </span>
                       ) : e.event_type === "ftd" && e.counted ? (
                         <span className="text-red-400 text-xs font-semibold">sin id ⚠️</span>
                       ) : (
