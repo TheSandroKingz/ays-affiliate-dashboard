@@ -77,8 +77,7 @@ async function pagarQftd(
   userId: string,
   fecha: string,
   commission: number,
-): Promise<boolean | null | "sin_funcion" | "pagado_en_reintento"> {
-  let falloAntes = false;
+): Promise<"pagado" | "ya_estaba" | "huerfano" | "sin_funcion" | null> {
   for (let intento = 0; intento < 2; intento++) {
     const { data, error } = await supabaseAdmin.rpc("pagar_qftd", {
       p_key: key,
@@ -87,26 +86,19 @@ async function pagarQftd(
       p_commission: commission,
     });
     if (!error) {
-      if (data === true) return true;
-      // Dice que ya estaba pagado. Si NUESTRO primer intento había fallado, lo más
-      // probable es que ese primero SÍ se guardara y solo se perdiera la respuesta:
-      // el dinero está sumado, y lo sumamos nosotros. Distinguirlo importa porque
-      // si no, el evento queda como "retenido", el registro no cuadra con el dinero
-      // y salta una falsa alarma de doble pago. Pasó hoy con 85 EUR.
-      return falloAntes ? "pagado_en_reintento" : false;
+      const r = data as { pagado?: boolean; ya_estaba?: boolean } | null;
+      // La v1 devolvía un booleano pelado. Si todavía no está aplicado el SQL
+      // nuevo, se interpreta como antes para no romper nada.
+      if (typeof data === "boolean") return data ? "pagado" : "huerfano";
+      if (!r?.pagado) return "huerfano";
+      return r.ya_estaba ? "ya_estaba" : "pagado";
     }
-    falloAntes = true;
-    // La función todavía no existe en la base de datos (SQL sin aplicar).
     const msg = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
-    if (
-      msg.includes("42883") ||
-      msg.includes("could not find") ||
-      msg.includes("does not exist")
-    ) {
+    if (msg.includes("42883") || msg.includes("could not find") || msg.includes("does not exist")) {
       return "sin_funcion";
     }
-    // Fallo transitorio: se reintenta UNA vez. Es seguro justo porque la función
-    // es atómica (o guardó las dos cosas, o no guardó ninguna).
+    // Fallo transitorio: se reintenta UNA vez. Es seguro porque la función es
+    // atómica: o guardó candado y dinero, o no guardó nada.
     if (intento === 0) await new Promise((r) => setTimeout(r, 400));
   }
   return null;
@@ -647,10 +639,18 @@ export async function GET(request: Request) {
         // Esto es lo que impide perder un CPA cuando la base de datos se
         // atraganta en la ráfaga que manda Celsius cada 6 horas.
         const pagado = await pagarQftd(clave, target.user_id, today, commission);
-        if (pagado === true || pagado === "pagado_en_reintento") {
+        if (pagado === "pagado") {
           estado = "counted";
           comisionPagada = commission;
-        } else if (pagado === false) {
+        } else if (pagado === "ya_estaba") {
+          // El candado dice que ESE pago ya se hizo (y guarda cuánto). O sea que
+          // el dinero está sumado aunque no tengamos el evento: pasó cuando la
+          // petición anterior murió después de guardar. Se apunta como contado
+          // para que el registro cuadre con el dinero; si no, quedaba como
+          // "retenido" y saltaba una alarma de doble pago que era mentira.
+          estado = "counted";
+          comisionPagada = commission;
+        } else if (pagado === "huerfano") {
           // El candado estaba puesto pero el jugador no tiene nada contado: es un
           // candado huérfano de los que dejaba el camino viejo al fallar la suma.
           // Se RETIENE para poder recuperarlo desde el panel, en vez de perderlo.
