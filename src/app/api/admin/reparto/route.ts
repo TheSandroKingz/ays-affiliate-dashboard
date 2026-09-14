@@ -51,12 +51,22 @@ export async function GET(request: Request) {
   }
 
   // me y structure son independientes → en paralelo (1 round-trip en vez de 2).
-  const [{ data: me }, { data: structure }] = await Promise.all([
+  const [{ data: me }, { data: structure }, { data: penas }] = await Promise.all([
     supabaseAdmin.from("affiliates").select("id, cpa_spain").eq("user_id", user.id).maybeSingle(),
     supabaseAdmin
       .from("affiliates")
       .select("id, user_id, display_name, referred_by, subaffiliate_percent")
       .neq("user_id", user.id),
+    // Lo que Celsius nos quitó en los meses del período. Se resta del bote ANTES
+    // de repartir: ese dinero no existe, no se reparte con nadie. En la vista de
+    // un DÍA suelto no se aplica (la penalización es de todo el mes).
+    dia
+      ? Promise.resolve({ data: [] as { mes: string; importe: number }[] })
+      : supabaseAdmin
+          .from("penalizaciones")
+          .select("mes, importe")
+          .gte("mes", desde.slice(0, 7))
+          .lte("mes", hasta.slice(0, 7)),
   ]);
 
   const adminCpa = Number(me?.cpa_spain ?? 0);
@@ -136,6 +146,24 @@ export async function GET(request: Request) {
     const g = grupos.get(cfg.grupo);
     if (g) g.ganancia -= override;
   }
+  // Penalización: se quita del bote repartiéndola entre las fuentes en
+  // proporción a lo que ganó cada una, y luego ya se aplican los %.
+  const penalizacion = (penas ?? []).reduce(
+    (s, p) => s + Number(p.importe ?? 0),
+    0
+  );
+  if (penalizacion > 0) {
+    const positivas = [...grupos.values()].filter((g) => g.ganancia > 0);
+    const base = positivas.reduce((s, g) => s + g.ganancia, 0);
+    if (base > 0) {
+      for (const g of positivas) g.ganancia -= penalizacion * (g.ganancia / base);
+    } else {
+      // Sin ganancias positivas no hay proporción posible: va al grupo general.
+      const g = grupos.get(GENERAL.grupo);
+      if (g) g.ganancia -= penalizacion;
+    }
+  }
+
   const fuentes = [...grupos.values()].map((f) => ({
     nombre: f.nombre,
     ftd: f.ftd,
@@ -148,6 +176,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     etiqueta,
+    penalizacion,
     reparto: {
       fuentes,
       sandroTotal: fuentes.reduce((s, f) => s + f.sandro, 0),

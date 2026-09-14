@@ -25,6 +25,7 @@ const MESES = [
 export default function RepartoPage() {
   const router = useRouter();
   const [reparto, setReparto] = useState<Reparto | null>(null);
+  const [penalizacion, setPenalizacion] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // "" = mes actual · "YYYY-MM" = un mes · "historico" = todo · "dia:YYYY-MM-DD" = un día
@@ -80,7 +81,10 @@ export default function RepartoPage() {
           return;
         }
         const b = await r.json();
-        if (vivo) setReparto(b.reparto ?? null);
+        if (vivo) {
+          setReparto(b.reparto ?? null);
+          setPenalizacion(Number(b.penalizacion ?? 0));
+        }
       } catch {
         if (vivo) setError("No se pudo cargar.");
       } finally {
@@ -172,6 +176,12 @@ export default function RepartoPage() {
             El reparto se hace sobre la ganancia (lo que sobra tras pagar el CPA
             de cada afiliado), no sobre el total bruto.
           </p>
+          {penalizacion > 0 && (
+            <p className="text-xs text-amber-300/80 mt-1">
+              Ya descontados {eur(penalizacion)} de penalización de Celsius: ese
+              dinero se quita del bote antes de repartir, no lo cobra nadie.
+            </p>
+          )}
         </>
       )}
     </div>
