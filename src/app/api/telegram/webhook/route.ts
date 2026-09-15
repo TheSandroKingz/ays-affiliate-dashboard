@@ -14,6 +14,7 @@ import {
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
+import { apuntarFallo } from "@/lib/iaUso";
 import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
@@ -1137,6 +1138,8 @@ export async function POST(request: Request) {
         const dentroCapChat = dentroTope
           ? await puedeGastarIA(String(chatId), !contacto?.last_msg_at)
           : false;
+        if (!dentroTope) apuntarFallo("as", chatId, "tope diario de IA alcanzado");
+        else if (!dentroCapChat) apuntarFallo("as", chatId, "frenado por los topes de gasto (del chat o globales)");
         if (dentroTope && dentroCapChat) {
           // Imagen para la IA: la del mensaje actual si trae; si no, la del último
           // mensaje reciente del jugador con media (para no perder el vídeo/foto
@@ -1291,7 +1294,16 @@ export async function POST(request: Request) {
         const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
           reply_markup: botonSoloJugar(),
         });
-        if (rEnv?.ok) algoEnviado = true;
+        if (rEnv?.ok) {
+          algoEnviado = true;
+          // Se guarda en el historial: si no, en el panel el chat salía como "sin
+          // contestar" aunque al jugador le hubiera llegado este mensaje.
+          await supabaseAdmin
+            .from("telegram_messages")
+            .insert({ chat_id: chatId, role: "assistant", content: "¡Dale! 🔥 Recarga y entra a jugar 👇" })
+            .then(() => {}, () => {});
+          apuntarFallo("as", chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (recarga)");
+        }
         await guardarMsg(chatId, midDe(rEnv));
       } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
         // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
@@ -1304,7 +1316,14 @@ export async function POST(request: Request) {
           {}
         );
         envioOk = !!rEnv?.ok;
-        if (envioOk) algoEnviado = true;
+        if (envioOk) {
+          algoEnviado = true;
+          await supabaseAdmin
+            .from("telegram_messages")
+            .insert({ chat_id: chatId, role: "assistant", content: "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏" })
+            .then(() => {}, () => {});
+          apuntarFallo("as", chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (acuse)");
+        }
         await guardarMsg(chatId, midDe(rEnv));
       }
 

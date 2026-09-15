@@ -41,3 +41,29 @@ export function apuntarUso(
     /* nunca romper una respuesta por apuntar el coste */
   }
 }
+
+// Apunta que un bot se quedó SIN respuesta de la IA y por qué (error de la
+// llamada, respuesta vacía, freno de gasto). El 15-sep un jugador listo para
+// depositar se quedó sin contestar y no había forma de saber el motivo.
+// BLINDADO igual que apuntarUso: no espera, no lanza, sin tabla no hace nada.
+export function apuntarFallo(
+  bot: string,
+  chatId: number | string | null | undefined,
+  motivo: string
+): void {
+  try {
+    void supabaseAdmin
+      .from("ia_fallos")
+      .insert({
+        bot,
+        chat_id: chatId == null ? null : Number(chatId),
+        motivo: motivo.slice(0, 500),
+      })
+      .then(
+        () => {},
+        () => {}
+      );
+  } catch {
+    /* nunca romper una respuesta por apuntar un fallo */
+  }
+}

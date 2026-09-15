@@ -3,7 +3,7 @@
 // código. BLINDADO: cualquier fallo devuelve null y el flujo sigue (nunca rompe).
 
 import Anthropic from "@anthropic-ai/sdk";
-import { apuntarUso } from "@/lib/iaUso";
+import { apuntarUso, apuntarFallo } from "@/lib/iaUso";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
 import { promptV2 } from "@/lib/promptBuild";
@@ -1345,8 +1345,11 @@ export async function responderIA(
     // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
     if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
     if (txt) txt = vozDeSandro(txt);
-    return txt ? quitarGuiones(txt) || null : null;
-  } catch {
+    const final = txt ? quitarGuiones(txt) || null : null;
+    if (!final) apuntarFallo("as", chatId, "la IA devolvió una respuesta vacía");
+    return final;
+  } catch (e) {
+    apuntarFallo("as", chatId, "error llamando a la IA: " + String((e as Error)?.message ?? e));
     return null;
   }
 }
@@ -1384,8 +1387,11 @@ export async function responderIABot(
     if (calla2) return calla2;
     // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
     if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
-    return txt ? quitarGuiones(txt) || null : null;
-  } catch {
+    const final = txt ? quitarGuiones(txt) || null : null;
+    if (!final) apuntarFallo(botKey || "?", chatId, "la IA devolvió una respuesta vacía");
+    return final;
+  } catch (e) {
+    apuntarFallo(botKey || "?", chatId, "error llamando a la IA: " + String((e as Error)?.message ?? e));
     return null;
   }
 }

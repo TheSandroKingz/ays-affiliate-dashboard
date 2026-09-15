@@ -10,6 +10,7 @@ import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAU
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
+import { apuntarFallo } from "@/lib/iaUso";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
 
@@ -1001,6 +1002,8 @@ export async function procesarUpdate(
       const dentroCapChat = dentroTope
         ? await puedeGastarIA(`${bot.key}:${chatId}`, !contacto?.last_msg_at)
         : false;
+      if (!dentroTope) apuntarFallo(bot.key, chatId, "tope diario de IA alcanzado");
+      else if (!dentroCapChat) apuntarFallo(bot.key, chatId, "frenado por los topes de gasto (del chat o globales)");
       if (dentroTope && dentroCapChat) {
         // Memoria de la charla (AHORA, tras el debounce → incluye los mensajes que
         // el jugador mandó agrupados). Filtramos el mensaje ACTUAL (miMsgId): ese
@@ -1193,7 +1196,15 @@ export async function procesarUpdate(
         { reply_markup: botonSoloJugar(bot.enlace) },
         tok
       );
-      if (rPitch?.ok) algoEnviado = true;
+      if (rPitch?.ok) {
+        algoEnviado = true;
+        // Se guarda en el historial (ver el webhook de Sandro).
+        await supabaseAdmin
+          .from("bot_messages")
+          .insert({ bot: bot.key, chat_id: chatId, role: "assistant", content: "¡Dale! 🔥 Recarga y entra a jugar 👇" })
+          .then(() => {}, () => {});
+        apuntarFallo(bot.key, chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (recarga)");
+      }
     } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
       // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
       // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
@@ -1206,7 +1217,14 @@ export async function procesarUpdate(
         tok
       );
       envioOk = !!rAcuse?.ok;
-      if (envioOk) algoEnviado = true;
+      if (envioOk) {
+        algoEnviado = true;
+        await supabaseAdmin
+          .from("bot_messages")
+          .insert({ bot: bot.key, chat_id: chatId, role: "assistant", content: "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏" })
+          .then(() => {}, () => {});
+        apuntarFallo(bot.key, chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (acuse)");
+      }
     }
 
     if ((respuesta && envioOk) || videoEnviado) {

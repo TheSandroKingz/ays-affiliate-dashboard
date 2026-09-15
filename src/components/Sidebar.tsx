@@ -8,20 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID, esCuentaPropia, esSoloBot } from "@/lib/adminId";
 import InstallAppButton from "@/components/InstallAppButton";
 import { useProfile } from "@/components/DashboardProvider";
-import {
-  LayoutDashboard,
-  ClipboardList,
-  CreditCard,
-  Users,
-  BookOpen,
-  ChevronDown,
-  Settings,
-  LogOut,
-  Shield,
-  MessageCircle,
-  PieChart,
-  Wallet,
-} from "lucide-react";
+import { LayoutDashboard, ClipboardList, CreditCard, Users, BookOpen, ChevronDown, Settings, LogOut, Shield, MessageCircle, PieChart, Wallet, Activity } from "lucide-react";
 
 const reportLinks = [
   { name: "Informe de Medios", href: "/dashboard/reports/media" },
@@ -201,6 +188,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <Link href="/dashboard/payments" className={linkClass("/dashboard/payments")} onClick={onClose}>
             <CreditCard size={18} />
             Pagos
+          </Link>
+        )}
+
+        {!isAdmin && !soloBot && (
+          <Link href="/dashboard/actividad" className={linkClass("/dashboard/actividad")} onClick={onClose}>
+            <Activity size={18} />
+            Actividad
           </Link>
         )}
 
