@@ -13,7 +13,7 @@ import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
 import { hoyMadridISO, colorDeNombre } from "@/lib/ui";
 import ConfiguradorGastos from "@/components/ConfiguradorGastos";
-import { cuentasEquipo, colorDe, pctDeConcepto, type ConfigGastos } from "@/lib/repartoGastos";
+import { cuentasEquipo, colorDe, repartoDeGasto, pctDe, type ConfigGastos, type Parte } from "@/lib/repartoGastos";
 
 // La gráfica (Recharts) es pesada: la cargamos en diferido, igual que el inicio.
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
@@ -63,7 +63,7 @@ export default function AfiliadoDetallePage() {
   const [mostrarCobro, setMostrarCobro] = useState(false);
   const [periodo, setPeriodo] = useState<"mes" | "todo">("mes");
   const [eliminando, setEliminando] = useState(false);
-  const [gastos, setGastos] = useState<{ id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number }[]>([]);
+  const [gastos, setGastos] = useState<{ id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number; reparto?: Parte[] | null }[]>([]);
   const [gastosConfig, setGastosConfig] = useState<ConfigGastos | null>(null);
   const [editandoReparto, setEditandoReparto] = useState(false);
 
@@ -601,19 +601,19 @@ export default function AfiliadoDetallePage() {
                     <th className={thG}>Concepto</th>
                     {esEquipo && <th className={thG}>Pagó</th>}
                     <th className={`${thG} text-right`}>Importe</th>
-                    {esEquipo && socios.map((s) => <th key={s} className={`${thG} text-right`}>{s}</th>)}
+                    {c && c.filas.map((f) => <th key={f.nombre} className={`${thG} text-right`}>{f.nombre}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {gastos.length === 0 ? (
                     <tr>
-                      <td colSpan={3 + (esEquipo ? 1 + socios.length : 0)} className="border border-white/10 px-4 py-6 text-center text-slate-400">
+                      <td colSpan={3 + (c ? 1 + c.filas.length : 0)} className="border border-white/10 px-4 py-6 text-center text-slate-400">
                         No ha apuntado gastos en este periodo.
                       </td>
                     </tr>
                   ) : (
                     gastos.map((g, i) => {
-                      const pct = cfg && esEquipo ? pctDeConcepto(g.concepto, cfg).pct : [];
+                      const reparto = cfg && esEquipo ? repartoDeGasto(g, cfg) : [];
                       return (
                         <tr key={g.id} className={`text-white ${i % 2 === 1 ? "bg-white/[0.03]" : ""}`}>
                           <td className="border border-white/10 px-4 py-3 whitespace-nowrap tabular-nums">
@@ -624,11 +624,15 @@ export default function AfiliadoDetallePage() {
                             <td className="border border-white/10 px-4 py-3" style={{ color: g.pagado_por ? colorDe(g.pagado_por) : undefined }}>{g.pagado_por || "—"}</td>
                           )}
                           <td className="border border-white/10 px-4 py-3 text-right tabular-nums">{eur(Number(g.importe))}</td>
-                          {esEquipo && socios.map((s, j) => (
-                            <td key={s} className="border border-white/10 px-4 py-3 text-right tabular-nums" style={{ color: colorDe(s) }}>
-                              {eur((Number(g.importe) * (pct[j] ?? 0)) / 100)}
-                            </td>
-                          ))}
+                          {c && c.filas.map((f) => {
+                            const p = pctDe(reparto, f.nombre);
+                            return (
+                              <td key={f.nombre} className="border border-white/10 px-4 py-3 text-right tabular-nums whitespace-nowrap" style={{ color: colorDe(f.nombre) }}>
+                                {eur((Number(g.importe) * p) / 100)}{" "}
+                                <span className="text-[10px] text-slate-400">({p.toLocaleString("es-ES")}%)</span>
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })

@@ -4,23 +4,42 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
 import ConfiguradorGastos from "@/components/ConfiguradorGastos";
-import { cuentasEquipo, colorDe, pctDeConcepto, socioDe, type ConfigGastos } from "@/lib/repartoGastos";
+import {
+  cuentasEquipo,
+  colorDe,
+  pctDe,
+  pctDeConcepto,
+  repartoAMedida,
+  repartoDeGasto,
+  socioDe,
+  validarReparto,
+  type ConfigGastos,
+  type Parte,
+} from "@/lib/repartoGastos";
 
 // Mismo diseño que el Gastos del admin (cabecera, "Cuentas del mes", tabla con fila
 // para añadir y filas que se editan al tocarlas). Como el del admin con su socio,
 // es SOLO para hacer cuentas: no se resta de lo que gana. La primera vez el afiliado
 // configura cuántos socios son, sus nombres y sus conceptos con el % de cada uno;
-// queda guardado y al apuntar un gasto solo elige concepto, quién pagó e importe.
+// al apuntar un gasto los % del concepto salen por defecto y se pueden cambiar en
+// ese gasto (se guardan con él).
 
-type Gasto = { id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number };
+type Gasto = { id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number; reparto: Parte[] | null };
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const cell =
   "w-full rounded-md bg-white/10 border border-white/15 text-white text-base sm:text-sm px-2 py-1.5 [color-scheme:dark] placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+const celdaPct =
+  "w-16 rounded-md bg-white/10 border text-white text-base sm:text-sm px-2 py-1.5 text-right [color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-emerald-500";
 const th = "px-4 py-3 text-xs font-medium text-slate-400 whitespace-nowrap";
 const fechaMadrid = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(d);
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const fmtPct = (p: number) => `${p.toLocaleString("es-ES")}%`;
+const aTexto = (n: number) => String(n).replace(".", ",");
+const cuadra = (pcts: string[]) =>
+  pcts.every((p) => p.trim()) && Math.abs(pcts.reduce((s, p) => s + (Number(p.replace(",", ".")) || 0), 0) - 100) <= 0.05;
+
+type Edicion = { fecha: string; pagado_por: string; concepto: string; importe: string; pcts: string[] };
 
 export default function GastosAfiliadoPage() {
   const [periodo, setPeriodo] = useState(fechaMadrid(new Date()).slice(0, 7));
@@ -37,9 +56,10 @@ export default function GastosAfiliadoPage() {
   const [pagadoPor, setPagadoPor] = useState("");
   const [concepto, setConcepto] = useState("");
   const [importe, setImporte] = useState("");
+  const [pcts, setPcts] = useState<string[]>([]); // % de cada socio en el gasto nuevo
   const [guardando, setGuardando] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [ed, setEd] = useState<{ fecha: string; pagado_por: string; concepto: string; importe: string }>({ fecha: "", pagado_por: "", concepto: "", importe: "" });
+  const [ed, setEd] = useState<Edicion>({ fecha: "", pagado_por: "", concepto: "", importe: "", pcts: [] });
   const reqRef = useRef(0);
 
   const opciones = useMemo(() => {
@@ -79,12 +99,29 @@ export default function GastosAfiliadoPage() {
 
   useEffect(() => { setCargando(true); cargar(); }, [cargar]);
 
-  // Fila de añadir: su primer concepto y su primer socio ya elegidos.
+  const pctsConcepto = useCallback(
+    (conc: string) => (config ? pctDeConcepto(conc, config).pct.map(aTexto) : []),
+    [config]
+  );
+
+  // Fila de añadir: su primer concepto (con sus %) y su primer socio ya elegidos.
   useEffect(() => {
     if (!config) return;
-    setConcepto((c) => (config.conceptos.some((x) => x.nombre === c) ? c : config.conceptos[0]?.nombre ?? ""));
+    const conc = config.conceptos.some((x) => x.nombre === concepto) ? concepto : config.conceptos[0]?.nombre ?? "";
+    setConcepto(conc);
+    setPcts(pctsConcepto(conc));
     setPagadoPor((p) => (config.socios.includes(p) ? p : config.socios[0] ?? ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
+
+  const socios = config?.socios ?? [];
+  const esEquipo = socios.length >= 2;
+
+  // % escritos → reparto del gasto (null si trabaja solo).
+  function repartoDe(lista: string[]): { reparto: Parte[] | null } | { error: string } {
+    if (!esEquipo) return { reparto: null };
+    return validarReparto(socios.map((nombre, i) => ({ nombre, pct: lista[i] ?? "" })));
+  }
 
   async function enviar(method: "POST" | "PATCH", body: Record<string, unknown>) {
     const t = await token();
@@ -107,10 +144,13 @@ export default function GastosAfiliadoPage() {
     setError(null);
     if (!concepto) { setError("Elige el concepto."); return; }
     if (!importe.trim()) { setError("Pon el importe."); return; }
+    const r = repartoDe(pcts);
+    if ("error" in r) { setError(r.error); return; }
     setGuardando(true);
     try {
-      if (await enviar("POST", { fecha, pagado_por: esEquipo ? pagadoPor : "", concepto, importe })) {
+      if (await enviar("POST", { fecha, pagado_por: esEquipo ? pagadoPor : "", concepto, importe, reparto: r.reparto })) {
         setImporte("");
+        setPcts(pctsConcepto(concepto));
         await cargar();
       }
     } catch {
@@ -120,11 +160,27 @@ export default function GastosAfiliadoPage() {
     }
   }
 
+  function empezarEdicion(g: Gasto) {
+    const reparto = config ? repartoDeGasto(g, config) : [];
+    setEditId(g.id);
+    setEd({
+      fecha: g.fecha,
+      pagado_por: g.pagado_por ?? "",
+      concepto: g.concepto,
+      importe: String(g.importe),
+      pcts: socios.map((s) => aTexto(pctDe(reparto, s))),
+    });
+  }
+
   async function guardarEd() {
     if (editId == null) return;
     setError(null);
+    const r = repartoDe(ed.pcts);
+    if ("error" in r) { setError(r.error); return; }
     try {
-      if (await enviar("PATCH", { id: editId, ...ed })) {
+      const { pcts: _pcts, ...resto } = ed;
+      void _pcts;
+      if (await enviar("PATCH", { id: editId, ...resto, reparto: r.reparto })) {
         setEditId(null);
         await cargar();
       }
@@ -143,6 +199,7 @@ export default function GastosAfiliadoPage() {
     });
     const b = await r.json().catch(() => ({}));
     if (!r.ok) return b?.error || "No se pudo guardar la configuración.";
+    setEditId(null);
     setConfig(b.config ?? nueva);
     setConfigurando(false);
     return null;
@@ -162,10 +219,10 @@ export default function GastosAfiliadoPage() {
     }
   }
 
-  const socios = config?.socios ?? [];
-  const esEquipo = socios.length >= 2;
   const total = gastos.reduce((s, g) => s + Number(g.importe), 0);
   const c = config && esEquipo ? cuentasEquipo(gastos, config) : null;
+  // Columnas por persona: los socios de ahora y quien salga en gastos de antes.
+  const personas = c ? c.filas.map((f) => f.nombre) : [];
   // Texto grande del recuadro, como "Kingz le debe a PRZ" en el del admin.
   const liquidacion: { texto: string; color: string } = gastos.length === 0
     ? { texto: "Sin gastos en este período", color: "text-slate-400" }
@@ -179,18 +236,36 @@ export default function GastosAfiliadoPage() {
     ? { texto: "Cuentas en paz 👌 nadie debe nada", color: "text-slate-200" }
     : { texto: c.transferencias.map((x) => `${x.de} le debe a ${x.a} ${eur(x.importe)}`).join(" · "), color: `text-emerald-300 ${c.transferencias.length > 1 ? "!text-lg" : ""}` };
 
-  const columnas = 4 + (esEquipo ? 1 + socios.length : 0);
-  const pctFila = (conc: string) => (config ? pctDeConcepto(conc, config) : { pct: [] as number[], conocido: true });
+  const columnas = 4 + (esEquipo ? 1 + personas.length : 0);
   const chipSocio = (nombre: string | null) => {
+    if (!nombre) return <span className="text-amber-400">—</span>;
     const s = config ? socioDe(nombre, config) : null;
-    if (!s) return <span className="text-amber-400">{nombre ? `${nombre}?` : "—"}</span>;
-    const color = colorDe(s);
-    return <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: `${color}22`, color }}>{s}</span>;
+    const color = colorDe(s ?? nombre);
+    return <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: `${color}22`, color }}>{s ?? nombre}</span>;
   };
   const opcionesConcepto = (actual?: string) => {
     const lista = (config?.conceptos ?? []).map((x) => x.nombre);
     return actual && !lista.includes(actual) ? [actual, ...lista] : lista;
   };
+  // Celdas de % editables (fila de añadir y fila en edición), una por persona.
+  const celdasPct = (lista: string[], cambiar: (l: string[]) => void) =>
+    personas.map((nombre) => {
+      const i = socios.indexOf(nombre);
+      if (i < 0) return <td key={nombre} className="px-3 py-2 text-right text-xs text-slate-600">—</td>;
+      const ok = cuadra(lista);
+      return (
+        <td key={nombre} className="px-3 py-2 text-right whitespace-nowrap">
+          <input
+            value={lista[i] ?? ""}
+            inputMode="decimal"
+            onChange={(e) => cambiar(socios.map((_, k) => (k === i ? e.target.value : lista[k] ?? "")))}
+            className={`${celdaPct} ${ok ? "border-white/15" : "border-amber-400/70"}`}
+            aria-label={`% de ${nombre}`}
+          />
+          <span className="ml-1 text-xs text-slate-500">%</span>
+        </td>
+      );
+    });
 
   return (
     <main className="flex flex-col gap-5">
@@ -264,7 +339,7 @@ export default function GastosAfiliadoPage() {
 
           {config && esEquipo && (
             <p className="text-xs text-slate-500">
-              Reparto por concepto ({socios.join(" / ")}):{" "}
+              % por defecto de cada concepto ({socios.join(" / ")}):{" "}
               {config.conceptos.map((x, i) => (
                 <span key={x.nombre}>
                   {i > 0 && "; "}
@@ -276,14 +351,14 @@ export default function GastosAfiliadoPage() {
           )}
 
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-x-auto">
-            <table className="w-full text-sm border-collapse" style={{ minWidth: esEquipo ? 640 + socios.length * 110 : 520 }}>
+            <table className="w-full text-sm border-collapse" style={{ minWidth: esEquipo ? 640 + personas.length * 120 : 520 }}>
               <thead>
                 <tr className="border-b border-white/10 text-left">
                   <th className={th}>Fecha</th>
                   <th className={th}>Concepto</th>
                   {esEquipo && <th className={th}>Pagó</th>}
                   <th className={`${th} text-right`}>Importe</th>
-                  {esEquipo && socios.map((s) => <th key={s} className={`${th} text-right`}>{s}</th>)}
+                  {personas.map((s) => <th key={s} className={`${th} text-right`}>{s}</th>)}
                   <th className={`${th} w-8`}></th>
                 </tr>
               </thead>
@@ -293,7 +368,11 @@ export default function GastosAfiliadoPage() {
                     <input type="date" value={fecha} max={fechaMadrid(new Date())} onChange={(e) => setFecha(e.target.value)} className={cell} />
                   </td>
                   <td className="px-3 py-2">
-                    <select value={concepto} onChange={(e) => setConcepto(e.target.value)} className={cell}>
+                    <select
+                      value={concepto}
+                      onChange={(e) => { setConcepto(e.target.value); setPcts(pctsConcepto(e.target.value)); }}
+                      className={cell}
+                    >
                       {opcionesConcepto().map((x) => <option key={x} value={x} className="bg-black">{x}</option>)}
                     </select>
                   </td>
@@ -307,9 +386,7 @@ export default function GastosAfiliadoPage() {
                   <td className="px-3 py-2 w-32">
                     <input type="text" inputMode="decimal" value={importe} onChange={(e) => setImporte(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !guardando && añadir()} placeholder="€" className={`${cell} text-right`} />
                   </td>
-                  {esEquipo && socios.map((s, i) => (
-                    <td key={s} className="px-3 py-2 text-right text-xs text-slate-500">{fmtPct(pctFila(concepto).pct[i] ?? 0)}</td>
-                  ))}
+                  {esEquipo && celdasPct(pcts, setPcts)}
                   <td className="px-2 py-2 text-center">
                     <button onClick={añadir} disabled={guardando || noActivo || !config} className="rounded-md bg-emerald-600 hover:bg-emerald-700 min-h-[44px] px-4 disabled:opacity-50 text-white text-sm font-semibold w-8 h-8 leading-none" title="Añadir">+</button>
                   </td>
@@ -327,22 +404,24 @@ export default function GastosAfiliadoPage() {
                         <tr key={g.id} className="bg-white/[0.06] border-b border-white/5">
                           <td className="px-3 py-2"><input type="date" value={ed.fecha} max={fechaMadrid(new Date())} onChange={(e) => setEd((s) => ({ ...s, fecha: e.target.value }))} className={cell} /></td>
                           <td className="px-3 py-2">
-                            <select value={ed.concepto} onChange={(e) => setEd((s) => ({ ...s, concepto: e.target.value }))} className={cell}>
+                            <select
+                              value={ed.concepto}
+                              onChange={(e) => { const v = e.target.value; setEd((s) => ({ ...s, concepto: v, pcts: pctsConcepto(v) })); }}
+                              className={cell}
+                            >
                               {opcionesConcepto(g.concepto).map((x) => <option key={x} value={x} className="bg-black">{x}</option>)}
                             </select>
                           </td>
                           {esEquipo && (
                             <td className="px-3 py-2">
                               <select value={socioEd ?? ""} onChange={(e) => setEd((s) => ({ ...s, pagado_por: e.target.value }))} className={cell}>
-                                {!socioEd && <option value="" className="bg-black">—</option>}
+                                {!socioEd && <option value="" className="bg-black">{ed.pagado_por || "—"}</option>}
                                 {socios.map((s) => <option key={s} value={s} className="bg-black">{s}</option>)}
                               </select>
                             </td>
                           )}
                           <td className="px-3 py-2"><input type="text" inputMode="decimal" value={ed.importe} onChange={(e) => setEd((s) => ({ ...s, importe: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && guardarEd()} className={`${cell} text-right`} /></td>
-                          {esEquipo && socios.map((s, i) => (
-                            <td key={s} className="px-3 py-2 text-right text-xs text-slate-500">{fmtPct(pctFila(ed.concepto).pct[i] ?? 0)}</td>
-                          ))}
+                          {esEquipo && celdasPct(ed.pcts, (l) => setEd((s) => ({ ...s, pcts: l })))}
                           <td className="px-2 py-2">
                             <div className="flex items-center gap-1">
                               <button onClick={guardarEd} className="text-emerald-400 hover:text-emerald-300 px-3 py-2 min-h-[44px]" title="Guardar">✓</button>
@@ -352,28 +431,34 @@ export default function GastosAfiliadoPage() {
                         </tr>
                       );
                     }
-                    const { pct, conocido } = pctFila(g.concepto);
+                    const reparto = config && esEquipo ? repartoDeGasto(g, config) : [];
+                    const aMedida = config && esEquipo ? repartoAMedida(g, config) : false;
+                    const sinConcepto = config && esEquipo && !g.reparto?.length ? !pctDeConcepto(g.concepto, config).conocido : false;
                     return (
-                      <tr
-                        key={g.id}
-                        className="group cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.04]"
-                        onClick={() => { setEditId(g.id); setEd({ fecha: g.fecha, pagado_por: g.pagado_por ?? "", concepto: g.concepto, importe: String(g.importe) }); }}
-                      >
+                      <tr key={g.id} className="group cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.04]" onClick={() => empezarEdicion(g)}>
                         <td className="px-4 py-3 text-slate-400 tabular-nums whitespace-nowrap">{ddmm(g.fecha)}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-2 text-slate-200">
                             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colorDe(g.concepto) }} />
                             {g.concepto}
-                            {esEquipo && !conocido && <span className="text-[10px] text-slate-500">(a partes iguales)</span>}
+                            {aMedida && <span className="text-[10px] text-sky-300">% propios</span>}
+                            {sinConcepto && <span className="text-[10px] text-slate-500">(a partes iguales)</span>}
                           </span>
                         </td>
                         {esEquipo && <td className="px-4 py-3">{chipSocio(g.pagado_por)}</td>}
                         <td className="px-4 py-3 text-right font-semibold text-white tabular-nums whitespace-nowrap">{eur(Number(g.importe))}</td>
-                        {esEquipo && socios.map((s, i) => (
-                          <td key={s} className="px-4 py-3 text-right tabular-nums whitespace-nowrap" style={{ color: colorDe(s) }}>
-                            {eur((Number(g.importe) * (pct[i] ?? 0)) / 100)} <span className="text-[10px] text-slate-500">({fmtPct(pct[i] ?? 0)})</span>
-                          </td>
-                        ))}
+                        {personas.map((nombre) => {
+                          const p = pctDe(reparto, nombre);
+                          return (
+                            <td key={nombre} className="px-4 py-3 text-right tabular-nums whitespace-nowrap" style={{ color: p > 0 ? colorDe(nombre) : undefined }}>
+                              {p > 0 ? (
+                                <>{eur((Number(g.importe) * p) / 100)} <span className="text-[10px] text-slate-500">({fmtPct(p)})</span></>
+                              ) : (
+                                <span className="text-slate-600">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
                         <td className="px-2 py-3 text-center">
                           <button onClick={(e) => { e.stopPropagation(); borrar(g.id); }} className="text-slate-500 hover:text-red-400 text-lg leading-none px-3 py-2 min-h-[44px] min-w-[44px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition" title="Borrar">×</button>
                         </td>
@@ -400,7 +485,9 @@ export default function GastosAfiliadoPage() {
 
           <p className="text-xs text-slate-500">
             Toca una fila para editarla.
-            {esEquipo && <> &quot;Pagó&quot; = quién adelantó el dinero; cada columna con un nombre = lo que le toca poner a esa persona.</>}
+            {esEquipo && (
+              <> &quot;Pagó&quot; = quién adelantó el dinero. Los % de cada gasto salen del concepto y puedes cambiarlos en ese gasto; cada columna con un nombre = lo que le toca poner a esa persona.</>
+            )}
           </p>
         </>
       )}

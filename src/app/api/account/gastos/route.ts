@@ -3,14 +3,16 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { leerConfig, guardarConfig } from "@/lib/repartoGastosServidor";
+import { validarReparto } from "@/lib/repartoGastos";
 
 // GASTOS DEL AFILIADO: como el apartado de Gastos del admin, con SU configuración
 // (socios y conceptos con el % de cada uno, ver repartoGastos.ts).
 //  - GET ?mes=YYYY-MM | ?mes=todo → sus gastos del periodo y su configuración
 //    (null = aún no la ha hecho). Es solo para hacer cuentas entre socios: no se
 //    resta de lo que gana.
-//  - POST { fecha, pagado_por, concepto, importe } → añade.
-//  - PATCH { id, fecha, pagado_por, concepto, importe } → edita uno SUYO.
+//  - POST { fecha, pagado_por, concepto, importe, reparto } → añade. `reparto` son
+//    los % de cada socio EN ESE GASTO (salen del concepto y se pueden cambiar).
+//  - PATCH { id, fecha, pagado_por, concepto, importe, reparto } → edita uno SUYO.
 //  - DELETE ?id= → borra uno SUYO.
 //  - PUT { config } → guarda su configuración.
 // Cada afiliado solo ve y toca lo suyo: el filtro por su user_id va en servidor.
@@ -35,8 +37,14 @@ function parseImporte(v: unknown): number {
 
 type Err = { code?: string; message?: string } | null;
 const tablaFalta = (e: Err) => !!e && (e.code === "42P01" || /relation .*gastos_afiliados/.test(e.message ?? ""));
-// Si aún no se ha corrido el SQL de "pagado_por", se sigue funcionando sin él.
-const columnaPagoFalta = (e: Err) => !!e && (e.code === "42703" || /pagado_por/.test(e.message ?? ""));
+// Si aún no se ha corrido el SQL de una columna nueva (pagado_por, reparto), se
+// sigue funcionando sin ella.
+const columnaFalta = (e: Err, col: string) => !!e && new RegExp(col).test(e.message ?? "");
+const sin = (fila: Record<string, unknown>, col: string) => {
+  const f = { ...fila };
+  delete f[col];
+  return f;
+};
 
 function validar(body: Record<string, unknown>) {
   const fecha = String(body?.fecha ?? "");
@@ -47,7 +55,9 @@ function validar(body: Record<string, unknown>) {
   if (!concepto) return { error: "Elige el concepto." };
   if (concepto.length > 120) return { error: "El concepto es demasiado largo (máximo 120 caracteres)." };
   if (!(importe > 0) || importe > 1_000_000) return { error: "El importe no es válido." };
-  return { fila: { fecha, concepto, pagado_por, importe } };
+  const r = validarReparto(body?.reparto);
+  if ("error" in r) return { error: r.error };
+  return { fila: { fecha, concepto, pagado_por, importe, reparto: r.reparto } as Record<string, unknown> };
 }
 
 export async function GET(request: Request) {
@@ -62,8 +72,9 @@ export async function GET(request: Request) {
     if (hasta) q = q.lte("fecha", hasta);
     return q;
   };
-  let { data: gastos, error } = await leer("id, fecha, pagado_por, concepto, importe");
-  if (columnaPagoFalta(error)) ({ data: gastos, error } = await leer("id, fecha, concepto, importe"));
+  let { data: gastos, error } = await leer("id, fecha, pagado_por, concepto, importe, reparto");
+  if (columnaFalta(error, "reparto")) ({ data: gastos, error } = await leer("id, fecha, pagado_por, concepto, importe"));
+  if (columnaFalta(error, "pagado_por")) ({ data: gastos, error } = await leer("id, fecha, concepto, importe"));
   if (tablaFalta(error)) return NextResponse.json({ gastos: [], config: null, mesVista, tablaFalta: true });
   if (error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
 
@@ -73,7 +84,7 @@ export async function GET(request: Request) {
   if (cfg.error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
 
   return NextResponse.json({
-    gastos: ((gastos ?? []) as unknown as Record<string, unknown>[]).map((g) => ({ ...g, pagado_por: g.pagado_por ?? null, importe: Number(g.importe) })),
+    gastos: ((gastos ?? []) as unknown as Record<string, unknown>[]).map((g) => ({ ...g, pagado_por: g.pagado_por ?? null, reparto: Array.isArray(g.reparto) ? g.reparto : null, importe: Number(g.importe) })),
     config: cfg.config,
     tablaFalta: cfg.tablaFalta,
     mesVista,
@@ -88,12 +99,11 @@ export async function POST(request: Request) {
   }
   const v = validar(await request.json().catch(() => ({})));
   if ("error" in v) return NextResponse.json({ error: v.error }, { status: 400 });
-  let { error } = await supabaseAdmin.from("gastos_afiliados").insert({ user_id: user.id, ...v.fila });
-  if (columnaPagoFalta(error)) {
-    const { pagado_por: _omit, ...sinPago } = v.fila;
-    void _omit;
-    ({ error } = await supabaseAdmin.from("gastos_afiliados").insert({ user_id: user.id, ...sinPago }));
-  }
+  const insertar = (fila: Record<string, unknown>) => supabaseAdmin.from("gastos_afiliados").insert({ user_id: user.id, ...fila });
+  let fila = v.fila;
+  let { error } = await insertar(fila);
+  if (columnaFalta(error, "reparto")) ({ error } = await insertar((fila = sin(fila, "reparto"))));
+  if (columnaFalta(error, "pagado_por")) ({ error } = await insertar(sin(fila, "pagado_por")));
   if (tablaFalta(error)) return NextResponse.json({ error: "El apartado de gastos aún no está activado." }, { status: 503 });
   if (error) return NextResponse.json({ error: "No se pudo guardar." }, { status: 500 });
   return NextResponse.json({ ok: true });
@@ -109,12 +119,10 @@ export async function PATCH(request: Request) {
   if ("error" in v) return NextResponse.json({ error: v.error }, { status: 400 });
   const actualizar = (fila: Record<string, unknown>) =>
     supabaseAdmin.from("gastos_afiliados").update(fila).eq("id", id).eq("user_id", user.id).select("id");
-  let { data, error } = await actualizar(v.fila);
-  if (columnaPagoFalta(error)) {
-    const { pagado_por: _omit, ...sinPago } = v.fila;
-    void _omit;
-    ({ data, error } = await actualizar(sinPago));
-  }
+  let fila = v.fila;
+  let { data, error } = await actualizar(fila);
+  if (columnaFalta(error, "reparto")) ({ data, error } = await actualizar((fila = sin(fila, "reparto"))));
+  if (columnaFalta(error, "pagado_por")) ({ data, error } = await actualizar(sin(fila, "pagado_por")));
   if (error) return NextResponse.json({ error: "No se pudo guardar." }, { status: 500 });
   if (!data?.length) return NextResponse.json({ error: "No encontrado." }, { status: 404 });
   return NextResponse.json({ ok: true });

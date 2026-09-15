@@ -81,7 +81,7 @@ export async function GET(request: Request) {
 
   // Gastos que ha apuntado el afiliado en el MISMO periodo que la ficha (este mes
   // o todo). Blindado: si la tabla aún no existe, lista vacía.
-  let gastos: { id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number }[] = [];
+  let gastos: { id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number; reparto: { nombre: string; pct: number }[] | null }[] = [];
   try {
     const leerGastos = (cols: string) => {
       let q = supabaseAdmin
@@ -95,7 +95,11 @@ export async function GET(request: Request) {
       if (to) q = q.lte("fecha", to);
       return q;
     };
-    let { data: g, error: eg } = await leerGastos("id, fecha, pagado_por, concepto, importe");
+    let { data: g, error: eg } = await leerGastos("id, fecha, pagado_por, concepto, importe, reparto");
+    // Si aún no existe la columna reparto (los % de cada gasto), se lee sin ella.
+    if (eg && /reparto/.test(eg.message ?? "")) {
+      ({ data: g, error: eg } = await leerGastos("id, fecha, pagado_por, concepto, importe"));
+    }
     // Si aún no existe la columna pagado_por, se lee sin ella.
     if (eg && (eg.code === "42703" || /pagado_por/.test(eg.message ?? ""))) {
       ({ data: g, error: eg } = await leerGastos("id, fecha, concepto, importe"));
@@ -107,6 +111,7 @@ export async function GET(request: Request) {
         pagado_por: (x.pagado_por as string | null | undefined) ?? null,
         concepto: String(x.concepto),
         importe: Number(x.importe),
+        reparto: Array.isArray(x.reparto) ? (x.reparto as { nombre: string; pct: number }[]) : null,
       }));
     }
   } catch {

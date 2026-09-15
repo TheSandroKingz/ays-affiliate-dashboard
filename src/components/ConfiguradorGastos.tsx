@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { validarConfig, repartoIgual, colorDe, MAX_CONCEPTOS, type ConfigGastos } from "@/lib/repartoGastos";
+import { validarConfig, repartoIgual, colorDe, MAX_CONCEPTOS, MAX_SOCIOS, type ConfigGastos } from "@/lib/repartoGastos";
 
-// Configuración de Gastos de un afiliado: cuántos socios son, sus nombres y sus
-// conceptos con el % que pone cada uno. La usan la página de Gastos del afiliado
-// (la primera vez sale sola) y su ficha en el panel del admin.
+// Configuración de Gastos de un afiliado: cuántos socios son (se pueden añadir o
+// quitar después), sus nombres y sus conceptos con el % que pone cada uno por
+// defecto. La usan la página de Gastos del afiliado (la primera vez sale sola) y
+// su ficha en el panel del admin.
 
 type ConceptoEd = { nombre: string; pct: string[] };
 
@@ -26,23 +27,38 @@ export default function ConfiguradorGastos({
   onGuardar: (config: ConfigGastos) => Promise<string | null>;
   onCancelar?: () => void;
 }) {
-  // n = cuántos sois (1 = solo); 0 = aún sin elegir.
-  const [n, setN] = useState(inicial ? Math.max(1, inicial.socios.length) : 0);
+  const [elegido, setElegido] = useState(!!inicial);
   const [socios, setSocios] = useState<string[]>(inicial?.socios ?? []);
   const [conceptos, setConceptos] = useState<ConceptoEd[]>(
     inicial?.conceptos.length ? inicial.conceptos.map((c) => ({ nombre: c.nombre, pct: c.pct.map(aTexto) })) : [{ nombre: "", pct: [] }]
   );
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const n = elegido ? socios.length || 1 : 0; // 1 = solo; 0 = aún sin elegir
 
+  // Elegir el número de golpe: los % de cada concepto vuelven a partes iguales.
   function elegir(k: number) {
-    const antes = n <= 1 ? 0 : n;
     const ahora = k <= 1 ? 0 : k;
-    setN(k);
+    setElegido(true);
     setError(null);
+    if (ahora === socios.length) return;
     setSocios((s) => Array.from({ length: ahora }, (_, i) => s[i] ?? ""));
-    // Cambia el número de socios → los % de cada concepto vuelven a partes iguales.
-    if (ahora !== antes) setConceptos((cs) => cs.map((c) => ({ ...c, pct: repartoIgual(ahora).map(aTexto) })));
+    setConceptos((cs) => cs.map((c) => ({ ...c, pct: repartoIgual(ahora).map(aTexto) })));
+  }
+
+  // Añadir un socio a los que ya hay: los % de antes se quedan y el nuevo sale
+  // vacío en cada concepto, para que le pongan lo que le toca.
+  function añadirSocio() {
+    if (socios.length === 0) return elegir(2);
+    if (socios.length >= MAX_SOCIOS) return;
+    setSocios((s) => [...s, ""]);
+    setConceptos((cs) => cs.map((c) => ({ ...c, pct: [...c.pct, ""] })));
+  }
+
+  function quitarSocio(i: number) {
+    if (socios.length <= 2) return elegir(1);
+    setSocios((s) => s.filter((_, j) => j !== i));
+    setConceptos((cs) => cs.map((c) => ({ ...c, pct: c.pct.filter((_, j) => j !== i) })));
   }
 
   const cambiarConcepto = (i: number, cambio: Partial<ConceptoEd>) =>
@@ -94,7 +110,7 @@ export default function ConfiguradorGastos({
 
       {n >= 2 && (
         <section className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-slate-200">Nombres</p>
+          <p className="text-sm font-medium text-slate-200">Socios</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {socios.map((s, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -106,20 +122,33 @@ export default function ConfiguradorGastos({
                   onChange={(e) => setSocios((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
                   className={`${campo} w-full`}
                 />
+                <button onClick={() => quitarSocio(i)} className="text-slate-500 hover:text-red-400 text-lg px-3 min-h-[44px]" title="Quitar socio">
+                  ×
+                </button>
               </div>
             ))}
           </div>
+          {socios.length < MAX_SOCIOS && (
+            <button onClick={añadirSocio} className="self-start text-sm text-emerald-400 hover:text-emerald-300 min-h-[44px]">
+              + Añadir socio
+            </button>
+          )}
         </section>
       )}
 
       {n >= 1 && (
         <section className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-slate-200">
-            {socios.length ? "Conceptos y qué % pone cada uno" : "Conceptos"}
-          </p>
+          <div>
+            <p className="text-sm font-medium text-slate-200">
+              {socios.length ? "Conceptos y qué % pone cada uno" : "Conceptos"}
+            </p>
+            {socios.length > 0 && (
+              <p className="text-xs text-slate-500 mt-0.5">Estos % salen por defecto; en cada gasto se pueden cambiar.</p>
+            )}
+          </div>
           {conceptos.map((c, i) => {
             const suma = sumar(c.pct);
-            const cuadra = !socios.length || Math.abs(suma - 100) <= 0.05;
+            const cuadra = !socios.length || (Math.abs(suma - 100) <= 0.05 && c.pct.every((p) => p.trim()));
             return (
               <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
@@ -151,13 +180,16 @@ export default function ConfiguradorGastos({
                           value={c.pct[j] ?? ""}
                           inputMode="decimal"
                           onChange={(e) => cambiarConcepto(i, { pct: socios.map((_, k) => (k === j ? e.target.value : c.pct[k] ?? "")) })}
-                          className={`${campo} w-16 text-right`}
+                          className={`${campo} w-16 text-right ${!(c.pct[j] ?? "").trim() ? "border-amber-400/60" : ""}`}
                         />
                         <span className="text-slate-500">%</span>
                       </label>
                     ))}
-                    <span className={`ml-auto text-xs tabular-nums ${cuadra ? "text-slate-500" : "text-amber-300"}`}>
-                      Suma {aTexto(Math.round(suma * 100) / 100)} %
+                    <span className="ml-auto flex items-center gap-3 text-xs">
+                      <button onClick={() => cambiarConcepto(i, { pct: repartoIgual(socios.length).map(aTexto) })} className="text-emerald-400 hover:text-emerald-300">
+                        A partes iguales
+                      </button>
+                      <span className={`tabular-nums ${cuadra ? "text-slate-500" : "text-amber-300"}`}>Suma {aTexto(Math.round(suma * 100) / 100)} %</span>
                     </span>
                   </div>
                 )}
