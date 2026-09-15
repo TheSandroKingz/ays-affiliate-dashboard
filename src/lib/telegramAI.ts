@@ -3,6 +3,7 @@
 // código. BLINDADO: cualquier fallo devuelve null y el flujo sigue (nunca rompe).
 
 import Anthropic from "@anthropic-ai/sdk";
+import { aplicarReglasMecanicas, INSTITUCION_NO_CONFIRMADA } from "@/lib/reglasMecanicas";
 import { apuntarUso, apuntarFallo } from "@/lib/iaUso";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
@@ -959,7 +960,10 @@ async function crearConGuardia(
   const malRecarga = !!txt && sinSaldoReciente(messages) && PIDE_RECARGA.test(txt);
   const malReclamar = !!txt && EMPUJA_RECLAMAR.test(txt);
   const malPromete = !!txt && PROMETE_RE.test(txt);
-  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar && !malPromete)) return txt;
+  // Regla 17: instituciones o teléfonos NO confirmados. Se reescribe (recortar la
+  // frase dejaba respuestas sin sentido); si insiste, la red final la quita.
+  const malInstitucion = !!txt && INSTITUCION_NO_CONFIRMADA.test(txt);
+  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar && !malPromete && !malInstitucion)) return txt;
 
   // ⏱️ Sin tiempo para otra llamada: no se manda el texto malo, se resuelve con
   // las salidas seguras de abajo (las mismas que si la corrección fallara).
@@ -998,6 +1002,10 @@ async function crearConGuardia(
   if (malReclamar)
     avisos.push(
       'NO le escribas ultimátums ni amenazas para el soporte, NO le propongas reclamaciones ante organismos, reguladores, gobiernos, abogados ni denuncias, y NO le mandes a contarlo o comentarlo en público. La única vía es el chat oficial de la web: ayúdale a explicarse con calma (fecha, importe, método y captura). Tampoco aceptes la culpa del retiro.'
+    );
+  if (malInstitucion)
+    avisos.push(
+      'NO menciones instituciones ni organismos de un país (ayuntamiento, servicios sociales, Cruz Roja…) ni números de teléfono que no estén en tus Datos Fijos. No sabes en qué país está. Si hace falta ayuda externa, dilo en genérico ("los servicios de ayuda de tu zona").'
     );
   if (malPromete)
     avisos.push(
@@ -1399,6 +1407,8 @@ export async function responderIA(
     if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
     // Regla 3, última red: también tapa lo que haya corregido el revisor.
     if (txt) txt = sinPromesas(txt);
+    // Comprobaciones mecánicas que el código puede asegurar (ver reglasMecanicas.ts).
+    if (txt) txt = aplicarReglasMecanicas(txt, nombre);
     if (txt) txt = vozDeSandro(txt);
     const final = txt ? quitarGuiones(txt) || null : null;
     if (!final) apuntarFallo("as", chatId, "la IA devolvió una respuesta vacía");
@@ -1444,6 +1454,8 @@ export async function responderIABot(
     if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
     // Regla 3, última red: también tapa lo que haya corregido el revisor.
     if (txt) txt = sinPromesas(txt);
+    // Comprobaciones mecánicas que el código puede asegurar (ver reglasMecanicas.ts).
+    if (txt) txt = aplicarReglasMecanicas(txt, nombre);
     const final = txt ? quitarGuiones(txt) || null : null;
     if (!final) apuntarFallo(botKey || "?", chatId, "la IA devolvió una respuesta vacía");
     return final;
