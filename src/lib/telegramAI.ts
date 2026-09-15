@@ -3,7 +3,7 @@
 // código. BLINDADO: cualquier fallo devuelve null y el flujo sigue (nunca rompe).
 
 import Anthropic from "@anthropic-ai/sdk";
-import { aplicarReglasMecanicas, INSTITUCION_NO_CONFIRMADA } from "@/lib/reglasMecanicas";
+import { aplicarReglasMecanicas, INSTITUCION_NO_CONFIRMADA, CONTACTO_NO_OFICIAL, variarLamentos } from "@/lib/reglasMecanicas";
 import { apuntarUso, apuntarFallo } from "@/lib/iaUso";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
@@ -468,8 +468,10 @@ const VALIDA_ESTAFA =
 // prompt ya lo prohibía. Si la respuesta lo contiene, se REGENERA; si insiste, va
 // la respuesta segura fija. Si el jugador pregunta él por reclamar, el prompt le
 // deja contestar que es decisión suya: esto solo frena que el bot lo proponga.
-const EMPUJA_RECLAMAR =
-  /reclamaci[oó]n (formal|oficial)|organismo (regulador|que (lo |les? )?regula)|gobierno de cura[zç]ao|autoridad(es)? (de(l)? juego|reguladora)|ultim[aá]tum|(?<!\bno )vas a (denunciar|reclamar|poner una (denuncia|reclamaci[oó]n))|coment(a|ar|alo)\w* (directamente )?en (una de )?sus publicaciones|(exp[oó]n|cuent|publica)\w* (lo |tu caso )?en (redes|p[uú]blico|instagram|tiktok)/i;
+// 15-sep: también reclamar al banco ("eso ya es una disputa de pago y puedes
+// reclamarlo a tu banco"), contracargos y consumo. Caso real con un retiro pendiente.
+export const EMPUJA_RECLAMAR =
+  /reclamaci[oó]n (formal|oficial)|organismo (regulador|que (lo |les? )?regula)|gobierno de cura[zç]ao|autoridad(es)? (de(l)? juego|reguladora)|ultim[aá]tum|(?<!\bno )vas a (denunciar|reclamar|poner una (denuncia|reclamaci[oó]n))|coment(a|ar|alo)\w* (directamente )?en (una de )?sus publicaciones|(exp[oó]n|cuent|publica)\w* (lo |tu caso )?en (redes|p[uú]blico|instagram|tiktok)|(reclam|disput)\w*[^.\n]{0,40}\b(tu |al |el |a tu |con tu |en tu )?banco\b|\bbanco\b[^.\n]{0,40}\b(reclam|disput|contracarg)\w*|contracargo|chargeback|disputa (de|del) (pago|cargo)|hoja de reclamaciones|(oficina|asociaci[oó]n|organismo)s? de consum|\bOCU\b|formulario de reclamaci[oó]n/i;
 const RESPUESTA_RECLAMAR =
   "Eso ya lo tiene que mover el soporte de Celsius, que son los que ven tu cuenta. Vuelve al chat de la web y pásales la captura del retiro con la fecha y el importe.";
 
@@ -569,7 +571,27 @@ function sinTrabajarConLaCasa(txt: string): string {
   });
 }
 
-function quitarGuiones(txt: string): string {
+// Al quitar un emoji que separaba dos frases, se pegaban: "Soy yo, Sandro 😉 Aquí
+// estoy" salía "Soy yo, Sandro Aquí estoy" (unas 20 al día). Ahora queda punto si lo
+// que sigue empieza en mayúscula, coma si es una pregunta ("a por ello 💪 cuánto
+// llevas?" → "a por ello, cuánto llevas?") y, si no, nada.
+const EMOJI_SRC = String.raw`(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F})(?:[\u{1F3FB}-\u{1F3FF}\u{FE0F}]|\u{200D}(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F}))*`;
+const SIGUE_EMOJI = new RegExp(String.raw`^\s*` + EMOJI_SRC, "u");
+const COLA_EMOJIS = new RegExp(String.raw`(?:\s|` + EMOJI_SRC + String.raw`)+$`, "u");
+const PREGUNTA_SUELTA = /^(qu[eé]|cu[aá]nt[oa]s?|c[oó]mo|d[oó]nde|cu[aá]l(es)?|qui[eé]n|cu[aá]ndo|por qu[eé]|y t[uú]|dime)(?![\p{L}])/iu;
+function separadorEmoji(todo: string, off: number, largo: number): string {
+  const despues = todo.slice(off + largo);
+  if (SIGUE_EMOJI.test(despues)) return ""; // en una fila de emojis decide el último
+  const antes = todo.slice(0, off).replace(COLA_EMOJIS, "");
+  const sig = despues.trimStart();
+  if (!/[\p{L}\d]$/u.test(antes) || !/^\p{L}/u.test(sig)) return "";
+  const espacio = /^\s/.test(despues) ? "" : " ";
+  if (/^\p{Lu}/u.test(sig)) return "." + espacio;
+  if (PREGUNTA_SUELTA.test(sig)) return "," + espacio;
+  return "";
+}
+
+export function quitarGuiones(txt: string): string {
   // ⛔ EMOJIS: prácticamente ninguno. Antes el tope era UNO por mensaje, pero
   // aun así salían en casi todas las respuestas y satura. Ahora se quitan TODOS,
   // salvo en uno de cada diez mensajes, donde se deja pasar el primero. Así cae
@@ -617,7 +639,7 @@ function quitarGuiones(txt: string): string {
     // selector de variación y tonos de piel). Menos robótico.
     .replace(
       /(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F})(?:[\u{1F3FB}-\u{1F3FF}\u{FE0F}]|\u{200D}(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F}))*/gu,
-      (m) => (dejarUno && nEmoji++ === 0 ? m : "")
+      (m: string, off: number, todo: string) => (dejarUno && nEmoji++ === 0 ? m : separadorEmoji(todo, off, m.length))
     )
     // Rangos numéricos (0–24h, 30 - 40): guion normal pegado, NO coma (si no,
     // "0–24h" salía "0, 24h").
@@ -840,8 +862,8 @@ function esRepeticion(a: string, b: string): boolean {
 // estafa y 40 jugadores no volvieron a escribir. El prompt ya lo prohíbe, pero
 // esto es la red de código: si el jugador acaba de decir que se quedó sin nada,
 // su respuesta NO puede empujarle a meter más.
-const JUGADOR_SIN_SALDO =
-  /\b(perd[ií]\w*|he perdido|lo perd[ií]|me lo fund[ií]|se me fue todo|me qued[eé] sin|no me queda\w*|no tengo (m[aá]s|nada|dinero|saldo|pasta)|no puedo (meter|poner|deposit\w*) m[aá]s|sin saldo|sin dinero|estoy (sin|pelado|seco)|lo [uú]ltimo que ten[ií]a|me arruin\w*|quebr[eé])/i;
+export const JUGADOR_SIN_SALDO =
+  /\b(perd[ií]\w*|he perdido|lo perd[ií]|me lo fund[ií]|se me fue todo|me qued[eé] sin|no me queda\w*|no tengo (m[aá]s|nada|dinero|saldo|pasta)|no puedo (meter|poner|deposit\w*) m[aá]s|sin saldo|sin dinero|estoy (sin|pelado|seco)|lo [uú]ltimo que ten[ií]a|me arruin\w*|quebr[eé]|\bfall[eé](?![\wáéíóúñ])|\by fallo\b|me (sali[oó]|toc[oó]|explot[oó]|pet[oó]|cay[oó]) (la |una )?(mina|bomba)|(encontr[eé]|pis[eé]|toqu[eé]) (la |una )?(mina|bomba)|\bpalm[eé](?![\wáéíóúñ]))/i;
 const PIDE_RECARGA =
   /\b(recarg\w*|deposit\w*|ingres\w*|reingres\w*)\b|\b(mete\w*|met[eé]|pon\w*|a[ñn]ad\w*)\b[^.\n]{0,24}(\d+\s*(€|eur|usdt|d[oó]lar)|saldo|m[aá]s dinero|otros? \d+)|\bvuelve a (meter|poner|entrar con)\b|\bdale a (depositar|recargar)\b|\botros? \d+\s*(€|eur|usdt)/i;
 
@@ -856,8 +878,14 @@ function sinSaldoReciente(messages: Anthropic.MessageParam[]): boolean {
         : "";
     if (JUGADOR_SIN_SALDO.test(t)) return true;
   }
+  // Y si el propio bot acaba de leer en su captura que no le queda saldo. Caso real
+  // (15-sep): "Tienes 0.52€ de saldo, no llega"; el jugador: "He hecho eso y fallo";
+  // el bot: "encontraste una mina. Necesitas recargar, dale a Depositar".
+  if (SALDO_BAJO_BOT.test(ultimosAssistantTextos(messages, 1)[0] ?? "")) return true;
   return false;
 }
+const SALDO_BAJO_BOT =
+  /no (te )?llega (para|a)\b|te (has )?quedado (a cero|sin saldo)|\btienes 0[.,]\d{1,2}\s*(€|eur)|saldo de 0[.,]\d{1,2}|con 0[.,]\d{1,2}\s*(€|eur)?\s*no/i;
 
 // Cierres para cuando el jugador se quedó sin saldo. NO le empujan a meter más,
 // pero TAMPOCO le dicen que deje de jugar (decisión de Sandro: quedaba muy
@@ -963,7 +991,9 @@ async function crearConGuardia(
   // Regla 17: instituciones o teléfonos NO confirmados. Se reescribe (recortar la
   // frase dejaba respuestas sin sentido); si insiste, la red final la quita.
   const malInstitucion = !!txt && INSTITUCION_NO_CONFIRMADA.test(txt);
-  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar && !malPromete && !malInstitucion)) return txt;
+  // Cuentas o grupos de redes del casino, o emails de contacto (ver reglasMecanicas).
+  const malContacto = !!txt && CONTACTO_NO_OFICIAL.test(txt);
+  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar && !malPromete && !malInstitucion && !malContacto)) return txt;
 
   // ⏱️ Sin tiempo para otra llamada: no se manda el texto malo, se resuelve con
   // las salidas seguras de abajo (las mismas que si la corrección fallara).
@@ -1001,11 +1031,15 @@ async function crearConGuardia(
     );
   if (malReclamar)
     avisos.push(
-      'NO le escribas ultimátums ni amenazas para el soporte, NO le propongas reclamaciones ante organismos, reguladores, gobiernos, abogados ni denuncias, y NO le mandes a contarlo o comentarlo en público. La única vía es el chat oficial de la web: ayúdale a explicarse con calma (fecha, importe, método y captura). Tampoco aceptes la culpa del retiro.'
+      'NO le escribas ultimátums ni amenazas para el soporte, NO le propongas reclamaciones ante organismos, reguladores, gobiernos, abogados ni su banco (disputas de pago, contracargos), ni denuncias, ni le mandes a buscar emails o formularios de reclamación, y NO le mandes a contarlo o comentarlo en público. La única vía es el chat oficial de la web: ayúdale a explicarse con calma (fecha, importe, método y captura). Tampoco aceptes la culpa del retiro.'
     );
   if (malInstitucion)
     avisos.push(
       'NO menciones instituciones ni organismos de un país (ayuntamiento, servicios sociales, Cruz Roja…) ni números de teléfono que no estén en tus Datos Fijos. No sabes en qué país está. Si hace falta ayuda externa, dilo en genérico ("los servicios de ayuda de tu zona").'
+    );
+  if (malContacto)
+    avisos.push(
+      'NO le mandes a cuentas o grupos de Telegram, Instagram ni otras redes del casino (@celsiuscasino, @casinocelsius ni ninguna) ni a buscar un email o correo de contacto: no están confirmados y hay grupos falsos. La única vía es el chat oficial dentro de la web.'
     );
   if (malPromete)
     avisos.push(
@@ -1027,7 +1061,8 @@ async function crearConGuardia(
     !VALIDA_ESTAFA.test(txt2) &&
     !ADMITE_COMISION.test(txt2) &&
     !EMPUJA_RECLAMAR.test(txt2) &&
-    !PROMETE_RE.test(txt2)
+    !PROMETE_RE.test(txt2) &&
+    !CONTACTO_NO_OFICIAL.test(txt2)
   )
     return txt2;
 
@@ -1286,6 +1321,8 @@ async function revisarBorrador(
     if (
       NORMALIZA_PERDER.test(corregida) ||
       VALIDA_ESTAFA.test(corregida) ||
+      EMPUJA_RECLAMAR.test(corregida) ||
+      CONTACTO_NO_OFICIAL.test(corregida) ||
       ADMITE_COMISION.test(corregida) ||
       (sinSaldoReciente(messages) && PIDE_RECARGA.test(corregida))
     ) {
@@ -1410,7 +1447,7 @@ export async function responderIA(
     // Comprobaciones mecánicas que el código puede asegurar (ver reglasMecanicas.ts).
     if (txt) txt = aplicarReglasMecanicas(txt, nombre);
     if (txt) txt = vozDeSandro(txt);
-    const final = txt ? quitarGuiones(txt) || null : null;
+    const final = txt ? variarLamentos(quitarGuiones(txt), ultimosAssistantTextos(messages, 6), "as") || null : null;
     if (!final) apuntarFallo("as", chatId, "la IA devolvió una respuesta vacía");
     return final;
   } catch (e) {
@@ -1456,7 +1493,7 @@ export async function responderIABot(
     if (txt) txt = sinPromesas(txt);
     // Comprobaciones mecánicas que el código puede asegurar (ver reglasMecanicas.ts).
     if (txt) txt = aplicarReglasMecanicas(txt, nombre);
-    const final = txt ? quitarGuiones(txt) || null : null;
+    const final = txt ? variarLamentos(quitarGuiones(txt), ultimosAssistantTextos(messages, 6), botKey) || null : null;
     if (!final) apuntarFallo(botKey || "?", chatId, "la IA devolvió una respuesta vacía");
     return final;
   } catch (e) {

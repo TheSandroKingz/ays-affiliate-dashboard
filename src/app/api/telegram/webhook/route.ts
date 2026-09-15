@@ -1347,6 +1347,21 @@ export async function POST(request: Request) {
         await guardarMsg(chatId, midDe(rEnv));
       }
 
+      // ⛔ SALIDAS SIN RESPUESTA (15-sep): al jugador "820" no le llegó nada dos veces
+      // y no quedó ni rastro del porqué. Si escribió algo y no se le ha enviado nada
+      // (sin contar lo que se agrupa con su siguiente mensaje ni las cortesías), se
+      // apunta el motivo en ia_fallos.
+      if (entrada && !algoEnviado && !videoEnviado && !debounced && !soloCierre) {
+        const motivos = [
+          callar && "la IA decidió callar",
+          limitado && "limitado por mensajes por minuto",
+          bucleFin && "bucle de despedida",
+          respuesta && !envioOk && "Telegram no aceptó el envío",
+          !respuesta && !callar && !limitado && !bucleFin && "sin respuesta ni mensaje de emergencia",
+        ].filter(Boolean).join(", ");
+        apuntarFallo("as", chatId, `no se le envió nada (${motivos || "motivo desconocido"}) a los ${Math.round((Date.now() - t0) / 1000)}s`);
+      }
+
       // Guardamos la respuesta del bot en el transcript (el mensaje del jugador
       // ya se guardó antes de responder, arriba).
       if ((respuesta && envioOk) || videoEnviado) {

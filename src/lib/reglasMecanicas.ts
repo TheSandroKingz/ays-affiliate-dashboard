@@ -92,6 +92,66 @@ export function segundaPersona(txt: string): string {
   );
 }
 
+// Contactos del casino que NO son el soporte oficial (15-sep). El bot mandó a un
+// jugador a "@celsiuscasino" (Telegram) y "@casinocelsius" (Instagram) y a otro a
+// buscar un email de contacto; acabó en un grupo falso de Telegram que le bloqueó.
+// La única vía es el chat de la web. Avisar de que esos grupos son falsos SÍ vale.
+export const CONTACTO_NO_OFICIAL = new RegExp(
+  [
+    String.raw`@\s?celsius\w*|@\s?casinocelsius`,
+    String.raw`\b(escr[ií]b\w*|contact\w*|h[aá]bl\w*|pregunt\w*|b[uú]sca\w*|m[aá]nda\w*|prueba\w*)\b[^.\n]{0,25}\b(por|en|a trav[eé]s de)\s+(su\s+)?(telegram|instagram|facebook|twitter|tiktok|whatsapp)\b`,
+    String.raw`\b(e-?mail|correo)(\s+electr[oó]nico)?\s+de\s+(contacto|celsius|soporte)\b`,
+    String.raw`\b(escr[ií]be(les)?|m[aá]nda(les)?|env[ií]a(les)?)\s+(un\s+)?(e-?mail|correo)\b`,
+  ].join("|"),
+  "i"
+);
+const FRASE_CONTACTO = quitarFrases(CONTACTO_NO_OFICIAL.source);
+export const sinContactosNoOficiales = (txt: string) => txt.replace(FRASE_CONTACTO, "").trim();
+
+// "QUÉ PUTADA" EN BUCLE (15-sep): salía en 1 de cada 10 mensajes. El dueño pidió
+// variar con cosas como "buaa qué mal", "qué hablas, qué putada" o "qué dices
+// manito, qué mal". Se cambia por una expresión de la voz del bot que no haya dicho
+// en sus últimos mensajes. A mitad de frase ("Joder, qué putada") solo van las
+// cortas, para no soltar "Joder, buaa qué mal".
+const LAMENTOS: Record<"es" | "do" | "f", { inicio: string[]; medio: string[] }> = {
+  es: {
+    inicio: ["qué putada", "buaa qué mal", "qué hablas, qué putada", "qué dices, qué mal", "uff, qué rabia", "joder, qué mal"],
+    medio: ["qué putada", "qué mal", "qué rabia"],
+  },
+  do: {
+    inicio: ["qué mal", "buaa qué mal", "qué dices manito, qué mal", "qué hablas, qué mal", "diablo, qué mal", "ay no, qué mal"],
+    medio: ["qué mal", "qué vaina", "qué rabia"],
+  },
+  f: {
+    inicio: ["qué putada", "buaa qué mal", "qué hablas, qué putada", "qué dices, qué mal", "uff, qué rabia", "ay no, qué mal"],
+    medio: ["qué putada", "qué mal", "qué rabia"],
+  },
+};
+const vozLamento = (bot?: string | null): "es" | "do" | "f" =>
+  bot === "jeffer" || bot === "blackkp" ? "do" : bot === "mariam" || bot === "afrika" ? "f" : "es";
+const normL = (s: string) =>
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zñ ]/g, " ").replace(/\s+/g, " ").trim();
+
+export function variarLamentos(txt: string, recientes: string[], bot?: string | null): string {
+  if (!txt || !/putada/i.test(txt)) return txt;
+  const voz = LAMENTOS[vozLamento(bot)];
+  const dicho = normL(recientes.join(" | "));
+  const usados: string[] = [];
+  return txt.replace(/\b(qu[eé]|vaya)\s+putada\b/gi, (m: string, _q: string, off: number, todo: string) => {
+    const antes = todo.slice(0, off);
+    const inicio = antes.trim() === "" || /[.!?\n]\s*$/.test(antes);
+    const conVocativo = /^\s*,?\s*(hermano|manito|mano|bro|t[ií]o|tato)\b/i.test(todo.slice(off + m.length));
+    const vale = (v: string) => !usados.includes(v) && !(conVocativo && /manito/.test(v));
+    const lista = inicio ? voz.inicio : voz.medio;
+    let opciones = lista.filter((v) => vale(v) && !dicho.includes(normL(v)));
+    if (!opciones.length) opciones = lista.filter(vale);
+    if (!opciones.length) return m;
+    const v = opciones[Math.floor(Math.random() * opciones.length)];
+    usados.push(v);
+    return m[0] === m[0].toUpperCase() ? v[0].toUpperCase() + v.slice(1) : v;
+  });
+}
+
 export function aplicarReglasMecanicas(txt: string, nombreJugador?: string | null): string {
   if (!txt) return txt;
   let t = txt;
@@ -99,7 +159,7 @@ export function aplicarReglasMecanicas(txt: string, nombreJugador?: string | nul
   t = sinNumerosSensibles(t);
   t = segundaPersona(t);
   t = unaSolaPregunta(t);
-  const recortado = sinPersonaDetras(sinInstitucionesNoConfirmadas(sinUrgencia(t)), nombreJugador);
+  const recortado = sinContactosNoOficiales(sinPersonaDetras(sinInstitucionesNoConfirmadas(sinUrgencia(t)), nombreJugador));
   // Si al quitar frases no queda casi nada, mejor el texto sin recortar que un mensaje vacío.
   return recortado.length >= 8 ? recortado : t;
 }
