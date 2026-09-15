@@ -390,6 +390,17 @@ function fechaSuffix(): string {
   return `\n\n📅 HOY es ${hoy}. Estamos en el año ${anio}: úsalo SIEMPRE para calcular edades y fechas (edad ≈ ${anio} − año de nacimiento). Ejemplo: alguien nacido en 2007 tiene ${anio - 2007} este año; es MAYOR de edad (18+) si ${anio} − su año de nacimiento ≥ 18. Nunca calcules la edad de memoria: hazlo con este año.`;
 }
 
+// CACHÉ DE 1 HORA (15-sep). Con 5 minutos, cada vez que un bot pasaba un rato
+// sin mensajes había que volver a escribir sus ~46.000 tokens de prompt en la
+// caché. Medido en ia_uso durante una noche: de 16 recargas completas, 12 fueron
+// tras 5-60 minutos de silencio. Con 1 hora la escritura cuesta el doble (2x en
+// vez de 1,25x), pero se hace muchas menos veces: simulado con esas mismas
+// llamadas, sale un 11 % más barato. Lo que ve el modelo no cambia.
+// ⚠️ Si alguna vez se mezclan duraciones, las de 1 h tienen que ir ANTES que las
+// de 5 min en la petición. Y al calcular costes desde ia_uso, la escritura en
+// caché de 1 h va a 6 $/M, no a 3,75.
+const CACHE_1H = { type: "ephemeral", ttl: "1h" } as const;
+
 // ⚠️ EL ORDEN DE LOS BLOQUES ES DINERO. La caché solo reutiliza el PREFIJO
 // exacto de la petición, así que va de lo más fijo a lo que más cambia:
 //   1. El prompt del bot (41.500 tokens, igual siempre)        → cacheado
@@ -407,11 +418,11 @@ function sistemaCacheado(
   banco = ""
 ): Anthropic.TextBlockParam[] {
   const bloques: Anthropic.TextBlockParam[] = [
-    { type: "text", text: base, cache_control: { type: "ephemeral" } },
+    { type: "text", text: base, cache_control: CACHE_1H },
   ];
   const estable = (banco ? `\n\n${banco}` : "") + fechaSuffix() + promoSuffix(promo);
   if (estable) {
-    bloques.push({ type: "text", text: estable, cache_control: { type: "ephemeral" } });
+    bloques.push({ type: "text", text: estable, cache_control: CACHE_1H });
   }
   const nom = nombreSuffix(nombre);
   if (nom) bloques.push({ type: "text", text: nom });
@@ -1144,11 +1155,11 @@ async function revisarBorrador(
         // Si tocas esto, el bloque de abajo tiene que seguir siendo idéntico,
         // carácter a carácter, al primer bloque de sistemaCacheado().
         system: [
-          { type: "text", text: maestro, cache_control: { type: "ephemeral" } },
+          { type: "text", text: maestro, cache_control: CACHE_1H },
           {
             type: "text",
             text: PUENTE_REVISOR + REVISOR,
-            cache_control: { type: "ephemeral" },
+            cache_control: CACHE_1H,
           },
         ],
         messages: [{ role: "user", content: partes }],
