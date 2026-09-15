@@ -12,6 +12,8 @@ import { TableSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
 import { hoyMadridISO, colorDeNombre } from "@/lib/ui";
+import RepartoEditor from "@/components/RepartoEditor";
+import { cuentasEquipo, colorDe, type Miembro } from "@/lib/repartoGastos";
 
 // La gráfica (Recharts) es pesada: la cargamos en diferido, igual que el inicio.
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
@@ -62,6 +64,8 @@ export default function AfiliadoDetallePage() {
   const [periodo, setPeriodo] = useState<"mes" | "todo">("mes");
   const [eliminando, setEliminando] = useState(false);
   const [gastos, setGastos] = useState<{ id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number }[]>([]);
+  const [equipo, setEquipo] = useState<Miembro[]>([]);
+  const [editandoReparto, setEditandoReparto] = useState(false);
 
   async function eliminarCuenta() {
     const nombre = perfil?.display_name ?? "este afiliado";
@@ -143,6 +147,7 @@ export default function AfiliadoDetallePage() {
       setVisitas(body.visitas ?? null);
       setDeposito(body.deposito ?? null);
       setGastos(Array.isArray(body.gastos) ? body.gastos : []);
+      setEquipo(Array.isArray(body.equipo) ? body.equipo : []);
       setLastUpdated(new Date());
     } catch {
       if (reqId === reqRef.current) setError(true);
@@ -520,27 +525,40 @@ export default function AfiliadoDetallePage() {
           )}
         </table>
       </div>
-      {/* GASTOS que ha apuntado el afiliado (mismo periodo que arriba). */}
+      {/* GASTOS que ha apuntado el afiliado (mismo periodo que arriba) y, si trabaja
+          en equipo, su reparto: lo que puso cada uno, lo que le toca y quién debe a quién. */}
       {(() => {
         const totalGastos = gastos.reduce((s, g) => s + Number(g.importe), 0);
         const queda = Number(totals.commission) - totalGastos;
+        const c = equipo.length ? cuentasEquipo(gastos, equipo) : null;
+        async function guardarRepartoAdmin(miembros: Miembro[]) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return "Sesión caducada.";
+          const r = await fetch("/api/admin/afiliado/reparto", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+            body: JSON.stringify({ userId, miembros }),
+          });
+          const b = await r.json().catch(() => ({}));
+          if (!r.ok) return b?.error || "No se pudo guardar el reparto.";
+          setEquipo(b.miembros ?? []);
+          setEditandoReparto(false);
+          return null;
+        }
         return (
           <section className="flex flex-col gap-3">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold text-white">Gastos</h2>
-                {(() => {
-                  const m = new Map<string, number>();
-                  for (const g of gastos) {
-                    const k = (g.pagado_por || "").trim() || "Sin indicar";
-                    m.set(k, (m.get(k) ?? 0) + Number(g.importe));
-                  }
-                  return m.size > 1 ? (
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {[...m.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => `${n} puso ${eur(v)}`).join(" · ")}
-                    </p>
-                  ) : null;
-                })()}
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {equipo.length
+                    ? <>Reparto: {equipo.map((m) => `${m.nombre} ${m.pct.toLocaleString("es-ES")}%`).join(" · ")}</>
+                    : "Trabaja solo (sin reparto)"}
+                  {" · "}
+                  <button onClick={() => setEditandoReparto((v) => !v)} className="text-emerald-400 hover:text-emerald-300">
+                    {equipo.length ? "Cambiar" : "Poner reparto"}
+                  </button>
+                </p>
               </div>
               <p className="text-sm text-slate-400">
                 Gastado <b className="text-white tabular-nums">{eur(totalGastos)}</b>
@@ -548,6 +566,42 @@ export default function AfiliadoDetallePage() {
                 Le queda <b className={`tabular-nums ${queda >= 0 ? "text-emerald-300" : "text-red-300"}`}>{eur(queda)}</b>
               </p>
             </div>
+            {editandoReparto && (
+              <RepartoEditor inicial={equipo} onGuardar={guardarRepartoAdmin} onCancelar={() => setEditandoReparto(false)} />
+            )}
+            {c && gastos.length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className={`font-semibold ${c.sinPagador ? "text-amber-300" : "text-emerald-300"}`}>
+                  {c.sinPagador
+                    ? "Hay gastos sin marcar quién los pagó"
+                    : c.transferencias.length === 0
+                    ? "Cuentas en paz, nadie debe nada"
+                    : c.transferencias.map((t) => `${t.de} le debe a ${t.a} ${eur(t.importe)}`).join(" · ")}
+                </p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-0.5 text-sm">
+                  {c.filas.map((f) => (
+                    <div key={f.nombre} className="contents">
+                      <span className="font-medium" style={{ color: colorDe(f.nombre) }}>{f.nombre}</span>
+                      <span className="text-right text-slate-300">
+                        puso <b className="text-white tabular-nums">{eur(f.puso)}</b> · le toca <b className="text-white tabular-nums">{eur(f.toca)}</b>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!c && gastos.some((g) => g.pagado_por) && (() => {
+              const m = new Map<string, number>();
+              for (const g of gastos) {
+                const k = (g.pagado_por || "").trim() || "Sin indicar";
+                m.set(k, (m.get(k) ?? 0) + Number(g.importe));
+              }
+              return m.size > 1 ? (
+                <p className="text-xs text-slate-400">
+                  {[...m.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => `${n} puso ${eur(v)}`).join(" · ")}
+                </p>
+              ) : null;
+            })()}
             <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -571,7 +625,7 @@ export default function AfiliadoDetallePage() {
                         <td className="border border-white/10 px-4 py-3 whitespace-nowrap tabular-nums">
                           {new Date(g.fecha + "T00:00:00Z").toLocaleDateString("es-ES", { timeZone: "UTC" })}
                         </td>
-                        <td className="border border-white/10 px-4 py-3 text-slate-300">{g.pagado_por || "—"}</td>
+                        <td className="border border-white/10 px-4 py-3" style={{ color: g.pagado_por ? colorDe(g.pagado_por) : undefined }}>{g.pagado_por || "—"}</td>
                         <td className="border border-white/10 px-4 py-3">{g.concepto}</td>
                         <td className="border border-white/10 px-4 py-3 text-right tabular-nums">{eur(Number(g.importe))}</td>
                       </tr>

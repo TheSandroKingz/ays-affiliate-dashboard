@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 import { rateLimitShared } from "@/lib/rateLimit";
+import { leerReparto, guardarReparto } from "@/lib/repartoGastosServidor";
 
 // GASTOS DEL AFILIADO: como el apartado de Gastos del admin, pero sin categorías
 // ni reparto. El concepto y QUIÉN lo pagó los escribe él (hay afiliados que
@@ -62,15 +63,16 @@ export async function GET(request: Request) {
   };
   let { data: gastos, error } = await leer("id, fecha, pagado_por, concepto, importe");
   if (columnaPagoFalta(error)) ({ data: gastos, error } = await leer("id, fecha, concepto, importe"));
-  if (tablaFalta(error)) return NextResponse.json({ gastos: [], ganado: 0, personas: [], mesVista, tablaFalta: true });
+  if (tablaFalta(error)) return NextResponse.json({ gastos: [], ganado: 0, personas: [], equipo: [], mesVista, tablaFalta: true });
   if (error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
 
   let qs = supabaseAdmin.from("affiliate_daily_stats").select("commission").eq("user_id", user.id).limit(5000);
   if (desde) qs = qs.gte("date", desde);
   if (hasta) qs = qs.lte("date", hasta);
-  const [{ data: stats }, { data: nombres }] = await Promise.all([
+  const [{ data: stats }, { data: nombres }, reparto] = await Promise.all([
     qs,
     supabaseAdmin.from("gastos_afiliados").select("pagado_por").eq("user_id", user.id).not("pagado_por", "is", null).limit(2000),
+    leerReparto(user.id),
   ]);
   const ganado = (stats ?? []).reduce((s, r) => s + Number(r.commission ?? 0), 0);
   const personas = [...new Set((nombres ?? []).map((n) => String(n.pagado_por ?? "").trim()).filter(Boolean))].slice(0, 30);
@@ -79,6 +81,7 @@ export async function GET(request: Request) {
     gastos: ((gastos ?? []) as unknown as Record<string, unknown>[]).map((g) => ({ ...g, pagado_por: g.pagado_por ?? null, importe: Number(g.importe) })),
     ganado,
     personas,
+    equipo: reparto.miembros,
     mesVista,
   });
 }
@@ -132,4 +135,15 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error: "No se pudo borrar." }, { status: 500 });
   if (!data?.length) return NextResponse.json({ error: "No encontrado." }, { status: 404 });
   return NextResponse.json({ ok: true });
+}
+
+// PUT { miembros: [{ nombre, pct }] } → guarda SU reparto de gastos (lista vacía =
+// trabaja solo). Ver repartoGastos.ts.
+export async function PUT(request: Request) {
+  const user = await getApprovedUser(request);
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  const r = await guardarReparto(user.id, body?.miembros);
+  if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
+  return NextResponse.json({ ok: true, miembros: r.miembros });
 }
