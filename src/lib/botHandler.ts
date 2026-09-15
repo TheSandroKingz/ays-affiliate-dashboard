@@ -10,6 +10,7 @@ import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAU
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
+import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE } from "@/lib/videoPatron";
 import { apuntarFallo } from "@/lib/iaUso";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
@@ -641,7 +642,8 @@ export async function procesarUpdate(
     const quejaPerdida =
       /\bperd[ií]\w*|\bhe perdido|\bhas hecho perder|\bme hizo perder|\bno sirve|\bno vale\b|\bes una mierda|\bestafa|\btimo\b/i.test(
         textoJ
-      );
+      ) ||
+      QUEJA_PATRON_RE.test(textoJ); // ver videoPatron.ts
     // Negación: si DICE que NO quiere el vídeo/ejemplo, NO cuenta como petición.
     const negPide =
       /\b(no|nunca|ya no|deja de|para de|dejad? de|dej[eé]is de|dejes de)\b\s*(?:(?:me|te|lo|la|los|las|melo|mela)\s*){0,2}(m[aá]nd|env[ií]|p[aá]s|reenv|repit|manda|quiero (?:el|un|ver))\w*/i.test(textoJ);
@@ -676,7 +678,8 @@ export async function procesarUpdate(
     const pideEnvioExplicito =
       ((/\b(m[aá]nd|env[ií]|p[aá]s|dame|reenv|quiero (el|un|ver))\w*/i.test(textoJ) &&
         /(v[ií]deo|patr[oó]n|clip|ejemplo)/i.test(textoJ)) ||
-       /\b(das|tienes|ten[eé]s|hay|d[oó]nde)\b[^.\n]{0,20}(v[ií]deo|patr[oó]n|clip|ejemplo)/i.test(textoJ)) && !negPide;
+       /\b(das|tienes|ten[eé]s|hay|d[oó]nde)\b[^.\n]{0,20}(v[ií]deo|patr[oó]n|clip|ejemplo)/i.test(textoJ)) && !negPide &&
+      !ENVIO_PROPIO_RE.test(textoJ); // ver videoPatron.ts
     const dudaConceptoPatron =
       /sentido real|(tiene|hay)\s+(alg[uú]n\s+)?(sentido|ventaja|l[oó]gica)|(es|ser[ií]a|era|sea)\s+(mentira|real|verdad|estafa|fake|timo|cuento)|(de verdad|realmente|en serio)\s+(funciona|gana|sirve|va\b)|(funciona|gana|sirve)\s+(de verdad|realmente|siempre|o no\b|o es)|vale la pena|merece la pena|ventaja matem|probabilidad|es\s+(una\s+)?estafa|es\s+(seguro|fiable|de fiar)|puedo\s+(ganar|retirar|perder|confiar|fiarme)|\bpor\s?qu[eé]\b|c[oó]mo\s+(funciona|gana)|\?/i.test(textoJ) && !pideEnvioExplicito;
     // Petición sobre un patrón FUTURO/NUEVO o CAMBIAR el patrón: NO es pedir ver el
