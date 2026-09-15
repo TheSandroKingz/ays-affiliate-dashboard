@@ -10,7 +10,7 @@ import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAU
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
-import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE, PIDE_VIDEO_CLARO_RE, aceptaOfertaDeVideo } from "@/lib/videoPatron";
+import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE, PIDE_VIDEO_CLARO_RE, aceptaOfertaDeVideo, preguntaComoJugar } from "@/lib/videoPatron";
 import { apuntarFallo } from "@/lib/iaUso";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
@@ -716,7 +716,9 @@ export async function procesarUpdate(
     const pideVideoOk =
       !negPide &&
       !ENVIO_PROPIO_RE.test(textoJ) &&
-      (PIDE_VIDEO_CLARO_RE.test(textoJ) || reenvioExplicito || aceptaOferta);
+      (PIDE_VIDEO_CLARO_RE.test(textoJ) || reenvioExplicito || aceptaOferta ||
+        // Livana: sus recorridos solo están en vídeo; a "cómo juego" se le manda.
+        (bot.key === "mariam" && preguntaComoJugar(textoJ)));
 
     let videoEnviado = false;
     let envioOk = true; // ¿Telegram aceptó la respuesta?

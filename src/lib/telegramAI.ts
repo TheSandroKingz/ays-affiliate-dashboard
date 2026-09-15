@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { apuntarUso, apuntarFallo } from "@/lib/iaUso";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENLACE_JUGAR } from "@/lib/telegram";
-import { promptV2 } from "@/lib/promptBuild";
+import { promptV2, COMPROBACIONES } from "@/lib/promptBuild";
 import { bloqueSolucionesAprobadas, registrarUsoSolucion } from "@/lib/analisisHistorial";
 import { REVISOR } from "@/lib/promptRevisor";
 
@@ -20,6 +20,22 @@ const PUENTE_REVISOR =
   "el <prompt_maestro> del bot que tienes que revisar. Cada vez que estas " +
   "instrucciones mencionen el <prompt_maestro>, se refieren a ese texto de " +
   "arriba. En el mensaje solo te llegan la <conversacion> y el <borrador>.\n\n";
+
+// FILTRO DE COMPROBACIONES MECÁNICAS (orden del dueño, 15-sep): "que no sean un
+// prompt sino un filtro de seguridad, una segunda llamada a la IA que asegure que
+// se cumplen". El revisor ya era esa segunda llamada, pero las 27 comprobaciones de
+// Yaiza le llegaban enterradas dentro de los 46.000 tokens del prompt del bot, y
+// dejó pasar "prometí" dos veces con Ivan. Ahora son SU lista de control
+// obligatoria: solo puede dar OK si se cumplen todas.
+// Siguen TAMBIÉN en el prompt del bot como prevención: el revisor se salta ~14 % de
+// los mensajes por el límite de 60 s, y esos saldrían sin ninguna comprobación.
+// Lo que corrija el revisor vuelve a pasar por las redes de código.
+const FILTRO_MECANICO =
+  "\n\n=== FILTRO OBLIGATORIO: COMPROBACIONES MECÁNICAS ===\n" +
+  "Además de todo lo anterior, repasa el <borrador> contra CADA UNA de estas comprobaciones, una por una y en orden. " +
+  "No son orientativas. Si el borrador incumple AUNQUE SEA UNA, es un PROBLEMA: devuelve una RESPUESTA_CORREGIDA que las cumpla TODAS, " +
+  "conservando lo que el borrador decía bien. Solo puedes responder OK si las cumple todas.\n\n" +
+  COMPROBACIONES;
 
 const KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -1195,7 +1211,7 @@ async function revisarBorrador(
           { type: "text", text: maestro, cache_control: CACHE_1H },
           {
             type: "text",
-            text: PUENTE_REVISOR + REVISOR,
+            text: PUENTE_REVISOR + REVISOR + FILTRO_MECANICO,
             cache_control: CACHE_1H,
           },
         ],

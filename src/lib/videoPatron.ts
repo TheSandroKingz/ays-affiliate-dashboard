@@ -48,8 +48,10 @@ export const PIDE_VIDEO_CLARO_RE =
   /\b(p[aá]same(lo|la)?|m[aá]ndame(lo|la)?|env[ií]ame(lo|la)?|reenv[ií]ame(lo|la)?|ens[eé][ñn]ame|mu[eé]strame|dame|ponme|me\s+(pasas|mandas|env[ií]as|ense[ñn]as|muestras|pones)|me\s+(puedes|podr[ií]as)\s+(pasar|mandar|enviar|ense[ñn]ar)|quiero\s+ver|puedo\s+ver)\b[^.\n?]{0,25}\b(v[ií]deo|patr[oó]n|clip|ejemplo)/i;
 
 // El último mensaje del bot le ofreció el vídeo ("¿quieres que te pase el vídeo?").
+// Incluye la oferta sin interrogación ("si necesitas el vídeo me dices"): el dueño
+// pidió que si el bot pregunta si necesita el vídeo y dice que sí, se le mande.
 export const OFRECE_VIDEO_RE =
-  /(quieres|te\s+(lo\s+)?(paso|mando|env[ií]o)|pasarte|mandarte|enviarte)\b[^.\n]{0,30}\bv[ií]deo|\bv[ií]deo[^.\n]{0,20}\?/i;
+  /(quieres|necesit\w*|te\s+hace\s+falta|te\s+(vendr[ií]a|viene)\s+bien|te\s+ayuda\w*|te\s+sirve|te\s+(lo\s+)?(paso|mando|env[ií]o)|pasarte|mandarte|enviarte)\b[^.\n]{0,30}\bv[ií]deo|\bv[ií]deo[^.\n]{0,20}\?/i;
 
 // Respuesta corta de "sí" a esa oferta ("sí", "dale bro", "sí pásamelo", "vale porfa").
 export const ACEPTA_RE =
@@ -68,4 +70,18 @@ export async function aceptaOfertaDeVideo(
   } catch {
     return false;
   }
+}
+
+// LIVANA: sus recorridos SOLO existen en vídeo (no están escritos, a diferencia de
+// la Z). Orden del dueño: si un jugador le pregunta cómo jugar, se le manda el
+// vídeo. Así preguntan de verdad: "Y como juego", "Pero no se como se juega".
+// Se descartan los mensajes largos (un texto de bienvenida del propio bot quedó
+// guardado como del jugador: "así es como le doy yo") y las dudas de dinero,
+// depósito o cuenta ("Como lo hago para meter dinero para usar el patron").
+export const COMO_JUGAR_RE =
+  /c[oó]mo\s+(se\s+)?(juega|jugar|juego|jueg[oa]s|lo\s+hago|lo\s+hac[eé]s|le\s+doy|le\s+das|hago\s+el\s+recorrido|es\s+el\s+recorrido|lo\s+juegas|tengo\s+que\s+jugar|debo\s+jugar)|qu[eé]\s+(recorrido|casillas|patr[oó]n)\s+(hago|toco|sigo|uso)|qu[eé]\s+(hago|tengo\s+que\s+hacer)\s+(ahora|ya|dentro)|y\s+ahora\s+qu[eé]\s+hago|d[oó]nde\s+(toco|pulso|clico)|en\s+qu[eé]\s+casillas/i;
+const NO_ES_DE_JUGAR_RE = /dinero|deposit|ingres|registr|cuenta|retir|bono|pag/i;
+export function preguntaComoJugar(texto: string): boolean {
+  const t = (texto || "").trim();
+  return t.length > 0 && t.length <= 120 && COMO_JUGAR_RE.test(t) && !NO_ES_DE_JUGAR_RE.test(t);
 }
