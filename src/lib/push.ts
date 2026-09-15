@@ -164,45 +164,6 @@ async function adminCpa(isocountry?: string): Promise<number | null> {
 // quien haya activado ese tipo en sus preferencias. Si el evento es del propio
 // admin (su tráfico), solo al admin. Para FTD, si se pasa `monto` (el CPA
 // acreditado al afiliado), el aviso muestra la cantidad ganada. BLINDADO.
-// ── ESCALONADO DE AVISOS ────────────────────────────────────────────────────
-// Celsius manda su informe de comisiones CADA 6 HORAS: a las 02:00, 08:00, 14:00
-// y 20:00 (hora de Madrid). Por eso los FTD entran en TANDA: se han medido hasta
-// 34 en 7 segundos. Todos los avisos llegaban de golpe al móvil y se veían como
-// un bloque; los repartimos para que vayan cayendo de uno en uno.
-//
-// Sin tabla nueva: la POSICIÓN de este FTD dentro de la tanda se deduce contando
-// cuántos QFTD se contaron en el último minuto antes que él. Cada instancia
-// calcula su propio hueco, así que funciona aunque cada postback caiga en una
-// instancia distinta.
-// 1,5s de hueco: la tanda más grande vista (34) cabe entera dentro del tope, así
-// que cada aviso tiene su propio hueco y no se amontonan al final.
-const ESPACIADO_MS = 1500;
-// ⏱️ Tope de espera. Antes eran 52s: con tandas grandes, todos los avisos a
-// partir del nº 34 se quedaban clavados en ese tope y salían de golpe (justo lo
-// que el escalonado quiere evitar), y los últimos ni salían porque la función
-// moría a los 60s con el aviso ya perdido y sin reintento. Ahora se corta antes:
-// a partir de ahí se manda YA, amontonado pero entregado.
-const ESPERA_MAX_MS = 35_000;
-
-async function esperarTurnoEnTanda(): Promise<void> {
-  try {
-    const desde = new Date(Date.now() - 60_000).toISOString();
-    const { count } = await supabaseAdmin
-      .from("postback_events")
-      .select("id", { count: "exact", head: true })
-      .eq("event_type", "commission")
-      .eq("counted", true)
-      .gte("created_at", desde);
-    // count incluye el evento actual → los que van DELANTE son count-1.
-    const delante = Math.max(0, (count ?? 1) - 1);
-    if (delante === 0) return; // el primero de la tanda sale ya
-    const espera = Math.min(delante * ESPACIADO_MS, ESPERA_MAX_MS);
-    await new Promise((r) => setTimeout(r, espera));
-  } catch {
-    /* si falla el cálculo, se manda sin escalonar */
-  }
-}
-
 export async function notificarEvento(
   userId: string | null | undefined,
   tipo: TipoNotif,
@@ -230,9 +191,8 @@ export async function notificarEvento(
     } else if (!quiereAfiliado && !quiereAdmin) {
       return;
     }
-    // El escalonado va AQUÍ, ya sabiendo que hay a quién avisar: antes se
-    // esperaban hasta 52s para luego descubrir que nadie quería el aviso.
-    if (tipo === "ftd") await esperarTurnoEnTanda();
+    // Sin escalonar (15-sep): el admin quiere los avisos de la tanda de Celsius
+    // todos del tirón, al mismo tiempo que se suma el dinero.
 
     let nombre = "un afiliado";
     try {
