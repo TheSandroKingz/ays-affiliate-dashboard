@@ -6,8 +6,9 @@ import { leerConfig, guardarConfig } from "@/lib/repartoGastosServidor";
 
 // GASTOS DEL AFILIADO: como el apartado de Gastos del admin, con SU configuración
 // (socios y conceptos con el % de cada uno, ver repartoGastos.ts).
-//  - GET ?mes=YYYY-MM | ?mes=todo → sus gastos del periodo, lo ganado en él y su
-//    configuración (null = aún no la ha hecho).
+//  - GET ?mes=YYYY-MM | ?mes=todo → sus gastos del periodo y su configuración
+//    (null = aún no la ha hecho). Es solo para hacer cuentas entre socios: no se
+//    resta de lo que gana.
 //  - POST { fecha, pagado_por, concepto, importe } → añade.
 //  - PATCH { id, fecha, pagado_por, concepto, importe } → edita uno SUYO.
 //  - DELETE ?id= → borra uno SUYO.
@@ -63,21 +64,16 @@ export async function GET(request: Request) {
   };
   let { data: gastos, error } = await leer("id, fecha, pagado_por, concepto, importe");
   if (columnaPagoFalta(error)) ({ data: gastos, error } = await leer("id, fecha, concepto, importe"));
-  if (tablaFalta(error)) return NextResponse.json({ gastos: [], ganado: 0, config: null, mesVista, tablaFalta: true });
+  if (tablaFalta(error)) return NextResponse.json({ gastos: [], config: null, mesVista, tablaFalta: true });
   if (error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
 
-  let qs = supabaseAdmin.from("affiliate_daily_stats").select("commission").eq("user_id", user.id).limit(5000);
-  if (desde) qs = qs.gte("date", desde);
-  if (hasta) qs = qs.lte("date", hasta);
-  const [{ data: stats }, cfg] = await Promise.all([qs, leerConfig(user.id)]);
+  const cfg = await leerConfig(user.id);
   // Sin esto, un fallo al leer la configuración le enseñaría la pantalla de
   // "configura tus gastos" como si nunca la hubiera hecho.
   if (cfg.error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
-  const ganado = (stats ?? []).reduce((s, r) => s + Number(r.commission ?? 0), 0);
 
   return NextResponse.json({
     gastos: ((gastos ?? []) as unknown as Record<string, unknown>[]).map((g) => ({ ...g, pagado_por: g.pagado_por ?? null, importe: Number(g.importe) })),
-    ganado,
     config: cfg.config,
     tablaFalta: cfg.tablaFalta,
     mesVista,

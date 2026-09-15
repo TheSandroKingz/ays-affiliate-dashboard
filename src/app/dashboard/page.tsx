@@ -386,18 +386,20 @@ export default function DashboardPage() {
     return { commission, ftd };
   }, [rawDaily]);
 
-  // Histórico para el récord: total de FTD y mejor mes.
+  // Histórico para el récord: total de FTD, mejor mes y mejor día.
   const hist = useMemo(() => {
     let total = 0;
+    let mejorDia = 0;
     const porMes = new Map<string, number>();
     for (const r of rawDaily) {
       const f = Number(r.ftd ?? 0);
       total += f;
+      if (f > mejorDia) mejorDia = f;
       const k = String(r.date).slice(0, 7);
       porMes.set(k, (porMes.get(k) ?? 0) + f);
     }
     const mejorMes = porMes.size ? Math.max(...porMes.values()) : 0;
-    return { total, mejorMes };
+    return { total, mejorMes, mejorDia };
   }, [rawDaily]);
 
   if (loading) {
@@ -670,6 +672,8 @@ export default function DashboardPage() {
               <span>
                 🏆 Récord:{" "}
                 <b className="text-slate-300">{hist.mejorMes} FTD/mes</b>
+                {" · "}
+                <b className="text-slate-300">{hist.mejorDia} FTD/día</b>
               </span>
             )}
           </div>

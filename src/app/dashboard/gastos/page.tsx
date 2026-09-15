@@ -7,7 +7,8 @@ import ConfiguradorGastos from "@/components/ConfiguradorGastos";
 import { cuentasEquipo, colorDe, pctDeConcepto, socioDe, type ConfigGastos } from "@/lib/repartoGastos";
 
 // Mismo diseño que el Gastos del admin (cabecera, "Cuentas del mes", tabla con fila
-// para añadir y filas que se editan al tocarlas). La primera vez el afiliado
+// para añadir y filas que se editan al tocarlas). Como el del admin con su socio,
+// es SOLO para hacer cuentas: no se resta de lo que gana. La primera vez el afiliado
 // configura cuántos socios son, sus nombres y sus conceptos con el % de cada uno;
 // queda guardado y al apuntar un gasto solo elige concepto, quién pagó e importe.
 
@@ -24,7 +25,6 @@ const fmtPct = (p: number) => `${p.toLocaleString("es-ES")}%`;
 export default function GastosAfiliadoPage() {
   const [periodo, setPeriodo] = useState(fechaMadrid(new Date()).slice(0, 7));
   const [gastos, setGastos] = useState<Gasto[]>([]);
-  const [ganado, setGanado] = useState(0);
   // undefined = cargando; null = aún no ha configurado sus gastos.
   const [config, setConfig] = useState<ConfigGastos | null | undefined>(undefined);
   const [configurando, setConfigurando] = useState(false);
@@ -68,7 +68,6 @@ export default function GastosAfiliadoPage() {
       if (!r.ok) { setError(b?.error || "No se pudieron cargar los gastos."); return; }
       setNoActivo(!!b.tablaFalta);
       setGastos(b.gastos ?? []);
-      setGanado(Number(b.ganado ?? 0));
       setConfig(b.config ?? null);
       setMesVista(b.mesVista ?? null);
     } catch {
@@ -166,15 +165,12 @@ export default function GastosAfiliadoPage() {
   const socios = config?.socios ?? [];
   const esEquipo = socios.length >= 2;
   const total = gastos.reduce((s, g) => s + Number(g.importe), 0);
-  const queda = ganado - total;
   const c = config && esEquipo ? cuentasEquipo(gastos, config) : null;
   // Texto grande del recuadro, como "Kingz le debe a PRZ" en el del admin.
-  const liquidacion: { texto: string; color: string } = !c
-    ? gastos.length === 0 && ganado === 0
-      ? { texto: "Sin gastos en este período", color: "text-slate-400" }
-      : { texto: `Te queda ${eur(queda)}`, color: queda >= 0 ? "text-emerald-300" : "text-red-300" }
-    : gastos.length === 0
+  const liquidacion: { texto: string; color: string } = gastos.length === 0
     ? { texto: "Sin gastos en este período", color: "text-slate-400" }
+    : !c
+    ? { texto: `Gastado ${eur(total)}`, color: "text-slate-200" }
     : !mesVista
     ? { texto: `Total del período: ${eur(total)}`, color: "text-slate-200" }
     : c.sinPagador
@@ -246,10 +242,11 @@ export default function GastosAfiliadoPage() {
             <div>
               <p className="text-sm text-slate-400">{mesVista ? "Cuentas del mes" : "Resumen del período"}</p>
               <p className={`text-2xl font-bold mt-0.5 ${liquidacion.color}`}>{liquidacion.texto}</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Ganado <b className="text-white tabular-nums">{eur(ganado)}</b> · Gastado <b className="text-white tabular-nums">{eur(total)}</b>
-                {c && <> · Os queda <b className={`tabular-nums ${queda >= 0 ? "text-emerald-300" : "text-red-300"}`}>{eur(queda)}</b></>}
-              </p>
+              {c && gastos.length > 0 && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Gastado <b className="text-white tabular-nums">{eur(total)}</b>
+                </p>
+              )}
             </div>
             {c && (
               <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm shrink-0">

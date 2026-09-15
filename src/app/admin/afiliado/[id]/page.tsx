@@ -532,7 +532,6 @@ export default function AfiliadoDetallePage() {
         const socios = cfg?.socios ?? [];
         const esEquipo = socios.length >= 2;
         const totalGastos = gastos.reduce((s, g) => s + Number(g.importe), 0);
-        const queda = Number(totals.commission) - totalGastos;
         const c = cfg && esEquipo ? cuentasEquipo(gastos, cfg) : null;
         const thG = "border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold";
         async function guardarConfigAdmin(nueva: ConfigGastos) {
@@ -568,8 +567,6 @@ export default function AfiliadoDetallePage() {
               </div>
               <p className="text-sm text-slate-400">
                 Gastado <b className="text-white tabular-nums">{eur(totalGastos)}</b>
-                <span className="mx-2 text-slate-600">·</span>
-                Le queda <b className={`tabular-nums ${queda >= 0 ? "text-emerald-300" : "text-red-300"}`}>{eur(queda)}</b>
               </p>
             </div>
             {editandoReparto && (
