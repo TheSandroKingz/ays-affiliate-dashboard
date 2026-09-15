@@ -14,7 +14,7 @@ import {
   descargarFoto,
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
-import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE } from "@/lib/telegramAI";
+import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
@@ -462,6 +462,41 @@ export async function procesarUpdate(
 
     const textoJ = text || caption;
 
+    // ── AMENAZA: a la PRIMERA, silencio total (ver AMENAZA_RE). Va ANTES del
+    // anti-troll de 3 avisos: una amenaza no se cuenta, se corta.
+    const amenaza = textoJ ? textoJ.match(AMENAZA_RE) : null;
+    if (amenaza) {
+      await supabaseAdmin
+        .from("bot_contacts")
+        .update({ silenced: true })
+        .eq("bot", bot.key)
+        .eq("chat_id", chatId);
+      chatDelFallo = null;
+      await supabaseAdmin
+        .from("lista_negra")
+        .upsert(
+          {
+            bot: bot.key,
+            chat_id: chatId,
+            motivo: "amenaza",
+            reactivado_at: null,
+            reactivado_por: null,
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: "bot,chat_id" }
+        )
+        .then(() => {}, () => {});
+      if (owner) {
+        await tgEnviar(
+          String(owner),
+          `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label} a la primera por amenaza: "${esc(amenaza[0])}". No se le contesta nada más. Si fue un malentendido, quítale el silencio en el panel.`,
+          {},
+          tok
+        ).catch(() => {});
+      }
+      return;
+    }
+
     // ── ANTI-TROLL: si insulta o acusa de estafa ("estafador", "scammer"…) de
     // forma PERSISTENTE, dejamos de contestarle para no gastar IA. A los 3 se
     // auto-silencia; un uso suelto NO silencia. El dueño lo reactiva en el panel.
@@ -866,6 +901,19 @@ export async function procesarUpdate(
         // Memoria de la charla (AHORA, tras el debounce → incluye los mensajes que
         // el jugador mandó agrupados). Filtramos el mensaje ACTUAL (miMsgId): ese
         // va aparte como `entrada` para no duplicarlo.
+        // Re-mirar el silencio DESPUÉS de la espera (ver el webhook de Sandro).
+        {
+          const { data: sigue } = await supabaseAdmin
+            .from("bot_contacts")
+            .select("silenced")
+            .eq("bot", bot.key)
+            .eq("chat_id", chatId)
+            .maybeSingle();
+          if (sigue?.silenced) {
+            chatDelFallo = null;
+            return;
+          }
+        }
         const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
         const { data: prev } = await supabaseAdmin
           .from("bot_messages")

@@ -182,6 +182,17 @@ export function bucleDeDespedida(
 // (auto-silencio a los 3). Incluye acusaciones de estafa sueltas ("estafador",
 // "scammer", "scam") además de en marco personal ("eres un estafador"). Un uso
 // suelto NO silencia (hacen falta 3); protege al cliente puntual cabreado.
+// AMENAZAS: a la PRIMERA se deja de contestar (orden del dueño, 15-sep). No es
+// lo mismo que un insulto suelto (ABUSO_RE, que da 3 avisos): quien amenaza con
+// denunciarle, con la policía, con ir a su casa o con su familia no se calma
+// con respuestas, se crece. Caso real: a una jugadora el bot le siguió
+// contestando 58 mensajes después de amenazar con denunciar, hasta que acabó
+// amenazando también a un sobrino de 12 años del dueño.
+// Probado contra 13.258 mensajes reales de jugadores (30 días): salta en 14, y
+// las 14 son amenazas de verdad.
+export const AMENAZA_RE =
+  /denunci(arte|aros|arle|arlos|o\b|a(r|ré|re)? (todo|a (ti|vosotros|sandro)|tu|vuestr|el canal|tus? v[ií]deos|tus? (redes|cuentas|tiktok|instagram)))|(te|os|le|les) (voy|vamos|van) a denunciar|(voy|vamos) a (ir|llamar) a la (polic|guardia)|(llamo|aviso|voy) a (la )?(polic[ií]a|guardia civil|mossos)|(mis?|un) t[ií]os? (es|son) (polic|guardia)|(polic[ií]a|guardia civil)\w*.{0,40}(ilegal|denunci|a por ti|a buscarte)|(te|os) (van|vamos|voy) a (buscar|encontrar|ir a buscar)|(buscar|ir) a tu casa|(s[eé]|sabemos|tengo|tenemos) (d[oó]nde vives|tu direcci[oó]n)|tendr[aá]s noticias|tendr[eé]is noticias|vas a tener noticias|(os|te) voy a (arruinar|hundir|destrozar|joder la vida)|acabo con (todos|vosotros|contigo)|acabar[eé] con (todos|vosotros|contigo)|no quieras verme mala|te vas a arrepentir|os vais a arrepentir|se te acaba el chollo|(a )?(tu|vuestr[ao]) (familia|hij[oa]|sobrin[oa]|herman[oa]|madre|padre)\b.{0,40}(pasar|cuidad|arrepent|noticias|buscar)|nada te va(n)? a pasar|(cuida|cuidaos|cuidad) (a )?(tu|vuestr)|te juro que (te|os) (vas|vais|va) a/i;
+
 export const ABUSO_RE =
   /gilipollas|cabr[oó]n|subnormal|imb[eé]cil|payaso|farsante|mentiros[oa]|sinverg[uü]enza|malnacido|escoria|marr?ic[oó]n|marik[oó]n|pringad?os?|\bhdp\b|hijo ?de ?puta|hijoputa|no eres (un )?hombre|s[eé] un (puto )?hombre|eres (un|una) (puto|puta|fraude|mentiros[oa]|estafador|payaso|rata|mierda|basura|in[uú]til|escoria|pringad?o)|estafador(?:es)?|scammers?|\bscam\b|tu puta madre|tus muertos|madre muerta|familia muerta|toda tu familia|me cago en (ti|tu madre|tus muertos)/i;
 

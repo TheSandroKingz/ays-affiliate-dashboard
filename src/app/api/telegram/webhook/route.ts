@@ -13,7 +13,7 @@ import {
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
-import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE } from "@/lib/telegramAI";
+import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -515,6 +515,39 @@ export async function POST(request: Request) {
       // memoria). Así lee la imagen Y lo que dice sobre ella.
       const textoJ = text || (msg.caption ?? "").trim();
 
+      // ── AMENAZA: a la PRIMERA, silencio total (ver AMENAZA_RE). Va ANTES del
+      // anti-troll de 3 avisos: una amenaza no se cuenta, se corta. Su mensaje
+      // queda guardado (sirve de prueba) pero no se le contesta nada más.
+      const amenaza = textoJ ? textoJ.match(AMENAZA_RE) : null;
+      if (amenaza) {
+        await supabaseAdmin
+          .from("telegram_contacts")
+          .update({ silenced: true })
+          .eq("chat_id", chatId);
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            {
+              bot: "as",
+              chat_id: chatId,
+              motivo: "amenaza",
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
+          )
+          .then(() => {}, () => {});
+        if (OWNER_CHAT_ID) {
+          await tgEnviar(
+            String(OWNER_CHAT_ID),
+            `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) a la primera por amenaza: "${esc(amenaza[0])}". No se le contesta nada más. Si fue un malentendido, quítale el silencio en el panel.`
+          ).catch(() => {});
+        }
+        chatDelFallo = null;
+        return NextResponse.json({ ok: true, silenced: "amenaza" });
+      }
+
       // ── ANTI-TROLL: si INSULTA al bot o AMENAZA (denunciar, guardia civil,
       // "estafador"…) de forma PERSISTENTE, dejamos de contestarle para no gastar
       // IA con él. A los 3 mensajes abusivos se auto-silencia; el dueño puede
@@ -916,6 +949,20 @@ export async function POST(request: Request) {
       // incluye los mensajes del grupo (el vídeo que mandó justo antes). Respeta
       // el corte de "Reiniciar memoria" y excluye el mensaje actual (va aparte
       // como `entrada`).
+      // Re-mirar el silencio DESPUÉS de la espera: si mientras esperábamos llegó
+      // otro mensaje suyo con una amenaza (y lo silenció), esta respuesta ya en
+      // marcha NO debe salir. Sin esto, se colaba una última contestación.
+      {
+        const { data: sigue } = await supabaseAdmin
+          .from("telegram_contacts")
+          .select("silenced")
+          .eq("chat_id", chatId)
+          .maybeSingle();
+        if (sigue?.silenced) {
+          chatDelFallo = null;
+          return NextResponse.json({ ok: true });
+        }
+      }
       const desde = contacto?.memory_reset_at ?? "1970-01-01T00:00:00Z";
       const { data: prev } = await supabaseAdmin
         .from("telegram_messages")
