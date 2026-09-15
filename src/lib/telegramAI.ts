@@ -555,6 +555,10 @@ function quitarGuiones(txt: string): string {
   // "?" y "!": solo cae un punto suelto tras un carácter que no sea otro punto.
   const sinPuntoFinal = sinPulgar.replace(/([^.\s])\.\s*$/u, "$1").trim();
   const out = sinPuntoFinal.length >= 2 ? sinPuntoFinal : sinPulgar;
+  // Antes de limpiar: si lo que ha escrito es la orden de callarse, se devuelve
+  // la marca (si se limpiara, quedaría vacío y acabaría en el pitch de "recarga").
+  const calla = ordenDeCallar(base) ?? ordenDeCallar(out);
+  if (calla) return calla;
   return sanearParaJugador(sinTrabajarConLaCasa(out.length >= 2 ? out : base));
 }
 
@@ -579,6 +583,74 @@ const PALABRAS_INTERNAS =
 // "mejor no responder a ese correo, es phishing".
 const NOTA_SISTEMA =
   /^\s*[[(«]?\s*(?:nota\s+(?:interna|del\s+sistema)|no\s+enviar|lista\s+negra|no\s+responder\s+a\s+este|no\s+contestar\s+a\s+este|sin\s+respuesta\s*[.)\]»]*\s*$|silenciar\s+a\s+este|sol\s*[:：]?\s*(?:<\s*)?id|sol\s*[:：]\s*\d)/i;
+
+// ── LA IA DECIDE CALLARSE… Y LO ESCRIBE ────────────────────────────────────
+// El Prompt Maestro le dice que en ciertos casos no conteste (lista negra, troleo).
+// El modelo no "se calla": escribe la orden como si fuera su respuesta, y el
+// código la mandaba al jugador. Casos reales: "El jugador está en lista negra. No
+// responder" enviado 26 veces al mismo chat (14-sep), "no enviar nada, el bot ya
+// avisó…" y "(sin respuesta, silencio de 24h activo)" (15-sep). Y si el filtro
+// de notas la vaciaba, era peor: el webhook creía que la IA había fallado y le
+// mandaba "¡Dale! 🔥 Recarga y entra a jugar".
+// Probado contra 7.016 respuestas reales (21 días): salta en las 32 notas y en
+// ninguna frase normal ("el soporte no responde", "si te dejan sin respuesta…").
+const ORDEN_CALLAR_INICIO =
+  /^[\s[(«"'*_-]*(no\s+(enviar|responder|contestar)\b|no\s+se\s+(env[ií]a|responde|contesta)\b|no\s+respondas\b|no\s+contestes\b|sin\s+respuesta\s*([,.;:)\]»]|$)|lista\s+negra\b|silencio\b|el\s+jugador\s+(est[aá]|pasa|queda|entra|sigue)\s+(en|a)\s+(la\s+)?lista\s+negra)/i;
+const ORDEN_CALLAR_MARCA =
+  /(pasa|est[aá]|queda|entra|sigue)\s+(en|a)\s+(la\s+)?lista\s+negra|silencio\s+de\s+\d+\s*h|no\s+se\s+env[ií]a\s+ning[uú]n\s+mensaje|el\s+bot\s+(ya\s+)?(avis[oó]|deja\s+de\s+responder|no\s+(responde|contesta|env[ií]a))/i;
+// Valores que devuelven responderIA/responderIABot en vez de texto: el webhook
+// los reconoce y NO manda nada (ni la nota, ni el pitch, ni el acuse).
+export const CALLAR = "__CALLAR__";
+export const CALLAR_LISTA_NEGRA = "__CALLAR_LISTA_NEGRA__";
+export function ordenDeCallar(txt: string | null | undefined): string | null {
+  if (!txt || txt === CALLAR || txt === CALLAR_LISTA_NEGRA) return txt || null;
+  if (!ORDEN_CALLAR_INICIO.test(txt) && !ORDEN_CALLAR_MARCA.test(txt)) return null;
+  return /lista\s+negra/i.test(txt) ? CALLAR_LISTA_NEGRA : CALLAR;
+}
+
+// ── TROLEO POR REPETICIÓN ──────────────────────────────────────────────────
+// Si el jugador manda EXACTAMENTE lo mismo que ya se le ha contestado, se está
+// riendo del bot. Caso real (15-sep): "es una estafa?" 7 veces seguidas, cada
+// una a un segundo de la respuesta anterior, y el bot contestó 8 veces.
+// Cuenta hacia atrás cuántos mensajes seguidos del jugador son iguales al actual
+// (repes) y cuántos de esos YA tuvieron respuesta (contestadas).
+// ⚠️ NO basta con que repita una vez: probado contra 14 días de chats, eso habría
+// dejado sin contestar 24 mensajes de gente real que insistía ("YA DEPOSITEEE",
+// "No funcionó", "No me deja hacer captura"). A la TERCERA igual con dos ya
+// contestadas, en esos 14 días solo sale el trol.
+const esMediaMsg = (m: { content?: string | null; media_type?: string | null; file_id?: string | null }) =>
+  !!m.media_type || !!m.file_id || /^\[el jugador te ha enviado|^\(envi[oó] algo\)/i.test(m.content ?? "");
+const normRepe = (s: string | null | undefined) =>
+  (s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9ñ ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+export function rachaRepetida(
+  actual: string,
+  previosDesc: { role: string; content?: string | null; media_type?: string | null; file_id?: string | null }[]
+): { repes: number; contestadas: number } {
+  const a = normRepe(actual);
+  if (a.length < 6) return { repes: 0, contestadas: 0 };
+  let repes = 0;
+  let contestadas = 0;
+  let huboRespuesta = false;
+  for (const m of previosDesc) {
+    if (m.role === "assistant") {
+      huboRespuesta = true;
+      continue;
+    }
+    if (m.role !== "user") continue;
+    if (esMediaMsg(m)) break;
+    if (normRepe(m.content) !== a) break;
+    repes++;
+    if (huboRespuesta) contestadas++;
+    huboRespuesta = false;
+  }
+  return { repes, contestadas };
+}
 
 export function sanearParaJugador(txt: string): string {
   if (!txt) return "";
@@ -1079,6 +1151,12 @@ async function revisarBorrador(
     }
     apuntarUso("revisor", res);
     const salida = textoDe(res).trim();
+    // El revisor NO puede silenciar a nadie: si devuelve una orden de callarse,
+    // se ignora y va el borrador (como con cualquier acotación suya).
+    if (ordenDeCallar(salida)) {
+      apuntarRevisor("rechazado");
+      return borrador;
+    }
     if (!salida || /^OK\b/i.test(salida)) {
       apuntarRevisor("sin_cambios");
       return borrador;
@@ -1218,8 +1296,13 @@ export async function responderIA(
       (banco) => sistemaCacheado(SYSTEM, promo, nombre, banco),
       (sys) => crearConGuardia(client, sys, messages, inicioMs)
     );
+    // Si ha escrito la orden de callarse, ni se revisa ni se manda (ver CALLAR).
+    const calla1 = ordenDeCallar(txt);
+    if (calla1) return calla1;
     // Segunda pasada: el revisor mira el borrador antes de que salga.
     if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
+    const calla2 = ordenDeCallar(txt);
+    if (calla2) return calla2;
     if (txt) txt = vozDeSandro(txt);
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
@@ -1251,8 +1334,13 @@ export async function responderIABot(
       (banco) => sistemaCacheado(persona, promo, nombre, banco),
       (sys) => crearConGuardia(client, sys, messages, inicioMs)
     );
+    // Si ha escrito la orden de callarse, ni se revisa ni se manda (ver CALLAR).
+    const calla1 = ordenDeCallar(txt);
+    if (calla1) return calla1;
     // Segunda pasada: el revisor mira el borrador antes de que salga.
     if (txt) txt = await revisarBorrador(client, persona, messages, txt, inicioMs);
+    const calla2 = ordenDeCallar(txt);
+    if (calla2) return calla2;
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;

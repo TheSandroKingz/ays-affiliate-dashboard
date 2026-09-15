@@ -13,7 +13,7 @@ import {
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
-import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE } from "@/lib/telegramAI";
+import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -880,6 +880,47 @@ export async function POST(request: Request) {
         .maybeSingle();
       const miMsgId = (insertadoUser?.id as number | undefined) ?? undefined;
 
+      // ── TROLEO POR REPETICIÓN (ver rachaRepetida): a la TERCERA vez que manda
+      // exactamente lo mismo, con dos respuestas ya dadas, silencio y lista negra.
+      if (entrada && miMsgId && !msg.photo && !msg.video && !msg.animation && !msg.document) {
+        const { data: previos } = await supabaseAdmin
+          .from("telegram_messages")
+          .select("role, content, media_type, file_id")
+          .eq("chat_id", chatId)
+          .lt("id", miMsgId)
+          .order("id", { ascending: false })
+          .limit(12);
+        const racha = rachaRepetida(entrada, previos ?? []);
+        if (racha.repes >= 2 && racha.contestadas >= 2) {
+          await supabaseAdmin
+            .from("telegram_contacts")
+            .update({ silenced: true })
+            .eq("chat_id", chatId);
+          await supabaseAdmin
+            .from("lista_negra")
+            .upsert(
+              {
+                bot: "as",
+                chat_id: chatId,
+                motivo: "repite lo mismo para trolear",
+                reactivado_at: null,
+                reactivado_por: null,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: "bot,chat_id" }
+            )
+            .then(() => {}, () => {});
+          if (OWNER_CHAT_ID) {
+            await tgEnviar(
+              String(OWNER_CHAT_ID),
+              `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): ha mandado lo mismo ${racha.repes + 1} veces seguidas ("${esc(entrada.slice(0, 60))}"). Para reactivarlo, quítale el silencio en el panel.`
+            ).catch(() => {});
+          }
+          chatDelFallo = null;
+          return NextResponse.json({ ok: true, silenced: "repite" });
+        }
+      }
+
       // Si el mensaje es SOLO cortesía/cierre ("ok", "gracias", "mañana te digo")
       // y NO trae media, no respondemos. Se calcula ANTES del debounce para no
       // gastar 4,5s + "escribiendo…" + query en un mensaje que nunca va a contestar.
@@ -1083,6 +1124,42 @@ export async function POST(request: Request) {
         { onConflict: "chat_id" }
       );
 
+      // ⛔ LA IA HA DECIDIDO CALLARSE (ver ordenDeCallar). No se manda NADA: ni su
+      // nota, ni el pitch, ni el acuse. Si además aplicó la lista negra del
+      // Prompt Maestro, se hace efectiva aquí; si no, solo se calla esta vez.
+      let callar = false;
+      if (respuesta === CALLAR || respuesta === CALLAR_LISTA_NEGRA) {
+        if (respuesta === CALLAR_LISTA_NEGRA) {
+          await supabaseAdmin
+            .from("telegram_contacts")
+            .update({ silenced: true })
+            .eq("chat_id", chatId);
+          await supabaseAdmin
+            .from("lista_negra")
+            .upsert(
+              {
+                bot: "as",
+                chat_id: chatId,
+                motivo: "lista negra (decisión del bot)",
+                reactivado_at: null,
+                reactivado_por: null,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: "bot,chat_id" }
+            )
+            .then(() => {}, () => {});
+          if (OWNER_CHAT_ID) {
+            await tgEnviar(
+              String(OWNER_CHAT_ID),
+              `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): el bot le ha aplicado la lista negra. Para reactivarlo, quítale el silencio en el panel.`
+            ).catch(() => {});
+          }
+        }
+        respuesta = null;
+        callar = true;
+        chatDelFallo = null;
+      }
+
       // Respuesta al jugador. Texto plano (sin HTML): la IA podría meter un "<".
       // El botón del enlace (= su enlace de afiliado) sale cuando hay intención de
       // jugar/entrar/depositar, mirando TANTO la respuesta del bot COMO lo que
@@ -1134,7 +1211,7 @@ export async function POST(request: Request) {
         envioOk = !!rEnv?.ok;
         if (envioOk) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
+      } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
         // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
         // "debounced", NO mandamos nada: responderá el último mensaje del grupo.)
         // ⛔ !soloCierre: si el jugador solo suelta cortesía ("gracias/ok/vale"),
@@ -1145,7 +1222,7 @@ export async function POST(request: Request) {
         });
         if (rEnv?.ok) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
+      } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
         // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
         // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
         // Un acuse humano y corto, para que sepa que le hemos leído. (Un jugador

@@ -14,7 +14,7 @@ import {
   descargarFoto,
   ENLACES_PAUSADOS,
 } from "@/lib/telegram";
-import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE } from "@/lib/telegramAI";
+import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
@@ -809,6 +809,50 @@ export async function procesarUpdate(
         .then(() => {}, () => {});
     }
 
+    // ── TROLEO POR REPETICIÓN (ver rachaRepetida y el webhook de Sandro).
+    if (entrada && miMsgId && !msg.photo && !msg.video && !msg.animation && !msg.document) {
+      const { data: previos } = await supabaseAdmin
+        .from("bot_messages")
+        .select("role, content, media_type, file_id")
+        .eq("bot", bot.key)
+        .eq("chat_id", chatId)
+        .lt("id", miMsgId)
+        .order("id", { ascending: false })
+        .limit(12);
+      const racha = rachaRepetida(entrada, previos ?? []);
+      if (racha.repes >= 2 && racha.contestadas >= 2) {
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced: true })
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId);
+        chatDelFallo = null;
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            {
+              bot: bot.key,
+              chat_id: chatId,
+              motivo: "repite lo mismo para trolear",
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
+          )
+          .then(() => {}, () => {});
+        if (owner) {
+          await tgEnviar(
+            String(owner),
+            `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: ha mandado lo mismo ${racha.repes + 1} veces seguidas. Reactívalo quitándole el silencio en el panel.`,
+            {},
+            tok
+          ).catch(() => {});
+        }
+        return;
+      }
+    }
+
     // SOLO cortesía/cierre ("ok", "gracias", "mañana te digo") sin media: no
     // respondemos. Se calcula ANTES del debounce para no gastar 4,5s + query en
     // un mensaje que nunca va a contestar.
@@ -877,7 +921,8 @@ export async function procesarUpdate(
 
 
     // La IA responde (si no está limitada, dentro del tope y no ha quedado debounced).
-    const TOPE_DIA = 5000;
+    // Freno de gasto del día: 1.500, igual que el bot de Sandro (a 5.000 no frenaba nada).
+    const TOPE_DIA = 1500;
     let respuesta: string | null = null;
     let promo = "";
     if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
@@ -1002,6 +1047,43 @@ export async function procesarUpdate(
       { onConflict: "bot,chat_id" }
     );
 
+    // ⛔ LA IA HA DECIDIDO CALLARSE (ver ordenDeCallar y el webhook de Sandro).
+    let callar = false;
+    if (respuesta === CALLAR || respuesta === CALLAR_LISTA_NEGRA) {
+      if (respuesta === CALLAR_LISTA_NEGRA) {
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced: true })
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId);
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            {
+              bot: bot.key,
+              chat_id: chatId,
+              motivo: "lista negra (decisión del bot)",
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
+          )
+          .then(() => {}, () => {});
+        if (owner) {
+          await tgEnviar(
+            String(owner),
+            `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: el bot le ha aplicado la lista negra. Reactívalo quitándole el silencio en el panel.`,
+            {},
+            tok
+          ).catch(() => {});
+        }
+      }
+      respuesta = null;
+      callar = true;
+      chatDelFallo = null;
+    }
+
     // ⛔ El botón "GANAR AHORA" es un pitch FUERTE. Solo debe salir cuando el JUGADOR
     // pide CLARAMENTE el enlace o entrar/jugar/depositar AHORA — NO por mencionar el
     // juego, NO por la respuesta del bot, y NUNCA tras una pérdida/problema. Antes con
@@ -1043,7 +1125,7 @@ export async function procesarUpdate(
       // Ver webhook de Sandro: si Telegram no lo aceptó, no lo damos por dicho.
       envioOk = !!rEnv?.ok;
       if (envioOk) algoEnviado = true;
-    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
+    } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
       // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
       // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
       const rPitch = await tgEnviar(
@@ -1053,7 +1135,7 @@ export async function procesarUpdate(
         tok
       );
       if (rPitch?.ok) algoEnviado = true;
-    } else if (entrada && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
+    } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
       // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
       // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
       // Un acuse humano y corto. (Ver el caso del jugador que estuvo 9 HORAS sin
