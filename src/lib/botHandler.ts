@@ -6,16 +6,10 @@
 // reintentaría en bucle).
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import {
-  tgEnviar,
-  tgApi,
-  botonJugar,
-  botonSoloJugar,
-  descargarFoto,
-  ENLACES_PAUSADOS,
-} from "@/lib/telegram";
-import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida } from "@/lib/telegramAI";
+import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAUSADOS, OWNER_CHAT_ID } from "@/lib/telegram";
+import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
+import { puedeGastarIA } from "@/lib/frenosIA";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
 
@@ -433,7 +427,7 @@ export async function procesarUpdate(
 
     const { data: contacto } = await supabaseAdmin
       .from("bot_contacts")
-      .select("silenced, memory_reset_at, last_example_at")
+      .select("silenced, memory_reset_at, last_example_at, last_msg_at")
       .eq("bot", bot.key)
       .eq("chat_id", chatId)
       .maybeSingle();
@@ -462,10 +456,76 @@ export async function procesarUpdate(
 
     const textoJ = text || caption;
 
+    // ── SEGURIDAD: TANTEOS Y AMENAZAS DE GASTO (ver el webhook de Sandro).
+    if (textoJ) {
+      const gasto = textoJ.match(AMENAZA_GASTO_RE);
+      let nSondeos = 0;
+      if (SONDEO_RE.test(textoJ)) {
+        const { data: prevS } = await supabaseAdmin
+          .from("bot_messages")
+          .select("content")
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId)
+          .eq("role", "user")
+          .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order("created_at", { ascending: false })
+          .limit(50);
+        nSondeos =
+          1 + (prevS ?? []).filter((m) => SONDEO_RE.test(String(m.content ?? ""))).length;
+      }
+      const comando = /^\/[a-z_]+/i.test(textoJ) && !/^\/st?a?r?t?\b/i.test(textoJ);
+      if (gasto || nSondeos >= 2 || comando) {
+        await supabaseAdmin
+          .from("bot_messages")
+          .insert({ bot: bot.key, chat_id: chatId, role: "user", content: textoJ })
+          .then(() => {}, () => {});
+      }
+      if (gasto || nSondeos >= 2) {
+        const motivo = gasto
+          ? "amenaza con gastar la IA o con spamear"
+          : "tantea el sistema (panel, prompt...)";
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced: true })
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId);
+        chatDelFallo = null;
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            {
+              bot: bot.key,
+              chat_id: chatId,
+              motivo,
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
+          )
+          .then(() => {}, () => {});
+        const aviso = `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: ${motivo} ("${esc(textoJ.slice(0, 80))}"). No se le contesta nada más. Reactívalo quitándole el silencio en el panel.`;
+        if (owner) await tgEnviar(String(owner), aviso, {}, tok).catch(() => {});
+        // Esto es seguridad de todo el negocio: también le llega a Sandro.
+        if (OWNER_CHAT_ID && String(OWNER_CHAT_ID) !== String(owner)) {
+          await tgEnviar(String(OWNER_CHAT_ID), aviso).catch(() => {});
+        }
+        return;
+      }
+      if (comando) {
+        chatDelFallo = null;
+        return;
+      }
+    }
+
     // ── AMENAZA: a la PRIMERA, silencio total (ver AMENAZA_RE). Va ANTES del
     // anti-troll de 3 avisos: una amenaza no se cuenta, se corta.
     const amenaza = textoJ ? textoJ.match(AMENAZA_RE) : null;
     if (amenaza) {
+      await supabaseAdmin
+        .from("bot_messages")
+        .insert({ bot: bot.key, chat_id: chatId, role: "user", content: textoJ })
+        .then(() => {}, () => {});
       await supabaseAdmin
         .from("bot_contacts")
         .update({ silenced: true })
@@ -937,10 +997,9 @@ export async function procesarUpdate(
       const dentroTope = typeof usoActual !== "number" || usoActual <= TOPE_DIA;
       // Cap DIARIO POR CHAT (mismo que Sandro): un solo jugador no acapara el cupo
       // global de IA del bot. 200/día por chat, holgado para un real, frena el abuso.
-      const dentroCapChat = temaDinero
-        ? true // ver excepción del bloque 5 arriba
-        : dentroTope
-        ? await rateLimitShared(`aichat:${bot.key}:${chatId}`, 200, 24 * 60 * 60 * 1000)
+      // Frenos de gasto por chat y globales (ver frenosIA y el webhook de Sandro).
+      const dentroCapChat = dentroTope
+        ? await puedeGastarIA(`${bot.key}:${chatId}`, !contacto?.last_msg_at)
         : false;
       if (dentroTope && dentroCapChat) {
         // Memoria de la charla (AHORA, tras el debounce → incluye los mensajes que

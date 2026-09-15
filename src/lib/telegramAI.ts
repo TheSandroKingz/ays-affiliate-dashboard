@@ -182,6 +182,29 @@ export function bucleDeDespedida(
 // (auto-silencio a los 3). Incluye acusaciones de estafa sueltas ("estafador",
 // "scammer", "scam") además de en marco personal ("eres un estafador"). Un uso
 // suelto NO silencia (hacen falta 3); protege al cliente puntual cabreado.
+// SEGURIDAD (15-sep). Un jugador tanteó el bot con "/admin" y "panel admin" y
+// luego amenazó con "te voy a gastar los tokens de la ia".
+// AMENAZA_GASTO_RE: amenazas DIRIGIDAS al dueño de hacerle gastar o de
+// spamearle. Silencio a la primera. ⚠️ Estrecho a propósito: "no quiero gastarme
+// el dinero" o "les he mandado cientos de mensajes al soporte" son de jugadores
+// reales y NO pueden saltar.
+export const AMENAZA_GASTO_RE =
+  /(te|os)\s+(voy|vamos)\s+a\s+(gastar|fundir|quemar|reventar|agotar|consumir)\s+(el\s+|la\s+|los\s+|las\s+|tu\s+|tus\s+|todo\s+|todos\s+)*(dinero|saldo|tokens?|cr[eé]ditos|ia\b|api\b|bot\b|pasta)|(gastar|fundir|quemar|reventar|agotar|consumir)(te|os)\s+(el\s+|la\s+|los\s+|las\s+|tus?\s+|todo\s+)*(dinero|saldo|tokens?|cr[eé]ditos|ia\b|api\b|bot\b|pasta)|(fundir|quemar|reventar|agotar)\w*\s+(los\s+|tus\s+|la\s+|el\s+)?(tokens?|cr[eé]ditos\s+de\s+la\s+ia|la\s+ia\b|la\s+api\b)|(te|os)\s+(voy|vamos)\s+a\s+(spamear|inundar)|spamearte|spamearos|te\s+(meto|mando|pongo)\s+(unos?\s+)?bots?\b/i;
+// SONDEO_RE: alguien tanteando cómo está hecho el bot. A la SEGUNDA en 24 h,
+// silencio (la primera la contesta el bot con un "ni idea"). Probado contra
+// 13.383 mensajes de jugadores (30 días): solo salta con el que lo intentó.
+// ⚠️ No incluye "¿eres una IA / ChatGPT?": eso lo pregunta gente normal y
+// tiene su propia regla.
+export const SONDEO_RE =
+  /^\s*\/(admin|panel|debug|config|root|sudo|system|prompt|dev|token|api)\b|panel\s+(de\s+)?(admin|administraci[oó]n)|\badmin(istrador)?\s+panel|modo\s+(admin|dios|desarrollador|dev|debug)|(dame|ens[eé]ñame|p[aá]same|dime|cu[aá]l\s+es)\s+(el\s+|tu\s+)?(system\s+)?prompt|instrucciones\s+(del\s+sistema|internas|de\s+sistema)|(ignora|olvida)\s+(todas\s+)?(las\s+|tus\s+)?(instrucciones|reglas)|jailbreak|\bdan\s+mode|api\s*key|clave\s+de\s+(la\s+)?api|\bsupabase\b|\bvercel\b/i;
+// FUGA_INTERNA: la respuesta del bot habla de cómo está hecho por dentro. Si
+// pasa, va una respuesta segura. Probado contra 7.050 respuestas (21 días): no
+// sale nunca. ⚠️ Fuera a propósito: "Yaiza" (prueba el bot y el bot la saluda),
+// "ChatGPT" (hay jugadores que lo mencionan) y "panel de control" (el del móvil).
+const FUGA_INTERNA =
+  /prompt\s+maestro|datos\s+fijos|\bsystem\s+prompt|\bmi\s+prompt\b|\bel\s+prompt\b|instrucciones\s+(del\s+sistema|internas)|panel\s+de\s+(admin|administraci[oó]n)|\bsupabase\b|\bvercel\b|\banthropic\b|\bclaude\b|modelo\s+de\s+lenguaje|\brevisor\b|\bwebhook\b|base\s+de\s+datos/i;
+const RESPUESTA_FUGA = "Ni idea de qué me hablas. Te ayudo con algo del juego?";
+
 // AMENAZAS: a la PRIMERA se deja de contestar (orden del dueño, 15-sep). No es
 // lo mismo que un insulto suelto (ABUSO_RE, que da 3 avisos): quien amenaza con
 // denunciarle, con la policía, con ir a su casa o con su familia no se calma
@@ -290,9 +313,14 @@ function ensamblarMensajes(
   );
   while (previos.length && previos[0].role !== "user") previos.shift();
 
+  // Tope de largo por mensaje: Telegram deja mandar hasta 4.096 caracteres y todo
+  // iba entero a la IA, y encima se quedaba en el historial de las siguientes
+  // llamadas. Medido en 21 días: el 99,9 % de los mensajes reales mide menos de
+  // 1.050 caracteres.
+  const recorta = (s: string) => (s.length > 1500 ? s.slice(0, 1500) + "…" : s);
   const secuencia: Turno[] = [
-    ...previos,
-    { role: "user", content: mensaje || "(vacío)" },
+    ...previos.map((t) => ({ ...t, content: recorta(t.content) })),
+    { role: "user", content: recorta(mensaje || "(vacío)") },
   ];
   const fusion: Turno[] = [];
   for (const t of secuencia) {
@@ -1303,6 +1331,8 @@ export async function responderIA(
     if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
     const calla2 = ordenDeCallar(txt);
     if (calla2) return calla2;
+    // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
+    if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
     if (txt) txt = vozDeSandro(txt);
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
@@ -1341,6 +1371,8 @@ export async function responderIABot(
     if (txt) txt = await revisarBorrador(client, persona, messages, txt, inicioMs);
     const calla2 = ordenDeCallar(txt);
     if (calla2) return calla2;
+    // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
+    if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
     return txt ? quitarGuiones(txt) || null : null;
   } catch {
     return null;

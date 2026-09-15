@@ -13,7 +13,8 @@ import {
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
-import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida } from "@/lib/telegramAI";
+import { puedeGastarIA } from "@/lib/frenosIA";
+import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
 import { YAIZA_ID } from "@/lib/adminId";
 
@@ -515,11 +516,80 @@ export async function POST(request: Request) {
       // memoria). Así lee la imagen Y lo que dice sobre ella.
       const textoJ = text || (msg.caption ?? "").trim();
 
+      // ── SEGURIDAD: TANTEOS Y AMENAZAS DE GASTO (ver SONDEO_RE y AMENAZA_GASTO_RE).
+      //  1. Amenaza de gastarle la IA o de spamearle: silencio a la primera.
+      //  2. Tantear el sistema (panel, prompt...): a la SEGUNDA en 24 h, silencio.
+      //  3. Comandos "/" que no son /start ("/admin", "/call"): no pasan a la IA.
+      //     Se deja pasar "/star" y parecidos, que son un /start mal escrito.
+      // El mensaje se guarda siempre: sirve de prueba y para contar los tanteos.
+      if (textoJ) {
+        const gasto = textoJ.match(AMENAZA_GASTO_RE);
+        let nSondeos = 0;
+        if (SONDEO_RE.test(textoJ)) {
+          const { data: prevS } = await supabaseAdmin
+            .from("telegram_messages")
+            .select("content")
+            .eq("chat_id", chatId)
+            .eq("role", "user")
+            .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order("created_at", { ascending: false })
+            .limit(50);
+          nSondeos =
+            1 + (prevS ?? []).filter((m) => SONDEO_RE.test(String(m.content ?? ""))).length;
+        }
+        const comando = /^\/[a-z_]+/i.test(textoJ) && !/^\/st?a?r?t?\b/i.test(textoJ);
+        if (gasto || nSondeos >= 2 || comando) {
+          await supabaseAdmin
+            .from("telegram_messages")
+            .insert({ chat_id: chatId, role: "user", content: textoJ })
+            .then(() => {}, () => {});
+        }
+        if (gasto || nSondeos >= 2) {
+          const motivo = gasto
+            ? "amenaza con gastarte la IA o con spamear"
+            : "tantea el sistema (panel, prompt...)";
+          await supabaseAdmin
+            .from("telegram_contacts")
+            .update({ silenced: true })
+            .eq("chat_id", chatId);
+          await supabaseAdmin
+            .from("lista_negra")
+            .upsert(
+              {
+                bot: "as",
+                chat_id: chatId,
+                motivo,
+                reactivado_at: null,
+                reactivado_por: null,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: "bot,chat_id" }
+            )
+            .then(() => {}, () => {});
+          if (OWNER_CHAT_ID) {
+            await tgEnviar(
+              String(OWNER_CHAT_ID),
+              `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): ${motivo} ("${esc(textoJ.slice(0, 80))}"). No se le contesta nada más. Para reactivarlo, quítale el silencio en el panel.`
+            ).catch(() => {});
+          }
+          chatDelFallo = null;
+          return NextResponse.json({ ok: true, silenced: gasto ? "gasto" : "sondeo" });
+        }
+        if (comando) {
+          chatDelFallo = null;
+          return NextResponse.json({ ok: true });
+        }
+      }
+
       // ── AMENAZA: a la PRIMERA, silencio total (ver AMENAZA_RE). Va ANTES del
       // anti-troll de 3 avisos: una amenaza no se cuenta, se corta. Su mensaje
       // queda guardado (sirve de prueba) pero no se le contesta nada más.
       const amenaza = textoJ ? textoJ.match(AMENAZA_RE) : null;
       if (amenaza) {
+        await supabaseAdmin
+          .from("telegram_messages")
+          .insert({ chat_id: chatId, role: "user", content: textoJ })
+          .then(() => {}, () => {});
         await supabaseAdmin
           .from("telegram_contacts")
           .update({ silenced: true })
@@ -1061,10 +1131,11 @@ export async function POST(request: Request) {
         // IA (antes uno podía agotar el tope del día y dejar a TODOS con respuesta
         // genérica). 200 respuestas/día por chat es holgadísimo para un usuario
         // real y frena el abuso. Solo cuenta cuando de verdad vamos a llamar a la IA.
-        const dentroCapChat = temaDinero
-          ? true // ver excepción del bloque 5 arriba
-          : dentroTope
-          ? await rateLimitShared(`aichat:${chatId}`, 200, 24 * 60 * 60 * 1000)
+        // Frenos de gasto por chat y globales (ver frenosIA). ⚠️ Ya NO se los
+        // salta el "tema dinero": bastaba con escribir "retiro" en cada mensaje
+        // para tener IA sin límite. El tope por minuto de arriba sí la mantiene.
+        const dentroCapChat = dentroTope
+          ? await puedeGastarIA(String(chatId), !contacto?.last_msg_at)
           : false;
         if (dentroTope && dentroCapChat) {
           // Imagen para la IA: la del mensaje actual si trae; si no, la del último
