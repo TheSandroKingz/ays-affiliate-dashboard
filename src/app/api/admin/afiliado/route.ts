@@ -80,19 +80,34 @@ export async function GET(request: Request) {
 
   // Gastos que ha apuntado el afiliado en el MISMO periodo que la ficha (este mes
   // o todo). Blindado: si la tabla aún no existe, lista vacía.
-  let gastos: { id: number; fecha: string; concepto: string; importe: number }[] = [];
+  let gastos: { id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number }[] = [];
   try {
-    let qg = supabaseAdmin
-      .from("gastos_afiliados")
-      .select("id, fecha, concepto, importe")
-      .eq("user_id", userId)
-      .order("fecha", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(2000);
-    if (from) qg = qg.gte("fecha", from);
-    if (to) qg = qg.lte("fecha", to);
-    const { data: g, error: eg } = await qg;
-    if (!eg) gastos = (g ?? []).map((x) => ({ ...x, importe: Number(x.importe) }));
+    const leerGastos = (cols: string) => {
+      let q = supabaseAdmin
+        .from("gastos_afiliados")
+        .select(cols)
+        .eq("user_id", userId)
+        .order("fecha", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(2000);
+      if (from) q = q.gte("fecha", from);
+      if (to) q = q.lte("fecha", to);
+      return q;
+    };
+    let { data: g, error: eg } = await leerGastos("id, fecha, pagado_por, concepto, importe");
+    // Si aún no existe la columna pagado_por, se lee sin ella.
+    if (eg && (eg.code === "42703" || /pagado_por/.test(eg.message ?? ""))) {
+      ({ data: g, error: eg } = await leerGastos("id, fecha, concepto, importe"));
+    }
+    if (!eg) {
+      gastos = ((g ?? []) as unknown as Record<string, unknown>[]).map((x) => ({
+        id: Number(x.id),
+        fecha: String(x.fecha),
+        pagado_por: (x.pagado_por as string | null | undefined) ?? null,
+        concepto: String(x.concepto),
+        importe: Number(x.importe),
+      }));
+    }
   } catch {
     /* tabla no disponible aún */
   }

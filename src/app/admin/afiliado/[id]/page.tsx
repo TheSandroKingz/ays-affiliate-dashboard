@@ -61,7 +61,7 @@ export default function AfiliadoDetallePage() {
   const [mostrarCobro, setMostrarCobro] = useState(false);
   const [periodo, setPeriodo] = useState<"mes" | "todo">("mes");
   const [eliminando, setEliminando] = useState(false);
-  const [gastos, setGastos] = useState<{ id: number; fecha: string; concepto: string; importe: number }[]>([]);
+  const [gastos, setGastos] = useState<{ id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number }[]>([]);
 
   async function eliminarCuenta() {
     const nombre = perfil?.display_name ?? "este afiliado";
@@ -527,7 +527,21 @@ export default function AfiliadoDetallePage() {
         return (
           <section className="flex flex-col gap-3">
             <div className="flex flex-wrap items-end justify-between gap-2">
-              <h2 className="text-lg font-semibold text-white">Gastos</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Gastos</h2>
+                {(() => {
+                  const m = new Map<string, number>();
+                  for (const g of gastos) {
+                    const k = (g.pagado_por || "").trim() || "Sin indicar";
+                    m.set(k, (m.get(k) ?? 0) + Number(g.importe));
+                  }
+                  return m.size > 1 ? (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {[...m.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => `${n} puso ${eur(v)}`).join(" · ")}
+                    </p>
+                  ) : null;
+                })()}
+              </div>
               <p className="text-sm text-slate-400">
                 Gastado <b className="text-white tabular-nums">{eur(totalGastos)}</b>
                 <span className="mx-2 text-slate-600">·</span>
@@ -539,6 +553,7 @@ export default function AfiliadoDetallePage() {
                 <thead>
                   <tr className="bg-white/10 text-slate-300 text-left">
                     <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">Fecha</th>
+                    <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">Pagó</th>
                     <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">Concepto</th>
                     <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">Importe</th>
                   </tr>
@@ -546,7 +561,7 @@ export default function AfiliadoDetallePage() {
                 <tbody>
                   {gastos.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="border border-white/10 px-4 py-6 text-center text-slate-400">
+                      <td colSpan={4} className="border border-white/10 px-4 py-6 text-center text-slate-400">
                         No ha apuntado gastos en este periodo.
                       </td>
                     </tr>
@@ -556,6 +571,7 @@ export default function AfiliadoDetallePage() {
                         <td className="border border-white/10 px-4 py-3 whitespace-nowrap tabular-nums">
                           {new Date(g.fecha + "T00:00:00Z").toLocaleDateString("es-ES", { timeZone: "UTC" })}
                         </td>
+                        <td className="border border-white/10 px-4 py-3 text-slate-300">{g.pagado_por || "—"}</td>
                         <td className="border border-white/10 px-4 py-3">{g.concepto}</td>
                         <td className="border border-white/10 px-4 py-3 text-right tabular-nums">{eur(Number(g.importe))}</td>
                       </tr>
