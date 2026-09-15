@@ -198,6 +198,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </Link>
         )}
 
+        {!isAdmin && !soloBot && (
+          <Link href="/dashboard/gastos" className={linkClass("/dashboard/gastos")} onClick={onClose}>
+            <Wallet size={18} />
+            Gastos
+          </Link>
+        )}
+
         {!isAdmin && !esPropia && !soloBot && (
           <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
             <Users size={18} />

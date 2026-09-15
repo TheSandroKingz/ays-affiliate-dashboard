@@ -78,6 +78,25 @@ export async function GET(request: Request) {
   const email = authRes.data?.user?.email ?? null;
   const deposito = await depositoMedio(userId);
 
+  // Gastos que ha apuntado el afiliado en el MISMO periodo que la ficha (este mes
+  // o todo). Blindado: si la tabla aún no existe, lista vacía.
+  let gastos: { id: number; fecha: string; concepto: string; importe: number }[] = [];
+  try {
+    let qg = supabaseAdmin
+      .from("gastos_afiliados")
+      .select("id, fecha, concepto, importe")
+      .eq("user_id", userId)
+      .order("fecha", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(2000);
+    if (from) qg = qg.gte("fecha", from);
+    if (to) qg = qg.lte("fecha", to);
+    const { data: g, error: eg } = await qg;
+    if (!eg) gastos = (g ?? []).map((x) => ({ ...x, importe: Number(x.importe) }));
+  } catch {
+    /* tabla no disponible aún */
+  }
+
   // Visitas al dashboard (hoy y últimos 7 días). Blindado si la tabla no existe.
   const visitas = { hoy: 0, semana: 0 };
   try {
@@ -107,6 +126,7 @@ export async function GET(request: Request) {
     daily: dailyRes.data ?? [],
     deposito,
     visitas,
+    gastos,
   });
 }
 
