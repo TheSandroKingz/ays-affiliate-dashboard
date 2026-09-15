@@ -456,6 +456,32 @@ const EMPUJA_RECLAMAR =
 const RESPUESTA_RECLAMAR =
   "Eso ya lo tiene que mover el soporte de Celsius, que son los que ven tu cuenta. Vuelve al chat de la web y pásales la captura del retiro con la fecha y el importe.";
 
+// REGLA MECÁNICA 3 DE YAIZA, AHORA EN CÓDIGO (15-sep). Estaba solo como texto
+// en el prompt (COMPROBACIONES) y el modelo, e incluso el revisor, la dejaban
+// pasar: a Ivan le llegó "yo nunca te prometí que ibas a ganar" y "No prometí que
+// ganas siempre" a las 15:09 y 15:10, con el revisor ejecutado en los dos.
+// Salía en 72 de 4.627 respuestas en 14 días. Se aplica SIEMPRE, como dice la
+// regla ("nunca deben aparecer"): en código no se puede saber con fiabilidad
+// cuándo una frase del jugador es una "acusación de culpa".
+// Primero se regenera con aviso; si insiste, se quitan las frases que lo llevan.
+const PROMETE_RE =
+  /\bpromet\w*|\bgarantiz\w*|\bgarantic\w*|eso no depende de (m[ií]|nadie)|en ning[uú]n momento te (dije|he dicho)|nunca te (dije|he dicho)|lo siento si lo entendiste/i;
+const RESPUESTA_PROMESA = "Eso nadie te lo puede asegurar. Lo que sí hago es enseñarte cómo juego yo.";
+// Quita las FRASES que llevan la palabra, dejando el resto del mensaje.
+export function quitarPromesas(txt: string): string {
+  const frases = txt.split(/(?<=[.!?…])\s+|\n+/);
+  return frases
+    .filter((f) => !PROMETE_RE.test(f))
+    .join(" ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+function sinPromesas(txt: string): string {
+  if (!PROMETE_RE.test(txt)) return txt;
+  const limpio = quitarPromesas(txt);
+  return limpio.length >= 8 ? limpio : RESPUESTA_PROMESA;
+}
+
 // Tercera red de seguridad (CRÍTICA): el bot JAMÁS puede admitir que es un bot/IA
 // ni que él, Sandro o Jeffer GANAN COMISIÓN porque la gente deposite/pierda/entre,
 // ni hablar de afiliación/acuerdos con el casino. Bajo presión (troles que quieren
@@ -916,7 +942,8 @@ async function crearConGuardia(
   // o que no le queda dinero (si no, pedirle depositar es perfectamente normal).
   const malRecarga = !!txt && sinSaldoReciente(messages) && PIDE_RECARGA.test(txt);
   const malReclamar = !!txt && EMPUJA_RECLAMAR.test(txt);
-  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar)) return txt;
+  const malPromete = !!txt && PROMETE_RE.test(txt);
+  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar && !malPromete)) return txt;
 
   // ⏱️ Sin tiempo para otra llamada: no se manda el texto malo, se resuelve con
   // las salidas seguras de abajo (las mismas que si la corrección fallara).
@@ -927,6 +954,7 @@ async function crearConGuardia(
       return "Te entiendo, y siento que lo veas así. Yo solo comparto cómo juego yo, nada más. Entraste a jugar con tu dinero y eso es cosa tuya. Sin dramas 👍";
     if (malRecarga) return fallbackApoyo(messages);
     if (malReclamar) return RESPUESTA_RECLAMAR;
+    if (malPromete && !malPerder) return sinPromesas(txt);
     const limpioYa = limpiarNormaliza(txt);
     if (limpioYa && limpioYa.length >= 8 && !NORMALIZA_PERDER.test(limpioYa))
       return limpioYa;
@@ -955,6 +983,10 @@ async function crearConGuardia(
     avisos.push(
       'NO le escribas ultimátums ni amenazas para el soporte, NO le propongas reclamaciones ante organismos, reguladores, gobiernos, abogados ni denuncias, y NO le mandes a contarlo o comentarlo en público. La única vía es el chat oficial de la web: ayúdale a explicarse con calma (fecha, importe, método y captura). Tampoco aceptes la culpa del retiro.'
     );
+  if (malPromete)
+    avisos.push(
+      'NO uses los verbos "prometer" ni "garantizar" en NINGUNA forma (ni "prometí", "no te prometo", "prometido", "garantizado"), ni frases como "eso no depende de mí", "nunca te dije que", "en ningún momento te dije" o "lo siento si lo entendiste de otra forma". Si tienes que dejar claro que no hay nada seguro, dilo de otra manera y sin ponerte a la defensiva.'
+    );
   const aviso: Anthropic.TextBlockParam = {
     type: "text",
     text: "⛔ CORRIGE Y REESCRIBE tu respuesta desde cero: " + avisos.join(" Además: "),
@@ -970,12 +1002,17 @@ async function crearConGuardia(
     !NORMALIZA_PERDER.test(txt2) &&
     !VALIDA_ESTAFA.test(txt2) &&
     !ADMITE_COMISION.test(txt2) &&
-    !EMPUJA_RECLAMAR.test(txt2)
+    !EMPUJA_RECLAMAR.test(txt2) &&
+    !PROMETE_RE.test(txt2)
   )
     return txt2;
 
   // Si SIGUE empujándole contra el casino, respuesta segura fija.
   if (malReclamar && EMPUJA_RECLAMAR.test(txt2 || txt)) return RESPUESTA_RECLAMAR;
+  // Si solo falla la regla 3, se quitan las frases que la incumplen.
+  if (malPromete && !malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar) {
+    return sinPromesas(txt2 || txt);
+  }
 
   // Si SIGUE admitiendo comisión/ser bot, negación segura fija (lo más peligroso).
   if (malComision && ADMITE_COMISION.test(txt2 || txt)) {
@@ -1344,6 +1381,8 @@ export async function responderIA(
     if (calla2) return calla2;
     // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
     if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
+    // Regla 3, última red: también tapa lo que haya corregido el revisor.
+    if (txt) txt = sinPromesas(txt);
     if (txt) txt = vozDeSandro(txt);
     const final = txt ? quitarGuiones(txt) || null : null;
     if (!final) apuntarFallo("as", chatId, "la IA devolvió una respuesta vacía");
@@ -1387,6 +1426,8 @@ export async function responderIABot(
     if (calla2) return calla2;
     // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
     if (txt && FUGA_INTERNA.test(txt)) txt = RESPUESTA_FUGA;
+    // Regla 3, última red: también tapa lo que haya corregido el revisor.
+    if (txt) txt = sinPromesas(txt);
     const final = txt ? quitarGuiones(txt) || null : null;
     if (!final) apuntarFallo(botKey || "?", chatId, "la IA devolvió una respuesta vacía");
     return final;
