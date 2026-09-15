@@ -36,3 +36,36 @@ export const QUEJA_PATRON_RE = new RegExp(
 // llevó el vídeo del patrón. En 30 días, 37 falsas peticiones así.
 export const ENVIO_PROPIO_RE =
   /\b(te|t|os)\s+(voy\s+a\s+)?(mand|envi|env[ií]|pas)\w*|\b(he|hemos)\s+(mandado|enviado|pasado)\b|\b(me\s+)?(has|hab[eé]is|ha)\s+(mandado|enviado|pasado)\b|\bque\s+me\s+(mandaste|mandste|enviaste|pasaste)\b|\b(del|en\s+el|como\s+(en\s+)?el)\s+v[ií]deo\b|\bvi\s+(el|tu|un)\s+v[ií]deo\b|\bhay\s+un\s+v[ií]deo\s+tuyo\b|\bhacer\s+v[ií]deos\b|\[el jugador te ha enviado/i;
+
+// ── REGLA 4 ESTRICTA (decisión del dueño, 15-sep) ──────────────────────────
+// El vídeo SOLO sale si el jugador lo pide claramente, o si el bot le pregunta si
+// lo quiere y dice que sí. Antes salía con que nombrara el patrón: en 30 días,
+// 213 vídeos a 156 jugadores, pero peticiones claras solo hubo 10, y la mayoría de
+// los envíos respondían a quejas ("el patrón ese me ha fallado varias veces").
+
+// Petición clara: una forma de pedírselo AL BOT + vídeo/patrón/clip/ejemplo detrás.
+export const PIDE_VIDEO_CLARO_RE =
+  /\b(p[aá]same(lo|la)?|m[aá]ndame(lo|la)?|env[ií]ame(lo|la)?|reenv[ií]ame(lo|la)?|ens[eé][ñn]ame|mu[eé]strame|dame|ponme|me\s+(pasas|mandas|env[ií]as|ense[ñn]as|muestras|pones)|me\s+(puedes|podr[ií]as)\s+(pasar|mandar|enviar|ense[ñn]ar)|quiero\s+ver|puedo\s+ver)\b[^.\n?]{0,25}\b(v[ií]deo|patr[oó]n|clip|ejemplo)/i;
+
+// El último mensaje del bot le ofreció el vídeo ("¿quieres que te pase el vídeo?").
+export const OFRECE_VIDEO_RE =
+  /(quieres|te\s+(lo\s+)?(paso|mando|env[ií]o)|pasarte|mandarte|enviarte)\b[^.\n]{0,30}\bv[ií]deo|\bv[ií]deo[^.\n]{0,20}\?/i;
+
+// Respuesta corta de "sí" a esa oferta ("sí", "dale bro", "sí pásamelo", "vale porfa").
+export const ACEPTA_RE =
+  /^(?:(?:s[ií]+|sip|dale|vale|ok(?:ey)?|porfa(?:vor)?|por\s+favor|claro|venga|va|p[aá]samelo|m[aá]ndamelo|env[ií]amelo|bro|hermano|t[ií]o|g|manito|please|pls)[\s!.,👍🙏]*){1,4}$/i;
+
+// ¿Acepta el vídeo que le acaba de ofrecer el bot? Solo mira el último mensaje del
+// bot si lo que escribe el jugador es un "sí" corto (una consulta, y solo entonces).
+export async function aceptaOfertaDeVideo(
+  textoJugador: string,
+  ultimoDelBot: () => Promise<string>
+): Promise<boolean> {
+  const t = (textoJugador || "").trim();
+  if (!t || t.length > 40 || !ACEPTA_RE.test(t)) return false;
+  try {
+    return OFRECE_VIDEO_RE.test(await ultimoDelBot());
+  } catch {
+    return false;
+  }
+}

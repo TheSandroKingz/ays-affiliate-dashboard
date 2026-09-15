@@ -14,7 +14,7 @@ import {
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
-import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE } from "@/lib/videoPatron";
+import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE, PIDE_VIDEO_CLARO_RE, aceptaOfertaDeVideo } from "@/lib/videoPatron";
 import { apuntarFallo } from "@/lib/iaUso";
 import { responderIA, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { enviarPush, quiereNotif } from "@/lib/push";
@@ -770,19 +770,36 @@ export async function POST(request: Request) {
       const ejemploReciente = msDesdeEjemplo < COOLDOWN_EJEMPLO_MS;
       // "Justo antes": vídeo hace <3 min → NUNCA otro seguido (ni pidiendo "otro").
       const ejemploJustoAntes = msDesdeEjemplo < 3 * 60 * 1000;
+      // REGLA 4 ESTRICTA (ver videoPatron.ts): el vídeo SOLO si lo pide claramente,
+      // si pide "mándamelo otra vez", o si acepta cuando el bot se lo ofrece.
+      const aceptaOferta = await aceptaOfertaDeVideo(textoJ, async () => {
+        const { data } = await supabaseAdmin
+          .from("telegram_messages")
+          .select("content")
+          .eq("chat_id", chatId)
+          .eq("role", "assistant")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        return String(data?.[0]?.content ?? "");
+      });
+      const pideVideoOk =
+        !negPide &&
+        !ENVIO_PROPIO_RE.test(textoJ) &&
+        (PIDE_VIDEO_CLARO_RE.test(textoJ) || reenvioExplicito || aceptaOferta);
       if (
         !ENLACES_PAUSADOS &&
         // SOLO cuando lo PIDEN (patrón/vídeo/otro). NO en automático ante una duda
         // ni cuando dicen que PIERDEN/no les va: ahí, respuesta personalizada.
         // Nombrar el patrón DENTRO de una queja (falloForma) NO cuenta como petición;
         // un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-        ((((pidePatron || pideEnvioExplicito) && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) && !patronFuturoOCambio) &&
+        pideVideoOk && // REGLA 4 ESTRICTA: antes bastaba con nombrar el patrón
         !problemaReal &&
         !quejaPerdida &&
         !limitado &&
         // No dos vídeos seguidos ante una DUDA; pero si lo piden EXPLÍCITAMENTE, sí.
-        (!ejemploJustoAntes || reenvioExplicito) &&
-        (!ejemploReciente || pideOtro || reenvioExplicito)
+        // Una petición clara se atiende aunque haya visto el vídeo hace un rato; lo
+        // único que se frena es mandar dos en 3 minutos (salvo "mándamelo otra vez").
+        (!ejemploJustoAntes || reenvioExplicito)
       ) {
         // Vídeo a mandar. Si PIDEN el patrón (p. ej. "el patrón nuevo"), mandamos
         // SIEMPRE el vídeo del DIARIO = el patrón ACTUAL que el dueño dejó en

@@ -10,7 +10,7 @@ import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAU
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
-import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE } from "@/lib/videoPatron";
+import { QUEJA_PATRON_RE, ENVIO_PROPIO_RE, PIDE_VIDEO_CLARO_RE, aceptaOfertaDeVideo } from "@/lib/videoPatron";
 import { apuntarFallo } from "@/lib/iaUso";
 import type { BotDef } from "@/lib/bots";
 import { ajustarVozFemenina } from "@/lib/bots";
@@ -700,6 +700,23 @@ export async function procesarUpdate(
     // "Justo antes": el vídeo anterior fue hace <3 min → NUNCA mandar otro seguido
     // (ni aunque pidan "otro"), para no soltar el vídeo dos veces consecutivas.
     const ejemploJustoAntes = msDesdeEjemplo < 3 * 60 * 1000;
+    // REGLA 4 ESTRICTA (ver videoPatron.ts): el vídeo SOLO si lo pide claramente,
+    // si pide "mándamelo otra vez", o si acepta cuando el bot se lo ofrece.
+    const aceptaOferta = await aceptaOfertaDeVideo(textoJ, async () => {
+      const { data } = await supabaseAdmin
+        .from("bot_messages")
+        .select("content")
+        .eq("bot", bot.key)
+        .eq("chat_id", chatId)
+        .eq("role", "assistant")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return String(data?.[0]?.content ?? "");
+    });
+    const pideVideoOk =
+      !negPide &&
+      !ENVIO_PROPIO_RE.test(textoJ) &&
+      (PIDE_VIDEO_CLARO_RE.test(textoJ) || reenvioExplicito || aceptaOferta);
 
     let videoEnviado = false;
     let envioOk = true; // ¿Telegram aceptó la respuesta?
@@ -712,14 +729,15 @@ export async function procesarUpdate(
       // ahí toca una respuesta personalizada con empatía, no soltar el mismo vídeo.
       // Si nombran el patrón DENTRO de una queja (falloForma), NO cuenta como petición;
       // pero un reenvío EXPLÍCITO ("mándamelo otra vez") sí abre el envío.
-      ((((pidePatron || pideEnvioExplicito) && !falloForma && !dudaConceptoPatron) || pideOtro || reenvioExplicito) && !patronFuturoOCambio) &&
+      pideVideoOk && // REGLA 4 ESTRICTA: antes bastaba con nombrar el patrón
       !problemaReal &&
         !quejaPerdida &&
       !limitado &&
       // No dos vídeos seguidos ante una DUDA; PERO si lo piden EXPLÍCITAMENTE
       // ("mándame el vídeo otra vez"), se lo mandamos igual.
-      (!ejemploJustoAntes || reenvioExplicito) &&
-      (!ejemploReciente || pideOtro || reenvioExplicito)
+      // Una petición clara se atiende aunque haya visto el vídeo hace un rato; lo
+      // único que se frena es mandar dos en 3 minutos (salvo "mándamelo otra vez").
+      (!ejemploJustoAntes || reenvioExplicito)
     ) {
       // Candidatos a enviar: los ejemplos de la biblioteca del bot (barajados) y,
       // como último recurso, el /diario. Probamos EN ORDEN hasta que UNO se envíe.
