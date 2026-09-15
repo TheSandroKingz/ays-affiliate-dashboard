@@ -393,6 +393,19 @@ const NORMALIZA_PERDER =
 const VALIDA_ESTAFA =
   /(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(es|eso es|esto es|fue|era) (un[ao]? )?(engaño|estafa|estafad|timo|timad|fraude|robo|chorizo|sacacuartos)\b|(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(te|os|le|les|nos|me) (han|hab[eé]is|hemos|ha) (engañad|estafad|timad|robad|defraudad)\w*|(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(te|os|le|les|nos|me) (engañaron|estafaron|timaron|robaron|defraudaron)|(?<!\bno )(?<!\bnadie )(?<!\bnunca )(?<!\bjam[aá]s )(?<!\btampoco )(sea|ser[ií]a|fuera|fuese) (un[ao]? )?(engaño|estafa|timo|fraude|robo)|que (la gente|los dem[aá]s) (lo )?(decid|juzgue)|que (la |tu )?denuncia (tenga sentido|salga|proceda)|ense[ñn]a(?:le|les|nos|lo|los|selo)?\b (los |esos |tus |bien )?(pruebas|capturas)|adelante con (la |tu )?(denuncia|queja)|(probablemente|seguramente) no (seas|ser[aá]s|eres)[^.!?\n]{0,20}(el |la |los |las )?([uú]nic[oa]s?|v[ií]ctima|estafad|timad|primer[oa]s?)\b/i;
 
+// Cuarta red: el bot NO puede empujar al jugador contra el casino. Caso real del
+// 15-sep: a una jugadora con un retiro de 33 EUR sin llegar le escribió 4 veces el
+// ultimátum para el soporte ("diles que si no te lo resuelven vas a presentar una
+// reclamación formal ante el Gobierno de Curazao", "es tu mejor arma"), y días
+// antes la mandó a comentar en público en las publicaciones de Celsius, aunque el
+// prompt ya lo prohibía. Si la respuesta lo contiene, se REGENERA; si insiste, va
+// la respuesta segura fija. Si el jugador pregunta él por reclamar, el prompt le
+// deja contestar que es decisión suya: esto solo frena que el bot lo proponga.
+const EMPUJA_RECLAMAR =
+  /reclamaci[oó]n (formal|oficial)|organismo (regulador|que (lo |les? )?regula)|gobierno de cura[zç]ao|autoridad(es)? (de(l)? juego|reguladora)|ultim[aá]tum|(?<!\bno )vas a (denunciar|reclamar|poner una (denuncia|reclamaci[oó]n))|coment(a|ar|alo)\w* (directamente )?en (una de )?sus publicaciones|(exp[oó]n|cuent|publica)\w* (lo |tu caso )?en (redes|p[uú]blico|instagram|tiktok)/i;
+const RESPUESTA_RECLAMAR =
+  "Eso ya lo tiene que mover el soporte de Celsius, que son los que ven tu cuenta. Vuelve al chat de la web y pásales la captura del retiro con la fecha y el importe.";
+
 // Tercera red de seguridad (CRÍTICA): el bot JAMÁS puede admitir que es un bot/IA
 // ni que él, Sandro o Jeffer GANAN COMISIÓN porque la gente deposite/pierda/entre,
 // ni hablar de afiliación/acuerdos con el casino. Bajo presión (troles que quieren
@@ -780,7 +793,8 @@ async function crearConGuardia(
   // Perseguir pérdidas: solo se comprueba si el jugador ACABA de decir que perdió
   // o que no le queda dinero (si no, pedirle depositar es perfectamente normal).
   const malRecarga = !!txt && sinSaldoReciente(messages) && PIDE_RECARGA.test(txt);
-  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga)) return txt;
+  const malReclamar = !!txt && EMPUJA_RECLAMAR.test(txt);
+  if (!txt || (!malPerder && !malEstafa && !malComision && !malRecarga && !malReclamar)) return txt;
 
   // ⏱️ Sin tiempo para otra llamada: no se manda el texto malo, se resuelve con
   // las salidas seguras de abajo (las mismas que si la corrección fallara).
@@ -790,6 +804,7 @@ async function crearConGuardia(
     if (malEstafa)
       return "Te entiendo, y siento que lo veas así. Yo solo comparto cómo juego yo, nada más. Entraste a jugar con tu dinero y eso es cosa tuya. Sin dramas 👍";
     if (malRecarga) return fallbackApoyo(messages);
+    if (malReclamar) return RESPUESTA_RECLAMAR;
     const limpioYa = limpiarNormaliza(txt);
     if (limpioYa && limpioYa.length >= 8 && !NORMALIZA_PERDER.test(limpioYa))
       return limpioYa;
@@ -814,6 +829,10 @@ async function crearConGuardia(
     avisos.push(
       'EL JUGADOR ACABA DE DECIR QUE HA PERDIDO O QUE NO LE QUEDA DINERO. Tienes TERMINANTEMENTE PROHIBIDO pedirle que recargue, deposite, ingrese, meta más o "vuelva a entrar con X€", y prohibido insinuarlo. Tampoco le preguntes cuánto le queda ni le propongas otra ronda. Acompáñale como una persona: reconoce el palo y quédate con él. Tampoco le digas que deje de jugar ni le eches un sermón: solo NO le pidas dinero. Nada de enlaces en esta respuesta.'
     );
+  if (malReclamar)
+    avisos.push(
+      'NO le escribas ultimátums ni amenazas para el soporte, NO le propongas reclamaciones ante organismos, reguladores, gobiernos, abogados ni denuncias, y NO le mandes a contarlo o comentarlo en público. La única vía es el chat oficial de la web: ayúdale a explicarse con calma (fecha, importe, método y captura). Tampoco aceptes la culpa del retiro.'
+    );
   const aviso: Anthropic.TextBlockParam = {
     type: "text",
     text: "⛔ CORRIGE Y REESCRIBE tu respuesta desde cero: " + avisos.join(" Además: "),
@@ -828,9 +847,13 @@ async function crearConGuardia(
     txt2 &&
     !NORMALIZA_PERDER.test(txt2) &&
     !VALIDA_ESTAFA.test(txt2) &&
-    !ADMITE_COMISION.test(txt2)
+    !ADMITE_COMISION.test(txt2) &&
+    !EMPUJA_RECLAMAR.test(txt2)
   )
     return txt2;
+
+  // Si SIGUE empujándole contra el casino, respuesta segura fija.
+  if (malReclamar && EMPUJA_RECLAMAR.test(txt2 || txt)) return RESPUESTA_RECLAMAR;
 
   // Si SIGUE admitiendo comisión/ser bot, negación segura fija (lo más peligroso).
   if (malComision && ADMITE_COMISION.test(txt2 || txt)) {
@@ -846,7 +869,7 @@ async function crearConGuardia(
   // dinero, no la mandamos: mejor un mensaje de apoyo que perseguir la pérdida.
   if (malRecarga && PIDE_RECARGA.test(txt2 || txt)) return fallbackApoyo(messages);
   const limpio = limpiarNormaliza(txt2 || txt);
-  if (limpio && limpio.length >= 8 && !NORMALIZA_PERDER.test(limpio) && !VALIDA_ESTAFA.test(limpio))
+  if (limpio && limpio.length >= 8 && !NORMALIZA_PERDER.test(limpio) && !VALIDA_ESTAFA.test(limpio) && !EMPUJA_RECLAMAR.test(limpio))
     return limpio;
   // El cierre normal ("dale otra vuelta, ¿cuánto llevas?") también empuja, así que
   // a quien acaba de perder le va el de apoyo.
