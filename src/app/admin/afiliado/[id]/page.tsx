@@ -12,8 +12,8 @@ import { TableSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
 import { hoyMadridISO, colorDeNombre } from "@/lib/ui";
-import RepartoEditor from "@/components/RepartoEditor";
-import { cuentasEquipo, colorDe, type Miembro } from "@/lib/repartoGastos";
+import ConfiguradorGastos from "@/components/ConfiguradorGastos";
+import { cuentasEquipo, colorDe, pctDeConcepto, type ConfigGastos } from "@/lib/repartoGastos";
 
 // La gráfica (Recharts) es pesada: la cargamos en diferido, igual que el inicio.
 const BalanceChart = dynamic(() => import("@/components/BalanceChart"), {
@@ -64,7 +64,7 @@ export default function AfiliadoDetallePage() {
   const [periodo, setPeriodo] = useState<"mes" | "todo">("mes");
   const [eliminando, setEliminando] = useState(false);
   const [gastos, setGastos] = useState<{ id: number; fecha: string; pagado_por: string | null; concepto: string; importe: number }[]>([]);
-  const [equipo, setEquipo] = useState<Miembro[]>([]);
+  const [gastosConfig, setGastosConfig] = useState<ConfigGastos | null>(null);
   const [editandoReparto, setEditandoReparto] = useState(false);
 
   async function eliminarCuenta() {
@@ -147,7 +147,7 @@ export default function AfiliadoDetallePage() {
       setVisitas(body.visitas ?? null);
       setDeposito(body.deposito ?? null);
       setGastos(Array.isArray(body.gastos) ? body.gastos : []);
-      setEquipo(Array.isArray(body.equipo) ? body.equipo : []);
+      setGastosConfig(body.gastosConfig ?? null);
       setLastUpdated(new Date());
     } catch {
       if (reqId === reqRef.current) setError(true);
@@ -525,23 +525,27 @@ export default function AfiliadoDetallePage() {
           )}
         </table>
       </div>
-      {/* GASTOS que ha apuntado el afiliado (mismo periodo que arriba) y, si trabaja
-          en equipo, su reparto: lo que puso cada uno, lo que le toca y quién debe a quién. */}
+      {/* GASTOS que ha apuntado el afiliado (mismo periodo que arriba) con SU
+          configuración: socios, conceptos con el % de cada uno y quién debe a quién. */}
       {(() => {
+        const cfg = gastosConfig;
+        const socios = cfg?.socios ?? [];
+        const esEquipo = socios.length >= 2;
         const totalGastos = gastos.reduce((s, g) => s + Number(g.importe), 0);
         const queda = Number(totals.commission) - totalGastos;
-        const c = equipo.length ? cuentasEquipo(gastos, equipo) : null;
-        async function guardarRepartoAdmin(miembros: Miembro[]) {
+        const c = cfg && esEquipo ? cuentasEquipo(gastos, cfg) : null;
+        const thG = "border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold";
+        async function guardarConfigAdmin(nueva: ConfigGastos) {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) return "Sesión caducada.";
           const r = await fetch("/api/admin/afiliado/reparto", {
             method: "PUT",
             headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-            body: JSON.stringify({ userId, miembros }),
+            body: JSON.stringify({ userId, config: nueva }),
           });
           const b = await r.json().catch(() => ({}));
-          if (!r.ok) return b?.error || "No se pudo guardar el reparto.";
-          setEquipo(b.miembros ?? []);
+          if (!r.ok) return b?.error || "No se pudo guardar la configuración.";
+          setGastosConfig(b.config ?? nueva);
           setEditandoReparto(false);
           return null;
         }
@@ -551,12 +555,14 @@ export default function AfiliadoDetallePage() {
               <div>
                 <h2 className="text-lg font-semibold text-white">Gastos</h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {equipo.length
-                    ? <>Reparto: {equipo.map((m) => `${m.nombre} ${m.pct.toLocaleString("es-ES")}%`).join(" · ")}</>
-                    : "Trabaja solo (sin reparto)"}
+                  {!cfg
+                    ? "Aún no ha configurado sus gastos"
+                    : esEquipo
+                    ? <>Socios: {socios.join(", ")} · {cfg.conceptos.map((x) => `${x.nombre} ${x.pct.map((p) => p.toLocaleString("es-ES")).join("/")}`).join("; ")}</>
+                    : <>Trabaja solo · Conceptos: {cfg.conceptos.map((x) => x.nombre).join(", ")}</>}
                   {" · "}
                   <button onClick={() => setEditandoReparto((v) => !v)} className="text-emerald-400 hover:text-emerald-300">
-                    {equipo.length ? "Cambiar" : "Poner reparto"}
+                    {cfg ? "Cambiar" : "Configurar"}
                   </button>
                 </p>
               </div>
@@ -567,7 +573,7 @@ export default function AfiliadoDetallePage() {
               </p>
             </div>
             {editandoReparto && (
-              <RepartoEditor inicial={equipo} onGuardar={guardarRepartoAdmin} onCancelar={() => setEditandoReparto(false)} />
+              <ConfiguradorGastos inicial={cfg} onGuardar={guardarConfigAdmin} onCancelar={() => setEditandoReparto(false)} />
             )}
             {c && gastos.length > 0 && (
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -590,46 +596,45 @@ export default function AfiliadoDetallePage() {
                 </div>
               </div>
             )}
-            {!c && gastos.some((g) => g.pagado_por) && (() => {
-              const m = new Map<string, number>();
-              for (const g of gastos) {
-                const k = (g.pagado_por || "").trim() || "Sin indicar";
-                m.set(k, (m.get(k) ?? 0) + Number(g.importe));
-              }
-              return m.size > 1 ? (
-                <p className="text-xs text-slate-400">
-                  {[...m.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => `${n} puso ${eur(v)}`).join(" · ")}
-                </p>
-              ) : null;
-            })()}
             <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl overflow-x-auto min-w-0">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-white/10 text-slate-300 text-left">
-                    <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">Fecha</th>
-                    <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">Pagó</th>
-                    <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold">Concepto</th>
-                    <th className="border border-white/10 px-4 py-3 uppercase tracking-wide text-xs font-semibold text-right">Importe</th>
+                    <th className={thG}>Fecha</th>
+                    <th className={thG}>Concepto</th>
+                    {esEquipo && <th className={thG}>Pagó</th>}
+                    <th className={`${thG} text-right`}>Importe</th>
+                    {esEquipo && socios.map((s) => <th key={s} className={`${thG} text-right`}>{s}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {gastos.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="border border-white/10 px-4 py-6 text-center text-slate-400">
+                      <td colSpan={3 + (esEquipo ? 1 + socios.length : 0)} className="border border-white/10 px-4 py-6 text-center text-slate-400">
                         No ha apuntado gastos en este periodo.
                       </td>
                     </tr>
                   ) : (
-                    gastos.map((g, i) => (
-                      <tr key={g.id} className={`text-white ${i % 2 === 1 ? "bg-white/[0.03]" : ""}`}>
-                        <td className="border border-white/10 px-4 py-3 whitespace-nowrap tabular-nums">
-                          {new Date(g.fecha + "T00:00:00Z").toLocaleDateString("es-ES", { timeZone: "UTC" })}
-                        </td>
-                        <td className="border border-white/10 px-4 py-3" style={{ color: g.pagado_por ? colorDe(g.pagado_por) : undefined }}>{g.pagado_por || "—"}</td>
-                        <td className="border border-white/10 px-4 py-3">{g.concepto}</td>
-                        <td className="border border-white/10 px-4 py-3 text-right tabular-nums">{eur(Number(g.importe))}</td>
-                      </tr>
-                    ))
+                    gastos.map((g, i) => {
+                      const pct = cfg && esEquipo ? pctDeConcepto(g.concepto, cfg).pct : [];
+                      return (
+                        <tr key={g.id} className={`text-white ${i % 2 === 1 ? "bg-white/[0.03]" : ""}`}>
+                          <td className="border border-white/10 px-4 py-3 whitespace-nowrap tabular-nums">
+                            {new Date(g.fecha + "T00:00:00Z").toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                          </td>
+                          <td className="border border-white/10 px-4 py-3">{g.concepto}</td>
+                          {esEquipo && (
+                            <td className="border border-white/10 px-4 py-3" style={{ color: g.pagado_por ? colorDe(g.pagado_por) : undefined }}>{g.pagado_por || "—"}</td>
+                          )}
+                          <td className="border border-white/10 px-4 py-3 text-right tabular-nums">{eur(Number(g.importe))}</td>
+                          {esEquipo && socios.map((s, j) => (
+                            <td key={s} className="border border-white/10 px-4 py-3 text-right tabular-nums" style={{ color: colorDe(s) }}>
+                              {eur((Number(g.importe) * (pct[j] ?? 0)) / 100)}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

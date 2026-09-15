@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser, ADMIN_USER_ID } from "@/lib/adminAuth";
 import { depositoMedio } from "@/lib/postback";
-import { leerReparto } from "@/lib/repartoGastosServidor";
+import { leerConfig } from "@/lib/repartoGastosServidor";
 
 // Detalle de UN afiliado (solo admin): su perfil (CPA, billeteras, código) y su
 // actividad diaria (clics, registros, FTD, comisión). Se usa al clicar su
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
     deposito,
     visitas,
     gastos,
-    equipo: (await leerReparto(userId)).miembros,
+    gastosConfig: (await leerConfig(userId)).config,
   });
 }
 

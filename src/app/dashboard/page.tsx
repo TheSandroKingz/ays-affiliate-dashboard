@@ -652,7 +652,7 @@ export default function DashboardPage() {
 
       {/* Depósito medio, días de mes y récord (detalles pequeños). */}
       {!isAdmin &&
-        (mediaDep != null || diasRestantesMes > 0 || hist.mejorMes > 0 || totals.clicks > 0) && (
+        (mediaDep != null || diasRestantesMes > 0 || hist.mejorMes > 0) && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 -mt-3">
             {mediaDep != null && (
               <span>
@@ -664,26 +664,6 @@ export default function DashboardPage() {
               <span>
                 🗓️ <b className="text-slate-300">{diasRestantesMes} días</b> de
                 mes
-              </span>
-            )}
-            {/* Conversión del mes: cuántos de sus clics se registran y cuántos
-                registros acaban en FTD. Le dice si su tráfico es bueno. */}
-            {totals.clicks > 0 && (
-              <span>
-                🎯 Conversión:{" "}
-                <b className="text-slate-300">
-                  {((totals.registrations / totals.clicks) * 100).toFixed(1).replace(".", ",")}%
-                </b>{" "}
-                se registra
-                {totals.registrations > 0 && (
-                  <>
-                    {" · "}
-                    <b className="text-slate-300">
-                      {((totals.ftd / totals.registrations) * 100).toFixed(1).replace(".", ",")}%
-                    </b>{" "}
-                    deposita
-                  </>
-                )}
               </span>
             )}
             {hist.mejorMes > 0 && (

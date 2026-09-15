@@ -2,17 +2,17 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 import { rateLimitShared } from "@/lib/rateLimit";
-import { leerReparto, guardarReparto } from "@/lib/repartoGastosServidor";
+import { leerConfig, guardarConfig } from "@/lib/repartoGastosServidor";
 
-// GASTOS DEL AFILIADO: como el apartado de Gastos del admin, pero sin categorías
-// ni reparto. El concepto y QUIÉN lo pagó los escribe él (hay afiliados que
-// trabajan en equipo).
-//  - GET ?mes=YYYY-MM | ?mes=todo → sus gastos del periodo, lo ganado en él y los
-//    nombres que ya ha usado en "Pagó" (para sugerírselos).
+// GASTOS DEL AFILIADO: como el apartado de Gastos del admin, con SU configuración
+// (socios y conceptos con el % de cada uno, ver repartoGastos.ts).
+//  - GET ?mes=YYYY-MM | ?mes=todo → sus gastos del periodo, lo ganado en él y su
+//    configuración (null = aún no la ha hecho).
 //  - POST { fecha, pagado_por, concepto, importe } → añade.
 //  - PATCH { id, fecha, pagado_por, concepto, importe } → edita uno SUYO.
 //  - DELETE ?id= → borra uno SUYO.
-// Cada afiliado solo ve y toca los suyos: el filtro por su user_id va en servidor.
+//  - PUT { config } → guarda su configuración.
+// Cada afiliado solo ve y toca lo suyo: el filtro por su user_id va en servidor.
 
 const madridHoy = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 
@@ -43,7 +43,7 @@ function validar(body: Record<string, unknown>) {
   const pagado_por = String(body?.pagado_por ?? "").trim().replace(/\s+/g, " ").slice(0, 40) || null;
   const importe = parseImporte(body?.importe);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || fecha < "2024-01-01" || fecha > madridHoy()) return { error: "La fecha no es válida." };
-  if (!concepto) return { error: "Escribe en qué os lo habéis gastado." };
+  if (!concepto) return { error: "Elige el concepto." };
   if (concepto.length > 120) return { error: "El concepto es demasiado largo (máximo 120 caracteres)." };
   if (!(importe > 0) || importe > 1_000_000) return { error: "El importe no es válido." };
   return { fila: { fecha, concepto, pagado_por, importe } };
@@ -63,25 +63,23 @@ export async function GET(request: Request) {
   };
   let { data: gastos, error } = await leer("id, fecha, pagado_por, concepto, importe");
   if (columnaPagoFalta(error)) ({ data: gastos, error } = await leer("id, fecha, concepto, importe"));
-  if (tablaFalta(error)) return NextResponse.json({ gastos: [], ganado: 0, personas: [], equipo: [], mesVista, tablaFalta: true });
+  if (tablaFalta(error)) return NextResponse.json({ gastos: [], ganado: 0, config: null, mesVista, tablaFalta: true });
   if (error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
 
   let qs = supabaseAdmin.from("affiliate_daily_stats").select("commission").eq("user_id", user.id).limit(5000);
   if (desde) qs = qs.gte("date", desde);
   if (hasta) qs = qs.lte("date", hasta);
-  const [{ data: stats }, { data: nombres }, reparto] = await Promise.all([
-    qs,
-    supabaseAdmin.from("gastos_afiliados").select("pagado_por").eq("user_id", user.id).not("pagado_por", "is", null).limit(2000),
-    leerReparto(user.id),
-  ]);
+  const [{ data: stats }, cfg] = await Promise.all([qs, leerConfig(user.id)]);
+  // Sin esto, un fallo al leer la configuración le enseñaría la pantalla de
+  // "configura tus gastos" como si nunca la hubiera hecho.
+  if (cfg.error) return NextResponse.json({ error: "No se pudo cargar" }, { status: 500 });
   const ganado = (stats ?? []).reduce((s, r) => s + Number(r.commission ?? 0), 0);
-  const personas = [...new Set((nombres ?? []).map((n) => String(n.pagado_por ?? "").trim()).filter(Boolean))].slice(0, 30);
 
   return NextResponse.json({
     gastos: ((gastos ?? []) as unknown as Record<string, unknown>[]).map((g) => ({ ...g, pagado_por: g.pagado_por ?? null, importe: Number(g.importe) })),
     ganado,
-    personas,
-    equipo: reparto.miembros,
+    config: cfg.config,
+    tablaFalta: cfg.tablaFalta,
     mesVista,
   });
 }
@@ -137,13 +135,14 @@ export async function DELETE(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// PUT { miembros: [{ nombre, pct }] } → guarda SU reparto de gastos (lista vacía =
-// trabaja solo). Ver repartoGastos.ts.
 export async function PUT(request: Request) {
   const user = await getApprovedUser(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await rateLimitShared(`gastos-config:${user.id}`, 60, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "Demasiados cambios seguidos, espera un poco." }, { status: 429 });
+  }
   const body = await request.json().catch(() => ({}));
-  const r = await guardarReparto(user.id, body?.miembros);
+  const r = await guardarConfig(user.id, body?.config);
   if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
-  return NextResponse.json({ ok: true, miembros: r.miembros });
+  return NextResponse.json({ ok: true, config: r.config });
 }
