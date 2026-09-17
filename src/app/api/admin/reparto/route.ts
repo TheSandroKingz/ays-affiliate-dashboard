@@ -126,7 +126,7 @@ export async function GET(request: Request) {
   // Descontar del pool los OVERRIDES que el admin ya pagó a los afiliados-padre
   // por sus subafiliados: ese dinero ya salió y NO se reparte con el socio. ⚠️ El
   // override es un COSTE del tráfico del HIJO (nace de SU comisión), así que se
-  // resta del grupo del HIJO que lo origina, NO de "General/directo". La SUMA es
+  // resta del grupo del HIJO que lo origina, NO de "Los patrones". La SUMA es
   // la misma que mes.totals.overridesPaid (así el total sigue cuadrando con
   // totalClean); solo cambia el reparto por grupo (antes sesgaba el Kingz/socio).
   const percentById = new Map(struct.map((a) => [a.id, Number(a.subaffiliate_percent ?? 0)]));
