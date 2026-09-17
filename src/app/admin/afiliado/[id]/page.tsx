@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ChevronDown } from "lucide-react";
