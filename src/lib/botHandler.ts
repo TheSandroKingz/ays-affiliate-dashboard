@@ -1164,6 +1164,38 @@ export async function procesarUpdate(
           ).catch(() => {});
         }
       }
+      // ⛔ EL SEGUNDO "CALLAR" EN UNA HORA SILENCIA DE VERDAD (ver el webhook de
+      // Sandro y la nota de Yaiza del 17-sep).
+      if (respuesta === CALLAR && !(await rateLimitShared(`callar:${bot.key}:${chatId}`, 1, 60 * 60 * 1000))) {
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced: true })
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId);
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            {
+              bot: bot.key,
+              chat_id: chatId,
+              motivo: "el bot decidió callarse 2 veces en una hora",
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
+          )
+          .then(() => {}, () => {});
+        apuntarFallo(bot.key, chatId, "silenciado: la IA decidió callarse 2 veces en una hora");
+        if (owner) {
+          await tgEnviar(
+            String(owner),
+            `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: el bot ha decidido callarse dos veces en una hora. Reactívalo quitándole el silencio en el panel.`,
+            {},
+            tok
+          ).catch(() => {});
+        }
+      }
       respuesta = null;
       callar = true;
       chatDelFallo = null;

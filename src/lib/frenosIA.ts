@@ -12,8 +12,12 @@ import { tgEnviar, OWNER_CHAT_ID } from "./telegram";
 //  · entre todos los bots, como mucho 309 respuestas en una hora;
 //  · como mucho 31 contactos nuevos en una hora.
 // Así que estos topes no tocan a nadie real y cortan un ataque a tiempo.
-const TOPE_CHAT_HORA = 100;
-const TOPE_CHAT_DIA = 250;
+// Medido sobre 7 días (313 horas-chat): la mediana son 4 respuestas por hora, el
+// percentil 99 son 47 y las ÚNICAS dos horas por encima de 60 fueron los dos troles
+// (70 y 62). Con 60 no se corta ninguna conversación real, ni siquiera guiando a
+// alguien paso a paso, y un troll no puede pasar de ahí. Antes: 100 y 250.
+const TOPE_CHAT_HORA = 60;
+const TOPE_CHAT_DIA = 200;
 const TOPE_GLOBAL_HORA = 400;
 const AVISO_GLOBAL_HORA = 250;
 const TOPE_NUEVOS_HORA = 120;

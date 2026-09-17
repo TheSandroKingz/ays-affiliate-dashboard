@@ -700,8 +700,11 @@ const NOTA_SISTEMA =
 // ninguna frase normal ("el soporte no responde", "si te dejan sin respuesta…").
 const ORDEN_CALLAR_INICIO =
   /^[\s[(«"'*_-]*(no\s+(enviar|responder|contestar)\b|no\s+se\s+(env[ií]a|responde|contesta)\b|no\s+respondas\b|no\s+contestes\b|sin\s+respuesta\s*([,.;:)\]»]|$)|lista\s+negra\b|silencio\b|el\s+jugador\s+(est[aá]|pasa|queda|entra|sigue)\s+(en|a)\s+(la\s+)?lista\s+negra)/i;
+// Yaiza, 17-sep (regla 26): cualquier mensaje que DESCRIBA la decisión del bot en
+// tercera persona o entre paréntesis es proceso interno, no una respuesta: no se
+// envía. Caso real del 15-sep: "(sin respuesta, lista negra activa)" x5.
 const ORDEN_CALLAR_MARCA =
-  /(pasa|est[aá]|queda|entra|sigue)\s+(en|a)\s+(la\s+)?lista\s+negra|silencio\s+de\s+\d+\s*h|no\s+se\s+env[ií]a\s+ning[uú]n\s+mensaje|el\s+bot\s+(ya\s+)?(avis[oó]|deja\s+de\s+responder|no\s+(responde|contesta|env[ií]a))/i;
+  /(pasa|est[aá]|queda|entra|sigue)\s+(en|a)\s+(la\s+)?lista\s+negra|silencio\s+de\s+\d+\s*h|no\s+se\s+env[ií]a\s+ning[uú]n\s+mensaje|el\s+bot\s+(ya\s+)?(avis[oó]|deja\s+de\s+responder|no\s+(responde|contesta|env[ií]a))|no\s+(hay|queda)\s+respuesta\s+que\s+enviar|no\s+procede\s+(responder|contestar|enviar)|se\s+(mantiene|aplica)\s+el\s+silencio|no\s+se\s+le\s+(responde|contesta|env[ií]a)|el\s+jugador\s+(queda|est[aá])\s+silenciado|\(\s*sin\s+(respuesta|contestar)\b|\bel\s+bot\b[^.\n]{0,40}\b(deja\s+de\s+(responder|contestar)|se\s+calla|no\s+le\s+(responde|contesta))/i;
 // Valores que devuelven responderIA/responderIABot en vez de texto: el webhook
 // los reconoce y NO manda nada (ni la nota, ni el pitch, ni el acuse).
 export const CALLAR = "__CALLAR__";

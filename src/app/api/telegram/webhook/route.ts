@@ -1249,6 +1249,38 @@ export async function POST(request: Request) {
             ).catch(() => {});
           }
         }
+        // ⛔ EL SEGUNDO "CALLAR" EN UNA HORA SILENCIA DE VERDAD (nota de Yaiza,
+        // 17-sep). Antes, decidir callarse solo se saltaba ESE mensaje: el troll
+        // seguía escribiendo y cada mensaje suyo gastaba una llamada de IA (y su
+        // revisor) aunque no se le contestara nada. A la segunda, silencio y lista
+        // negra, como cuando la IA la pide explícitamente.
+        if (respuesta === CALLAR && !(await rateLimitShared(`callar:as:${chatId}`, 1, 60 * 60 * 1000))) {
+          await supabaseAdmin
+            .from("telegram_contacts")
+            .update({ silenced: true })
+            .eq("chat_id", chatId);
+          await supabaseAdmin
+            .from("lista_negra")
+            .upsert(
+              {
+                bot: "as",
+                chat_id: chatId,
+                motivo: "el bot decidió callarse 2 veces en una hora",
+                reactivado_at: null,
+                reactivado_por: null,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: "bot,chat_id" }
+            )
+            .then(() => {}, () => {});
+          apuntarFallo("as", chatId, "silenciado: la IA decidió callarse 2 veces en una hora");
+          if (OWNER_CHAT_ID) {
+            await tgEnviar(
+              String(OWNER_CHAT_ID),
+              `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): el bot ha decidido callarse dos veces en una hora. Para reactivarlo, quítale el silencio en el panel.`
+            ).catch(() => {});
+          }
+        }
         respuesta = null;
         callar = true;
         chatDelFallo = null;
