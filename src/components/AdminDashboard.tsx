@@ -55,6 +55,12 @@ const emptyTotals: Totals = {
   ftd: 0,
 };
 
+// Los dos usáis la MISMA cuenta, así que quién está mirando se guarda en el
+// navegador de cada uno, no en la cuenta.
+type Quien = "kingz" | "prz" | null;
+const QUIEN_KEY = "quienSoy";
+const NOMBRE_QUIEN: Record<"kingz" | "prz", string> = { kingz: "Kingz", prz: "PRZ" };
+
 function saludo(): string {
   const h = new Date().getHours();
   if (h < 6) return "Buenas noches";
@@ -92,6 +98,10 @@ export default function AdminDashboard() {
   } | null>(null);
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [paises, setPaises] = useState<{ code: string; n: number }[]>([]);
+  // Reparto del mes con el socio (para verlo sin salir del inicio).
+  const [reparto, setReparto] = useState<{ kingz: number; prz: number } | null>(null);
+  // Quién de los dos está mirando (se recuerda en ESTE móvil, no en la cuenta).
+  const [quienSoy, setQuienSoy] = useState<Quien>(null);
   const [celebrar, setCelebrar] = useState(false);
   const [hito, setHito] = useState<number | null>(null);
   const prevFtdRef = useRef<number | null>(null);
@@ -110,12 +120,26 @@ export default function AdminDashboard() {
         return;
       }
       // Una sola llamada: mes en curso + mes pasado + histórico + pendientes.
-      const res = await fetch("/api/admin/overview", {
-        cache: "no-store",
-        headers: { Authorization: "Bearer " + session.access_token },
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null);
+      // El reparto con el socio va EN PARALELO (no retrasa el panel).
+      const [res, rep] = await Promise.all([
+        fetch("/api/admin/overview", {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        fetch("/api/admin/reparto", {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+      ]);
+      setReparto(
+        rep?.reparto
+          ? { kingz: Number(rep.reparto.sandroTotal ?? 0), prz: Number(rep.reparto.socioTotal ?? 0) }
+          : null
+      );
 
       // Si la carga de datos falló, mostramos error (no 0€ falsos).
       if (!res || !res.month?.totals) {
@@ -176,6 +200,27 @@ export default function AdminDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(QUIEN_KEY);
+      if (v === "kingz" || v === "prz") setQuienSoy(v);
+    } catch {
+      /* sin localStorage (modo privado): se queda sin elegir */
+    }
+  }, []);
+
+  // Tocar el que ya está puesto lo quita (vuelve al saludo de la cuenta).
+  const elegirQuien = (q: "kingz" | "prz") => {
+    const nuevo: Quien = quienSoy === q ? null : q;
+    setQuienSoy(nuevo);
+    try {
+      if (nuevo) localStorage.setItem(QUIEN_KEY, nuevo);
+      else localStorage.removeItem(QUIEN_KEY);
+    } catch {
+      /* da igual: solo es una preferencia de este móvil */
+    }
+  };
 
   const toggleMetric = (key: string) => {
     setActiveMetrics((prev) => {
@@ -294,10 +339,19 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-2xl font-semibold text-white">
             {saludo()}
-            {displayName && (
+            {quienSoy ? (
               <>
-                , <span className="text-emerald-400">{displayName}</span>
+                ,{" "}
+                <span className={quienSoy === "kingz" ? "text-emerald-400" : "text-sky-400"}>
+                  {NOMBRE_QUIEN[quienSoy]}
+                </span>
               </>
+            ) : (
+              displayName && (
+                <>
+                  , <span className="text-emerald-400">{displayName}</span>
+                </>
+              )
             )}
           </h1>
           <p className="text-sm text-slate-400">
@@ -322,13 +376,35 @@ export default function AdminDashboard() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => load(true)}
-          disabled={refreshing}
-          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-        >
-          {refreshing ? "Actualizando..." : "Actualizar"}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Quién de los dos está mirando: cambia el saludo y destaca SU parte
+              del reparto. Se recuerda en este móvil. */}
+          <div className="flex items-center rounded-lg border border-white/15 overflow-hidden text-xs">
+            {(["kingz", "prz"] as const).map((q) => (
+              <button
+                key={q}
+                onClick={() => elegirQuien(q)}
+                title={quienSoy === q ? "Tocar otra vez para quitarlo" : `Soy ${NOMBRE_QUIEN[q]}`}
+                className={`px-3 py-2 font-medium transition ${
+                  quienSoy === q
+                    ? q === "kingz"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-sky-600 text-white"
+                    : "text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                {NOMBRE_QUIEN[q]}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            {refreshing ? "Actualizando..." : "Actualizar"}
+          </button>
+        </div>
       </div>
 
       {/* Aviso de seguridad del dinero (solo si algo requiere revisión). Es lo
@@ -513,6 +589,33 @@ export default function AdminDashboard() {
             💶 Depósito medio{" "}
             <span className="text-slate-300 font-medium">{eur(mediaTotal)}</span>
           </p>
+        )}
+        {/* De ese balance, cuánto es de cada uno (mismos colores que en Reparto y
+            en Gastos). Quien esté mirando sale primero y resaltado. */}
+        {reparto && (reparto.kingz !== 0 || reparto.prz !== 0) && (
+          <Link href="/admin/reparto" className="mt-4 flex flex-wrap items-center gap-2 text-sm group">
+            {(["kingz", "prz"] as const)
+              .slice()
+              .sort((a, b) => (a === quienSoy ? -1 : b === quienSoy ? 1 : 0))
+              .map((q) => (
+                <span
+                  key={q}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 ${
+                    q === "kingz"
+                      ? "border-emerald-400/50 bg-emerald-500/10"
+                      : "border-sky-400/50 bg-sky-500/10"
+                  } ${quienSoy && q !== quienSoy ? "opacity-70" : ""} ${
+                    q === quienSoy ? "ring-1 ring-white/25" : ""
+                  }`}
+                >
+                  <span className="text-slate-300">{NOMBRE_QUIEN[q]}</span>
+                  <b className={`tabular-nums ${q === "kingz" ? "text-emerald-300" : "text-sky-300"}`}>
+                    {eur(q === "kingz" ? reparto.kingz : reparto.prz)}
+                  </b>
+                </span>
+              ))}
+            <span className="text-xs text-slate-500 group-hover:text-slate-300">ver reparto →</span>
+          </Link>
         )}
       </div>
 
