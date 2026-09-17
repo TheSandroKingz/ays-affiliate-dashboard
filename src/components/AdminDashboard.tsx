@@ -17,7 +17,6 @@ const LABEL_OVERRIDES = { commission: "Margen" };
 // Fallback ESTABLE para cuando aún no hay datos (si fuera un literal en el JSX,
 // cambiaría de referencia en cada render y BalanceChart re-renderizaría siempre).
 const EMPTY_CHART = [{ date: "", commission: 0 }];
-import Confetti from "@/components/Confetti";
 import { reproducirSonido } from "@/lib/sonido";
 
 type DailyRow = {
@@ -320,7 +319,6 @@ export default function AdminDashboard() {
     <div className="flex flex-col gap-6">
       {celebrar && (
         <>
-          <Confetti />
           <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
             <div className="animate-celebra bg-emerald-600 text-white font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2">
               <span className="text-xl">🎉</span> ¡Nuevo FTD!
@@ -330,7 +328,6 @@ export default function AdminDashboard() {
       )}
       {hito !== null && (
         <>
-          <Confetti />
           <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
             <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
               <span className="text-xl">🏆</span> ¡Has pasado los {eur(hito)} este mes!

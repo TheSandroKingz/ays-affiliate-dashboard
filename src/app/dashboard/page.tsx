@@ -9,7 +9,6 @@ import ContactManagerButton from "@/components/ContactManagerButton";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import AdminDashboard from "@/components/AdminDashboard";
 import LoadError from "@/components/LoadError";
-import Confetti from "@/components/Confetti";
 import { reproducirSonido } from "@/lib/sonido";
 import { useProfile } from "@/components/DashboardProvider";
 import { metricConfig } from "@/lib/metrics";
@@ -468,7 +467,6 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       {celebrar && (
         <>
-          <Confetti />
           <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
             {recordHoy !== null ? (
               <div className="animate-celebra bg-amber-500 text-black font-semibold px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.7)] flex items-center gap-2">
@@ -531,10 +529,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ¡Feliz cumpleaños! (con confeti). */}
+      {/* ¡Feliz cumpleaños! */}
       {esCumple && (
         <>
-          <Confetti />
           <div className="animate-in rounded-xl border border-amber-400/50 bg-amber-500/10 px-5 py-4 text-center">
             <p className="text-lg font-semibold text-white">
               🎂 ¡Feliz cumpleaños{displayName ? `, ${displayName}` : ""}! 🎉
