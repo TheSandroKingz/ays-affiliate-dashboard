@@ -99,7 +99,12 @@ export function segundaPersona(txt: string): string {
 export const CONTACTO_NO_OFICIAL = new RegExp(
   [
     String.raw`@\s?celsius\w*|@\s?casinocelsius`,
-    String.raw`\b(escr[ií]b\w*|contact\w*|h[aá]bl\w*|pregunt\w*|b[uú]sca\w*|m[aá]nda\w*|prueba\w*)\b[^.\n]{0,25}\b(por|en|a trav[eé]s de)\s+(su\s+)?(telegram|instagram|facebook|twitter|tiktok|whatsapp)\b`,
+    // Solo cuando el bot MANDA al jugador a esas redes (imperativo o sugerencia).
+    // ⛔ NO debe saltar con avisos buenos, que antes se borraban enteros:
+    //    "nunca te voy a escribir por Instagram pidiéndote dinero" (negación) ni
+    //    "si alguien te escribió por Instagram, no era yo" (lo cuenta, no lo manda).
+    //    Casos reales de 7 días (iAfrika).
+    String.raw`(?<!\b(?:no|nunca|jam[aá]s|ning[uú]n|nadie|ni|tampoco)\b[^.\n]{0,25})\b(escr[ií]bel\w*|escr[ií]bles|m[aá]ndal\w*|env[ií]al\w*|cont[aá]ctal\w*|h[aá]blal\w*|preg[uú]ntal\w*|b[uú]scal\w*|prueba\w*|intenta\w*)\b[^.\n]{0,25}\b(por|en|a trav[eé]s de)\s+(su\s+)?(telegram|instagram|facebook|twitter|tiktok|whatsapp)\b`,
     String.raw`\b(e-?mail|correo)(\s+electr[oó]nico)?\s+de\s+(contacto|celsius|soporte)\b`,
     String.raw`\b(escr[ií]be(les)?|m[aá]nda(les)?|env[ií]a(les)?)\s+(un\s+)?(e-?mail|correo)\b`,
   ].join("|"),

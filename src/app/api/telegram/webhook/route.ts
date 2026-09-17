@@ -1275,7 +1275,7 @@ export async function POST(request: Request) {
             .then(() => {}, () => {});
           apuntarFallo("as", chatId, "silenciado: la IA decidió callarse 2 veces en una hora");
           if (OWNER_CHAT_ID) {
-            await tgEnviar(
+            void tgEnviar(
               String(OWNER_CHAT_ID),
               `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): el bot ha decidido callarse dos veces en una hora. Para reactivarlo, quítale el silencio en el panel.`
             ).catch(() => {});

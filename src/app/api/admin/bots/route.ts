@@ -13,6 +13,9 @@ import { BOTS } from "@/lib/bots";
 // frenaba nada: con el coste real son más de 150 € en un día.
 const TOPE_IA = 1500;
 
+// Hace muchas consultas a la vez; sin esto se queda en el tope por defecto de Vercel.
+export const maxDuration = 60;
+
 // Precios de Anthropic para el modelo de los bots ($ por millón de tokens).
 // Con esto el panel dice lo que cuesta DE VERDAD, sin estimar.
 const PRECIO = { entrada: 3, cacheLee: 0.3, cacheEscribe: 6, salida: 15 };
@@ -142,23 +145,23 @@ export async function GET(request: Request) {
       ),
       // Tu CPA (el que te paga Celsius). Sirve para calcular TU margen por afiliado.
       supabaseAdmin.from("affiliates").select("cpa_spain").eq("user_id", user.id).maybeSingle(),
-      // Lo que cuesta la IA: del día 1 del mes hasta ahora (hoy sale de estas mismas
-      // filas). Si la tabla aún no existe, se sigue sin coste.
-      traerTodo<UsoIA>((d, h) =>
-        supabaseAdmin
-          .from("ia_uso")
-          .select("created_at, bot, entrada, cache_lee, cache_escribe, salida")
-          .gte("created_at", new Date(Date.parse(hoyKey.slice(0, 7) + "-01T00:00:00Z") - offMadrid * 3600_000).toISOString())
-          .order("id", { ascending: true })
-          .range(d, h)
-      ).then((data) => ({ data })).catch(() => ({ data: [] as UsoIA[] })),
-      // Mensajes de hoy que se quedaron SIN respuesta y por qué.
+      // Lo que cuesta la IA este mes. Primero, del resumen diario (unas pocas filas);
+      // si esa vista aún no está creada, se cae al detalle como antes.
+      // Medido: el detalle son ~2.500 filas hoy y 24.000-30.000 a fin de mes.
+      supabaseAdmin
+        .from("ia_uso_diario")
+        .select("dia, bot, entrada, cache_lee, cache_escribe, salida")
+        .gte("dia", hoyKey.slice(0, 7) + "-01")
+        .limit(1000),
+      // Mensajes de hoy que se quedaron SIN respuesta y por qué. Si un día hay
+      // muchísimos (la API de Anthropic caída), interesa el número REAL: por eso
+      // se piden 1.000, el tope de PostgREST, y se avisa si se llega a él.
       supabaseAdmin
         .from("ia_fallos")
         .select("bot, chat_id, motivo, created_at")
         .gte("created_at", new Date(inicioHoy).toISOString())
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(1000),
       // Silenciados EN VIVO (los que siguen sin reactivar).
       supabaseAdmin
         .from("lista_negra")
@@ -240,11 +243,26 @@ export async function GET(request: Request) {
   // Coste de la IA por bot: hoy y lo que va de mes.
   const costeHoy = new Map<string, number>();
   const costeMes = new Map<string, number>();
-  for (const r of (usoIa.data ?? []) as UsoIA[]) {
+  let filasUso = (usoIa.data ?? []) as (UsoIA & { dia?: string })[];
+  if (usoIa.error) {
+    // Sin la vista del resumen (db/ia_uso_diario.sql sin correr): al detalle.
+    const detalle = await traerTodo<UsoIA>((d, h) =>
+      supabaseAdmin
+        .from("ia_uso")
+        .select("created_at, bot, entrada, cache_lee, cache_escribe, salida")
+        .gte("created_at", new Date(Date.parse(hoyKey.slice(0, 7) + "-01T00:00:00Z") - offMadrid * 3600_000).toISOString())
+        .order("id", { ascending: true })
+        .range(d, h)
+    ).catch(() => [] as UsoIA[]);
+    filasUso = detalle;
+  }
+  for (const r of filasUso) {
     const k = claveBot(r.bot);
     const c = costeDe(r);
     costeMes.set(k, (costeMes.get(k) ?? 0) + c);
-    if (Date.parse(r.created_at) >= inicioHoy) costeHoy.set(k, (costeHoy.get(k) ?? 0) + c);
+    // Del resumen viene el día (Madrid); del detalle, la hora exacta.
+    const esHoy = r.dia ? r.dia === hoyKey : Date.parse(r.created_at) >= inicioHoy;
+    if (esHoy) costeHoy.set(k, (costeHoy.get(k) ?? 0) + c);
   }
   // Mensajes de hoy sin respuesta, por bot (con el último motivo, para el panel).
   const fallosPorBot = new Map<string, { n: number; ultimo: string }>();

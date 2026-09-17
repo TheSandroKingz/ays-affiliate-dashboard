@@ -167,6 +167,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
     }
 
+    // ⛔ SOLO se puede reactivar a quien está AHORA en la lista negra. Sin esto,
+    //    con un chat_id a mano se le podía quitar el silencio a cualquiera, incluido
+    //    quien fue silenciado por amenazas o por gasto (revisión del 17-sep).
+    const { data: enLista } = await supabaseAdmin
+      .from("lista_negra")
+      .select("id")
+      .eq("bot", bot)
+      .eq("chat_id", chatId)
+      .is("reactivado_at", null)
+      .limit(1);
+    if (!enLista?.length) {
+      return NextResponse.json({ error: "Ese jugador no está en la lista negra." }, { status: 404 });
+    }
+
     // 1) Quitarle el silencio: sin esto el bot seguiría sin responderle.
     //    El bot de Sandro ("as") vive en telegram_contacts; el resto en bot_contacts.
     const esAs = bot === "as";
@@ -188,7 +202,9 @@ export async function POST(request: Request) {
         reactivado_por: user.email ?? user.id,
       })
       .eq("bot", bot)
-      .eq("chat_id", chatId);
+      .eq("chat_id", chatId)
+      // Solo la que está activa: si no, se pisaba el rastro de reactivaciones viejas.
+      .is("reactivado_at", null)
     if (errLista) {
       return NextResponse.json({ error: errLista.message }, { status: 500 });
     }

@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       .maybeSingle(),
     supabaseAdmin
       .from("ia_fallos")
-      .select("bot, motivo, created_at")
+      .select("bot, motivo, created_at", { count: "exact" })
       .gte("created_at", inicioHoy)
       .order("created_at", { ascending: false })
       .limit(50),
@@ -41,6 +41,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     respuestasHoy: respuestas.count ?? 0,
     revisor: revisor.data ?? null,
+    // El NÚMERO va aparte de la lista: la lista está capada a 50 para no traer de más.
+    sinContestarHoy: fallos.count ?? (fallos.data ?? []).length,
     fallos: (fallos.data ?? []).map((f) => ({ bot: f.bot, motivo: f.motivo, cuando: f.created_at })),
   });
 }

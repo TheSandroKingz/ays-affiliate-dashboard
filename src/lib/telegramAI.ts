@@ -577,7 +577,11 @@ function sinTrabajarConLaCasa(txt: string): string {
 // llevas?" → "a por ello, cuánto llevas?") y, si no, nada.
 const EMOJI_SRC = String.raw`(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F})(?:[\u{1F3FB}-\u{1F3FF}\u{FE0F}]|\u{200D}(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F}))*`;
 const SIGUE_EMOJI = new RegExp(String.raw`^\s*` + EMOJI_SRC, "u");
-const COLA_EMOJIS = new RegExp(String.raw`(?:\s|` + EMOJI_SRC + String.raw`)+$`, "u");
+// ⚠️ Esto NO puede construirse juntando EMOJI_SRC con un "+": un tono de piel suelto
+// (🏻) casa con dos alternativas a la vez y el motor prueba 2^n repartos → con 24
+// emojis tarda 0,6 s y con 30 unos 45 s (medido), o sea, función muerta y jugador sin
+// respuesta. Una clase de caracteres plana hace lo mismo y es lineal.
+const COLA_EMOJIS = /[\s\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}\p{Extended_Pictographic}]+$/u;
 const PREGUNTA_SUELTA = /^(qu[eé]|cu[aá]nt[oa]s?|c[oó]mo|d[oó]nde|cu[aá]l(es)?|qui[eé]n|cu[aá]ndo|por qu[eé]|y t[uú]|dime)(?![\p{L}])/iu;
 function separadorEmoji(todo: string, off: number, largo: number): string {
   const despues = todo.slice(off + largo);
@@ -648,7 +652,7 @@ export function quitarGuiones(txt: string): string {
     .replace(/\s+-\s+/g, ", ") // " - " usado como guion → coma
     .replace(/,\s*,/g, ",") // comas duplicadas que puedan quedar
     .replace(/\s+([.,!?])/g, "$1")
-    .replace(/\s{2,}/g, " ")
+    .replace(/[^\S\n]{2,}/g, " ") // ⚠️ \s comía los saltos de línea de las listas
     .replace(/^[\s,]+/, "")
     .trim();
   // Quita el/los 👍 finales (con tono de piel o repetidos) y los espacios previos.
@@ -948,7 +952,10 @@ async function crearConGuardia(
   client: Anthropic,
   system: Anthropic.TextBlockParam[],
   messages: Anthropic.MessageParam[],
-  inicioMs?: number
+  inicioMs?: number,
+  // Para apuntar el gasto al bot que es: sin esto, ia_uso.bot iba SIEMPRE vacío y
+  // el panel le imputaba a A&S el gasto de los cinco bots.
+  bot?: string | null
 ): Promise<string> {
   // Si ni la PRIMERA llamada cabe en lo que queda, no se lanza: se contesta con
   // una respuesta fija. Antes solo se miraba antes de las llamadas ENCADENADAS,
@@ -964,7 +971,7 @@ async function crearConGuardia(
     { model: MODELO, max_tokens: 300, system, messages },
     opcionesIA(inicioMs)
   );
-  apuntarUso("respuesta", res);
+  apuntarUso("respuesta", res, bot);
   let txt = textoDe(res);
   // ANTI-REPETICIÓN: si la respuesta es casi igual a ALGUNO de los últimos 3
   // mensajes del bot, regenera UNA vez pidiendo algo distinto. Miramos 3 (no solo
@@ -979,7 +986,7 @@ async function crearConGuardia(
       { model: MODELO, max_tokens: 300, system: [...system, avisoRep], messages },
       opcionesIA(inicioMs)
     );
-    apuntarUso("repeticion", resR);
+    apuntarUso("repeticion", resR, bot);
     const txtR = textoDe(resR);
     if (txtR) txt = txtR;
   }
@@ -1056,7 +1063,7 @@ async function crearConGuardia(
     { model: MODELO, max_tokens: 300, system: [...system, aviso], messages },
     opcionesIA(inicioMs)
   );
-  apuntarUso("regeneracion", res2);
+  apuntarUso("regeneracion", res2, bot);
   const txt2 = textoDe(res2);
   if (
     txt2 &&
@@ -1178,7 +1185,8 @@ async function revisarBorrador(
   maestro: string,
   messages: Anthropic.MessageParam[],
   borrador: string,
-  inicioMs: number
+  inicioMs: number,
+  bot?: string | null
 ): Promise<string> {
   if (!REVISION_ACTIVA || !borrador) return borrador;
   if (Date.now() - inicioMs > REVISION_MARGEN_MS) {
@@ -1282,12 +1290,14 @@ async function revisarBorrador(
       apuntarRevisor("saltado");
       return borrador; // se acabó el tiempo: va el borrador tal cual
     }
+    // Se apunta ANTES de decidir qué hacer con ella: esa llamada ya está pagada
+    // aunque la respuesta no sirva (antes no aparecía en ia_uso y el coste salía bajo).
+    apuntarUso("revisor", res, bot);
     // Si la corrección se cortó por quedarse sin tokens, saldría a medias.
     if (res.stop_reason === "max_tokens") {
       apuntarRevisor("rechazado");
       return borrador;
     }
-    apuntarUso("revisor", res);
     const salida = textoDe(res).trim();
     // El revisor NO puede silenciar a nadie: si devuelve una orden de callarse,
     // se ignora y va el borrador (como con cualquier acotación suya).
@@ -1434,13 +1444,13 @@ export async function responderIA(
       "as",
       chatId,
       (banco) => sistemaCacheado(SYSTEM, promo, nombre, banco),
-      (sys) => crearConGuardia(client, sys, messages, inicioMs)
+      (sys) => crearConGuardia(client, sys, messages, inicioMs, "as")
     );
     // Si ha escrito la orden de callarse, ni se revisa ni se manda (ver CALLAR).
     const calla1 = ordenDeCallar(txt);
     if (calla1) return calla1;
     // Segunda pasada: el revisor mira el borrador antes de que salga.
-    if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs);
+    if (txt) txt = await revisarBorrador(client, SYSTEM, messages, txt, inicioMs, "as");
     const calla2 = ordenDeCallar(txt);
     if (calla2) return calla2;
     // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
@@ -1450,7 +1460,7 @@ export async function responderIA(
     // Comprobaciones mecánicas que el código puede asegurar (ver reglasMecanicas.ts).
     if (txt) txt = aplicarReglasMecanicas(txt, nombre);
     if (txt) txt = vozDeSandro(txt);
-    const final = txt ? variarLamentos(quitarGuiones(txt), ultimosAssistantTextos(messages, 6), "as") || null : null;
+    const final = txt ? variarLamentos(quitarGuiones(txt), ultimosAssistantTextos(messages, 3), "as") || null : null;
     if (!final) apuntarFallo("as", chatId, "la IA devolvió una respuesta vacía");
     return final;
   } catch (e) {
@@ -1481,13 +1491,13 @@ export async function responderIABot(
       botKey || "",
       chatId,
       (banco) => sistemaCacheado(persona, promo, nombre, banco),
-      (sys) => crearConGuardia(client, sys, messages, inicioMs)
+      (sys) => crearConGuardia(client, sys, messages, inicioMs, botKey)
     );
     // Si ha escrito la orden de callarse, ni se revisa ni se manda (ver CALLAR).
     const calla1 = ordenDeCallar(txt);
     if (calla1) return calla1;
     // Segunda pasada: el revisor mira el borrador antes de que salga.
-    if (txt) txt = await revisarBorrador(client, persona, messages, txt, inicioMs);
+    if (txt) txt = await revisarBorrador(client, persona, messages, txt, inicioMs, botKey);
     const calla2 = ordenDeCallar(txt);
     if (calla2) return calla2;
     // Si nombra cómo está hecho por dentro (ver FUGA_INTERNA), respuesta segura.
@@ -1496,7 +1506,7 @@ export async function responderIABot(
     if (txt) txt = sinPromesas(txt);
     // Comprobaciones mecánicas que el código puede asegurar (ver reglasMecanicas.ts).
     if (txt) txt = aplicarReglasMecanicas(txt, nombre);
-    const final = txt ? variarLamentos(quitarGuiones(txt), ultimosAssistantTextos(messages, 6), botKey) || null : null;
+    const final = txt ? variarLamentos(quitarGuiones(txt), ultimosAssistantTextos(messages, 3), botKey) || null : null;
     if (!final) apuntarFallo(botKey || "?", chatId, "la IA devolvió una respuesta vacía");
     return final;
   } catch (e) {

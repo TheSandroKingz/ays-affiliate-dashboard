@@ -10,6 +10,7 @@ import { proximoPagoYaiza } from "@/lib/yaizaPago";
 // mensajes que se quedaron sin contestar. Es lo que sirve para revisar los chats.
 type EstadoBot = {
   respuestasHoy: number;
+  sinContestarHoy?: number;
   revisor: { total: number; corrigio: number; sin_cambios: number; saltado: number; rechazado: number } | null;
   fallos: { bot: string | null; motivo: string; cuando: string }[];
 };
@@ -88,7 +89,7 @@ export default function BotLectorPage() {
             </span>
           )}
           <span className={estado.fallos.length > 0 ? "text-amber-300" : "text-slate-300"}>
-            Sin contestar hoy <b className={estado.fallos.length > 0 ? "text-amber-200" : "text-white"}>{estado.fallos.length}</b>
+            Sin contestar hoy <b className={estado.fallos.length > 0 ? "text-amber-200" : "text-white"}>{estado.sinContestarHoy ?? estado.fallos.length}</b>
             {estado.fallos.length > 0 && (
               <span className="text-slate-500"> · {estado.fallos[0].motivo}</span>
             )}

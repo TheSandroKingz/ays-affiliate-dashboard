@@ -94,6 +94,8 @@ export default function EstadoBotsPage() {
         return;
       }
       setSilenciados((prev) => prev.filter((x) => !(x.bot === bot && x.chat_id === chatId)));
+      // Recargamos: si el silencio se quitó pero la lista negra falló, hay que verlo.
+      await cargar();
     } finally {
       setReactivando(null);
     }

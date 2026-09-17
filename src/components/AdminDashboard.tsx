@@ -98,7 +98,7 @@ export default function AdminDashboard() {
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [paises, setPaises] = useState<{ code: string; n: number }[]>([]);
   // Reparto del mes con el socio (para verlo sin salir del inicio).
-  const [reparto, setReparto] = useState<{ kingz: number; prz: number } | null>(null);
+  const [reparto, setReparto] = useState<{ kingz: number; prz: number; penalizacion: number } | null>(null);
   // Quién de los dos está mirando (se recuerda en ESTE móvil, no en la cuenta).
   const [quienSoy, setQuienSoy] = useState<Quien>(null);
   const [celebrar, setCelebrar] = useState(false);
@@ -136,7 +136,11 @@ export default function AdminDashboard() {
       ]);
       setReparto(
         rep?.reparto
-          ? { kingz: Number(rep.reparto.sandroTotal ?? 0), prz: Number(rep.reparto.socioTotal ?? 0) }
+          ? {
+              kingz: Number(rep.reparto.sandroTotal ?? 0),
+              prz: Number(rep.reparto.socioTotal ?? 0),
+              penalizacion: Number(rep.penalizacion ?? 0),
+            }
           : null
       );
 
@@ -614,7 +618,11 @@ export default function AdminDashboard() {
                   </b>
                 </span>
               ))}
-            <span className="text-xs text-slate-500 group-hover:text-slate-300">ver reparto →</span>
+            <span className="text-xs text-slate-500 group-hover:text-slate-300">
+              {reparto.penalizacion > 0
+                ? `(ya descontada la penalización de ${eur(reparto.penalizacion)}) ver reparto →`
+                : "ver reparto →"}
+            </span>
           </Link>
         )}
       </div>

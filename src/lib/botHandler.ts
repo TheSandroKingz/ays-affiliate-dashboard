@@ -1188,7 +1188,7 @@ export async function procesarUpdate(
           .then(() => {}, () => {});
         apuntarFallo(bot.key, chatId, "silenciado: la IA decidió callarse 2 veces en una hora");
         if (owner) {
-          await tgEnviar(
+          void tgEnviar(
             String(owner),
             `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: el bot ha decidido callarse dos veces en una hora. Reactívalo quitándole el silencio en el panel.`,
             {},
