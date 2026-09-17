@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
 import { TableSkeleton } from "@/components/Skeletons";
+import Link from "next/link";
 import LoadError from "@/components/LoadError";
 import { eur } from "@/lib/format";
 import { tiempoRelativo } from "@/lib/ui";
@@ -21,6 +22,7 @@ type Evento = {
   afp: string | null;
   isocountry: string | null;
   name: string | null;
+  matched_user_id: string | null; // para poder abrir SU ficha desde el nombre
 };
 
 const TIPO: Record<string, string> = {
@@ -215,7 +217,15 @@ export default function ActividadPage() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
               >
                 <div className="text-sm text-white min-w-0">
-                  <span className="font-medium">{e.name ?? e.tracking_code ?? "—"}</span>
+                  <span className="font-medium">
+                    {e.name && e.matched_user_id ? (
+                      <Link href={`/admin/afiliado/${e.matched_user_id}`} className="text-emerald-400 hover:text-emerald-300 hover:underline" title="Ver sus estadísticas">
+                        {e.name}
+                      </Link>
+                    ) : (
+                      e.name ?? e.tracking_code ?? "—"
+                    )}
+                  </span>
                   <span
                     className={
                       "ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border " +
@@ -288,7 +298,15 @@ export default function ActividadPage() {
                 key={c.user_id}
                 className="flex items-center justify-between gap-2 text-sm text-white rounded-lg border border-white/10 bg-black/30 px-3 py-1.5"
               >
-                <span className="font-medium">{c.nombre ?? "—"}</span>
+                <span className="font-medium">
+                  {c.nombre ? (
+                    <Link href={`/admin/afiliado/${c.user_id}`} className="text-emerald-400 hover:text-emerald-300 hover:underline" title="Ver sus estadísticas">
+                      {c.nombre}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </span>
                 <span className="text-amber-200">
                   <b>{c.ftd}</b> FTD / {c.clicks} clics
                   {c.pct !== null ? (
@@ -409,7 +427,17 @@ export default function ActividadPage() {
                       {TIPO[e.event_type] ?? e.event_type}
                     </td>
                     <td className="border border-white/10 px-4 py-3 whitespace-nowrap">
-                      {e.name ?? <span className="text-slate-500">{e.tracking_code || "—"}</span>}
+                      {e.name ? (
+                        e.matched_user_id ? (
+                          <Link href={`/admin/afiliado/${e.matched_user_id}`} className="text-emerald-400 hover:text-emerald-300 hover:underline" title="Ver sus estadísticas">
+                            {e.name}
+                          </Link>
+                        ) : (
+                          e.name
+                        )
+                      ) : (
+                        <span className="text-slate-500">{e.tracking_code || "—"}</span>
+                      )}
                     </td>
                     <td className="border border-white/10 px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${b.cls}`}>
