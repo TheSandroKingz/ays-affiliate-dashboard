@@ -51,6 +51,12 @@ export default function AfiliadoDetallePage() {
   const params = useParams();
   const router = useRouter();
   const userId = String(params.id ?? "");
+  // Volver a la página anterior (Actividad, Reparto, Comisiones, Mis Afiliados…).
+  // Si se abrió en una pestaña nueva no hay historial, así que se va a Mis Afiliados.
+  const volver = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/admin");
+  };
 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [daily, setDaily] = useState<DailyRow[]>([]);
@@ -233,12 +239,12 @@ export default function AfiliadoDetallePage() {
   if (error || !perfil) {
     return (
       <main className="flex flex-col gap-6">
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+        <button
+          onClick={volver}
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white self-start min-h-[44px]"
         >
           <ArrowLeft size={16} /> Volver
-        </Link>
+        </button>
         <LoadError onRetry={() => load(periodo)} />
       </main>
     );
@@ -273,12 +279,12 @@ export default function AfiliadoDetallePage() {
 
   return (
     <main className="flex flex-col gap-5">
-      <Link
-        href="/admin"
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+      <button
+        onClick={volver}
+        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white self-start min-h-[44px]"
       >
-        <ArrowLeft size={16} /> Volver a Mis Afiliados
-      </Link>
+        <ArrowLeft size={16} /> Volver
+      </button>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-4 min-w-0">
