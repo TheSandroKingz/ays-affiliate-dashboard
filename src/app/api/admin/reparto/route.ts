@@ -97,7 +97,7 @@ export async function GET(request: Request) {
   // Reparto por fuente sobre la GANANCIA (margen). El % de cada uno va por
   // afiliado identificado por su USER_ID (NO por el nombre): así no se rompe
   // aunque renombres la cuenta ("Jeffer17"/"Mariam"). Cualquier otro afiliado, y
-  // el tráfico directo del admin, cae en "General / directo".
+  // el tráfico directo del admin, cae en "Los patrones".
   type Split = { grupo: string; sandro: number; socio: number };
   const REPARTO_POR_USUARIO: Record<string, Split> = {
     "13dd6a9d-2365-4ebb-923b-009e795aff51": { grupo: "Jeffer", sandro: 35, socio: 65 }, // Jeffer17
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     "16ef41d3-3dee-44cb-9a13-6a9a48c7ddeb": { grupo: "Tekio", sandro: 50, socio: 50 }, // TekioTakTak (streamer Twitch, a medias)
     "a6a970ff-a2e6-44d7-b027-4ea0f7bb9c68": { grupo: "Zayk", sandro: 50, socio: 50 }, // Zayk76 (streamer, a medias como Tekio)
   };
-  const GENERAL: Split = { grupo: "General / directo", sandro: 65, socio: 35 };
+  const GENERAL: Split = { grupo: "Los patrones", sandro: 65, socio: 35 };
 
   const grupos = new Map<string, { nombre: string; ftd: number; ganancia: number; sandro: number; socio: number }>();
   const sumar = (cfg: Split, ftd: number, ganancia: number) => {
@@ -165,7 +165,7 @@ export async function GET(request: Request) {
   }
 
   // Cada grupo con nombre propio es UN afiliado, así que su fila puede llevar a
-  // su ficha. "General / directo" junta a varios (y tu tráfico), así que no.
+  // su ficha. "Los patrones" junta a varios (y tu tráfico), así que no.
   const userIdPorGrupo = new Map(
     Object.entries(REPARTO_POR_USUARIO).map(([uid, cfg]) => [cfg.grupo, uid])
   );
