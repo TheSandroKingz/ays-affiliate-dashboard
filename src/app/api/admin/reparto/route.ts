@@ -164,8 +164,14 @@ export async function GET(request: Request) {
     }
   }
 
+  // Cada grupo con nombre propio es UN afiliado, así que su fila puede llevar a
+  // su ficha. "General / directo" junta a varios (y tu tráfico), así que no.
+  const userIdPorGrupo = new Map(
+    Object.entries(REPARTO_POR_USUARIO).map(([uid, cfg]) => [cfg.grupo, uid])
+  );
   const fuentes = [...grupos.values()].map((f) => ({
     nombre: f.nombre,
+    userId: userIdPorGrupo.get(f.nombre) ?? null,
     ftd: f.ftd,
     ganancia: f.ganancia,
     pctSandro: f.sandro,

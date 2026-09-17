@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ADMIN_USER_ID } from "@/lib/adminId";
+import Link from "next/link";
 import { eur } from "@/lib/format";
 
 type Fuente = {
   nombre: string;
+  userId?: string | null; // null en "General / directo" (son varios)
   ftd: number;
   ganancia: number;
   pctSandro: number;
@@ -157,7 +159,17 @@ export default function RepartoPage() {
                 key={f.nombre}
                 className="grid grid-cols-[1.4fr_.6fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-sm border-b border-white/5 last:border-0 min-w-[560px]"
               >
-                <span className="text-white">{f.nombre}</span>
+                {f.userId ? (
+                  <Link
+                    href={`/admin/afiliado/${f.userId}`}
+                    className="text-emerald-400 hover:text-emerald-300 hover:underline"
+                    title="Ver sus estadísticas"
+                  >
+                    {f.nombre}
+                  </Link>
+                ) : (
+                  <span className="text-white">{f.nombre}</span>
+                )}
                 <span className="text-right text-slate-300">{f.ftd}</span>
                 <span className="text-right text-slate-300">{eur(f.ganancia)}</span>
                 <span className="text-right text-emerald-300">
