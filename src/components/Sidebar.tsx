@@ -198,6 +198,15 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </Link>
         )}
 
+        {/* Reparto con los socios (solo tiene sentido si trabajan en equipo; la
+            propia página lo explica y manda a Gastos si aún no han puesto a nadie). */}
+        {!isAdmin && !soloBot && (
+          <Link href="/dashboard/reparto" className={linkClass("/dashboard/reparto")} onClick={onClose}>
+            <PieChart size={18} />
+            Reparto
+          </Link>
+        )}
+
         {!isAdmin && !esPropia && !soloBot && (
           <Link href="/dashboard/sub-affiliates" className={linkClass("/dashboard/sub-affiliates")} onClick={onClose}>
             <Users size={18} />

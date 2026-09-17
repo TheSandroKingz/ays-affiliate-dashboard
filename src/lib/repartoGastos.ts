@@ -8,7 +8,10 @@
 // admin y la API.
 
 export type Concepto = { nombre: string; pct: number[] }; // pct[i] = % del socio i
-export type ConfigGastos = { socios: string[]; conceptos: Concepto[] }; // socios [] = trabaja solo
+// ganancias[i] = % de LO QUE GANAN que se lleva el socio i. Es independiente del
+// % de los gastos (se puede repartir el dinero de una forma y los gastos de otra).
+// Sin poner = aún no lo han configurado.
+export type ConfigGastos = { socios: string[]; conceptos: Concepto[]; ganancias?: number[] }; // socios [] = trabaja solo
 export type Parte = { nombre: string; pct: number }; // % de una persona en un gasto
 export type GastoCuentas = { concepto: string; pagado_por: string | null; importe: number; reparto?: Parte[] | null };
 
@@ -84,7 +87,28 @@ export function validarConfig(entrada: unknown): { config: ConfigGastos } | { er
     }
     conceptos.push({ nombre, pct });
   }
-  return { config: { socios, conceptos } };
+  // % de ganancias (opcional): uno por socio, que sumen 100.
+  let ganancias: number[] | undefined;
+  const brutoG = (entrada as { ganancias?: unknown }).ganancias;
+  if (Array.isArray(brutoG) && brutoG.length) {
+    if (!socios.length) return { error: "Si trabajas solo no hay nada que repartir." };
+    if (brutoG.length !== socios.length) return { error: "Falta el % de ganancias de algún socio." };
+    ganancias = (brutoG as unknown[]).map((v) => Math.round(numero(v) * 100) / 100);
+    if (ganancias.some((p) => !(p >= 0) || p > 100)) return { error: "Algún % de ganancias no es válido." };
+    const suma = ganancias.reduce((a, b) => a + b, 0);
+    if (Math.abs(suma - 100) > 0.05) return { error: `Los % de ganancias suman ${fmt(suma)} % y tienen que sumar 100 %.` };
+  }
+  return { config: ganancias ? { socios, conceptos, ganancias } : { socios, conceptos } };
+}
+
+// Reparto de LO GANADO en el periodo entre los socios.
+export function cuentasGanancias(ganado: number, config: ConfigGastos) {
+  const pct = config.ganancias ?? [];
+  return config.socios.map((nombre, i) => ({
+    nombre,
+    pct: pct[i] ?? 0,
+    importe: (ganado * (pct[i] ?? 0)) / 100,
+  }));
 }
 
 // % de cada persona en UN gasto: hasta 8 nombres distintos, 0-100, suma 100.
