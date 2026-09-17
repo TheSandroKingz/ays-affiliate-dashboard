@@ -25,6 +25,11 @@ type Turno = { role: "user" | "assistant"; content: string };
 // Margen de tiempo (el dueño puede lanzar un envío a todos con /todos).
 export const maxDuration = 60;
 
+// Lo ÚNICO que se manda cuando la IA no contesta. Nada comercial y como mucho uno
+// por hora y por chat (ver más abajo): antes salía "¡Dale! 🔥 Recarga y entra a
+// jugar 👇" y podía repetirse decenas de veces seguidas.
+const ACUSE_IA = "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏";
+
 // Webhook del bot de Telegram: Telegram nos manda aquí cada mensaje.
 //  - /start      → guardamos al jugador y le damos la bienvenida (el gancho).
 //  - /stop       → se da de baja (no recibe más mensajes en masa).
@@ -1133,6 +1138,9 @@ export async function POST(request: Request) {
       // verdad si algo se desboca (un bucle, un ataque, un bot repitiendo).
       const TOPE_DIA = 1500;
       let respuesta: string | null = null;
+      // ¿El corte vino de los topes de gasto? Entonces no se manda mensaje de
+      // emergencia: sería justo lo que busca quien escribe para quemar tokens.
+      let frenadoPorGasto = false;
       if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
         const hoy = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Europe/Madrid",
@@ -1160,6 +1168,36 @@ export async function POST(request: Request) {
           : false;
         if (!dentroTope) apuntarFallo("as", chatId, "tope diario de IA alcanzado");
         else if (!dentroCapChat) apuntarFallo("as", chatId, "frenado por los topes de gasto (del chat o globales)");
+        // ⛔ Si el corte es por FRENO DE GASTO, no se le manda NADA (ni el mensaje de
+        // emergencia). El 17-sep el jugador "700" escribió 90 veces en 14 minutos
+        // para quemar tokens: la IA se frenó bien, pero el bot le contestó 45 veces
+        // "¡Dale! Recarga y entra a jugar". Y a la tercera vez que alguien agota el
+        // cupo en una hora, se le silencia: si escribe así, no viene a jugar.
+        frenadoPorGasto = !dentroTope || !dentroCapChat;
+        if (frenadoPorGasto && !(await rateLimitShared(`frenado:as:${chatId}`, 3, 60 * 60 * 1000))) {
+          await supabaseAdmin.from("telegram_contacts").update({ silenced: true }).eq("chat_id", chatId);
+          await supabaseAdmin
+            .from("lista_negra")
+            .upsert(
+              {
+                bot: "as",
+                chat_id: chatId,
+                motivo: "agotó el cupo de IA escribiendo sin parar",
+                reactivado_at: null,
+                reactivado_por: null,
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: "bot,chat_id" }
+            )
+            .then(() => {}, () => {});
+          apuntarFallo("as", chatId, "silenciado: agotó el cupo de IA tres veces en una hora");
+          if (OWNER_CHAT_ID) {
+            void tgEnviar(
+              String(OWNER_CHAT_ID),
+              `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}): está escribiendo sin parar y ha agotado el cupo de IA. Para reactivarlo, quítale el silencio en el panel.`
+            ).catch(() => {});
+          }
+        }
         if (dentroTope && dentroCapChat) {
           // Imagen para la IA: la del mensaje actual si trae; si no, la del último
           // mensaje reciente del jugador con media (para no perder el vídeo/foto
@@ -1337,44 +1375,30 @@ export async function POST(request: Request) {
         envioOk = !!rEnv?.ok;
         if (envioOk) algoEnviado = true;
         await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
-        // Si la IA falla (no por spam), no dejamos al jugador sin nada. (Si quedó
-        // "debounced", NO mandamos nada: responderá el último mensaje del grupo.)
-        // ⛔ !soloCierre: si el jugador solo suelta cortesía ("gracias/ok/vale"),
-        // NO respondemos con el pitch comercial (era el caso que soloCierre silencia).
-        // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
-        const rEnv = await tgEnviar(chatId, "¡Dale! 🔥 Recarga y entra a jugar 👇", {
-          reply_markup: botonSoloJugar(),
-        });
-        if (rEnv?.ok) {
+      } else if (
+        entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin &&
+        // ⛔ NUNCA si el corte fue por los topes de gasto (quien escribe sin parar
+        // no puede sacarle un mensaje al bot con cada intento).
+        !frenadoPorGasto &&
+        // ⛔ Como mucho UNO por hora y por chat: así no puede salir en bucle aunque
+        // la IA falle muchas veces seguidas (el 17-sep salieron 45 en 14 minutos).
+        (await rateLimitShared(`emergencia:as:${chatId}`, 1, 60 * 60 * 1000))
+      ) {
+        // La IA no ha contestado (fallo puntual). Un acuse humano y corto, para que
+        // sepa que le hemos leído. ⛔ NADA comercial: el "recarga y entra" que había
+        // aquí se mandaba también a quien acababa de perder o venía a quemar tokens
+        // (petición de Yaiza, 17-sep).
+        const rEnv = await tgEnviar(chatId, ACUSE_IA, {});
+        envioOk = !!rEnv?.ok;
+        if (envioOk) {
           algoEnviado = true;
           // Se guarda en el historial: si no, en el panel el chat salía como "sin
           // contestar" aunque al jugador le hubiera llegado este mensaje.
           await supabaseAdmin
             .from("telegram_messages")
-            .insert({ chat_id: chatId, role: "assistant", content: "¡Dale! 🔥 Recarga y entra a jugar 👇" })
+            .insert({ chat_id: chatId, role: "assistant", content: ACUSE_IA })
             .then(() => {}, () => {});
-          apuntarFallo("as", chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (recarga)");
-        }
-        await guardarMsg(chatId, midDe(rEnv));
-      } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
-        // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
-        // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
-        // Un acuse humano y corto, para que sepa que le hemos leído. (Un jugador
-        // estuvo 9 HORAS sin respuesta por caer justo en este hueco.)
-        const rEnv = await tgEnviar(
-          chatId,
-          "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏",
-          {}
-        );
-        envioOk = !!rEnv?.ok;
-        if (envioOk) {
-          algoEnviado = true;
-          await supabaseAdmin
-            .from("telegram_messages")
-            .insert({ chat_id: chatId, role: "assistant", content: "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏" })
-            .then(() => {}, () => {});
-          apuntarFallo("as", chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (acuse)");
+          apuntarFallo("as", chatId, "sin respuesta de la IA: se mandó el acuse (máx. 1 por hora)");
         }
         await guardarMsg(chatId, midDe(rEnv));
       }

@@ -1007,7 +1007,12 @@ export async function procesarUpdate(
     // La IA responde (si no está limitada, dentro del tope y no ha quedado debounced).
     // Freno de gasto del día: 1.500, igual que el bot de Sandro (a 5.000 no frenaba nada).
     const TOPE_DIA = 1500;
+
+// Lo ÚNICO que se manda cuando la IA no contesta (ver el webhook de Sandro).
+const ACUSE_IA = "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏";
     let respuesta: string | null = null;
+    // ¿El corte vino de los topes de gasto? Entonces nada de mensaje de emergencia.
+    let frenadoPorGasto = false;
     let promo = "";
     if (entrada && iaConfigurada() && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
       tgApi("sendChatAction", { chat_id: chatId, action: "typing" }, tok).catch(() => {});
@@ -1027,6 +1032,39 @@ export async function procesarUpdate(
         : false;
       if (!dentroTope) apuntarFallo(bot.key, chatId, "tope diario de IA alcanzado");
       else if (!dentroCapChat) apuntarFallo(bot.key, chatId, "frenado por los topes de gasto (del chat o globales)");
+      // Ver el webhook de Sandro: frenado por gasto = no se manda nada, y a la
+      // tercera vez en una hora, silencio y lista negra.
+      frenadoPorGasto = !dentroTope || !dentroCapChat;
+      if (frenadoPorGasto && !(await rateLimitShared(`frenado:${bot.key}:${chatId}`, 3, 60 * 60 * 1000))) {
+        await supabaseAdmin
+          .from("bot_contacts")
+          .update({ silenced: true })
+          .eq("bot", bot.key)
+          .eq("chat_id", chatId);
+        await supabaseAdmin
+          .from("lista_negra")
+          .upsert(
+            {
+              bot: bot.key,
+              chat_id: chatId,
+              motivo: "agotó el cupo de IA escribiendo sin parar",
+              reactivado_at: null,
+              reactivado_por: null,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: "bot,chat_id" }
+          )
+          .then(() => {}, () => {});
+        apuntarFallo(bot.key, chatId, "silenciado: agotó el cupo de IA tres veces en una hora");
+        if (owner) {
+          void tgEnviar(
+            String(owner),
+            `🔇 Silenciado ${esc(from.first_name ?? "un usuario")} (chat ${chatId}) en ${bot.label}: está escribiendo sin parar y ha agotado el cupo de IA. Reactívalo quitándole el silencio en el panel.`,
+            {},
+            tok
+          ).catch(() => {});
+        }
+      }
       if (dentroTope && dentroCapChat) {
         // Memoria de la charla (AHORA, tras el debounce → incluye los mensajes que
         // el jugador mandó agrupados). Filtramos el mensaje ACTUAL (miMsgId): ese
@@ -1242,43 +1280,22 @@ export async function procesarUpdate(
       // Ver webhook de Sandro: si Telegram no lo aceptó, no lo damos por dicho.
       envioOk = !!rEnv?.ok;
       if (envioOk) algoEnviado = true;
-    } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin && !noPitch.test(entrada)) {
-      // ⛔ !soloCierre: ante cortesía pura ("gracias/ok/vale") NO soltamos el pitch.
-      // ⛔ !noPitch: si perdió, tiene un problema o va de retiro, NADA de "recarga y entra".
-      const rPitch = await tgEnviar(
-        chatId,
-        "¡Dale! 🔥 Recarga y entra a jugar 👇",
-        { reply_markup: botonSoloJugar(bot.enlace) },
-        tok
-      );
-      if (rPitch?.ok) {
-        algoEnviado = true;
-        // Se guarda en el historial (ver el webhook de Sandro).
-        await supabaseAdmin
-          .from("bot_messages")
-          .insert({ bot: bot.key, chat_id: chatId, role: "assistant", content: "¡Dale! 🔥 Recarga y entra a jugar 👇" })
-          .then(() => {}, () => {});
-        apuntarFallo(bot.key, chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (recarga)");
-      }
-    } else if (entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin) {
-      // La IA falló y el jugador habla de una PÉRDIDA, un problema o una retirada
-      // (noPitch): aquí NO va el pitch comercial, pero dejarle en visto es peor.
-      // Un acuse humano y corto. (Ver el caso del jugador que estuvo 9 HORAS sin
-      // respuesta por caer justo en este hueco.)
-      const rAcuse = await tgEnviar(
-        chatId,
-        "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏",
-        {},
-        tok
-      );
+    } else if (
+      entrada && !callar && !limitado && !videoEnviado && !debounced && !soloCierre && !bucleFin &&
+      !frenadoPorGasto &&
+      (await rateLimitShared(`emergencia:${bot.key}:${chatId}`, 1, 60 * 60 * 1000))
+    ) {
+      // La IA no ha contestado (fallo puntual): acuse corto y humano, como mucho uno
+      // por hora. ⛔ Nada comercial (petición de Yaiza, 17-sep).
+      const rAcuse = await tgEnviar(chatId, ACUSE_IA, {}, tok);
       envioOk = !!rAcuse?.ok;
       if (envioOk) {
         algoEnviado = true;
         await supabaseAdmin
           .from("bot_messages")
-          .insert({ bot: bot.key, chat_id: chatId, role: "assistant", content: "Perdona la tardanza, lo estoy mirando y te digo algo en cuanto lo tenga 🙏" })
+          .insert({ bot: bot.key, chat_id: chatId, role: "assistant", content: ACUSE_IA })
           .then(() => {}, () => {});
-        apuntarFallo(bot.key, chatId, "sin respuesta de la IA: se mandó el mensaje de emergencia (acuse)");
+        apuntarFallo(bot.key, chatId, "sin respuesta de la IA: se mandó el acuse (máx. 1 por hora)");
       }
     }
 
