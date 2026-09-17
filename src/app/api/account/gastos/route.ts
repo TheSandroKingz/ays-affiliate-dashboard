@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getApprovedUser } from "@/lib/userAuth";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { leerConfig, guardarConfig } from "@/lib/repartoGastosServidor";
-import { validarReparto } from "@/lib/repartoGastos";
+import { validarReparto, parseImporte } from "@/lib/repartoGastos";
 
 // GASTOS DEL AFILIADO: como el apartado de Gastos del admin, con SU configuración
 // (socios y conceptos con el % de cada uno, ver repartoGastos.ts).
@@ -28,12 +28,6 @@ function rango(param: string | null): { desde: string | null; hasta: string | nu
   return { desde: `${mes}-01`, hasta: mes === hoy.slice(0, 7) ? hoy : ultimo, mesVista: mes };
 }
 
-// "12,50" / "1.234,56" / "12.5" → número.
-function parseImporte(v: unknown): number {
-  const s = String(v ?? "").trim().replace(/\s|€/g, "");
-  const n = s.includes(",") ? Number(s.replace(/\./g, "").replace(",", ".")) : Number(s);
-  return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
-}
 
 type Err = { code?: string; message?: string } | null;
 const tablaFalta = (e: Err) => !!e && (e.code === "42P01" || /relation .*gastos_afiliados/.test(e.message ?? ""));

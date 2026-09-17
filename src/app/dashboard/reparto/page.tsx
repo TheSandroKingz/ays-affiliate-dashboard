@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { eur } from "@/lib/format";
-import { cuentasGanancias, colorDe, repartoIgual, type ConfigGastos } from "@/lib/repartoGastos";
+import { cuentasGanancias, colorDe, gananciasValidas, repartoIgual, type ConfigGastos } from "@/lib/repartoGastos";
 
 // REPARTO CON LOS SOCIOS, para los afiliados que trabajan en equipo. Es lo mismo
 // que el admin tiene con su socio: lo ganado en el periodo y cuánto le toca a cada
@@ -16,7 +16,7 @@ const campo =
   "w-20 rounded-md bg-white/10 border border-white/15 text-white text-base sm:text-sm px-2 py-1.5 text-right [color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-emerald-500";
 const aTexto = (n: number) => String(n).replace(".", ",");
 
-type Datos = { ganado: number; ftd: number; gastado: number; config: ConfigGastos | null; mesVista: string | null };
+type Datos = { ganado: number; ftd: number; gastado: number | null; config: ConfigGastos | null; mesVista: string | null };
 
 export default function RepartoAfiliadoPage() {
   const [periodo, setPeriodo] = useState(
@@ -72,14 +72,15 @@ export default function RepartoAfiliadoPage() {
   const config = datos?.config ?? null;
   const socios = config?.socios ?? [];
   const esEquipo = socios.length >= 2;
-  const tienePcts = !!config?.ganancias?.length;
+  // Puestos Y válidos para los socios de ahora (si cambió el equipo, se repreguntan).
+  const tienePcts = gananciasValidas(config);
 
   // Al llegar la configuración, preparamos los % para editarlos (los suyos o a partes iguales).
   useEffect(() => {
     if (!config || !esEquipo) return;
     setPcts(
-      config.ganancias?.length
-        ? config.ganancias.map(aTexto)
+      gananciasValidas(config)
+        ? config.socios.map((s) => aTexto(config.ganancias?.find((g) => g.nombre === s)?.pct ?? 0))
         : repartoIgual(config.socios.length).map(aTexto)
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,7 +96,9 @@ export default function RepartoAfiliadoPage() {
       const r = await fetch("/api/account/gastos", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + t },
-        body: JSON.stringify({ config: { ...config, ganancias: pcts } }),
+        body: JSON.stringify({
+          config: { ...config, ganancias: socios.map((nombre, i) => ({ nombre, pct: pcts[i] ?? "" })) },
+        }),
       });
       const b = await r.json().catch(() => ({}));
       if (!r.ok) { setError(b?.error || "No se pudo guardar."); return; }
@@ -109,7 +112,7 @@ export default function RepartoAfiliadoPage() {
   }
 
   const ganado = datos?.ganado ?? 0;
-  const gastado = datos?.gastado ?? 0;
+  const gastado = datos?.gastado ?? null;
   const filas = config && esEquipo && tienePcts ? cuentasGanancias(ganado, config) : [];
   const sumaPcts = pcts.reduce((s, p) => s + (Number(p.replace(",", ".")) || 0), 0);
 
@@ -274,11 +277,17 @@ export default function RepartoAfiliadoPage() {
           </div>
 
           <p className="text-xs text-slate-500">
-            Se reparte lo GANADO ({eur(ganado)}), sin tocar los gastos. En el período llevas{" "}
-            <Link href="/dashboard/gastos" className="text-slate-400 hover:text-slate-200">
-              {eur(gastado)} de gastos
-            </Link>
-            , que se reparten con sus propios % ahí. Estos % son solo de las ganancias.
+            Se reparte lo GANADO ({eur(ganado)}), sin tocar los gastos.{" "}
+            {gastado != null && (
+              <>
+                En el período llevas{" "}
+                <Link href="/dashboard/gastos" className="text-slate-400 hover:text-slate-200">
+                  {eur(gastado)} de gastos
+                </Link>
+                , que se reparten con sus propios % ahí.{" "}
+              </>
+            )}
+            Estos % son solo de las ganancias.
           </p>
         </>
       )}

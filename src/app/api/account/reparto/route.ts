@@ -36,13 +36,14 @@ export async function GET(request: Request) {
   const ganado = (stats ?? []).reduce((s, r) => s + Number(r.commission ?? 0), 0);
   const ftd = (stats ?? []).reduce((s, r) => s + Number(r.ftd ?? 0), 0);
   // Gastos del periodo: para decir también lo que queda limpio tras los gastos.
-  let gastado = 0;
+  // Si esa consulta falla, se dice que NO se sabe en vez de enseñar un 0 € falso.
+  let gastado: number | null = 0;
   {
-    let g = supabaseAdmin.from("gastos_afiliados").select("importe").eq("user_id", user.id).limit(2000);
+    let g = supabaseAdmin.from("gastos_afiliados").select("importe").eq("user_id", user.id).limit(1000);
     if (desde) g = g.gte("fecha", desde);
     if (hasta) g = g.lte("fecha", hasta);
-    const { data } = await g;
-    gastado = (data ?? []).reduce((s, r) => s + Number(r.importe ?? 0), 0);
+    const { data, error: eg } = await g;
+    gastado = eg ? null : (data ?? []).reduce((s, r) => s + Number(r.importe ?? 0), 0);
   }
 
   return NextResponse.json({ ganado, ftd, gastado, config: cfg.config, mesVista });

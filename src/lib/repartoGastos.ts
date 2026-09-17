@@ -8,10 +8,11 @@
 // admin y la API.
 
 export type Concepto = { nombre: string; pct: number[] }; // pct[i] = % del socio i
-// ganancias[i] = % de LO QUE GANAN que se lleva el socio i. Es independiente del
-// % de los gastos (se puede repartir el dinero de una forma y los gastos de otra).
-// Sin poner = aún no lo han configurado.
-export type ConfigGastos = { socios: string[]; conceptos: Concepto[]; ganancias?: number[] }; // socios [] = trabaja solo
+// ganancias = % de LO QUE GANAN que se lleva cada socio, POR NOMBRE. Es
+// independiente del % de los gastos. Sin poner = aún no lo han configurado.
+// ⚠️ Por NOMBRE y no por posición: si iba por posición, al quitar o añadir un socio
+// los % se corrían de sitio y el dinero acababa en la persona equivocada.
+export type ConfigGastos = { socios: string[]; conceptos: Concepto[]; ganancias?: Parte[] }; // socios [] = trabaja solo
 export type Parte = { nombre: string; pct: number }; // % de una persona en un gasto
 export type GastoCuentas = { concepto: string; pagado_por: string | null; importe: number; reparto?: Parte[] | null };
 
@@ -36,6 +37,26 @@ const numero = (v: unknown) => {
   const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
 };
+
+// "12,50" / "1.234,56" / "12.5" / "1.500" → número.
+// ⚠️ Aquí se escribe en español: "1.500" son MIL QUINIENTOS, no 1,5. Antes se hacía
+// Number("1.500") = 1.5 y el gasto se guardaba 1.000 veces más pequeño, sin avisar.
+export function parseImporte(v: unknown): number {
+  let s = String(v ?? "").trim().replace(/\s|€/g, "");
+  if (!s) return NaN;
+  if (s.includes(",")) {
+    // Con coma, la coma son los decimales y los puntos son miles.
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else {
+    const puntos = (s.match(/\./g) ?? []).length;
+    const decimales = s.length - s.lastIndexOf(".") - 1;
+    // Varios puntos ("1.234.567") o exactamente 3 cifras detrás ("1.500") = miles.
+    // Un punto con 1 o 2 cifras detrás ("12.5", "12.50") son decimales.
+    if (puntos > 1 || (puntos === 1 && decimales === 3)) s = s.replace(/\./g, "");
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+}
 
 // A partes iguales, cuadrando a 100 con el último: 3 → 33,33 / 33,33 / 33,34.
 export function repartoIgual(n: number): number[] {
@@ -87,28 +108,48 @@ export function validarConfig(entrada: unknown): { config: ConfigGastos } | { er
     }
     conceptos.push({ nombre, pct });
   }
-  // % de ganancias (opcional): uno por socio, que sumen 100.
-  let ganancias: number[] | undefined;
+  // % de ganancias (opcional): uno por socio, por nombre, que sumen 100.
+  let ganancias: Parte[] | undefined;
   const brutoG = (entrada as { ganancias?: unknown }).ganancias;
   if (Array.isArray(brutoG) && brutoG.length) {
     if (!socios.length) return { error: "Si trabajas solo no hay nada que repartir." };
-    if (brutoG.length !== socios.length) return { error: "Falta el % de ganancias de algún socio." };
-    ganancias = (brutoG as unknown[]).map((v) => Math.round(numero(v) * 100) / 100);
-    if (ganancias.some((p) => !(p >= 0) || p > 100)) return { error: "Algún % de ganancias no es válido." };
-    const suma = ganancias.reduce((a, b) => a + b, 0);
+    const porNombre = new Map<string, number>();
+    for (const [i, x] of (brutoG as unknown[]).entries()) {
+      // Se acepta tanto [{nombre, pct}] como una lista de números en el orden de
+      // los socios (que es como lo manda la pantalla al escribirlos).
+      const esObjeto = !!x && typeof x === "object";
+      const nombre = esObjeto ? limpiar((x as { nombre?: unknown }).nombre) : socios[i] ?? "";
+      const pct = Math.round(numero(esObjeto ? (x as { pct?: unknown }).pct : x) * 100) / 100;
+      const socio = socios.find((sx) => norm(sx) === norm(nombre));
+      if (!socio) return { error: `"${nombre || "(sin nombre)"}" no es uno de tus socios.` };
+      if (!(pct >= 0) || pct > 100) return { error: `Falta el % de ganancias de ${socio} o no es válido.` };
+      porNombre.set(socio, pct);
+    }
+    const falta = socios.find((sx) => !porNombre.has(sx));
+    if (falta) return { error: `Falta el % de ganancias de ${falta}.` };
+    const suma = [...porNombre.values()].reduce((a, b) => a + b, 0);
     if (Math.abs(suma - 100) > 0.05) return { error: `Los % de ganancias suman ${fmt(suma)} % y tienen que sumar 100 %.` };
+    ganancias = socios.map((nombre) => ({ nombre, pct: porNombre.get(nombre) ?? 0 }));
   }
   return { config: ganancias ? { socios, conceptos, ganancias } : { socios, conceptos } };
 }
 
-// Reparto de LO GANADO en el periodo entre los socios.
+// Reparto de LO GANADO en el periodo entre los socios (busca por NOMBRE).
 export function cuentasGanancias(ganado: number, config: ConfigGastos) {
-  const pct = config.ganancias ?? [];
-  return config.socios.map((nombre, i) => ({
-    nombre,
-    pct: pct[i] ?? 0,
-    importe: (ganado * (pct[i] ?? 0)) / 100,
-  }));
+  return config.socios.map((nombre) => {
+    const pct = pctDe(config.ganancias ?? [], nombre);
+    return { nombre, pct, importe: (ganado * pct) / 100 };
+  });
+}
+
+// ¿Están puestos los % de ganancias Y siguen valiendo para los socios de ahora?
+// Si cambió la lista de socios, se consideran NO configurados: mejor volver a
+// preguntarlos que repartir el dinero con datos viejos.
+export function gananciasValidas(config: ConfigGastos | null | undefined): boolean {
+  const g = config?.ganancias ?? [];
+  if (!config || config.socios.length < 2 || g.length !== config.socios.length) return false;
+  if (!config.socios.every((s) => g.some((x) => norm(x.nombre) === norm(s)))) return false;
+  return Math.abs(g.reduce((a, b) => a + b.pct, 0) - 100) <= 0.05;
 }
 
 // % de cada persona en UN gasto: hasta 8 nombres distintos, 0-100, suma 100.

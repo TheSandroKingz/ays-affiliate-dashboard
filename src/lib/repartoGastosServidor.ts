@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { validarConfig, type ConfigGastos } from "@/lib/repartoGastos";
+import { validarConfig, gananciasValidas, type ConfigGastos } from "@/lib/repartoGastos";
 
 // Leer y guardar la configuración de gastos de un afiliado (socios + conceptos con
 // su %, ver repartoGastos.ts). Va entera en la columna jsonb `miembros` de
@@ -19,6 +19,15 @@ export async function leerConfig(userId: string): Promise<{ config: ConfigGastos
 export async function guardarConfig(userId: string, entrada: unknown): Promise<{ ok: true; config: ConfigGastos } | { error: string; status: number }> {
   const v = validarConfig(entrada);
   if ("error" in v) return { error: v.error, status: 400 };
+  // ⚠️ El editor de Gastos manda solo {socios, conceptos}: si guardáramos eso tal
+  // cual, los % de GANANCIAS se borrarían sin avisar cada vez que tocan un
+  // concepto. Se conservan los que ya había, y SOLO si siguen valiendo para los
+  // socios de ahora (si cambió la lista, se vuelven a preguntar).
+  if (!v.config.ganancias?.length) {
+    const previo = await leerConfig(userId);
+    const candidata = { ...v.config, ganancias: previo.config?.ganancias };
+    if (gananciasValidas(candidata)) v.config.ganancias = candidata.ganancias;
+  }
   const { error } = await supabaseAdmin
     .from("reparto_gastos_afiliados")
     .upsert({ user_id: userId, miembros: v.config, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
