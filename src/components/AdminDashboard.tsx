@@ -204,6 +204,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     try {
       const v = localStorage.getItem(QUIEN_KEY);
+      // Solo se puede leer el navegador DESPUÉS de montar (en el servidor no
+      // existe), así que aquí el setState es lo correcto.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (v === "kingz" || v === "prz") setQuienSoy(v);
     } catch {
       /* sin localStorage (modo privado): se queda sin elegir */
