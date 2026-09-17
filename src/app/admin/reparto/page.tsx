@@ -9,7 +9,7 @@ import { eur } from "@/lib/format";
 
 type Fuente = {
   nombre: string;
-  userId?: string | null; // null en "Los patrones" (son varios)
+  userId?: string | null; // null en "A&S" (son varios)
   ftd: number;
   ganancia: number;
   pctSandro: number;
