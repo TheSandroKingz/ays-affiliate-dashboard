@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { traerTodo } from "@/lib/traerTodo";
 import { getGestorBot } from "@/lib/adminAuth";
 import { analizarLote, generarInforme } from "@/lib/analisisHistorial";
 
@@ -92,12 +93,16 @@ async function enriquecerConChatId(informe: InformeRow) {
   if (!ejemplos.length) return;
   // Conversaciones clasificadas del periodo: para completar chat_id (informes viejos)
   // y traer el estado 'revisado' (marca de Yaiza) de cada caso.
-  const { data: convs } = await supabaseAdmin
-    .from("analisis_conversaciones")
-    .select("bot, chat_id, resumen, revisado")
-    .gte("created_at", informe.desde)
-    .lte("created_at", informe.hasta)
-    .limit(100000);
+  // Paginado: la tabla ya va por 731 filas (+257/semana) y PostgREST corta en 1.000.
+  const convs = await traerTodo<{ bot: string; chat_id: number; resumen: string | null; revisado: boolean }>((d, h) =>
+    supabaseAdmin
+      .from("analisis_conversaciones")
+      .select("bot, chat_id, resumen, revisado")
+      .gte("created_at", informe.desde)
+      .lte("created_at", informe.hasta)
+      .order("id", { ascending: true })
+      .range(d, h)
+  );
   const mapa = new Map<string, { chat_id: number; revisado: boolean }>();
   for (const c of (convs ?? []) as {
     bot: string;

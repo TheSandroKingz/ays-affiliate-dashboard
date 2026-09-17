@@ -27,18 +27,24 @@ const BOTS_NUEVOS = ["jeffer", "mariam", "blackkp", "afrika"];
 // Reconstruye las conversaciones (cerradas y recientes) de una fuente, agrupando por chat.
 async function traerConversaciones(bot: string): Promise<Conv[]> {
   const desde = new Date(Date.now() - DIAS_VENTANA * 864e5).toISOString();
-  const q =
-    bot === "as"
-      ? supabaseAdmin
-          .from("telegram_messages")
-          .select("chat_id, role, content, created_at")
-          .gte("created_at", desde)
-      : supabaseAdmin
-          .from("bot_messages")
-          .select("chat_id, role, content, created_at")
-          .eq("bot", bot)
-          .gte("created_at", desde);
-  const { data } = await q.order("created_at", { ascending: true }).limit(100000);
+  // ⚠️ PostgREST corta en 1.000 filas pase lo que pase: con .limit(100000) y orden
+  // ascendente, esto se quedaba con las 1.000 conversaciones MÁS VIEJAS de la
+  // ventana (3 días son ~3.200 mensajes) y las recientes NO se clasificaban nunca,
+  // gastando IA en las de siempre. Hay que paginar por rangos.
+  const data = await traerTodo<Msg & { chat_id: number }>((d, h) => {
+    const q =
+      bot === "as"
+        ? supabaseAdmin
+            .from("telegram_messages")
+            .select("chat_id, role, content, created_at")
+            .gte("created_at", desde)
+        : supabaseAdmin
+            .from("bot_messages")
+            .select("chat_id, role, content, created_at")
+            .eq("bot", bot)
+            .gte("created_at", desde);
+    return q.order("created_at", { ascending: true }).range(d, h);
+  });
   const porChat = new Map<number, Msg[]>();
   for (const m of (data ?? []) as (Msg & { chat_id: number })[]) {
     const arr = porChat.get(m.chat_id) ?? [];
@@ -138,10 +144,15 @@ export async function analizarLote(limite = 12, topeMs = 25_000): Promise<number
     `${bot}:${chat_id}:${new Date(ultimo).getTime()}`;
   const yaClasificadas = new Set<string>();
   try {
-    const { data: prev } = await supabaseAdmin
-      .from("analisis_conversaciones")
-      .select("bot, chat_id, ultimo_msg")
-      .limit(100000);
+    // Igual que arriba: paginado. Si se corta en 1.000, el cron vuelve a clasificar
+    // (y a pagar) conversaciones que ya estaban hechas.
+    const prev = await traerTodo<{ bot: string; chat_id: number; ultimo_msg: string }>((d, h) =>
+      supabaseAdmin
+        .from("analisis_conversaciones")
+        .select("bot, chat_id, ultimo_msg")
+        .order("id", { ascending: true })
+        .range(d, h)
+    );
     for (const r of (prev ?? []) as { bot: string; chat_id: number; ultimo_msg: string }[]) {
       yaClasificadas.add(claveConv(r.bot, r.chat_id, r.ultimo_msg));
     }

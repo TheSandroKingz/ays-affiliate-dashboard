@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser, getGestorBot } from "@/lib/adminAuth";
+import { traerTodo } from "@/lib/traerTodo";
 
 // Bots con tablas propias (bot_*) que se muestran en el panel, con su etiqueta.
 // El bot de Sandro va aparte (telegram_*, origen "as"). Mariam = persona Livana.
@@ -29,26 +30,29 @@ export async function GET(request: Request) {
   const user = await getGestorBot(request);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  // Tope de chats a listar por bot. Antes eran 150 y en un día con mucho tráfico
-  // los chats más viejos se caían de la lista (se perdían conversaciones cuando el
-  // gestor/socio no estaba). Lo subimos a 5000: son los 5000 MÁS RECIENTES por bot,
-  // así que en la práctica no se escapa ninguna conversación con vuestro volumen.
+  // Tope de chats a listar por bot. ⚠️ PostgREST corta en 1.000 filas aunque se pida
+  // más: con 1.277 contactos, 277 chats no salían en el visor y nadie se enteraba.
+  // Por eso se pagina por rangos hasta este tope (los más recientes primero).
   const TOPE_CHATS = 5000;
 
   // Contactos: Sandro (telegram_contacts) + cada bot nuevo (bot_contacts).
   const contactos = await Promise.all([
-    supabaseAdmin
-      .from("telegram_contacts")
-      .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
-      .order("last_msg_at", { ascending: false, nullsFirst: false })
-      .limit(TOPE_CHATS),
-    ...BOTS_EXTRA.map((b) =>
+    traerTodo<Fila>((d, h) =>
       supabaseAdmin
-        .from("bot_contacts")
+        .from("telegram_contacts")
         .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
-        .eq("bot", b.key)
         .order("last_msg_at", { ascending: false, nullsFirst: false })
-        .limit(TOPE_CHATS)
+        .range(d, h)
+    , TOPE_CHATS).then((data) => ({ data })),
+    ...BOTS_EXTRA.map((b) =>
+      traerTodo<Fila>((d, h) =>
+        supabaseAdmin
+          .from("bot_contacts")
+          .select("chat_id, first_name, username, last_msg_at, opted_out, silenced")
+          .eq("bot", b.key)
+          .order("last_msg_at", { ascending: false, nullsFirst: false })
+          .range(d, h)
+      , TOPE_CHATS).then((data) => ({ data }))
     ),
   ]);
 

@@ -317,6 +317,35 @@ export async function GET(request: Request) {
     /* el análisis del historial nunca rompe el cron */
   }
 
+  // ── LIMPIEZAS QUE SÍ TIENEN QUE CORRER SIEMPRE ───────────────────────────
+  // ⚠️ Estas tres estaban MÁS ABAJO, detrás del return de MENSAJES_DIARIOS, así que
+  // desde el 8-sep no se ejecutaban NUNCA (revisión del 17-sep: telegram_updates
+  // tenía 4.728 filas, 4.347 de más de un día, la más vieja del 6-sep). Y esa tabla
+  // es el anti-duplicado del webhook: es la que evita contestar dos veces al mismo
+  // mensaje. Van ANTES de cualquier return y blindadas (nunca rompen el cron).
+  await supabaseAdmin
+    .from("telegram_updates")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 864e5).toISOString())
+    .then(() => {}, () => {});
+  await supabaseAdmin
+    .from("telegram_envio_diario")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 3 * 864e5).toISOString())
+    .then(() => {}, () => {});
+  // Lo mismo para los otros bots: su anti-duplicado y su contador diario de IA.
+  // (Antes se limpiaban dentro de procesarBotsDiario, que tampoco corre ya.)
+  await supabaseAdmin
+    .from("bot_updates")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 864e5).toISOString())
+    .then(() => {}, () => {});
+  await supabaseAdmin
+    .from("bot_ai_daily")
+    .delete()
+    .lt("day", new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10))
+    .then(() => {}, () => {});
+
   if (!telegramConfigurado()) {
     return NextResponse.json({ error: "Bot no configurado" }, { status: 200 });
   }
@@ -369,19 +398,6 @@ export async function GET(request: Request) {
       .select("clave");
     if (!insErr && ins && ins.length === 0) franjaYaHecha = true;
   }
-
-  // Limpieza: borramos los update_id anti-duplicados de más de 1 día.
-  await supabaseAdmin
-    .from("telegram_updates")
-    .delete()
-    .lt("created_at", new Date(Date.now() - 864e5).toISOString())
-    .then(() => {}, () => {});
-  // Y las claves de franja de envío de más de 3 días (ya no hacen falta).
-  await supabaseAdmin
-    .from("telegram_envio_diario")
-    .delete()
-    .lt("created_at", new Date(Date.now() - 3 * 864e5).toISOString())
-    .then(() => {}, () => {});
 
   // BOTS NUEVOS (Jeffer/Alana): envían su propio /diario y limpian sus tablas.
   // SOLO en el envío de la noche (hora===20) o forzado, para que salga a las

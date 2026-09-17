@@ -10,7 +10,11 @@ export const maxDuration = 60;
 
 // Copia de seguridad automática (cron diario): guarda una "foto" de las tablas
 // de datos en `data_snapshots`. Permite restaurar si un día se corrompe o se
-// borra algo por error. Conserva las últimas 14 copias. Protegido por CRON_SECRET.
+// borra algo por error. Conserva las últimas 7 copias. Protegido por CRON_SECRET.
+// ⚠️ CUÁNTAS COPIAS: cada una pesa ~7,4 MB y el 99% es postback_events (la caja
+// negra del dinero), que crece ~366 filas al día. Con 14 copias eran ~104 MB de los
+// 500 MB del plan gratis de Supabase, subiendo ~2,5 MB cada día (medido el 17-sep).
+// Con 7 se mantiene una semana entera de vuelta atrás ocupando la mitad.
 // (No sustituye a una copia EXTERNA; ver scripts/backup.mjs para eso.)
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -81,12 +85,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Conservar solo las últimas 14 copias.
+  // Conservar solo las últimas 7 copias (ver la nota de arriba sobre el tamaño).
   const { data: viejas } = await supabaseAdmin
     .from("data_snapshots")
     .select("id")
     .order("created_at", { ascending: false })
-    .range(14, 1000);
+    .range(7, 1000);
   if (viejas && viejas.length) {
     await supabaseAdmin
       .from("data_snapshots")
