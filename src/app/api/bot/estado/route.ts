@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getGestorBot } from "@/lib/adminAuth";
+import { tipoDeFallo } from "@/lib/iaUso";
 
 // Cómo va el bot HOY, para quien revisa las conversaciones (Yaiza) y para el admin.
 // SIN dinero: cuántas respuestas lleva, cuánto corrige el revisor y cuántos
@@ -30,19 +31,29 @@ export async function GET(request: Request) {
       .select("total, corrigio, sin_cambios, saltado, rechazado")
       .eq("day", hoy)
       .maybeSingle(),
+    // Se traen los de hoy (son pocos) para poder separarlos por lo que pasó.
     supabaseAdmin
       .from("ia_fallos")
-      .select("bot, motivo, created_at", { count: "exact" })
+      .select("bot, motivo, created_at")
       .gte("created_at", inicioHoy)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(1000),
   ]);
+
+  // Cada apunte, en su sitio: no es lo mismo "no le llegó nada" que "le llegó un
+  // acuse" o "se frenó a propósito porque estaba quemando tokens".
+  const porTipo = { frenado: 0, silencio: 0, acuse: 0, sinNada: 0 };
+  for (const f of fallos.data ?? []) porTipo[tipoDeFallo(f.motivo)]++;
+  const sinNada = (fallos.data ?? []).filter((f) => tipoDeFallo(f.motivo) === "sinNada");
 
   return NextResponse.json({
     respuestasHoy: respuestas.count ?? 0,
     revisor: revisor.data ?? null,
-    // El NÚMERO va aparte de la lista: la lista está capada a 50 para no traer de más.
-    sinContestarHoy: fallos.count ?? (fallos.data ?? []).length,
-    fallos: (fallos.data ?? []).map((f) => ({ bot: f.bot, motivo: f.motivo, cuando: f.created_at })),
+    // ⚠️ "Sin contestar" = SOLO los que se quedaron sin NADA. Los demás van aparte.
+    sinContestarHoy: porTipo.sinNada,
+    conAcuseHoy: porTipo.acuse,
+    frenadosHoy: porTipo.frenado,
+    silenciadosHoy: porTipo.silencio,
+    fallos: sinNada.slice(0, 50).map((f) => ({ bot: f.bot, motivo: f.motivo, cuando: f.created_at })),
   });
 }

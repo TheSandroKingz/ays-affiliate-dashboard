@@ -4,6 +4,7 @@ import { traerTodo } from "@/lib/traerTodo";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAdminUser } from "@/lib/adminAuth";
 import { BOTS } from "@/lib/bots";
+import { tipoDeFallo } from "@/lib/iaUso";
 
 // Estado de los 3 bots de Telegram en una sola vista (solo admin): el de Sandro
 // (tablas telegram_*) y los nuevos Jeffer/Alana (tablas bot_*). Por bot: contactos
@@ -265,11 +266,20 @@ export async function GET(request: Request) {
     if (esHoy) costeHoy.set(k, (costeHoy.get(k) ?? 0) + c);
   }
   // Mensajes de hoy sin respuesta, por bot (con el último motivo, para el panel).
-  const fallosPorBot = new Map<string, { n: number; ultimo: string }>();
+  // ⚠️ "Sin contestar" son SOLO los que se quedaron sin nada. Un frenado por gasto
+  // es a propósito, y un acuse significa que al jugador SÍ le llegó algo.
+  const fallosPorBot = new Map<string, { n: number; ultimo: string; frenados: number }>();
   for (const f of fallosIa.data ?? []) {
     const k = claveBot(f.bot as string | null);
-    const prev = fallosPorBot.get(k);
-    fallosPorBot.set(k, { n: (prev?.n ?? 0) + 1, ultimo: prev?.ultimo ?? String(f.motivo ?? "") });
+    const t = tipoDeFallo(f.motivo as string | null);
+    const prev = fallosPorBot.get(k) ?? { n: 0, ultimo: "", frenados: 0 };
+    if (t === "sinNada") {
+      prev.n += 1;
+      if (!prev.ultimo) prev.ultimo = String(f.motivo ?? "");
+    } else if (t === "frenado") {
+      prev.frenados += 1;
+    }
+    fallosPorBot.set(k, prev);
   }
   // Silenciados: con su nombre, para poder reconocerlos y reactivarlos.
   const negrosRows = (negros.data ?? []) as { bot: string; chat_id: number; motivo: string | null; created_at: string }[];
@@ -334,6 +344,7 @@ export async function GET(request: Request) {
       costeMes: costeMes.get(d.key) ?? 0,
       fallosHoy: fallosPorBot.get(d.key)?.n ?? 0,
       fallosMotivo: fallosPorBot.get(d.key)?.ultimo ?? "",
+      frenadosHoy: fallosPorBot.get(d.key)?.frenados ?? 0,
       promo: (promo ?? "").trim(),
     };
   });

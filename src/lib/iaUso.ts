@@ -46,6 +46,22 @@ export function apuntarUso(
 // llamada, respuesta vacía, freno de gasto). El 15-sep un jugador listo para
 // depositar se quedó sin contestar y no había forma de saber el motivo.
 // BLINDADO igual que apuntarUso: no espera, no lanza, sin tabla no hace nada.
+// Qué pasó de verdad en cada apunte de ia_fallos. Yaiza (17-sep): el panel decía
+// "sin contestar 90" cuando a la mitad SÍ se les había contestado (con el mensaje
+// de emergencia). Un apunte aquí no es siempre "se quedó sin respuesta":
+//   · frenado   → los topes de gasto cortaron la IA. A propósito y no se manda nada.
+//   · silencio  → se silenció a alguien (es una ACCIÓN, no un fallo).
+//   · acuse     → la IA falló, pero al jugador SÍ le llegó un mensaje corto.
+//   · sinNada   → la IA falló y al jugador no le llegó nada. Esto es lo grave.
+export type TipoFallo = "frenado" | "silencio" | "acuse" | "sinNada";
+export function tipoDeFallo(motivo: string | null | undefined): TipoFallo {
+  const m = (motivo ?? "").toLowerCase();
+  if (m.startsWith("silenciado")) return "silencio";
+  if (m.includes("tope diario") || m.includes("frenado por los topes")) return "frenado";
+  if (m.includes("se mandó el acuse") || m.includes("mensaje de emergencia")) return "acuse";
+  return "sinNada";
+}
+
 export function apuntarFallo(
   bot: string,
   chatId: number | string | null | undefined,

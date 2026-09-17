@@ -13,6 +13,7 @@ type BotEstado = {
   costeMes?: number;
   fallosHoy?: number;
   fallosMotivo?: string;
+  frenadosHoy?: number;
   username: string;
   configurado: boolean;
   activos: number;
@@ -316,6 +317,11 @@ export default function EstadoBotsPage() {
                   {(b.fallosHoy ?? 0) > 0 && (
                     <span className="text-amber-300" title={b.fallosMotivo}>
                       {b.fallosHoy} sin contestar hoy
+                    </span>
+                  )}
+                  {(b.frenadosHoy ?? 0) > 0 && (
+                    <span className="text-slate-400" title="Escribían sin parar: se les frena a propósito">
+                      {b.frenadosHoy} frenados por gasto
                     </span>
                   )}
                 </div>

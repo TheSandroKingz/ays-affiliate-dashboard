@@ -11,6 +11,9 @@ import { proximoPagoYaiza } from "@/lib/yaizaPago";
 type EstadoBot = {
   respuestasHoy: number;
   sinContestarHoy?: number;
+  conAcuseHoy?: number;
+  frenadosHoy?: number;
+  silenciadosHoy?: number;
   revisor: { total: number; corrigio: number; sin_cambios: number; saltado: number; rechazado: number } | null;
   fallos: { bot: string | null; motivo: string; cuando: string }[];
 };
@@ -88,12 +91,31 @@ export default function BotLectorPage() {
               </span>
             </span>
           )}
-          <span className={estado.fallos.length > 0 ? "text-amber-300" : "text-slate-300"}>
-            Sin contestar hoy <b className={estado.fallos.length > 0 ? "text-amber-200" : "text-white"}>{estado.sinContestarHoy ?? estado.fallos.length}</b>
-            {estado.fallos.length > 0 && (
-              <span className="text-slate-500"> · {estado.fallos[0].motivo}</span>
-            )}
+          {/* Cada cosa por su nombre: antes todo esto salía junto como "sin
+              contestar" y no era verdad (aviso de Yaiza, 17-sep). */}
+          <span className={(estado.sinContestarHoy ?? 0) > 0 ? "text-amber-300" : "text-slate-300"}>
+            Sin contestar hoy{" "}
+            <b className={(estado.sinContestarHoy ?? 0) > 0 ? "text-amber-200" : "text-white"}>
+              {estado.sinContestarHoy ?? 0}
+            </b>
+            {estado.fallos.length > 0 && <span className="text-slate-500"> · {estado.fallos[0].motivo}</span>}
           </span>
+          {(estado.conAcuseHoy ?? 0) > 0 && (
+            <span className="text-slate-300">
+              La IA falló pero se les avisó <b className="text-white">{estado.conAcuseHoy}</b>
+            </span>
+          )}
+          {(estado.frenadosHoy ?? 0) > 0 && (
+            <span className="text-slate-300">
+              Frenados por gastar de más <b className="text-white">{estado.frenadosHoy}</b>{" "}
+              <span className="text-slate-500">(a propósito: no se les contesta)</span>
+            </span>
+          )}
+          {(estado.silenciadosHoy ?? 0) > 0 && (
+            <span className="text-slate-300">
+              Silenciados hoy <b className="text-white">{estado.silenciadosHoy}</b>
+            </span>
+          )}
         </div>
       )}
 
