@@ -9,6 +9,10 @@ import { eur } from "@/lib/format";
 type BotEstado = {
   key: string;
   label: string;
+  costeHoy?: number;
+  costeMes?: number;
+  fallosHoy?: number;
+  fallosMotivo?: string;
   username: string;
   configurado: boolean;
   activos: number;
@@ -32,6 +36,11 @@ type BotEstado = {
 export default function EstadoBotsPage() {
   const router = useRouter();
   const [bots, setBots] = useState<BotEstado[] | null>(null);
+  const [silenciados, setSilenciados] = useState<
+    { bot: string; botLabel: string; chat_id: number; nombre: string | null; motivo: string; desde: string }[]
+  >([]);
+  const [coste, setCoste] = useState<{ hoy: number; mes: number } | null>(null);
+  const [reactivando, setReactivando] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
@@ -56,10 +65,37 @@ export default function EstadoBotsPage() {
       }
       const b = await r.json();
       setBots(b.bots ?? []);
+      setSilenciados(b.silenciados ?? []);
+      setCoste(b.coste ?? null);
     } catch {
       setError(true);
     } finally {
       setCargando(false);
+    }
+  }
+
+  // Quitarle el silencio a alguien: mismo endpoint que usa el informe, que revierte
+  // el silencio del contacto Y marca la lista negra como reactivada (deja rastro).
+  async function reactivar(bot: string, chatId: number, nombre: string | null) {
+    if (!confirm(`¿Volver a hablarle a ${nombre || "este jugador"}? El bot le responderá otra vez.`)) return;
+    setReactivando(bot + ":" + chatId);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const r = await fetch("/api/admin/analisis?run=reactivar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ bot, chat_id: chatId }),
+      });
+      if (!r.ok) {
+        alert("No se pudo quitar el silencio.");
+        return;
+      }
+      setSilenciados((prev) => prev.filter((x) => !(x.bot === bot && x.chat_id === chatId)));
+    } finally {
+      setReactivando(null);
     }
   }
 
@@ -172,6 +208,20 @@ export default function EstadoBotsPage() {
         </button>
       </div>
 
+      {/* Lo que cuesta la IA de verdad (precios de Anthropic aplicados a lo que se
+          apunta en cada llamada). Antes solo se veía entrando en la base de datos. */}
+      {coste && (
+        <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+          <span className="text-slate-300">
+            🧠 IA hoy <b className="text-white">{coste.hoy.toFixed(2)} $</b>
+          </span>
+          <span className="text-slate-300">
+            Este mes <b className="text-white">{coste.mes.toFixed(2)} $</b>
+          </span>
+          <span className="text-xs text-slate-500">respuestas, regeneraciones y revisor incluidos</span>
+        </div>
+      )}
+
       {cargando && !bots ? (
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : error && !bots ? (
@@ -255,6 +305,19 @@ export default function EstadoBotsPage() {
                   </div>
                 </div>
 
+                {/* Lo que cuesta ESTE bot y lo que se quedó sin contestar hoy. */}
+                <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                  <span>
+                    Coste hoy <b className="text-slate-200">{(b.costeHoy ?? 0).toFixed(2)} $</b>
+                    <span className="text-slate-600"> · mes {(b.costeMes ?? 0).toFixed(2)} $</span>
+                  </span>
+                  {(b.fallosHoy ?? 0) > 0 && (
+                    <span className="text-amber-300" title={b.fallosMotivo}>
+                      {b.fallosHoy} sin contestar hoy
+                    </span>
+                  )}
+                </div>
+
                 {/* Recorrido: se registraron → depósitos que pagan */}
                 <div className="grid grid-cols-2 gap-1 text-center text-xs">
                   <div className="rounded-lg bg-white/5 py-1.5">
@@ -307,6 +370,43 @@ export default function EstadoBotsPage() {
           })}
         </div>
       )}
+
+      {/* SILENCIADOS: quién está sin respuesta ahora mismo y por qué. Antes esto
+          solo se veía dentro del informe de Yaiza. */}
+      <div className="rounded-2xl border border-white/15 bg-white/5 p-4 flex flex-col gap-3">
+        <p className="text-sm font-medium text-slate-200">
+          🔇 Silenciados <span className="text-slate-500">({silenciados.length})</span>
+        </p>
+        {silenciados.length === 0 ? (
+          <p className="text-xs text-slate-500">Nadie silenciado ahora mismo.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {silenciados.map((sx) => (
+              <div
+                key={sx.bot + ":" + sx.chat_id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+              >
+                <div className="min-w-0 text-sm">
+                  <span className="text-white font-medium">{sx.nombre || `chat ${sx.chat_id}`}</span>
+                  <span className="text-slate-500"> · {sx.botLabel}</span>
+                  <span className="text-slate-400"> · {sx.motivo}</span>
+                  <span className="text-slate-600">
+                    {" "}
+                    · {new Date(sx.desde).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => reactivar(sx.bot, sx.chat_id, sx.nombre)}
+                  disabled={reactivando === sx.bot + ":" + sx.chat_id}
+                  className="shrink-0 text-sm font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50 border border-emerald-400/40 hover:bg-emerald-500/10 px-3 py-2 min-h-[44px] rounded-lg transition"
+                >
+                  {reactivando === sx.bot + ":" + sx.chat_id ? "..." : "Quitar silencio"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <p className="text-xs text-slate-500">
         "Depósitos que pagan" son los cualificados (QFTD). "Te quedas tú" = tu margen

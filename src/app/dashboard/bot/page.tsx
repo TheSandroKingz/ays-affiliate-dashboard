@@ -1,13 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import BotChatViewer, { type DineroBot } from "@/components/BotChatViewer";
 import InformeAnalisis from "@/components/InformeAnalisis";
 import { proximoPagoYaiza } from "@/lib/yaizaPago";
 
+// Cómo va el bot hoy (sin dinero): respuestas, cuánto corrige el revisor y los
+// mensajes que se quedaron sin contestar. Es lo que sirve para revisar los chats.
+type EstadoBot = {
+  respuestasHoy: number;
+  revisor: { total: number; corrigio: number; sin_cambios: number; saltado: number; rechazado: number } | null;
+  fallos: { bot: string | null; motivo: string; cuando: string }[];
+};
+
 export default function BotLectorPage() {
   const [dinero, setDinero] = useState<DineroBot | null>(null);
+  const [estado, setEstado] = useState<EstadoBot | null>(null);
   const pago = proximoPagoYaiza();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const r = await fetch("/api/bot/estado", {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        });
+        if (r.ok) setEstado(await r.json());
+      } catch {
+        /* si falla, simplemente no se muestra */
+      }
+    })();
+  }, []);
 
   return (
     <main className="flex flex-col gap-5 max-w-3xl mx-auto">
@@ -43,6 +69,32 @@ export default function BotLectorPage() {
           </p>
         </div>
       </div>
+
+      {/* Cómo va el bot HOY: lo que necesitas para revisar, sin cifras de dinero. */}
+      {estado && (
+        <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+          <span className="text-slate-300">
+            Respuestas hoy <b className="text-white">{estado.respuestasHoy}</b>
+          </span>
+          {estado.revisor && estado.revisor.total > 0 && (
+            <span className="text-slate-300">
+              El revisor corrigió{" "}
+              <b className="text-white">
+                {Math.round((estado.revisor.corrigio / estado.revisor.total) * 100)}%
+              </b>{" "}
+              <span className="text-slate-500">
+                ({estado.revisor.corrigio} de {estado.revisor.total}; {estado.revisor.saltado} sin dar tiempo)
+              </span>
+            </span>
+          )}
+          <span className={estado.fallos.length > 0 ? "text-amber-300" : "text-slate-300"}>
+            Sin contestar hoy <b className={estado.fallos.length > 0 ? "text-amber-200" : "text-white"}>{estado.fallos.length}</b>
+            {estado.fallos.length > 0 && (
+              <span className="text-slate-500"> · {estado.fallos[0].motivo}</span>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Lo que ha depositado la gente por el bot desde que empezó Yaiza. */}
       {dinero && (

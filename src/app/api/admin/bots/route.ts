@@ -9,7 +9,18 @@ import { BOTS } from "@/lib/bots";
 // (tablas telegram_*) y los nuevos Jeffer/Alana (tablas bot_*). Por bot: contactos
 // activos, quién escribió/entró en 24h, gasto de IA de hoy vs tope, y los
 // depósitos que trae (por su afp). El admin solo veía el de Sandro; ahora los tres.
-const TOPE_IA = 5000;
+// Tope diario REAL de respuestas de IA (el del webhook). Estaba en 5.000, que no
+// frenaba nada: con el coste real son más de 150 € en un día.
+const TOPE_IA = 1500;
+
+// Precios de Anthropic para el modelo de los bots ($ por millón de tokens).
+// Con esto el panel dice lo que cuesta DE VERDAD, sin estimar.
+const PRECIO = { entrada: 3, cacheLee: 0.3, cacheEscribe: 6, salida: 15 };
+type UsoIA = { created_at: string; bot: string | null; entrada: number; cache_lee: number; cache_escribe: number; salida: number };
+const costeDe = (r: UsoIA) =>
+  (r.entrada * PRECIO.entrada + r.cache_lee * PRECIO.cacheLee + r.cache_escribe * PRECIO.cacheEscribe + r.salida * PRECIO.salida) / 1e6;
+// En ia_uso/ia_fallos el bot de Sandro va como null o "as"; aquí su clave es "sandro".
+const claveBot = (b: string | null | undefined) => (!b || b === "as" ? "sandro" : b);
 
 export async function GET(request: Request) {
   const user = await getAdminUser(request);
@@ -59,6 +70,9 @@ export async function GET(request: Request) {
     tgMsgCount,
     botMsgs,
     meCpa,
+    usoIa,
+    fallosIa,
+    negros,
   ] = await Promise.all([
       traerTodo<{ opted_out: boolean | null; silenced: boolean | null; last_msg_at: string | null; joined_at: string | null }>(
         (d, h) =>
@@ -128,6 +142,30 @@ export async function GET(request: Request) {
       ),
       // Tu CPA (el que te paga Celsius). Sirve para calcular TU margen por afiliado.
       supabaseAdmin.from("affiliates").select("cpa_spain").eq("user_id", user.id).maybeSingle(),
+      // Lo que cuesta la IA: del día 1 del mes hasta ahora (hoy sale de estas mismas
+      // filas). Si la tabla aún no existe, se sigue sin coste.
+      traerTodo<UsoIA>((d, h) =>
+        supabaseAdmin
+          .from("ia_uso")
+          .select("created_at, bot, entrada, cache_lee, cache_escribe, salida")
+          .gte("created_at", new Date(Date.parse(hoyKey.slice(0, 7) + "-01T00:00:00Z") - offMadrid * 3600_000).toISOString())
+          .order("id", { ascending: true })
+          .range(d, h)
+      ).then((data) => ({ data })).catch(() => ({ data: [] as UsoIA[] })),
+      // Mensajes de hoy que se quedaron SIN respuesta y por qué.
+      supabaseAdmin
+        .from("ia_fallos")
+        .select("bot, chat_id, motivo, created_at")
+        .gte("created_at", new Date(inicioHoy).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(200),
+      // Silenciados EN VIVO (los que siguen sin reactivar).
+      supabaseAdmin
+        .from("lista_negra")
+        .select("bot, chat_id, motivo, created_at")
+        .is("reactivado_at", null)
+        .order("created_at", { ascending: false })
+        .limit(60),
     ]);
 
   // Tu CPA propio. Con él, "lo que ganas TÚ" por un bot de afiliado = tu CPA × QFTD
@@ -198,6 +236,51 @@ export async function GET(request: Request) {
   }
   // Mensajes totales por bot (head counts).
   const msgsByBot = new Map<string, number>(botMsgs);
+
+  // Coste de la IA por bot: hoy y lo que va de mes.
+  const costeHoy = new Map<string, number>();
+  const costeMes = new Map<string, number>();
+  for (const r of (usoIa.data ?? []) as UsoIA[]) {
+    const k = claveBot(r.bot);
+    const c = costeDe(r);
+    costeMes.set(k, (costeMes.get(k) ?? 0) + c);
+    if (Date.parse(r.created_at) >= inicioHoy) costeHoy.set(k, (costeHoy.get(k) ?? 0) + c);
+  }
+  // Mensajes de hoy sin respuesta, por bot (con el último motivo, para el panel).
+  const fallosPorBot = new Map<string, { n: number; ultimo: string }>();
+  for (const f of fallosIa.data ?? []) {
+    const k = claveBot(f.bot as string | null);
+    const prev = fallosPorBot.get(k);
+    fallosPorBot.set(k, { n: (prev?.n ?? 0) + 1, ultimo: prev?.ultimo ?? String(f.motivo ?? "") });
+  }
+  // Silenciados: con su nombre, para poder reconocerlos y reactivarlos.
+  const negrosRows = (negros.data ?? []) as { bot: string; chat_id: number; motivo: string | null; created_at: string }[];
+  const nombres = new Map<string, string | null>();
+  if (negrosRows.length) {
+    const idsAs = negrosRows.filter((n) => n.bot === "as").map((n) => n.chat_id);
+    const idsOtros = negrosRows.filter((n) => n.bot !== "as").map((n) => n.chat_id);
+    const [nAs, nOtros] = await Promise.all([
+      idsAs.length
+        ? supabaseAdmin.from("telegram_contacts").select("chat_id, first_name").in("chat_id", idsAs)
+        : Promise.resolve({ data: [] as { chat_id: number; first_name: string | null }[] }),
+      idsOtros.length
+        ? supabaseAdmin.from("bot_contacts").select("bot, chat_id, first_name").in("chat_id", idsOtros)
+        : Promise.resolve({ data: [] as { bot: string; chat_id: number; first_name: string | null }[] }),
+    ]);
+    for (const c of nAs.data ?? []) nombres.set("as:" + c.chat_id, c.first_name);
+    for (const c of (nOtros.data ?? []) as { bot: string; chat_id: number; first_name: string | null }[]) {
+      nombres.set(c.bot + ":" + c.chat_id, c.first_name);
+    }
+  }
+  const etiquetaBot = new Map(defs.map((d) => [d.key === "sandro" ? "as" : d.key, d.label]));
+  const silenciados = negrosRows.map((n) => ({
+    bot: n.bot,
+    botLabel: etiquetaBot.get(n.bot) ?? n.bot,
+    chat_id: n.chat_id,
+    nombre: nombres.get(n.bot + ":" + n.chat_id) ?? null,
+    motivo: n.motivo ?? "",
+    desde: n.created_at,
+  }));
   const mensajesSandro = tgMsgCount.count ?? 0;
 
   const bots = defs.map((d) => {
@@ -229,9 +312,20 @@ export async function GET(request: Request) {
       recargas: recargas.get(d.afp) ?? 0,
       depositado: depositado.get(d.afp) ?? 0,
       mensajes: d.key === "sandro" ? mensajesSandro : msgsByBot.get(d.key) ?? 0,
+      costeHoy: costeHoy.get(d.key) ?? 0,
+      costeMes: costeMes.get(d.key) ?? 0,
+      fallosHoy: fallosPorBot.get(d.key)?.n ?? 0,
+      fallosMotivo: fallosPorBot.get(d.key)?.ultimo ?? "",
       promo: (promo ?? "").trim(),
     };
   });
 
-  return NextResponse.json({ bots });
+  return NextResponse.json({
+    bots,
+    silenciados,
+    coste: {
+      hoy: [...costeHoy.values()].reduce((a, b) => a + b, 0),
+      mes: [...costeMes.values()].reduce((a, b) => a + b, 0),
+    },
+  });
 }
