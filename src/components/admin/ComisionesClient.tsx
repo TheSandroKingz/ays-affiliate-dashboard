@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { eur } from "@/lib/format";
 
@@ -252,7 +253,16 @@ export default function ComisionesClient({
                         size={15}
                         className={`transition-transform ${abierto ? "rotate-180" : ""}`}
                       />
-                      {row.display_name}
+                      {/* El nombre lleva a SUS estadísticas; el resto de la fila
+                          sigue abriendo/cerrando el detalle de aquí. */}
+                      <Link
+                        href={`/admin/afiliado/${row.userId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hover:text-emerald-300 hover:underline"
+                        title="Ver sus estadísticas"
+                      >
+                        {row.display_name}
+                      </Link>
                     </span>
                   </td>
                   <td className="border border-white/10 px-4 py-3 text-right text-white">

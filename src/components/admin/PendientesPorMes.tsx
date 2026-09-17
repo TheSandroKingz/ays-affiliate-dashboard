@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { eur } from "@/lib/format";
 
 type Fila = {
@@ -108,7 +109,11 @@ export default function PendientesPorMes({ accessToken }: { accessToken: string 
                   </tr>
                   {porMes[mes].map((f) => (
                     <tr key={f.userId + mes} className="text-white hover:bg-white/5">
-                      <td className="border border-white/10 px-4 py-3">{f.nombre}</td>
+                      <td className="border border-white/10 px-4 py-3">
+                        <Link href={`/admin/afiliado/${f.userId}`} className="text-emerald-400 hover:text-emerald-300 hover:underline" title="Ver sus estadísticas">
+                          {f.nombre}
+                        </Link>
+                      </td>
                       <td className="border border-white/10 px-4 py-3 text-right">
                         {eur(f.gano)}
                       </td>
