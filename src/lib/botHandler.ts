@@ -6,7 +6,7 @@
 // reintentaría en bucle).
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAUSADOS, OWNER_CHAT_ID } from "@/lib/telegram";
+import { tgEnviar, tgApi, botonJugar, botonSoloJugar, descargarFoto, ENLACES_PAUSADOS, BIENVENIDA_SIN_CASINO, OWNER_CHAT_ID } from "@/lib/telegram";
 import { responderIABot, iaConfigurada, marcaHueco, esSoloCierre, bucleDeDespedida, ABUSO_RE, AMENAZA_RE, CALLAR, CALLAR_LISTA_NEGRA, rachaRepetida, AMENAZA_GASTO_RE, SONDEO_RE } from "@/lib/telegramAI";
 import { rateLimitShared } from "@/lib/rateLimit";
 import { puedeGastarIA } from "@/lib/frenosIA";
@@ -148,6 +148,11 @@ export async function procesarUpdate(
         .select("welcome_text, welcome_media_type, welcome_file_id, welcome_enabled")
         .eq("bot", bot.key)
         .maybeSingle();
+      // ⛔ SIN CASINO: ni vídeo ni el texto de siempre (ver el webhook de Sandro).
+      if (ENLACES_PAUSADOS) {
+        await tgEnviar(chatId, BIENVENIDA_SIN_CASINO, { parse_mode: "HTML" }, tok);
+        return;
+      }
       const textoBienv = (cfg?.welcome_text || bot.bienvenida) as string;
       const boton = botonJugar(bot.enlace);
       let bienvOk = false;

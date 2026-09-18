@@ -10,6 +10,7 @@ import {
   midDe,
   descargarFoto,
   ENLACES_PAUSADOS,
+  BIENVENIDA_SIN_CASINO,
 } from "@/lib/telegram";
 import { compararSecreto } from "@/lib/secreto";
 import { rateLimitShared } from "@/lib/rateLimit";
@@ -158,6 +159,12 @@ export async function POST(request: Request) {
         .eq("id", 1)
         .maybeSingle();
       const boton = botonJugar();
+      // ⛔ SIN CASINO: ni el vídeo del patrón ni el texto de siempre (que manda a
+      // jugar). Solo un saludo honesto diciendo que está parado.
+      if (ENLACES_PAUSADOS) {
+        await tgEnviar(chatId, BIENVENIDA_SIN_CASINO, { parse_mode: "HTML" });
+        return NextResponse.json({ ok: true });
+      }
       if (bienv && bienv.enabled && bienv.file_id) {
         const m = bienv.media_type;
         const metodo =

@@ -56,6 +56,15 @@ export const ENLACE_JUGAR = "https://asafiliados.com/go/YmIjpivpyx";
 // cada bot, y repasar los prompts (los Datos Fijos siguen llenos de Celsius).
 export const ENLACES_PAUSADOS = true;
 
+// Bienvenida mientras NO hay casino (ver ENLACES_PAUSADOS): ni pitch, ni patrón,
+// ni vídeo. La de siempre decía "ese vídeo de ahí arriba es mi patrón, míralo y
+// hazlo IGUAL" y mandaba a jugar a un sitio que ya no funciona.
+export const BIENVENIDA_SIN_CASINO =
+  "¡Hey! 👋 Gracias por pasarte.\n\n" +
+  "Ahora mismo no estoy recomendando ningún sitio para jugar, lo tengo parado. Cuando vuelva a tener algo lo pongo por aquí.\n\n" +
+  "Mientras tanto, cualquier duda me escribes y te echo una mano 👊\n\n" +
+  "<i>(si no quieres recibir mensajes, escribe /stop)</i>";
+
 // Texto del botón de jugar (llamativo — Telegram no deja cambiar color/tamaño,
 // solo el texto y los emojis).
 const TEXTO_JUGAR = "🟢🎰 GANAR AHORA 🎰🟢";
