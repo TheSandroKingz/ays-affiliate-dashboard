@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { CardsSkeleton } from "@/components/Skeletons";
 import LoadError from "@/components/LoadError";
-import { Check, Copy } from "lucide-react";
 import { esCuentaPropia } from "@/lib/adminId";
 
 export default function CommissionPlanPage() {
@@ -14,8 +13,6 @@ export default function CommissionPlanPage() {
   const [cpaSpain, setCpaSpain] = useState(85);
   const [cpaOther, setCpaOther] = useState(85);
   const [subaffiliatePercent, setSubaffiliatePercent] = useState(5);
-  const [promoLink, setPromoLink] = useState<string | null>(null);
-  const [promoLinkCopied, setPromoLinkCopied] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -48,13 +45,6 @@ export default function CommissionPlanPage() {
       setCpaOther(data.cpa_other ?? 85);
       setSubaffiliatePercent(data.subaffiliate_percent ?? 5);
 
-      setPromoLink(
-        data.freshaffs_tracking_code
-          ? `${window.location.origin}/go/${encodeURIComponent(
-              data.freshaffs_tracking_code
-            )}`
-          : data.promo_link ?? null
-      );
     } catch {
       setError(true);
     } finally {
@@ -83,48 +73,21 @@ export default function CommissionPlanPage() {
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-2xl font-semibold text-white">Plan de Comisión</h1>
 
-      {/* Tu enlace, lo primero y bien visible: es la herramienta para ganar. */}
-      {promoLink && (
-        <div className="rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-6">
-          <h2 className="text-lg font-semibold text-white mb-1">🔗 Tu enlace para ganar</h2>
-          <p className="text-sm text-slate-300 mb-4">
-            Compártelo con tu gente. Cuando alguien se registre y haga su primer
-            depósito por aquí, ganas tu CPA.
-          </p>
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              value={promoLink}
-              onFocus={(e) => e.currentTarget.select()}
-              className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/20 text-white text-sm px-3 py-2.5 truncate"
-            />
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(promoLink);
-                  setPromoLinkCopied(true);
-                  setTimeout(() => setPromoLinkCopied(false), 1500);
-                } catch {}
-              }}
-              className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${
-                promoLinkCopied
-                  ? "bg-emerald-500/20 border border-emerald-400/50 text-emerald-200"
-                  : "bg-emerald-500 hover:bg-emerald-400 text-black"
-              }`}
-            >
-              {promoLinkCopied ? (
-                <>
-                  <Check size={16} className="animate-celebra" /> ¡Copiado!
-                </>
-              ) : (
-                <>
-                  <Copy size={16} /> Copiar
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ⛔ SIN CASINO (18-sep-2026): Celsius corto el trafico y los enlaces ya no
+          funcionan, asi que NO se les enseña el suyo: no tiene sentido que sigan
+          repartiendo un enlace roto ni invirtiendo en publicidad. Cuando haya
+          casino nuevo, se quita este aviso y vuelve el bloque del enlace. */}
+      <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6">
+        <h2 className="text-lg font-semibold text-white mb-1">⏸️ Los enlaces están parados</h2>
+        <p className="text-sm text-amber-100/90">
+          Ahora mismo no hay ningún sitio al que mandar gente, así que tu enlace no
+          está disponible. No gastes en publicidad de momento.
+        </p>
+        <p className="text-sm text-slate-300 mt-2">
+          En cuanto haya algo nuevo se avisa por el canal <b className="text-white">KiNGZ Cheles</b> y
+          aquí te aparecerá tu enlace otra vez. Lo que ya has ganado sigue en tu panel y se te paga igual.
+        </p>
+      </div>
 
       {!esPropia && (
       <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
