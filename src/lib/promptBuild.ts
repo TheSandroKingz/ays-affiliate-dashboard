@@ -1,3 +1,4 @@
+import { ENLACES_PAUSADOS } from "@/lib/telegram";
 // Arma el prompt final de cada bot a partir de los v2 de Yaiza:
 //   IDENTIDAD (por bot) + PROMPT MAESTRO (común) + DATOS FIJOS (común) + bloque
 //   DINÁMICO (su enlace /go, su juego y su VOZ, que no viven en el texto de Yaiza).
@@ -302,11 +303,26 @@ TU RECORRIDO — EL PATRÓN Z, dilo SIEMPRE igual (esto se te olvida y lo cuenta
 }
 
 function bloqueDinamico(enlace: string, juego: string): string {
+  // ⛔ SIN CASINO (18-sep-2026): se acabó Celsius y sus enlaces no funcionan. Este
+  // bloque va DESPUÉS de todo lo demás a propósito: manda sobre el Prompt Maestro y
+  // sobre los Datos Fijos, que siguen llenos de "entra por tu enlace" y de Celsius.
+  if (ENLACES_PAUSADOS) {
+    return `=== SITUACIÓN DE AHORA MISMO — ESTO MANDA SOBRE TODO LO ANTERIOR ===
+YA NO HAY CASINO. Se acabó con Celsius y sus enlaces no funcionan. Aunque más arriba ponga otra cosa, AHORA MISMO:
+- ⛔ NO mandes NINGÚN enlace, ni el tuyo ni de ningún sitio. No hay ninguno que funcione.
+- ⛔ NO recomiendes Celsius ni ningún otro casino, ni por su nombre ni de refilón ("el de siempre", "donde juego yo").
+- ⛔ NO invites a registrarse, depositar, recargar ni entrar a jugar. Ni ahora, ni "cuando puedas", ni "cuando te venga bien".
+- ⛔ NO le expliques el recorrido de ${juego} para que lo juegue ahora, ni le ofrezcas el vídeo (el sistema ya no lo manda).
+- Si te pide el enlace o dónde jugar: corto y con tus palabras — que lo tienes PARADO ahora mismo, que no estás mandando a nadie a ningún sitio, y que cuando tengas algo se lo dirás. ⛔ Sin prometer fechas ni "en unos días".
+- Si te pregunta por qué: sin dramas, sin hablar mal de nadie y sin contar el negocio ("ya no estoy con ellos", "lo tengo parado"). NUNCA hables de comisiones ni de acuerdos.
+- Si tiene dinero dentro o un retiro pendiente: eso lo lleva el soporte de la web donde jugó. Ayúdale a explicarse con calma, sin prometerle nada y sin decirle que tú puedes moverlo.
+- Con todo lo demás sigues siendo tú: hablas con normalidad y respondes lo que te pregunten, sin vender nada.`;
+  }
   return `=== DATOS DINÁMICOS (de este bot) ===
 TU JUEGO ES: ${juego}. En los Datos Fijos hay información de "Mines" (para Sandrokingz/Jeffer/Black KP/Afrika) y de "Diamond Mines" (SOLO para Livana): usa SIEMPRE la que corresponde a TU juego (${juego}), nunca la del otro.
 TU ENLACE para registrarse y depositar: ${enlace}
 - Compártelo SOLO cuando el jugador vaya a entrar/jugar/depositar o te lo pida; NO lo repitas en cada mensaje (spammearlo canta a bot).
-- Es el ÚNICO enlace válido (asafiliados.com/go/...). NUNCA pegues un enlace directo del casino (celsius.games, celsiuscasino.com, celsiuscasino.co ni ningún dominio suyo), NUNCA te lo inventes ni lo reconstruyas, y NUNCA le digas al jugador que entre directo a la web del casino "saltándose el enlace". Si registra sin tu enlace, se pierde y no cuenta.
+- Es el ÚNICO enlace válido (asafiliados.com/go/...). NUNCA pegues un enlace directo del casino (celsius.games, celsiuscasino.com, celsiuscasino.co ni ningún dominio suyo), NUNCA te lo inventes ni lo reconstruyas, y NUNCA le digas al jugador que entre directo a la web del casino "saltándose el enlace".
 - ⛔ NO mandes al jugador a cuentas de Telegram ni de Instagram del casino (@celsiuscasino, @casinocelsius ni ninguna otra) para que le atiendan. Para soporte, SOLO el chat oficial dentro de la web del casino.`;
 }
 

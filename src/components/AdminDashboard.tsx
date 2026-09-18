@@ -97,8 +97,6 @@ export default function AdminDashboard() {
   } | null>(null);
   const [lastMonthToDate, setLastMonthToDate] = useState<number | null>(null);
   const [paises, setPaises] = useState<{ code: string; n: number }[]>([]);
-  // Reparto del mes con el socio (para verlo sin salir del inicio).
-  const [reparto, setReparto] = useState<{ kingz: number; prz: number; penalizacion: number } | null>(null);
   // Quién de los dos está mirando (se recuerda en ESTE móvil, no en la cuenta).
   const [quienSoy, setQuienSoy] = useState<Quien>(null);
   const [celebrar, setCelebrar] = useState(false);
@@ -119,30 +117,13 @@ export default function AdminDashboard() {
         return;
       }
       // Una sola llamada: mes en curso + mes pasado + histórico + pendientes.
-      // El reparto con el socio va EN PARALELO (no retrasa el panel).
-      const [res, rep] = await Promise.all([
-        fetch("/api/admin/overview", {
-          cache: "no-store",
-          headers: { Authorization: "Bearer " + session.access_token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        fetch("/api/admin/reparto", {
-          cache: "no-store",
-          headers: { Authorization: "Bearer " + session.access_token },
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-      ]);
-      setReparto(
-        rep?.reparto
-          ? {
-              kingz: Number(rep.reparto.sandroTotal ?? 0),
-              prz: Number(rep.reparto.socioTotal ?? 0),
-              penalizacion: Number(rep.penalizacion ?? 0),
-            }
-          : null
-      );
+      // (El reparto con el socio NO se pide aquí: se ve en su propio apartado.)
+      const res = await fetch("/api/admin/overview", {
+        cache: "no-store",
+        headers: { Authorization: "Bearer " + session.access_token },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
 
       // Si la carga de datos falló, mostramos error (no 0€ falsos).
       if (!res || !res.month?.totals) {
@@ -593,37 +574,6 @@ export default function AdminDashboard() {
             💶 Depósito medio{" "}
             <span className="text-slate-300 font-medium">{eur(mediaTotal)}</span>
           </p>
-        )}
-        {/* De ese balance, cuánto es de cada uno (mismos colores que en Reparto y
-            en Gastos). Quien esté mirando sale primero y resaltado. */}
-        {reparto && (reparto.kingz !== 0 || reparto.prz !== 0) && (
-          <Link href="/admin/reparto" className="mt-4 flex flex-wrap items-center gap-2 text-sm group">
-            {(["kingz", "prz"] as const)
-              .slice()
-              .sort((a, b) => (a === quienSoy ? -1 : b === quienSoy ? 1 : 0))
-              .map((q) => (
-                <span
-                  key={q}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 ${
-                    q === "kingz"
-                      ? "border-emerald-400/50 bg-emerald-500/10"
-                      : "border-sky-400/50 bg-sky-500/10"
-                  } ${quienSoy && q !== quienSoy ? "opacity-70" : ""} ${
-                    q === quienSoy ? "ring-1 ring-white/25" : ""
-                  }`}
-                >
-                  <span className="text-slate-300">{NOMBRE_QUIEN[q]}</span>
-                  <b className={`tabular-nums ${q === "kingz" ? "text-emerald-300" : "text-sky-300"}`}>
-                    {eur(q === "kingz" ? reparto.kingz : reparto.prz)}
-                  </b>
-                </span>
-              ))}
-            <span className="text-xs text-slate-500 group-hover:text-slate-300">
-              {reparto.penalizacion > 0
-                ? `(ya descontada la penalización de ${eur(reparto.penalizacion)}) ver reparto →`
-                : "ver reparto →"}
-            </span>
-          </Link>
         )}
       </div>
 

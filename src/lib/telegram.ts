@@ -45,12 +45,16 @@ export const OWNER_CHAT_ID = process.env.TELEGRAM_OWNER_CHAT_ID || "";
 // sub1 propio va a la casa/Mongolitos por defecto. Los afiliados usan su /go/<código>.
 export const ENLACE_JUGAR = "https://asafiliados.com/go/YmIjpivpyx";
 
-// ⛔ PAUSA (FreshBet cortó el tráfico — ya no trabajamos con ellos). Mientras
-// esto sea true, NO se envía NINGÚN enlace/botón en ningún mensaje (chat, diario,
-// bienvenida, broadcast): las funciones de botón devuelven undefined. Los bots
-// siguen encendidos y respondiendo, pero sin enlaces y diciendo que ahora no va.
-// Cuando volvamos a tener casino, poner false (y repasar los prompts).
-export const ENLACES_PAUSADOS = false;
+// ⛔ SIN CASINO (18-sep-2026): Celsius cortó el tráfico (el depósito medio era
+// demasiado bajo) y sus enlaces YA NO FUNCIONAN. Mientras esto sea true, NO se
+// envía NINGÚN enlace/botón en ningún mensaje (chat, diario, bienvenida,
+// broadcast): las funciones de botón devuelven undefined, y tampoco sale el vídeo
+// del patrón. Los bots siguen encendidos y hablando con la gente, pero sin mandar
+// a nadie a ningún sitio (ver también el bloque "SIN CASINO" del prompt, que se
+// enciende con esta misma constante).
+// Cuando haya casino nuevo: poner false, actualizar ENLACE_JUGAR y el enlace de
+// cada bot, y repasar los prompts (los Datos Fijos siguen llenos de Celsius).
+export const ENLACES_PAUSADOS = true;
 
 // Texto del botón de jugar (llamativo — Telegram no deja cambiar color/tamaño,
 // solo el texto y los emojis).
